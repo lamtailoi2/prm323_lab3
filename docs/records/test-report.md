@@ -61,6 +61,15 @@ Branch `chore/lab3-spec-alignment`. Same environment as Run 1.
 | 3 | `flutter test` | **84 tests, all passed** (79 + 5 Cloudinary storage tests) |
 | 4 | Markdown link and anchor check (script) | 0 problems, except the known `ai/…` links in the verbatim Lab 2 README |
 
+## Run 4: Cloud Storage for Firebase (2026-10-21)
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `flutter analyze` | **No issues found!** |
+| 2 | `flutter test` | **85 tests, all passed** (storage: path in own folder, signed-out rejection, PDF / size checks, file-name sanitizing, error-code mapping) |
+| 3 | `flutter build ios --simulator --debug` (CocoaPods) | **Passed**: `pod install` 29.0 s, Xcode build 317.1 s, `✓ Built build/ios/iphonesimulator/Runner.app`; FirebaseStorage 12.19.0 resolved with GoogleSignIn 9.2.0 / GTMSessionFetcher 3.5.0 |
+| 4 | Real upload to Cloud Storage | **Not run**: no Firebase project configured on this machine |
+
 ---
 
 ## Run template

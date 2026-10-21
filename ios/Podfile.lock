@@ -1224,6 +1224,9 @@ PODS:
   - Firebase/RemoteConfig (12.19.0):
     - Firebase/CoreOnly
     - FirebaseRemoteConfig (~> 12.19.0)
+  - Firebase/Storage (12.19.0):
+    - Firebase/CoreOnly
+    - FirebaseStorage (~> 12.19.0)
   - firebase_analytics (13.0.0):
     - firebase_core
     - FirebaseAnalytics (= 12.19.0)
@@ -1241,6 +1244,10 @@ PODS:
     - Flutter
   - firebase_remote_config (7.0.0):
     - Firebase/RemoteConfig (= 12.19.0)
+    - firebase_core
+    - Flutter
+  - firebase_storage (14.0.0):
+    - Firebase/Storage (= 12.19.0)
     - firebase_core
     - Flutter
   - FirebaseABTesting (12.19.0):
@@ -1335,6 +1342,13 @@ PODS:
     - nanopb (~> 3.30910.0)
     - PromisesSwift (~> 2.1)
   - FirebaseSharedSwift (12.19.0)
+  - FirebaseStorage (12.19.0):
+    - FirebaseAppCheckInterop (~> 12.19.0)
+    - FirebaseAuthInterop (~> 12.19.0)
+    - FirebaseCore (~> 12.19.0)
+    - FirebaseCoreExtension (~> 12.19.0)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GTMSessionFetcher/Core (< 6.0, >= 3.4)
   - Flutter (1.0.0)
   - google_sign_in_ios (0.0.1):
     - Flutter
@@ -1521,6 +1535,7 @@ DEPENDENCIES:
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
   - firebase_crashlytics (from `.symlinks/plugins/firebase_crashlytics/ios`)
   - firebase_remote_config (from `.symlinks/plugins/firebase_remote_config/ios`)
+  - firebase_storage (from `.symlinks/plugins/firebase_storage/ios`)
   - Flutter (from `Flutter`)
   - google_sign_in_ios (from `.symlinks/plugins/google_sign_in_ios/darwin`)
 
@@ -1547,6 +1562,7 @@ SPEC REPOS:
     - FirebaseRemoteConfigInterop
     - FirebaseSessions
     - FirebaseSharedSwift
+    - FirebaseStorage
     - GoogleAdsOnDeviceConversion
     - GoogleAppMeasurement
     - GoogleDataTransport
@@ -1575,6 +1591,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/firebase_crashlytics/ios"
   firebase_remote_config:
     :path: ".symlinks/plugins/firebase_remote_config/ios"
+  firebase_storage:
+    :path: ".symlinks/plugins/firebase_storage/ios"
   Flutter:
     :path: Flutter
   google_sign_in_ios:
@@ -1592,6 +1610,7 @@ SPEC CHECKSUMS:
   firebase_core: aa2923f301f5b09667356bb91e59308e6e2e38d3
   firebase_crashlytics: cc95ced4564605c9ab34cd09e848ea870567093f
   firebase_remote_config: 37f4632ecb6a2487ec50ec6e7693704c0f5509cb
+  firebase_storage: b669417cbd7e95f74a8bc3278642b946f64505fa
   FirebaseABTesting: 3f0f330ed5e19323fe512006d62a38399a7de7c1
   FirebaseAnalytics: e9f8c369447e453da23f0455a06e4910bad10de0
   FirebaseAppCheckInterop: bd4b791ffaed7ae719304af6369d243ddee5e4a0
@@ -1608,6 +1627,7 @@ SPEC CHECKSUMS:
   FirebaseRemoteConfigInterop: 90659b3cac8f6de884f2d930fbdbeb711533e142
   FirebaseSessions: 39bcaa7c16b5d8b91d58f495f29ce2988d2f915c
   FirebaseSharedSwift: c91f36aeaa566e12b682caacc40d34c8303c3124
+  FirebaseStorage: 357354fbde2ba62983c0fe5d9cf10155046b5404
   Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   google_sign_in_ios: 92f9b87736ef92fbfda3bdd2036283d2e44bfc29
   GoogleAdsOnDeviceConversion: 41f168313b305040f4af27093d3c0af5ba46a9a3
