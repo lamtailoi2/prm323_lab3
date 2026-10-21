@@ -1,0 +1,22 @@
+[project]
+name = "internly-e2e"
+version = "0.1.0"
+description = "Google ARTEMIS end-to-end tests for Internly (PRM393 Lab 3, section 7)"
+requires-python = ">=3.12"
+dependencies = [
+  # Pinned ARTEMIS commit (2026-09-29). Update together with README.md.
+  "artemis-client @ git+https://github.com/google/artemis.git@351ca8422f7b5b54e80a9c1ce03a222e02415b6b#subdirectory=packages/artemis-client",
+  "pytest==9.1.1",
+  "pytest-asyncio==1.4.0",
+  "pytest-repeat==0.9.4",
+  "python-dotenv==1.2.4",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["."]
+markers = [
+  "native: drives a native Android UI (account picker, permission dialog, notification shade)",
+  "error_path: covers an error or recovery path",
+  "requires_feature: the screens it needs are not built yet",
+]
