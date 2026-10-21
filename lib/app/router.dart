@@ -12,6 +12,7 @@ import '../features/saved/screens/saved_screen.dart';
 import '../models/app_user.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
+import '../services/crashlytics_service.dart';
 import 'app_shell.dart';
 
 /// Route paths. Feature owners add nested routes under their tab branch
@@ -75,6 +76,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 
   final analytics = ref.read(analyticsServiceProvider);
+  final crashlytics = ref.read(crashlyticsServiceProvider);
   String? lastScreen;
   void trackScreen() {
     final config = router.routerDelegate.currentConfiguration;
@@ -83,6 +85,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     if (name == null || name == 'splash' || name == lastScreen) return;
     lastScreen = name;
     analytics.logScreenView(screenName: name);
+    // Custom key on every crash / non-fatal report (Lab 3 §6 Crashlytics).
+    crashlytics.setCustomKey('last_screen', name);
   }
 
   router.routerDelegate.addListener(trackScreen);

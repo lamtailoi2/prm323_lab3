@@ -11,7 +11,8 @@ import '../viewmodels/login_viewmodel.dart';
 
 /// Interim Login screen. Lab 2 has no Login design (docs/handoff-gaps.md
 /// G-03); this layout only uses existing tokens and components and is
-/// logged in docs/design-change-log.md (DC-01). The auth owner finalises it.
+/// logged in docs/design-traceability.md (DC-01). The auth owner finalises
+/// it.
 class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
 
@@ -39,10 +40,12 @@ class LoginScreen extends ConsumerWidget {
               ),
               const Spacer(),
               if (error != null) ...[
-                _ErrorMessage(
+                _SignInMessage(
                   message: error is AppException
                       ? error.message
                       : 'We could not sign you in. Please try again.',
+                  // A cancelled picker is information, not a failure.
+                  isInfo: error is AppException && error.isCancelled,
                 ),
                 const SizedBox(height: AppSpacing.s16),
               ],
@@ -62,21 +65,23 @@ class LoginScreen extends ConsumerWidget {
   }
 }
 
-class _ErrorMessage extends StatelessWidget {
-  const _ErrorMessage({required this.message});
+class _SignInMessage extends StatelessWidget {
+  const _SignInMessage({required this.message, required this.isInfo});
 
   final String message;
+  final bool isInfo;
 
   @override
   Widget build(BuildContext context) {
+    final color = isInfo ? AppColors.textSecondary : AppColors.error;
     return Semantics(
       liveRegion: true,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Symbols.error_rounded,
-            color: AppColors.error,
+          Icon(
+            isInfo ? Symbols.info_rounded : Symbols.error_rounded,
+            color: color,
             size: AppSizes.iconSmall,
           ),
           const SizedBox(width: AppSpacing.s8),
@@ -84,7 +89,7 @@ class _ErrorMessage extends StatelessWidget {
             child: Text(
               message,
               style: Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(color: AppColors.error),
+                  ?.copyWith(color: color),
             ),
           ),
         ],

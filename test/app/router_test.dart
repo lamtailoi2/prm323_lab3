@@ -4,9 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/app/app.dart';
 import 'package:internly/app/app_shell.dart';
 import 'package:internly/app/router.dart';
+import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/models/app_user.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
+import 'package:internly/services/crashlytics_service.dart';
 
 import '../helpers/fakes.dart';
 import '../helpers/pump.dart';
@@ -69,6 +71,7 @@ void main() {
 
   group('InternlyApp', () {
     late FakeAnalyticsService analytics;
+    late FakeCrashlyticsService crashlytics;
 
     Future<FakeAuthService> pumpApp(
       WidgetTester tester, {
@@ -78,12 +81,14 @@ void main() {
       setScreenSize(tester, width: width);
       final auth = FakeAuthService(initialUser: user);
       analytics = FakeAnalyticsService();
+      crashlytics = FakeCrashlyticsService();
       addTearDown(auth.dispose);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             authServiceProvider.overrideWithValue(auth),
             analyticsServiceProvider.overrideWithValue(analytics),
+            crashlyticsServiceProvider.overrideWithValue(crashlytics),
           ],
           child: const InternlyApp(),
         ),
@@ -133,6 +138,20 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('My Applications is not built yet'), findsOneWidget);
       expect(analytics.screens, ['home', 'search', 'my_applications']);
+      // Crashlytics custom key follows the current screen.
+      expect(crashlytics.customKeys['last_screen'], 'my_applications');
+    });
+
+    testWidgets('cancelled Google sign-in shows a message', (tester) async {
+      final auth = await pumpApp(tester);
+      auth.signInError = const AppException(
+        AppErrorKind.cancelled,
+        'Sign-in was cancelled. Tap Continue with Google to try again.',
+      );
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Sign-in was cancelled'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
     });
 
     testWidgets('sign out from Profile returns to Login', (tester) async {

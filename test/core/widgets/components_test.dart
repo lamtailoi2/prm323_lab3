@@ -122,6 +122,26 @@ void main() {
       });
     }
 
+    testWidgets('card exposes one summary label for ARTEMIS', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpThemed(tester, card(saved: true, onSave: () {}, onTap: () {}));
+      expect(
+        find.bySemanticsLabel(
+          RegExp(
+            r'^Software Engineering Intern - Mobile Platform Team at '
+            r'Northstar Labs\. District 1, Ho Chi Minh City, Hybrid\. '
+            r'Skills: Flutter, Dart, Firebase, REST API\..*Saved$',
+          ),
+        ),
+        findsOneWidget,
+      );
+      // The save action stays a separate node with its own description.
+      final saveNode = tester.getSemantics(find.byTooltip('Remove from saved'));
+      expect(saveNode.getSemanticsData().tooltip, 'Remove from saved');
+      expect(saveNode.label, isNot(contains('Northstar')));
+      handle.dispose();
+    });
+
     testWidgets('save action has a 48 dp target and saved state', (
       tester,
     ) async {

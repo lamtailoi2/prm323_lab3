@@ -69,3 +69,10 @@ key.properties
 firebase-debug.log*
 firestore-debug.log*
 ui-debug.log*
+
+# ARTEMIS E2E local settings (model API key, test account, device serial)
+e2e_test/.env
+e2e_test/.venv/
+e2e_test/.pytest_cache/
+e2e_test/artifacts/
+__pycache__/

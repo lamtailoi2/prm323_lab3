@@ -17,13 +17,8 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    // ---- Shared data ------------------------------------------------------
-    // Public internship listings: readable by any signed-in user. Written only
-    // with the Admin SDK or the Firebase console, never by the app.
-    match /internships/{internshipId} {
-      allow read: if isSignedIn();
-      allow write: if false;
-    }
+    // Internship listings are NOT stored in Firestore: they come from SerpAPI
+    // (Google Jobs) at request time. Firestore only holds each user's own data.
 
     // ---- User-owned data (scoped to the authenticated UID) ----------------
     match /users/{uid} {
@@ -37,12 +32,14 @@ service cloud.firestore {
       // because a student could then write any field (e.g. their own
       // application status).
       //
-      // match /savedInternships/{internshipId} {
+      // match /savedInternships/{jobKey} {
       //   allow read, delete: if isOwner(uid);
       //   allow create: if isOwner(uid)
-      //     && request.resource.data.keys().hasOnly(['savedAt'])
-      //     && request.resource.data.savedAt == request.time
-      //     && exists(/databases/$(database)/documents/internships/$(internshipId));
+      //     && request.resource.data.keys().hasOnly(
+      //          ['jobId', 'title', 'companyName', 'location', 'savedAt'])
+      //     && request.resource.data.title is string
+      //     && request.resource.data.title.size() <= 200
+      //     && request.resource.data.savedAt == request.time;
       //   allow update: if false;
       // }
     }

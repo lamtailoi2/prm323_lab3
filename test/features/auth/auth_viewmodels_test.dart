@@ -70,17 +70,16 @@ void main() {
       expect(auth.signInCalls, 1);
     });
 
-    test('cancelled picker returns to idle without an error', () async {
+    test('cancelled picker exposes a cancel message (Lab 3 §6)', () async {
       final vm = listen();
       auth.signInError = const AppException(
         AppErrorKind.cancelled,
-        'Sign-in was cancelled.',
+        'Sign-in was cancelled. Tap Continue with Google to try again.',
       );
       await vm.signInWithGoogle();
-      expect(
-        container.read(loginViewModelProvider),
-        const AsyncData<void>(null),
-      );
+      final error = container.read(loginViewModelProvider).error;
+      expect(error, isA<AppException>());
+      expect((error! as AppException).isCancelled, isTrue);
       expect(analytics.events, isEmpty);
     });
 
@@ -96,6 +95,24 @@ void main() {
       expect((state.error! as AppException).kind, AppErrorKind.network);
       expect(analytics.events, isEmpty);
     });
+  });
+
+  test('currentUserIdProvider resets to null after sign-out', () async {
+    // Waits (bounded) until the provider reports the expected UID.
+    Future<String?> uidBecomes(String? expected) async {
+      for (var i = 0; i < 50; i++) {
+        if (container.read(currentUserIdProvider) == expected) break;
+        await Future<void>.delayed(Duration.zero);
+      }
+      return container.read(currentUserIdProvider);
+    }
+
+    container.listen(currentUserIdProvider, (_, _) {});
+    await auth.signInWithGoogle();
+    expect(await uidBecomes(testUser.uid), testUser.uid);
+
+    await auth.signOut();
+    expect(await uidBecomes(null), isNull);
   });
 
   group('SignOutViewModel', () {

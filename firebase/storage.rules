@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// Internly — Cloud Storage Security Rules (Lab 3 §6).
+//
+// Every file lives under a per-user folder; a user can read and write only
+// their own folder. Everything else is denied.
+//   reports/{uid}/{fileName}  generated PDF reports (export and upload)
+//   cvs/{uid}/{fileName}      CVs uploaded in the Apply flow (Flow 2a)
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // New or replaced files: PDF only, non-empty, at most 10 MB.
+    function isPdfUpTo10Mb() {
+      return request.resource.contentType == 'application/pdf'
+        && request.resource.size > 0
+        && request.resource.size <= 10 * 1024 * 1024;
+    }
+
+    match /reports/{uid}/{fileName} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && isPdfUpTo10Mb();
+    }
+
+    match /cvs/{uid}/{fileName} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && isPdfUpTo10Mb();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

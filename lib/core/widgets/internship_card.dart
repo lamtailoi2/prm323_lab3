@@ -29,6 +29,7 @@ class InternshipCard extends StatefulWidget {
     this.badge,
     this.onTap,
     this.onSaveToggle,
+    this.semanticsLabel,
   });
 
   final String title;
@@ -53,6 +54,9 @@ class InternshipCard extends StatefulWidget {
   /// Hides the save action when null.
   final VoidCallback? onSaveToggle;
 
+  /// Overrides the generated accessibility summary of the card.
+  final String? semanticsLabel;
+
   @override
   State<InternshipCard> createState() => _InternshipCardState();
 }
@@ -64,86 +68,113 @@ class _InternshipCardState extends State<InternshipCard> {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
+    // One labeled node per card for screen readers and ARTEMIS (Lab 3 §7);
+    // the visible texts are excluded so they are not announced twice. The
+    // save button stays a separate, tappable node.
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: widget.onTap,
-        onHighlightChanged: (value) => setState(() => _pressed = value),
-        splashFactory: NoSplash.splashFactory,
-        highlightColor: Colors.transparent,
-        borderRadius: AppRadii.largeAll,
-        child: Opacity(
-          opacity: _pressed ? AppTheme.pressedOpacity : 1,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.s16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        widget.title,
-                        style: textTheme.titleMedium,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (widget.onSaveToggle != null) _saveButton(),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.s4),
-                Text(widget.companyName, style: textTheme.bodyMedium),
-                const SizedBox(height: AppSpacing.s8),
-                Wrap(
-                  spacing: AppSpacing.s16,
-                  runSpacing: AppSpacing.s4,
-                  children: [
-                    _Meta(
-                      icon: Symbols.location_on_rounded,
-                      text: widget.location,
-                    ),
-                    _Meta(icon: Symbols.work_rounded, text: widget.workMode),
-                  ],
-                ),
-                if (widget.tags.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.s8),
-                  Wrap(
-                    spacing: AppSpacing.s8,
-                    runSpacing: AppSpacing.s8,
-                    children: [
-                      for (final tag in widget.tags) AppTag(label: tag),
-                    ],
-                  ),
-                ],
-                if (widget.allowanceText != null) ...[
-                  const SizedBox(height: AppSpacing.s8),
-                  Text(widget.allowanceText!, style: textTheme.labelLarge),
-                ],
-                if (widget.postedText != null || widget.badge != null) ...[
-                  const SizedBox(height: AppSpacing.s4),
+      child: Semantics(
+        container: true,
+        button: widget.onTap != null,
+        label: widget.semanticsLabel ?? _summary(),
+        child: InkWell(
+          onTap: widget.onTap,
+          onHighlightChanged: (value) => setState(() => _pressed = value),
+          splashFactory: NoSplash.splashFactory,
+          highlightColor: Colors.transparent,
+          borderRadius: AppRadii.largeAll,
+          child: Opacity(
+            opacity: _pressed ? AppTheme.pressedOpacity : 1,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.s16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (widget.postedText != null)
-                        Expanded(
+                      Expanded(
+                        child: ExcludeSemantics(
                           child: Text(
-                            widget.postedText!,
-                            style: textTheme.bodySmall,
+                            widget.title,
+                            style: textTheme.titleMedium,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        )
-                      else
-                        const Spacer(),
-                      ?widget.badge,
+                        ),
+                      ),
+                      if (widget.onSaveToggle != null) _saveButton(),
                     ],
                   ),
+                  ExcludeSemantics(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: _details(textTheme),
+                    ),
+                  ),
+                  if (widget.postedText != null || widget.badge != null) ...[
+                    const SizedBox(height: AppSpacing.s4),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ExcludeSemantics(
+                            child: Text(
+                              widget.postedText ?? '',
+                              style: textTheme.bodySmall,
+                            ),
+                          ),
+                        ),
+                        // The badge (e.g. Applied) keeps its own semantics.
+                        ?widget.badge,
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  List<Widget> _details(TextTheme textTheme) {
+    return [
+      const SizedBox(height: AppSpacing.s4),
+      Text(widget.companyName, style: textTheme.bodyMedium),
+      const SizedBox(height: AppSpacing.s8),
+      Wrap(
+        spacing: AppSpacing.s16,
+        runSpacing: AppSpacing.s4,
+        children: [
+          _Meta(icon: Symbols.location_on_rounded, text: widget.location),
+          _Meta(icon: Symbols.work_rounded, text: widget.workMode),
+        ],
+      ),
+      if (widget.tags.isNotEmpty) ...[
+        const SizedBox(height: AppSpacing.s8),
+        Wrap(
+          spacing: AppSpacing.s8,
+          runSpacing: AppSpacing.s8,
+          children: [for (final tag in widget.tags) AppTag(label: tag)],
+        ),
+      ],
+      if (widget.allowanceText != null) ...[
+        const SizedBox(height: AppSpacing.s8),
+        Text(widget.allowanceText!, style: textTheme.labelLarge),
+      ],
+    ];
+  }
+
+  String _summary() {
+    return [
+      '${widget.title} at ${widget.companyName}',
+      '${widget.location}, ${widget.workMode}',
+      if (widget.tags.isNotEmpty) 'Skills: ${widget.tags.join(', ')}',
+      ?widget.allowanceText,
+      ?widget.postedText,
+      if (widget.isSaved) 'Saved',
+    ].join('. ');
   }
 
   Widget _saveButton() {

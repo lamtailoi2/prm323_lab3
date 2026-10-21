@@ -4,6 +4,7 @@ import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/models/app_user.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
+import 'package:internly/services/crashlytics_service.dart';
 
 const testUser = AppUser(
   uid: 'uid-123',
@@ -28,10 +29,23 @@ class FakeAuthService implements AuthService {
   /// Completes the next sign-in only when the test calls `complete()`.
   Completer<void>? signInGate;
 
+  /// Emits the current user first, then every change. Subscribes to the
+  /// change stream synchronously on listen, so no event can be lost.
   @override
-  Stream<AppUser?> authStateChanges() async* {
-    yield _user;
-    yield* _controller.stream;
+  Stream<AppUser?> authStateChanges() {
+    StreamSubscription<AppUser?>? changes;
+    late final StreamController<AppUser?> controller;
+    controller = StreamController<AppUser?>(
+      onListen: () {
+        controller.add(_user);
+        changes = _controller.stream.listen(controller.add);
+      },
+      onCancel: () async {
+        await changes?.cancel();
+        await controller.close();
+      },
+    );
+    return controller.stream;
   }
 
   @override
@@ -61,6 +75,36 @@ class FakeAuthService implements AuthService {
   }
 
   Future<void> dispose() => _controller.close();
+}
+
+/// Records Crashlytics calls instead of sending them.
+class FakeCrashlyticsService implements CrashlyticsService {
+  final Map<String, Object> customKeys = <String, Object>{};
+  final List<Object> recordedErrors = <Object>[];
+  String? userId;
+
+  @override
+  void registerGlobalErrorHandlers() {}
+
+  @override
+  Future<void> recordError(
+    Object error,
+    StackTrace? stack, {
+    String? reason,
+  }) async => recordedErrors.add(error);
+
+  @override
+  Future<void> log(String message) async {}
+
+  @override
+  Future<void> setUserId(String? uid) async => userId = uid;
+
+  @override
+  Future<void> setCustomKey(String key, Object value) async =>
+      customKeys[key] = value;
+
+  @override
+  void crashForTesting() {}
 }
 
 /// Records analytics calls instead of sending them.

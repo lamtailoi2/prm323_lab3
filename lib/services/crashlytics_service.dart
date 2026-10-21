@@ -17,6 +17,10 @@ abstract interface class CrashlyticsService {
   /// Pseudonymous Firebase UID only (or `null` on sign-out).
   Future<void> setUserId(String? uid);
 
+  /// Context attached to every later report (e.g. `last_screen`). Values
+  /// must not contain personal data.
+  Future<void> setCustomKey(String key, Object value);
+
   /// Forces a native crash. Only for an explicit, user-triggered test
   /// control; never call it during startup or from automated flows.
   void crashForTesting();
@@ -52,6 +56,10 @@ class FirebaseCrashlyticsService implements CrashlyticsService {
   @override
   Future<void> setUserId(String? uid) =>
       _crashlytics.setUserIdentifier(uid ?? '');
+
+  @override
+  Future<void> setCustomKey(String key, Object value) =>
+      _crashlytics.setCustomKey(key, value);
 
   @override
   void crashForTesting() => _crashlytics.crash();

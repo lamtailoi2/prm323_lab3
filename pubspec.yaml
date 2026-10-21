@@ -7,23 +7,24 @@ environment:
   sdk: ^3.13.3
 
 dependencies:
-  cloud_firestore: ^7.0.0
-  firebase_analytics: ^13.0.0
-  firebase_auth: ^7.0.0
-  firebase_core: ^5.0.0
-  firebase_crashlytics: ^6.0.0
-  firebase_remote_config: ^7.0.0
+  cloud_firestore: 7.0.0
+  firebase_analytics: 13.0.0
+  firebase_auth: 7.0.0
+  firebase_core: 5.0.0
+  firebase_crashlytics: 6.0.0
+  firebase_remote_config: 7.0.0
   flutter:
     sdk: flutter
-  flutter_riverpod: ^3.4.3
-  go_router: ^18.1.1
-  google_sign_in: ^7.2.0
-  material_symbols_icons: ^4.2960.0
+  flutter_riverpod: 3.4.3
+  go_router: 18.1.1
+  google_sign_in: 7.2.0
+  http: 1.6.0
+  material_symbols_icons: 4.2960.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  flutter_lints: 6.0.0
 
 flutter:
   uses-material-design: true
@@ -34,6 +35,10 @@ flutter:
   # ranges. See docs/handoff-gaps.md (G-20).
   config:
     enable-swift-package-manager: false
+
+  # Single source of the Remote Config in-app defaults (Lab 3 §9).
+  assets:
+    - firebase/remote-config-defaults.json
 
   # Inter 4.1 (SIL Open Font License, see assets/fonts/inter/OFL.txt).
   # Weights match the Lab 2 typography tokens: 400, 500, 600, 700.

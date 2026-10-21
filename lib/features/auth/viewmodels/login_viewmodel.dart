@@ -5,7 +5,9 @@ import '../../../services/analytics_service.dart';
 import '../../../services/auth_service.dart';
 
 /// Login screen state: `AsyncData` = idle, `AsyncLoading` = signing in,
-/// `AsyncError` = failed with an [AppException] message to show.
+/// `AsyncError` = an [AppException] whose message the screen shows. A
+/// cancelled account picker is also reported (kind `cancelled`), because
+/// Lab 3 §6 requires a visible message; the screen styles it as info.
 ///
 /// Successful sign-in needs no navigation here: the router redirects as soon
 /// as the auth state changes.
@@ -31,10 +33,7 @@ class LoginViewModel extends Notifier<AsyncValue<void>> {
       await analytics.logLogin(method: 'google');
       if (ref.mounted) state = const AsyncData(null);
     } on AppException catch (error, stack) {
-      if (!ref.mounted) return;
-      state = error.isCancelled
-          ? const AsyncData(null)
-          : AsyncError(error, stack);
+      if (ref.mounted) state = AsyncError(error, stack);
     }
   }
 }

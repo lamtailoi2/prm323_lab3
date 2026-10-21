@@ -16,6 +16,10 @@ enum AppErrorKind {
   /// The app or a backend service is misconfigured (developer action needed).
   configuration,
 
+  /// An external API refused the call because a usage limit was reached
+  /// (e.g. the SerpAPI monthly search quota).
+  rateLimited,
+
   /// Anything else.
   unknown,
 }

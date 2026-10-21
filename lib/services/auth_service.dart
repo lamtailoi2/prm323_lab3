@@ -32,6 +32,16 @@ final authStateChangesProvider = StreamProvider<AppUser?>(
   (ref) => ref.watch(authServiceProvider).authStateChanges(),
 );
 
+/// UID of the signed-in user, or `null`.
+///
+/// Every user-scoped provider (Firestore listeners, caches, profile state)
+/// must `ref.watch` this, so its data is dropped and rebuilt when the user
+/// signs out or switches account (Lab 3 §6: "sign-out clears local user
+/// data").
+final currentUserIdProvider = Provider<String?>(
+  (ref) => ref.watch(authStateChangesProvider).value?.uid,
+);
+
 class FirebaseAuthService implements AuthService {
   FirebaseAuthService({FirebaseAuth? auth, GoogleSignIn? googleSignIn})
     : _auth = auth ?? FirebaseAuth.instance,
@@ -124,7 +134,7 @@ class FirebaseAuthService implements AuthService {
       GoogleSignInExceptionCode.canceled ||
       GoogleSignInExceptionCode.interrupted => AppException(
         AppErrorKind.cancelled,
-        'Sign-in was cancelled.',
+        'Sign-in was cancelled. Tap Continue with Google to try again.',
         cause: e,
       ),
       GoogleSignInExceptionCode.clientConfigurationError ||
