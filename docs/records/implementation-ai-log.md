@@ -122,6 +122,12 @@ Commands the AI executed, with their real results (details in [`test-report.md`]
 - **Verification:** `flutter analyze` → no issues; `flutter test` → 85 passed (storage validation, path, error mapping, signed-out rejection). Actual uploads not run (no Firebase project configured here). iOS simulator build with the new pod: see `test-report.md` Run 4.
 - **Decision:** Accepted (user). Cloudinary code from P-16 removed.
 
+### P-18: Team setup without collecting SHA fingerprints: "mệt qua dùng .env cho tiện đi" ("too tiring, just use .env")
+- **Context:** Google Sign-In on Android needs each signing key's SHA-1 / SHA-256 registered; collecting them from every teammate was too much work. `.env` cannot replace the SHA check (Google verifies the app signature server-side), but it can carry a **shared debug keystore**.
+- **Output:** `android/app/build.gradle.kts` reads `DEBUG_KEYSTORE_BASE64` from the root `.env`, decodes it into the build folder and signs debug builds with it (falls back to the default debug keystore when absent); `.env.example` documents the key; setup guide §15 "Team setup" (owner once, teammates only receive `.env`); README and AGENTS.md updated. Firebase config files stay committed. The keystore is never committed (Lab 3 §9).
+- **Verification:** `keytool` generation, SHA listing and base64 round trip tested locally (temporary keystore deleted afterwards). The Gradle change was **not** built here (no Android SDK on this machine): a teammate must run `flutter build apk --debug --dart-define-from-file=.env` once to confirm.
+- **Decision:** Accepted.
+
 ---
 
 ## Entry template

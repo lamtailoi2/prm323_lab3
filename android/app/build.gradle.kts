@@ -4,6 +4,28 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Shared debug signing key for the whole team (docs/guides/firebase-setup.md,
+// "Team setup"). The owner stores the debug keystore, base64-encoded, in the
+// untracked .env as DEBUG_KEYSTORE_BASE64. Every teammate's debug build is
+// then signed with the same key, so only one SHA-1 / SHA-256 has to be
+// registered in Firebase for Google Sign-In. Without the value, Gradle uses
+// the default ~/.android/debug.keystore. Keystores are never committed.
+val sharedDebugKeystore: File? = run {
+    val env = rootProject.file("../.env")
+    if (!env.isFile) return@run null
+    val encoded = env.readLines()
+        .map { it.trim() }
+        .firstOrNull { it.startsWith("DEBUG_KEYSTORE_BASE64=") }
+        ?.substringAfter("=")
+        ?.trim()
+        ?.trim('"', '\'')
+    if (encoded.isNullOrEmpty()) return@run null
+    val keystore = layout.buildDirectory.file("shared-debug.keystore").get().asFile
+    keystore.parentFile.mkdirs()
+    keystore.writeBytes(java.util.Base64.getDecoder().decode(encoded))
+    keystore
+}
+
 android {
     namespace = "com.group3.internly"
     compileSdk = flutter.compileSdkVersion
@@ -27,6 +49,17 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            sharedDebugKeystore?.let {
+                storeFile = it
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
     }
 
     buildTypes {

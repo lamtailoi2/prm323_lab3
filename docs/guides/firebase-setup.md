@@ -52,7 +52,7 @@ Check with `git diff android/ ios/` that both Gradle plugins were added. Crashly
 ## 4. Authentication: Google Sign-In
 
 1. Console → **Authentication → Sign-in method → Google → Enable**, and set the project support email.
-2. **Android SHA fingerprints.** Every developer machine and every signing key needs its own:
+2. **Android SHA fingerprints.** With the shared team keystore (§15) you register **one** SHA-1 / SHA-256 for everyone. Without it, every developer machine needs its own:
    ```bash
    cd android && ./gradlew signingReport          # look for Variant: debug → SHA1 / SHA-256
    # or
@@ -173,3 +173,35 @@ Expected: Splash, then **Login** (not "Firebase is not configured"). Signing in 
 ## 14. End-to-end tests (ARTEMIS)
 
 Setup, the zero-cost model choice (Gemini API free tier) and run commands are in [`test-plan.md`](../test-plan.md).
+
+## 15. Team setup: one `.env` for everyone
+
+Goal: the owner sets everything up once; teammates only receive one `.env` file and run the app. Firebase config files are committed, so nobody sends those.
+
+**Owner (once)**
+
+1. Create a team debug keystore and print its fingerprints and base64:
+   ```bash
+   keytool -genkeypair -keystore debug.keystore -alias androiddebugkey \
+     -storepass android -keypass android -keyalg RSA -keysize 2048 \
+     -validity 10000 -dname "CN=Internly Debug"
+   keytool -list -v -keystore debug.keystore -alias androiddebugkey -storepass android | grep -E "SHA1|SHA256"
+   base64 < debug.keystore | tr -d '\n'      # Windows: [Convert]::ToBase64String([IO.File]::ReadAllBytes("debug.keystore"))
+   ```
+2. Firebase console → Project settings → Android app → **Add fingerprint**: add the SHA-1 and SHA-256 above, once.
+3. Fill the root `.env`: `SERPAPI_KEY=…` and `DEBUG_KEYSTORE_BASE64=<the one-line base64>`. `android/app/build.gradle.kts` decodes it into the build folder and signs every debug build with it.
+4. Firebase console → **Users and permissions**: add teammates (Editor to deploy rules or change Remote Config, Viewer for evidence screenshots).
+5. Send `.env` privately (Zalo / Drive), **never through Git**. Delete the local `debug.keystore` file or keep it outside the repository; keystores must not be committed (Lab 3 §9).
+
+**Teammate**
+
+```bash
+git pull
+# put the received .env in the repository root
+flutter pub get
+flutter run --dart-define-from-file=.env
+```
+
+Google Sign-In works immediately because the debug build carries the team key. Everyone shares the owner's SerpAPI quota; if it runs out, replace `SERPAPI_KEY` in your own `.env` with a free key of your own. Only teammates who deploy rules need `firebase-tools` and `firebase login` with their own Google account; nobody needs a service account.
+
+This key is for **debug builds only**. A real release would need its own private keystore.

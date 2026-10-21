@@ -69,7 +69,8 @@ Exact versions are pinned in [`pubspec.yaml`](pubspec.yaml) and [`e2e_test/pypro
 ```bash
 git clone https://github.com/lamtailoi2/prm323_lab3.git && cd prm323_lab3
 flutter pub get
-cp .env.example .env          # SERPAPI_KEY (read at build time only)
+# Owner: cp .env.example .env and fill it (docs/guides/firebase-setup.md §15).
+# Teammates: put the .env you received in the repository root.
 ```
 
 Then follow [`docs/guides/firebase-setup.md`](docs/guides/firebase-setup.md):
