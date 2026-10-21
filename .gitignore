@@ -46,3 +46,26 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# ---- Internly: secrets and local tooling (never commit) ----
+# Firebase app config (firebase_options.dart, google-services.json,
+# GoogleService-Info.plist) is NOT secret and may be committed; see
+# docs/firebase-setup.md. Privileged credentials below must never be.
+.env
+.env.*
+!.env.example
+*service-account*.json
+*-firebase-adminsdk-*.json
+*.p8
+*.p12
+*.mobileprovision
+key.properties
+*.keystore
+*.jks
+
+# Firebase CLI / emulator local files
+.firebase/
+.firebaserc.local
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*

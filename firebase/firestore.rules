@@ -1,0 +1,50 @@
+rules_version = '2';
+
+// Internly — Firestore Security Rules (foundation).
+//
+// Secure by default: every path that is not matched below is denied.
+// Each feature owner adds a match block for its collection, with field
+// validation and emulator tests, in the same pull request as the feature.
+// Data ownership model: docs/architecture.md §5.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ---- Shared data ------------------------------------------------------
+    // Public internship listings: readable by any signed-in user. Written only
+    // with the Admin SDK or the Firebase console, never by the app.
+    match /internships/{internshipId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ---- User-owned data (scoped to the authenticated UID) ----------------
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      // Profile writes stay closed until the Profile feature adds validated
+      // create/update rules.
+      allow write: if false;
+
+      // Template for a user-owned subcollection. Copy it, rename it and
+      // validate every field; never use `allow write: if isOwner(uid)` alone,
+      // because a student could then write any field (e.g. their own
+      // application status).
+      //
+      // match /savedInternships/{internshipId} {
+      //   allow read, delete: if isOwner(uid);
+      //   allow create: if isOwner(uid)
+      //     && request.resource.data.keys().hasOnly(['savedAt'])
+      //     && request.resource.data.savedAt == request.time
+      //     && exists(/databases/$(database)/documents/internships/$(internshipId));
+      //   allow update: if false;
+      // }
+    }
+  }
+}

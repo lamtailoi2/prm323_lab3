@@ -1,0 +1,125 @@
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../features/applications/screens/my_applications_screen.dart';
+import '../features/auth/screens/login_screen.dart';
+import '../features/auth/screens/splash_screen.dart';
+import '../features/home/screens/home_screen.dart';
+import '../features/internships/screens/search_screen.dart';
+import '../features/profile/screens/profile_screen.dart';
+import '../features/saved/screens/saved_screen.dart';
+import '../models/app_user.dart';
+import '../services/analytics_service.dart';
+import '../services/auth_service.dart';
+import 'app_shell.dart';
+
+/// Route paths. Feature owners add nested routes under their tab branch
+/// (e.g. `/search/results`, `/home/internships/:id`) and give every
+/// [GoRoute] a `name`, which is logged as the analytics `screen_view`.
+abstract final class AppRoutes {
+  static const String splash = '/splash';
+  static const String login = '/login';
+  static const String home = '/home';
+  static const String search = '/search';
+  static const String saved = '/saved';
+  static const String applications = '/applications';
+  static const String profile = '/profile';
+}
+
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'root',
+);
+
+final routerProvider = Provider<GoRouter>((ref) {
+  // Re-runs the redirect whenever the auth state changes, without
+  // rebuilding the router.
+  final authRefresh = ValueNotifier<int>(0);
+  ref.listen(authStateChangesProvider, (_, _) => authRefresh.value++);
+
+  final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
+    initialLocation: AppRoutes.home,
+    refreshListenable: authRefresh,
+    redirect: (context, state) => authRedirect(
+      auth: ref.read(authStateChangesProvider),
+      location: state.matchedLocation,
+    ),
+    routes: [
+      GoRoute(
+        path: AppRoutes.splash,
+        name: 'splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.login,
+        name: 'login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            AppShell(navigationShell: navigationShell),
+        branches: [
+          _tab(AppRoutes.home, 'home', const HomeScreen()),
+          _tab(AppRoutes.search, 'search', const SearchScreen()),
+          _tab(AppRoutes.saved, 'saved', const SavedScreen()),
+          _tab(
+            AppRoutes.applications,
+            'my_applications',
+            const MyApplicationsScreen(),
+          ),
+          _tab(AppRoutes.profile, 'profile', const ProfileScreen()),
+        ],
+      ),
+    ],
+  );
+
+  final analytics = ref.read(analyticsServiceProvider);
+  String? lastScreen;
+  void trackScreen() {
+    final config = router.routerDelegate.currentConfiguration;
+    if (config.isEmpty) return;
+    final name = config.last.route.name;
+    if (name == null || name == 'splash' || name == lastScreen) return;
+    lastScreen = name;
+    analytics.logScreenView(screenName: name);
+  }
+
+  router.routerDelegate.addListener(trackScreen);
+  ref.onDispose(() {
+    router.routerDelegate.removeListener(trackScreen);
+    router.dispose();
+    authRefresh.dispose();
+  });
+  return router;
+});
+
+StatefulShellBranch _tab(String path, String name, Widget screen) {
+  return StatefulShellBranch(
+    routes: [
+      GoRoute(path: path, name: name, builder: (context, state) => screen),
+    ],
+  );
+}
+
+/// Authenticated routing: signed-out users can reach only Login; signed-in
+/// users never see Login or Splash. Pure function so it is unit-testable.
+@visibleForTesting
+String? authRedirect({
+  required AsyncValue<AppUser?> auth,
+  required String location,
+}) {
+  final onSplash = location == AppRoutes.splash;
+  final onLogin = location == AppRoutes.login;
+
+  // First auth event not received yet.
+  if (auth.isLoading && !auth.hasValue) {
+    return onSplash ? null : AppRoutes.splash;
+  }
+
+  // An auth stream error is treated as signed out.
+  final signedIn = !auth.hasError && auth.value != null;
+  if (!signedIn) return onLogin ? null : AppRoutes.login;
+  if (onLogin || onSplash) return AppRoutes.home;
+  return null;
+}
