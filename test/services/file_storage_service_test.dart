@@ -2,8 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/services/file_storage_service.dart';
 
@@ -12,160 +10,98 @@ import '../helpers/fakes.dart';
 final Uint8List _pdf = Uint8List.fromList(
   utf8.encode('%PDF-1.7\n1 0 obj << >> endobj\n%%EOF'),
 );
+const _id = '0123456789abcdef0123456789abcdef';
 
 Matcher _appError(AppErrorKind kind) =>
     throwsA(isA<AppException>().having((e) => e.kind, 'kind', kind));
 
 void main() {
-  late FakeAuthService auth;
-
-  setUp(() async {
-    auth = FakeAuthService();
-    await auth.signInWithGoogle(); // signed in as testUser
-  });
-  tearDown(() => auth.dispose());
-
-  CloudinaryStorageService service(
-    MockClientHandler handler, {
-    String cloudName = 'demo-cloud',
-    String preset = 'internly_pdf',
-  }) => CloudinaryStorageService(
-    MockClient(handler),
-    auth: auth,
-    cloudName: cloudName,
-    uploadPreset: preset,
-  );
-
-  http.Response ok(String folder) => http.Response(
-    jsonEncode({
-      'secure_url':
-          'https://res.cloudinary.com/demo-cloud/image/upload/$folder/x.pdf',
-      'public_id': '$folder/x',
-      'bytes': _pdf.length,
-      'created_at': '2026-10-21T10:00:00Z',
-    }),
-    200,
-  );
-
-  test(
-    'uploads into the signed-in user\'s own folder and reports progress',
-    () async {
-      late String body;
-      late Uri url;
-      final progress = <double>[];
-      final storage = service((request) async {
-        url = request.url;
-        body = latin1.decode(request.bodyBytes);
-        return ok('internly/reports/${testUser.uid}');
-      });
-
-      final file = await storage.uploadPdf(
+  group('prepareUploadPath (checks mirrored by storage.rules)', () {
+    test('builds a path inside the user\'s own folder', () {
+      final path = prepareUploadPath(
+        uid: testUser.uid,
         folder: StorageFolder.reports,
         fileName: 'My Applications Report.pdf',
         bytes: _pdf,
-        onProgress: progress.add,
+        randomId: _id,
       );
-
-      expect(url.path, '/v1_1/demo-cloud/auto/upload');
-      expect(body, contains('internly_pdf'));
-      expect(body, contains('internly/reports/${testUser.uid}'));
-      // Random suffix: 16 bytes = 32 hex characters after the slug.
-      expect(body, matches(RegExp(r'my-applications-report-[0-9a-f]{32}')));
-      expect(file.url, startsWith('https://res.cloudinary.com/'));
-      expect(file.storagePath, 'internly/reports/${testUser.uid}/x');
-      expect(file.sizeBytes, _pdf.length);
-      expect(progress, isNotEmpty);
-      expect(progress.last, 1);
-    },
-  );
-
-  test('signed-out users cannot upload and no request is sent', () async {
-    await auth.signOut();
-    var calls = 0;
-    final storage = service((_) async {
-      calls++;
-      return ok('x');
+      expect(path, 'reports/${testUser.uid}/my-applications-report-$_id.pdf');
     });
-    await expectLater(
-      storage.uploadPdf(
+
+    test('rejects signed-out users', () {
+      expect(
+        () => prepareUploadPath(
+          uid: null,
+          folder: StorageFolder.cvs,
+          fileName: 'cv.pdf',
+          bytes: _pdf,
+          randomId: _id,
+        ),
+        _appError(AppErrorKind.permissionDenied),
+      );
+    });
+
+    test('rejects non-PDF, empty and oversized files', () {
+      for (final bytes in [
+        Uint8List.fromList(utf8.encode('<html>not a pdf</html>')),
+        Uint8List(0),
+        Uint8List(maxUploadBytes + 1),
+      ]) {
+        expect(
+          () => prepareUploadPath(
+            uid: testUser.uid,
+            folder: StorageFolder.cvs,
+            fileName: 'cv.pdf',
+            bytes: bytes,
+            randomId: _id,
+          ),
+          _appError(AppErrorKind.invalidInput),
+        );
+      }
+    });
+
+    test('sanitizes file names', () {
+      final path = prepareUploadPath(
+        uid: 'u1',
         folder: StorageFolder.cvs,
-        fileName: 'cv.pdf',
+        fileName: '../../Nguyễn CV (final).PDF',
         bytes: _pdf,
-      ),
-      _appError(AppErrorKind.permissionDenied),
-    );
-    expect(calls, 0);
+        randomId: _id,
+      );
+      expect(path, startsWith('cvs/u1/'));
+      expect(path, isNot(contains('..')));
+      expect(path, matches(RegExp(r'^cvs/u1/[a-z0-9-]+-[0-9a-f]{32}\.pdf$')));
+    });
   });
 
-  test('rejects files that are not PDFs or are too large', () async {
-    final storage = service((_) async => ok('x'));
+  test('FirebaseStorageService rejects signed-out users before using '
+      'Firebase', () async {
+    final auth = FakeAuthService();
+    addTearDown(auth.dispose);
+    // No FirebaseStorage is created: validation fails first.
+    final service = FirebaseStorageService(auth: auth);
     await expectLater(
-      storage.uploadPdf(
-        folder: StorageFolder.cvs,
-        fileName: 'cv.pdf',
-        bytes: Uint8List.fromList(utf8.encode('<html>not a pdf</html>')),
-      ),
-      _appError(AppErrorKind.invalidInput),
-    );
-    await expectLater(
-      storage.uploadPdf(
-        folder: StorageFolder.cvs,
-        fileName: 'cv.pdf',
-        bytes: Uint8List(CloudinaryStorageService.maxBytes + 1),
-      ),
-      _appError(AppErrorKind.invalidInput),
-    );
-  });
-
-  test('missing Cloudinary settings is a configuration error', () async {
-    final storage = service((_) async => ok('x'), cloudName: '');
-    await expectLater(
-      storage.uploadPdf(
+      service.uploadPdf(
         folder: StorageFolder.reports,
         fileName: 'r.pdf',
         bytes: _pdf,
       ),
-      _appError(AppErrorKind.configuration),
+      _appError(AppErrorKind.permissionDenied),
     );
   });
 
-  test('maps Cloudinary and network failures to user-safe errors', () async {
-    Future<void> expectKind(MockClientHandler handler, AppErrorKind kind) =>
-        expectLater(
-          service(handler).uploadPdf(
-            folder: StorageFolder.reports,
-            fileName: 'r.pdf',
-            bytes: _pdf,
-          ),
-          _appError(kind),
-        );
-
-    await expectKind(
-      (_) async => http.Response(
-        jsonEncode({
-          'error': {'message': 'Upload preset not found'},
-        }),
-        400,
-      ),
-      AppErrorKind.configuration,
+  test('maps Cloud Storage error codes to user-safe errors', () {
+    expect(
+      mapStorageError('storage/unauthorized').kind,
+      AppErrorKind.permissionDenied,
     );
-    await expectKind(
-      (_) async => http.Response(
-        jsonEncode({
-          'error': {'message': 'File size too large. Got 20000000.'},
-        }),
-        400,
-      ),
-      AppErrorKind.invalidInput,
+    expect(
+      mapStorageError('unauthenticated').kind,
+      AppErrorKind.permissionDenied,
     );
-    await expectKind(
-      (_) async => http.Response('{}', 420),
-      AppErrorKind.rateLimited,
-    );
-    await expectKind(
-      (request) async =>
-          throw http.ClientException('Connection closed', request.url),
-      AppErrorKind.network,
-    );
+    expect(mapStorageError('canceled').kind, AppErrorKind.cancelled);
+    expect(mapStorageError('retry-limit-exceeded').kind, AppErrorKind.network);
+    expect(mapStorageError('quota-exceeded').kind, AppErrorKind.rateLimited);
+    expect(mapStorageError('something-else').kind, AppErrorKind.unknown);
   });
 }

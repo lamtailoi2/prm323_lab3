@@ -115,6 +115,13 @@ Commands the AI executed, with their real results (details in [`test-report.md`]
 - **Verification:** 5 new unit tests (own-folder path, random id, progress to 1.0, signed-out rejection without a request, non-PDF and oversized rejection, missing config, preset / size / quota / network errors). Cloudinary itself not called (no account configured here).
 - **Decision:** Accepted. Known limits recorded: public delivery URLs, preset name in the APK.
 
+### P-17: Storage provider: "khoan yêu cầu là firebase file storage giờ bạn có gói nào free (k add thẻ k)" → "dùng blaze plan nhma set limit là 1 đô đc k" → "chốt đi"
+(Wait, the requirement is Firebase file storage: is there a free plan without a card? → Use Blaze but set a $1 limit? → Confirmed.)
+- **Research (web, cited to the user):** since 2026-02-03 Cloud Storage for Firebase requires Blaze, with no card-free plan except lecturer-issued Google Cloud education credits; budgets only alert and cannot cap spending (a hard cap needs a billing-unlink function that lags and shuts down the project); the Always Free tier applies only to buckets in US-CENTRAL1 / US-EAST1 / US-WEST1.
+- **Output:** replaced the Cloudinary implementation with `FirebaseStorageService` (`firebase_storage` 14.0.0): same `FileStorageService` interface, pre-upload checks (signed in, own folder, PDF signature, ≤ 10 MB, random id), progress from `snapshotEvents`, download URL, error-code mapping. `storage.rules` is now deployed. Removed the Cloudinary settings from `.env.example`. G-12 / G-26, the setup guide §10 (Blaze, $1 budget alert, US bucket, unlink billing after grading), README, architecture, traceability, evidence and AGENTS.md updated.
+- **Verification:** `flutter analyze` → no issues; `flutter test` → 85 passed (storage validation, path, error mapping, signed-out rejection). Actual uploads not run (no Firebase project configured here). iOS simulator build with the new pod: see `test-report.md` Run 4.
+- **Decision:** Accepted (user). Cloudinary code from P-16 removed.
+
 ---
 
 ## Entry template

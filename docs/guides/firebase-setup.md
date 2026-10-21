@@ -25,7 +25,7 @@ firebase login
 ## 2. Create the Firebase project
 
 1. In the [Firebase console](https://console.firebase.google.com/), click **Add project**, name it (e.g. `internly-<group>`), and **enable Google Analytics** (needed for Analytics events and Crashlytics breadcrumbs).
-2. The **Spark** (free) plan is enough for Auth, Firestore, Analytics, Crashlytics, Remote Config and FCM. Cloud Storage for new projects needs **Blaze** (billing account required), so this project stores files on Cloudinary instead (§10). **Do not upgrade to Blaze.**
+2. The **Spark** (free) plan is enough for Auth, Firestore, Analytics, Crashlytics, Remote Config and FCM. Cloud Storage needs **Blaze** (billing account required). Upgrade only as described in §10 (US bucket, $1 budget alert) so usage stays inside the no-cost quota.
 
 ## 3. Register the apps and generate the config
 
@@ -85,6 +85,7 @@ Check with `git diff android/ ios/` that both Gradle plugins were added. Crashly
    ```bash
    firebase use --add          # select the project; creates .firebaserc
    firebase deploy --only firestore:rules,firestore:indexes
+   firebase deploy --only storage   # after §10
    ```
 3. Never edit rules only in the console. Change `firebase/firestore.rules` in a pull request, test with the emulator, and deploy.
 4. Local emulators (optional): `firebase emulators:start --only auth,firestore`.
@@ -128,24 +129,18 @@ Set this up together with the notifications feature (G-04, G-13):
 - **iOS:** requires a **paid Apple Developer account**. Create an APNs authentication key (`.p8`) and upload it in Console → Project settings → Cloud Messaging. In Xcode → Runner → Signing & Capabilities, add **Push Notifications** and **Background Modes → Remote notifications**. Never commit the `.p8` file.
 - Test messages: Console → **Messaging → New campaign → Send test message** with a device's FCM token.
 
-## 10. File storage (CV upload, PDF report): Cloudinary free
+## 10. Cloud Storage (CV upload, PDF report) on Blaze at $0
 
-Decision (G-12): to stay at **zero cost** without a billing account, files go to **Cloudinary's free plan**, and per-user access is enforced in the service layer (`CloudinaryStorageService`). `firebase/storage.rules` is kept as the reference policy but is **not deployed**.
+Decision (G-12): Cloud Storage for Firebase on the **Blaze** plan, kept inside the no-cost quota. Budgets in Google Cloud **only alert; they cannot cap spending**, so follow every step.
 
-1. Create a free Cloudinary account (no card). Note the **cloud name** on the dashboard.
-2. Settings → **Upload** → **Add upload preset**:
-   - Signing mode: **Unsigned**.
-   - Folder: `internly` (the app adds `reports/<uid>` or `cvs/<uid>` under it).
-   - Allowed formats: `pdf`.
-   - Leave "Use filename" off and "Unique filename" on (the app also adds a random id).
-3. Settings → **Security**: allow delivery of **PDF** files. Free accounts may block PDF delivery by default, and links then fail to open.
-4. Put the values in `.env` (never the API secret):
-   ```
-   CLOUDINARY_CLOUD_NAME=<cloud name>
-   CLOUDINARY_UPLOAD_PRESET=<preset name>
-   ```
-5. What the service enforces: uploads only into the signed-in user's own folder, signed-in users only, PDF signature check, ≤ 10 MB, unguessable ids; files are listed only through owner-only Firestore metadata.
-6. Known limits: delivery URLs are public to anyone holding the link, and the preset name ships in the APK. Rotate the preset after grading.
+1. Console → **Upgrade** to Blaze and link a billing account.
+2. Google Cloud console → **Billing → Budgets & alerts → Create budget**: scope = this project, amount **$1**, alert thresholds **50 %, 90 %, 100 %**, email to the project owner.
+3. Firebase console → **Storage → Get started**: choose location **`US-CENTRAL1`, `US-EAST1` or `US-WEST1`**. Only these regions get the Always Free tier; any other region is billed from the first byte. The location cannot be changed later.
+4. Deploy the rules: `firebase deploy --only storage` (`firebase/storage.rules`: owner-only `reports/{uid}` and `cvs/{uid}`, PDF only, ≤ 10 MB).
+5. Do not enable other paid products (Cloud Functions, extensions, …).
+6. After grading: Google Cloud console → Billing → **Disable billing** for the project (returns it to Spark; Storage stops).
+
+The app uploads through `FirebaseStorageService` (`lib/services/file_storage_service.dart`), which checks sign-in, own folder, PDF signature and size before sending, reports progress, and returns the download URL.
 
 ## 11. What may and may not be committed
 
@@ -153,7 +148,7 @@ Decision (G-12): to stay at **zero cost** without a billing account, files go to
 |---|---|
 | `lib/firebase_options.dart`, `google-services.json`, `GoogleService-Info.plist` (app configuration, not secrets; protect them with Security Rules and API-key restrictions) | Service-account JSON (`*-firebase-adminsdk-*.json`) |
 | `firebase.json`, `firebase/firestore.rules`, `firebase/firestore.indexes.json` | APNs keys (`.p8`), keystores (`.jks`, `.keystore`), `key.properties` |
-| `.firebaserc` (project alias only), `.env.example` | `.env` (SerpAPI key, Cloudinary settings), `e2e_test/.env`, Cloudinary API secret, AWS keys, model API keys |
+| `.firebaserc` (project alias only), `.env.example` | `.env` (SerpAPI key), `e2e_test/.env`, Cloudinary API secret, AWS keys, model API keys |
 
 If the GitHub repository is public, restrict the Firebase API keys in Google Cloud console → **APIs & Services → Credentials**: Android key → package `com.group3.internly` + SHA-1; iOS key → bundle ID.
 
@@ -161,7 +156,7 @@ If the GitHub repository is public, restrict the Firebase API keys in Google Clo
 
 ```bash
 flutter pub get
-cp .env.example .env                        # SERPAPI_KEY (§13), Cloudinary (§10)
+cp .env.example .env                        # SERPAPI_KEY (§13)
 flutter run --dart-define-from-file=.env    # pick an Android device / emulator
 ```
 

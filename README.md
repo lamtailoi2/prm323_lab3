@@ -16,7 +16,7 @@ This repository is the PRM393 **Lab 3** implementation (Flutter + Firebase, grad
 | Persona | Minh, 21, third-year Software Engineering student: searches in 2–5 minute mobile sessions, one-handed, on unstable campus Wi-Fi; applies to several companies and loses track of them ([persona](docs/design/persona.md)) |
 | Problem | Listings are scattered across many sources, and students lose track of where they have applied |
 | Success criteria | Find an internship by skill and work mode in **< 30 s**; submit an application from Internship Detail in **< 2 min** with a stored CV |
-| Data | **SerpAPI — Google Jobs** (`engine=google_jobs`) for live internship listings; **Cloud Firestore** for each student's own data (profile, saved, applications, notifications, report metadata); **Cloudinary** (free) for CV and PDF report files |
+| Data | **SerpAPI — Google Jobs** (`engine=google_jobs`) for live internship listings; **Cloud Firestore** for each student's own data (profile, saved, applications, notifications, report metadata); **Cloud Storage for Firebase** for CV and PDF report files |
 
 ### User flows
 
@@ -44,14 +44,15 @@ Bottom navigation (fixed): **Home · Search · Saved · Applications · Profile*
 | `firebase_core` / `firebase_auth` / `cloud_firestore` | 5.0.0 / 7.0.0 / 7.0.0 |
 | `firebase_analytics` / `firebase_crashlytics` / `firebase_remote_config` | 13.0.0 / 6.0.0 / 7.0.0 |
 | `google_sign_in` | 7.2.0 |
-| `http` (SerpAPI, Cloudinary uploads) | 1.6.0 |
+| `firebase_storage` | 14.0.0 |
+| `http` (SerpAPI) | 1.6.0 |
 | `material_symbols_icons` | 4.2960.0 |
 | Inter font | 4.1 (bundled, OFL) |
 | Google ARTEMIS | commit `351ca8422f7b5b54e80a9c1ce03a222e02415b6b` (2026-09-29) |
 | E2E Python deps | Python ≥ 3.12, `artemis-client` @ that commit, pytest 9.1.1, pytest-asyncio 1.4.0, pytest-repeat 0.9.4, python-dotenv 1.2.4 |
 | Platforms | Android (min SDK 24, target 36), the graded platform · iOS 15.0 (CocoaPods) also builds |
 
-Exact versions are pinned in [`pubspec.yaml`](pubspec.yaml) and [`e2e_test/pyproject.toml`](e2e_test/pyproject.toml). **Everything runs on free plans** (Firebase Spark, SerpAPI free, Cloudinary free, Gemini API free tier for ARTEMIS); see [handoff-gaps G-26](docs/records/handoff-gaps.md#g-26-zero-cost-plan).
+Exact versions are pinned in [`pubspec.yaml`](pubspec.yaml) and [`e2e_test/pyproject.toml`](e2e_test/pyproject.toml). **Runs at $0**: Firebase within its no-cost quotas (Blaze only for Storage, US bucket, $1 budget alert), SerpAPI free, Gemini API free tier for ARTEMIS; see [handoff-gaps G-26](docs/records/handoff-gaps.md#g-26-zero-cost-plan).
 
 ## Getting started
 
@@ -68,15 +69,15 @@ Exact versions are pinned in [`pubspec.yaml`](pubspec.yaml) and [`e2e_test/pypro
 ```bash
 git clone https://github.com/lamtailoi2/prm323_lab3.git && cd prm323_lab3
 flutter pub get
-cp .env.example .env          # SERPAPI_KEY + Cloudinary settings (read at build time only)
+cp .env.example .env          # SERPAPI_KEY (read at build time only)
 ```
 
 Then follow [`docs/guides/firebase-setup.md`](docs/guides/firebase-setup.md):
 
 1. **Firebase:** create the project, run `flutterfire configure` (Android `com.group3.internly`), and commit `android/app/google-services.json`.
 2. **Google Sign-In:** enable the Google provider and add each developer's **SHA-1 and SHA-256**.
-3. **Firestore rules:** `firebase deploy --only firestore:rules,firestore:indexes`.
-4. **File storage:** Cloudinary free plan with an unsigned PDF-only preset ([§10](docs/guides/firebase-setup.md#10-file-storage-cv-upload-pdf-report-cloudinary-free)); access is enforced in the service layer.
+3. **Rules:** `firebase deploy --only firestore:rules,firestore:indexes,storage`.
+4. **Cloud Storage:** upgrade to Blaze, set a **$1 budget alert**, create the bucket in **US-CENTRAL1 / US-EAST1 / US-WEST1** ([§10](docs/guides/firebase-setup.md#10-cloud-storage-cv-upload-pdf-report-on-blaze-at-0)).
 5. **Crashlytics** enabled; **Remote Config** parameters created from [`firebase/remote-config-defaults.json`](firebase/remote-config-defaults.json).
 
 Without Firebase configuration the app starts on "Firebase is not configured". This is intended: it never fakes a connection.
@@ -113,7 +114,7 @@ Results: [`docs/records/test-report.md`](docs/records/test-report.md) (Flutter) 
 | Analytics event plan | [`docs/analytics-plan.md`](docs/analytics-plan.md) |
 | Test plan + ARTEMIS suite | [`docs/test-plan.md`](docs/test-plan.md), [`e2e_test/`](e2e_test/) |
 | AI code review record | [`docs/code-review.md`](docs/code-review.md) |
-| Firebase config and rules | [`firebase/`](firebase/) (`firestore.rules`, `storage.rules` (reference, not deployed: G-12), `remote-config-defaults.json`), `android/app/google-services.json` |
+| Firebase config and rules | [`firebase/`](firebase/) (`firestore.rules`, `storage.rules`, `remote-config-defaults.json`), `android/app/google-services.json` |
 | Evidence (console, DebugView, Crashlytics, ARTEMIS) | [`evidence/`](evidence/) |
 | Final report, slides | Submitted separately (not in the repository) |
 | Demo video | Link at the top of this README |
@@ -157,7 +158,7 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 - Feature screens are placeholders; the Login screen is interim (DC-01).
 - Firebase is not configured in the repository yet; Google Sign-In needs per-developer SHA fingerprints.
 - The SerpAPI key is compiled into the APK and the free plan has a small monthly quota (G-25).
-- Files are stored on Cloudinary's free plan instead of Firebase Cloud Storage (zero cost, G-12): access is enforced in the service layer, delivery URLs are public to anyone holding the link, and `firebase/storage.rules` is kept but not deployed.
+- Cloud Storage needs the Blaze plan: budgets only alert and cannot cap spending, so the bucket must stay in a US no-cost region (G-12).
 - The Android build was not verified on the machine that initialized the repo (incomplete Android SDK); the iOS simulator build was ([`test-report.md`](docs/records/test-report.md)).
 - iOS uses CocoaPods because Swift Package Manager cannot resolve Firebase iOS SDK 13 with GoogleSignIn-iOS 9 (G-20).
 - Open decisions are tracked in [`handoff-gaps.md`](docs/records/handoff-gaps.md).

@@ -5,7 +5,7 @@ Screenshots, exports and traces that prove each Lab 3 requirement (§6, §7, §8
 | Folder | What goes in it |
 |---|---|
 | `auth/` | Signed-out and signed-in screens; console Authentication → Users |
-| `storage/` | Upload progress and URL in the app; Cloudinary Media Library showing `internly/reports/<uid>/`; the matching Firestore metadata document |
+| `storage/` | Upload progress and URL in the app; Firebase console Storage file list under `reports/<uid>/`; the matching Firestore metadata document; the $1 budget alert settings |
 | `fcm/` | Test message received in foreground, background and terminated states; Notification Center |
 | `analytics/` | One DebugView screenshot per event in `docs/analytics-plan.md` |
 | `crashlytics/` | Dashboard with the non-fatal error and the test crash, showing user ID and custom keys |
