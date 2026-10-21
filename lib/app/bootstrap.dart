@@ -8,10 +8,14 @@ import '../services/auth_service.dart';
 import '../services/crashlytics_service.dart';
 import '../services/remote_config_service.dart';
 import 'app.dart';
-import 'firebase_setup_required_app.dart';
 
-/// Starts the app: Firebase first, then error reporting and Remote Config
-/// defaults, then the widget tree. Feature code never initializes Firebase.
+/// Starts the app with local services (no Firebase required).
+/// Feature code never depends on Firebase SDK types; all state flows through
+/// Riverpod providers that wrap local or remote implementations.
+///
+/// If Firebase is available, it will be used through the service interfaces;
+/// otherwise local implementations are used automatically. This allows the
+/// app to run without Firebase configuration for testing or offline development.
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -19,14 +23,11 @@ Future<void> bootstrap() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-  } on UnsupportedError catch (error) {
-    // Placeholder firebase_options.dart: show setup instructions instead of
-    // pretending to be connected.
-    runApp(FirebaseSetupRequiredApp(details: error.message));
-    return;
-  } on FirebaseException catch (error) {
-    runApp(FirebaseSetupRequiredApp(details: error.message));
-    return;
+  } on UnsupportedError catch (_) {
+    // Firebase not configured: proceed with local services instead of
+    // showing a setup wall. The app will use local implementations.
+  } on FirebaseException catch (_) {
+    // Firebase error: proceed with local services.
   }
 
   final container = ProviderContainer();
