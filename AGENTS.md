@@ -132,7 +132,7 @@ The View watches the provider, renders `AsyncValue` states with shared component
 - `main` stays releasable. Work on a branch: `feat/<feature>-<topic>`, `fix/<topic>`, `docs/<topic>`, `chore/<topic>`.
 - Conventional commit messages: `feat(saved): add unsave with undo`, `fix(auth): …`, `docs: …`, `test: …`, `chore: …`.
 - One focused pull request per feature or fix; at least one reviewer; CI-equivalent commands pasted in the description.
-- **AI review is capped at 3 rounds per pull request.** After round 3 an agent stops reviewing and hands any open findings to a human reviewer (see `docs/code-review.md`).
+- **AI review: at most 3 rounds per pull request.** This is a cap, not a quota. Stop as soon as no blocker or major finding remains; one round is often enough. If findings are still open after round 3, the agent stops and hands them to a human reviewer (see `docs/code-review.md`).
 - Never rewrite shared history, commit generated build output, or commit secrets. Never fabricate commit history.
 
 ## Definition of done (feature)

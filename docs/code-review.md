@@ -6,6 +6,7 @@ Each pull request gets one entry. Record what the AI reviewer reported, what a h
 
 **AI agents review a pull request for at most 3 rounds.** A round is one AI review pass followed by one round of fixes.
 
+- **3 is a maximum, not a requirement.** Stop after any round that leaves no blocker or major finding; most PRs should need only `R1`.
 - Number each round (`R1`, `R2`, `R3`) in the entry.
 - After `R3`, the agent stops reviewing that PR, even if findings remain. Open findings go to a **human reviewer**, who accepts the risk, asks for a specific fix, or rejects the finding. Record the decision in the entry.
 - Do not start a "new" review on the same PR to get around the limit. A new round counts as round 4.
@@ -45,7 +46,7 @@ Commands run:
 | # | Finding | Human decision (accept risk / fix / reject) | By |
 |---|---|---|---|
 
-Outcome: approved / changes requested · rounds used: _/3.
+Outcome: approved / changes requested · rounds used: _ (max 3).
 ```
 
 ## Entries
