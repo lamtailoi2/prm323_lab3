@@ -59,11 +59,12 @@ Differences: DC-__ (link) or "none".
 | 4 | Internship Detail | | | Not started |
 | 5 | Saved Internships | | | Not started (placeholder) |
 | 6 | Application Form | | | Not started |
-| 7 | Application Review | | | Not started |
-| 8 | Application Success | | | Not started |
-| 9 | My Applications | | | Not started (placeholder) |
-| 10 | Application Detail | | | Not started |
-| 11 | Profile | | | Not started (placeholder) |
+| 7 | CV Match Check (Lab 3, DC-09) | | | Not designed in Figma yet (G-24) |
+| 8 | Application Review | | | Not started |
+| 9 | Application Success | | | Not started |
+| 10 | My Applications | | | Not started (placeholder) |
+| 11 | Application Detail | | | Not started |
+| 12 | Profile | | | Not started (placeholder) |
 | — | Login (Lab 3) | | | Interim (DC-01) |
 | — | Notification Center (Lab 3) | | | Not designed (G-04) |
 | — | PDF export (Lab 3) | | | Not designed (G-05) |

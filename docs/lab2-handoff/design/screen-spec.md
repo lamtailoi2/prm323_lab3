@@ -1,5 +1,7 @@
 # Internship Finder — Screen Specifications
 
+> **Lab 3 revision (2026-10-21, DC-08 / DC-09).** Flows are now Flow 1 Search → Flow 2 Apply (with the Save sub-flow 2e and the new CV Match Check, 2d) → Flow 3 Track. The CV Match Check screen is new and still needs a Figma frame (handoff-gaps G-24). This copy no longer matches Lab 2 commit `03f4aa3`.
+
 This document defines the UX purpose, content, actions, related flows, states, and design intent for each Internship Finder screen. It follows `design/DESIGN.md` as the source of truth for navigation, component naming, colors, typography, spacing, CTA hierarchy, and consistency rules.
 
 ## Home
@@ -30,8 +32,8 @@ Start searching for internships through the prominent search field or search ent
 
 ### Related Flows
 
-- Flow 1: Search & Apply Internship (start).
-- Flow 2: Save Internship (start).
+- Flow 1: Search Internship (start).
+- Flow 2e: Save for later (save from a card).
 
 ### States
 
@@ -70,9 +72,9 @@ Search internships using the search field.
 
 ### Related Flows
 
-- Flow 1: Search & Apply Internship.
-- Flow 2: Save Internship.
-- Flow 3: Track Application (target of the empty-state action `Find internships`).
+- Flow 1: Search Internship.
+- Flow 2e.2: Save for later (target of the empty Saved action `Search internships`).
+- Flow 3a: Track Application (target of the empty-state action `Find internships`).
 
 ### States
 
@@ -113,8 +115,9 @@ Open an internship detail from the results list.
 
 ### Related Flows
 
-- Flow 1: Search & Apply Internship.
-- Flow 2: Save Internship.
+- Flow 1: Search Internship (1a no results, 1b load error).
+- Flow 2c: Already applied (`Applied` badge on the card).
+- Flow 2e: Save for later (save from a card).
 
 ### States
 
@@ -122,7 +125,7 @@ Open an internship detail from the results list.
 - Populated.
 - Empty.
 - Error.
-- Applied: cards the student has already applied to show an `Applied` badge (Flow 1d).
+- Applied: cards the student has already applied to show an `Applied` badge (Flow 2c).
 
 ### Design Intent
 
@@ -158,15 +161,17 @@ Apply for the internship using `Apply now`.
 
 ### Related Flows
 
-- Flow 1: Search & Apply Internship.
-- Flow 2: Save Internship.
+- Flow 1: Search Internship (end; 1c load error).
+- Flow 2: Apply Internship (start; `Apply now`).
+- Flow 2c: Already applied.
+- Flow 2e: Save for later (`Save`).
 
 ### States
 
 - Loading.
 - Populated.
 - Error.
-- Already applied: a success banner `You applied on …` and `View application` replace `Apply now`, so the student cannot send a duplicate application (Flow 1d).
+- Already applied: a success banner `You applied on …` and `View application` replace `Apply now`, so the student cannot send a duplicate application (Flow 2c).
 
 ### Design Intent
 
@@ -197,7 +202,7 @@ Open a saved internship detail.
 
 ### Related Flows
 
-- Flow 2: Save Internship.
+- Flow 2e: Save for later, a sub-flow of Apply. Opening a saved internship leads to Internship Detail → `Apply now` (2e.1 unsave + Undo, 2e.2 empty list, 2e.3 save error).
 
 ### States
 
@@ -228,7 +233,7 @@ Application Form collects the information needed to apply for an internship and 
 
 ### Primary Action
 
-Continue to Application Review.
+Continue to the CV Match Check.
 
 ### Secondary Actions
 
@@ -238,7 +243,7 @@ Continue to Application Review.
 
 ### Related Flows
 
-- Flow 1: Search & Apply Internship.
+- Flow 2: Apply Internship (2a CV upload error, 2b empty profile).
 
 ### States
 
@@ -249,6 +254,49 @@ Continue to Application Review.
 ### Design Intent
 
 The form should prevent errors before submission by using clear labels, helper text, and validation messages near the field that caused the issue. CV errors should be specific and recoverable, with an obvious action such as `Upload CV` or `Replace CV`. The CTA should remain clear, but disabled or blocked states must explain what is missing. The screen should keep the process short and avoid making students rewrite information already stored in Profile.
+
+## CV Match Check
+
+*New in Lab 3 (DC-09). Needs a Figma frame (G-24); reuse existing components (Match Card, Skill Tag, Bullet Item, Info Banner, Button).*
+
+### Purpose
+
+CV Match Check shows the student, before review, which requirements of the internship their CV and profile already cover and which they do not show yet, with a concrete suggestion for each gap. It helps students submit a stronger application without slowing them down.
+
+### Main Content
+
+- Internship summary with job title and company.
+- Match summary such as `3 of 4 requirements matched`.
+- Matched requirements, each with a check icon and label.
+- Unmatched requirements, each with a label (not color alone) and one plain-language suggestion, e.g. `Add REST API to your skills if you have used it`.
+- "Nice to have" items shown as optional, not as gaps.
+- Note that the check is a guide and does not block applying.
+
+### Primary Action
+
+Continue to Application Review (`Continue to review`).
+
+### Secondary Actions
+
+- Edit skills (Profile or the form's skills section), then re-check.
+- Replace CV (Replace CV sheet), then re-check.
+- Add to the short introduction (back to Application Form).
+- Retry the check if it failed.
+
+### Related Flows
+
+- Flow 2: Apply Internship (2d CV match gaps).
+
+### States
+
+- Checking (loading).
+- All matched.
+- Gaps found, with suggestions.
+- Check failed: error message + `Retry`, and `Continue to review` without the check.
+
+### Design Intent
+
+The screen should feel like a helpful checklist, not a gate. Lead with the summary, then the gaps, because they are the part the student can act on. Suggestions must be honest: never encourage claiming skills or experience the student does not have. `Continue to review` stays visible and dominant so the persona can still apply in under 2 minutes. Status of each requirement uses a label and an icon, never color alone.
 
 ## Application Review
 
@@ -277,7 +325,7 @@ Submit the application.
 
 ### Related Flows
 
-- Flow 1: Search & Apply Internship.
+- Flow 2: Apply Internship.
 
 ### States
 
@@ -314,7 +362,7 @@ View the submitted application.
 
 ### Related Flows
 
-- Flow 1: Search & Apply Internship (end).
+- Flow 2: Apply Internship (end).
 
 ### States
 
@@ -393,7 +441,7 @@ View and understand the current application status.
 ### Related Flows
 
 - Flow 3: Track Application (end).
-- Flow 1: Search & Apply Internship (optional next step via `View application` from Application Success or from Internship Detail when already applied).
+- Flow 2: Apply Internship (optional next step via `View application` from Application Success, or from Internship Detail when already applied, Flow 2c).
 
 ### States
 
@@ -435,7 +483,7 @@ Edit or complete profile information needed for internship applications.
 
 ### Related Flows
 
-- Flow 1: Search & Apply Internship (alternative path via `Edit profile`).
+- Flow 2: Apply Internship (alternative path via `Edit profile`, and `Edit skills` from the CV Match Check, Flow 2d).
 
 ### States
 
@@ -450,21 +498,22 @@ Profile should make readiness for applications visible without creating pressure
 
 # Screen-to-Flow Mapping
 
-Flow numbers follow the team task assignment and `ux/user-flow.md`: Flow 1 = Search & Apply Internship, Flow 2 = Save Internship, Flow 3 = Track Application.
+Flow numbers follow `ux/user-flow.md` (Lab 3 revision): Flow 1 = Search Internship, Flow 2 = Apply Internship (includes 2e Save for later), Flow 3 = Track Application.
 
-| Screen | Flow 1: Search & Apply | Flow 2: Save | Flow 3: Track | Notes |
+| Screen | Flow 1: Search | Flow 2: Apply (incl. 2e Save) | Flow 3: Track | Notes |
 |---|---|---|---|---|
-| Home | Yes (start) | Yes (start) | No | Entry point for discovery, saving and applying. |
-| Search | Yes | Yes | Yes (empty-state target) | Helps users define internship intent before viewing results. |
-| Search Results | Yes | Yes | No | Supports comparison, saving, and opening details. |
-| Internship Detail | Yes | Yes | No | Decision screen for saving or applying; once applied, `View application` replaces `Apply now`. |
-| Saved Internships | No | Yes (end) | No | Destination after saving internships for later. |
-| Application Form | Yes | No | No | Collects and validates application information, including CV upload. |
-| Application Review | Yes | No | No | Confirms application details before submission. |
-| Application Success | Yes (end) | No | No | Confirms submission; `View application` routes to Application Detail. |
+| Home | Yes (start) | 2e (save from card) | No | Entry point for discovery. |
+| Search | Yes | 2e.2 (empty Saved target) | 3a (empty-state target) | Helps users define internship intent before viewing results. |
+| Search Results | Yes | 2c (`Applied` badge), 2e (save) | No | Supports comparison, saving, and opening details. |
+| Internship Detail | Yes (end) | Yes (start), 2c, 2e | No | Decision screen: apply now or save for later; once applied, `View application` replaces `Apply now`. |
+| Saved Internships | No | 2e (sub-flow) | No | Saved internships lead back to `Apply now`. |
+| Application Form | No | Yes | No | Collects and validates application information, including CV upload. |
+| CV Match Check | No | Yes (2d) | No | New in Lab 3: unmatched requirements and suggestions; never blocks. |
+| Application Review | No | Yes | No | Confirms application details before submission. |
+| Application Success | No | Yes (end) | No | Confirms submission; `View application` routes to Application Detail. |
 | My Applications | No | No | Yes (start) | Main status tracking screen. |
-| Application Detail | Optional (via `View application`) | No | Yes (end) | Shows detailed application status and optional withdrawal. |
-| Profile | Yes (alternative path) | No | No | Supports application readiness through CV, skills, and preferences. |
+| Application Detail | No | Optional (`View application`, 2c) | Yes (end) | Shows detailed application status and optional withdrawal. |
+| Profile | No | Alternative (`Edit profile`, 2d `Edit skills`) | No | Supports application readiness through CV, skills, and preferences. |
 
 # Global Screen Rules
 

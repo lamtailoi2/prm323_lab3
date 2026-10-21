@@ -29,7 +29,7 @@ The entity is not decided yet (handoff-gaps G-08). Use the pattern `<entity>_<ac
 | Event | When | Parameters | Status |
 |---|---|---|---|
 | `application_view` | Application Detail loaded | `internship_id`, `status` | Planned |
-| `application_create` | Application submitted (Flow 1 end) | `internship_id`, `cv_source` (`profile` / `uploaded`) | Planned |
+| `application_create` | Application submitted (Flow 2 end) | `internship_id`, `cv_source` (`profile` / `uploaded`) | Planned |
 | `application_update` | Application changed (e.g. withdraw / undo) | `internship_id`, `from_status`, `to_status` | Planned |
 | `application_delete` | Application deleted | `internship_id` | Planned |
 
@@ -39,10 +39,12 @@ The entity is not decided yet (handoff-gaps G-08). Use the pattern `<entity>_<ac
 |---|---|---|---|---|
 | `search` (GA4 recommended) | Flow 1 | Search submitted | `search_term` (trimmed, max 100 chars, skill/keyword only), `result_count` | Planned |
 | `search_filter_apply` | Flow 1 | Filter sheet "Show results" | `work_modes`, `skill_count`, `has_location`, `result_count` | Planned |
-| `apply_start` | Flow 1 | `Apply now` tapped on Internship Detail | `internship_id` | Planned |
-| `cv_upload_failed` | Flow 1a | CV upload failed | `reason` (`network` / `size` / `type` / `unknown`) | Planned |
-| `internship_save` | Flow 2 | Save succeeded | `internship_id`, `source` (`home` / `search_results` / `detail`) | Planned |
-| `internship_unsave` | Flow 2a | Unsave (and `undo` param if undone) | `internship_id`, `undo` (`true` / `false`) | Planned |
+| `apply_start` | Flow 2 | `Apply now` tapped on Internship Detail | `internship_id`, `source` (`search` / `saved` / `home`) | Planned |
+| `cv_upload_failed` | Flow 2a | CV upload failed | `reason` (`network` / `size` / `type` / `unknown`) | Planned |
+| `cv_match_check` | Flow 2d | CV Match Check finished | `internship_id`, `result` (`all_matched` / `gaps` / `failed`), `matched_count`, `missing_count` (counts only, never CV content) | Planned |
+| `cv_match_improve` | Flow 2d | A suggestion action is tapped | `action` (`edit_skills` / `replace_cv` / `edit_introduction`) | Planned |
+| `internship_save` | Flow 2e | Save succeeded | `internship_id`, `source` (`home` / `search_results` / `detail`) | Planned |
+| `internship_unsave` | Flow 2e.1 | Unsave (and `undo` param if undone) | `internship_id`, `undo` (`true` / `false`) | Planned |
 | `application_status_view` | Flow 3 | Status visible on Application Detail | `status` | Planned |
 
 ### Other Lab 3 features

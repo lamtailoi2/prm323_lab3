@@ -18,8 +18,8 @@ Status: **Spec** (written, screens not built) · **Ready** (runnable) · **Passi
 | # | Scenario | Lab 2 source | Status |
 |---|---|---|---|
 | 01 | Google Sign-In | Lab 3 | Spec |
-| 02 | Flow 1: Search & Apply | user-flow.md Flow 1 | Spec |
-| 03 | Flow 2: Save Internship | user-flow.md Flow 2 | Spec |
+| 02 | Flow 1: Search Internship | user-flow.md Flow 1 | Spec |
+| 03 | Flow 2: Apply Internship (save for later + CV match check) | user-flow.md Flow 2, 2d, 2e | Spec |
 | 04 | Flow 3: Track Application | user-flow.md Flow 3 | Spec |
 | 05 | Error and recovery | Flow 1c / 3b (network) | Spec |
 | 06 | Create, edit and delete the main entity | Lab 3 (entity: G-08) | Blocked by G-08 |
@@ -35,15 +35,16 @@ Status: **Spec** (written, screens not built) · **Ready** (runnable) · **Passi
 - **Steps:** launch → tap `Continue with Google` → choose the test account.
 - **Assert:** the bottom navigation is visible with `Home` selected; the Home screen title is visible; `Continue with Google` is gone.
 
-### 02: Flow 1, Search & Apply
-- **Pre:** signed in; profile has name, email, phone and a CV; at least one active listing matching "Flutter" + Remote that the user has not applied to.
-- **Steps:** Home → tap the search field → type `Flutter` → open Filters → select `Remote` → `Show … results` → open the first card → `Apply now` → check the prefilled form → `Continue to review` → `Submit application`.
-- **Assert:** Application Success shows the internship title and company; `View application` opens Application Detail with status `Submitted`; opening the same internship again shows `You applied on …` instead of `Apply now` (Flow 1d).
+### 02: Flow 1, Search Internship
+- **Pre:** signed in; at least one active listing matching "Flutter" + Remote, and none matching a nonsense keyword.
+- **Steps:** Home → tap the search field → type `Flutter` → open Filters → select `Remote` → `Show … results` → open the first card. Then search a keyword with no results → `Clear filters`.
+- **Assert:** the result count and cards show `Remote` and a `Flutter` tag; Internship Detail shows the title, company and `Apply now`; the no-results state shows `No results found` and `Clear filters` brings results back (1a).
 
-### 03: Flow 2, Save Internship
-- **Pre:** signed in; Saved list empty.
-- **Steps:** open an internship from Home → `Save` → tap `Saved` in the bottom navigation → open the saved card → back → unsave it → `Undo`.
-- **Assert:** the snackbar `Saved to your list` appears; Saved shows the card with a filled bookmark; after unsave, `Removed from Saved` appears and the item is gone; after `Undo` the item is back.
+### 03: Flow 2, Apply Internship (save for later + CV match check)
+- **Pre:** signed in; profile has name, email, phone, a CV and skills that cover **some but not all** required skills of the target listing; Saved list empty; the user has not applied to the listing.
+- **Steps:** search and open the listing (Flow 1) → `Save` → tap `Saved` → open the saved card → `Apply now` → check the prefilled form → `Continue` → read the CV Match Check → `Continue to review` → `Submit application`. Then open the same internship again.
+- **Assert:** the snackbar `Saved to your list` appears and Saved shows the card with a filled bookmark (2e); the CV Match Check shows `N of M requirements matched`, names at least one unmatched requirement with a suggestion, and offers `Continue to review` (2d); Application Success shows the internship title and company; reopening the internship shows `You applied on …` instead of `Apply now` (2c).
+- **Optional branch:** on Saved, unsave the item → `Removed from Saved` → `Undo` → the item is back (2e.1).
 
 ### 04: Flow 3, Track Application
 - **Pre:** signed in; at least one submitted application.

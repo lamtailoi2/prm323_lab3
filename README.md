@@ -15,12 +15,14 @@ This repository is the Lab 3 implementation (Flutter + Firebase) of the Lab 2 UI
 | Problem | Listings are scattered across many sources, and students lose track of where they have applied |
 | Success criteria | Find an internship by skill and work mode in **< 30 s**; submit an application from Internship Detail in **< 2 min** with a stored CV |
 
-### Core user flows (Lab 2)
+### Core user flows
+
+One journey in three flows: **search → apply (now, or later via Saved) → track**. Revised in Lab 3 (DC-08): Save is now a sub-flow of Apply, and Apply has a new CV match check (DC-09).
 
 | Flow | Path | Branches |
 |---|---|---|
-| **1. Search & Apply** | Home → Search → Filters → Results → Internship Detail → Apply → Review → Success | CV upload error + Retry, empty profile, detail load error, already applied (no duplicates), save while browsing |
-| **2. Save Internship** | Home/Search → Detail → Save → Saved → open again | Unsave + Undo, empty list, save error + Retry |
+| **1. Search Internship** | Home → Search → Filters → Results → Internship Detail | No results → Clear filters, results/detail load error + Retry |
+| **2. Apply Internship** | Internship Detail → Apply → Application Form → **CV Match Check** → Review → Success | CV upload error + Retry, empty profile, already applied (no duplicates), CV gaps → suggestions → improve or continue; **2e Save for later**: Save → Saved Internships → open → Apply (unsave + Undo, empty list, save error + Retry) |
 | **3. Track Application** | Applications → Application Detail → status | No applications, list/detail load errors, withdraw + Undo |
 
 Details: [`user-flow.md`](docs/lab2-handoff/ux/user-flow.md) · screen content and states: [`screen-spec.md`](docs/lab2-handoff/design/screen-spec.md).
@@ -31,7 +33,7 @@ Bottom navigation (fixed): **Home · Search · Saved · Applications · Profile*
 
 | Lab 2 screens | Lab 3 additions (not designed in Lab 2) |
 |---|---|
-| Home, Search, Search Results, Internship Detail, Saved Internships, Application Form, Application Review, Application Success, My Applications, Application Detail, Profile | Login (Google Sign-In), Notification Center, PDF report export, Remote Config display, Crashlytics test controls (see [handoff gaps](docs/handoff-gaps.md)) |
+| Home, Search, Search Results, Internship Detail, Saved Internships, Application Form, Application Review, Application Success, My Applications, Application Detail, Profile | CV Match Check (Apply step, DC-09), Login (Google Sign-In), Notification Center, PDF report export, Remote Config display, Crashlytics test controls (see [handoff gaps](docs/handoff-gaps.md)) |
 
 ### Tech stack
 
@@ -122,7 +124,7 @@ Shared code (`theme/`, `core/`, `app/`, `services/`) is in place. Each feature o
 | Home | Home | `features/home/` |
 | Search | Search, Search Results, Internship Detail | `features/internships/` |
 | Saved | Saved Internships | `features/saved/` |
-| Apply | Application Form, Review, Success | `features/applications/` |
+| Apply | Application Form, CV Match Check, Review, Success | `features/applications/` |
 | Track | My Applications, Application Detail | `features/applications/` |
 | Profile | Profile, Remote Config display, diagnostics | `features/profile/` |
 | Auth | Login (final design) | `features/auth/` |

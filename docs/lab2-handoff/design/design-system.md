@@ -170,7 +170,7 @@ The label sits **above** the field, so `AppTextField` renders it as a separate `
 - Content order: job title (`title`, max 2 lines) + save action (top right) → company (`bodySmall`) → location + work mode with icons (`bodySmall`) → skill tags (`surfaceVariant`, radius 8) → allowance (emphasised) → posted date (`caption`).
 - States: Default · Pressed (reduced emphasis) · Saved (`bookmark` filled, `primary`).
 - Card surface comes from `CardThemeData`: white, 1 px `border`, radius 16, elevation 0.
-- The widget takes display-ready strings (no data model), plus an optional `badge` slot for `Applied` (Flow 1d). Inner gaps (4/8 dp) and the tag text style are **verify**.
+- The widget takes display-ready strings (no data model), plus an optional `badge` slot for `Applied` (Flow 2c). Inner gaps (4/8 dp) and the tag text style are **verify**.
 - ⚠️ Figma sample data shows `$1,200/month` and "San Francisco", but the Lab 2 AI log standardised allowances to **VND per month** for Vietnamese listings. Format allowance as VND (G-17).
 
 ### 2.6 App Bar: 2 specimens · Built (`AppTopBar`)

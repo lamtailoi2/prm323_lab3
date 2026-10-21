@@ -69,6 +69,27 @@ Commands the AI executed, with their real results (details in [`test-report.md`]
 
 - **Decision:** SPM disabled for the project (CocoaPods); accepted as a workaround until `google_sign_in_ios` supports GoogleSignIn-iOS 10.
 
+### P-09: "cái này tối đa là 3 thoi chứ k phải bắt buộc nhé" ("this is a maximum of 3, not mandatory"), about the AI review round rule
+- **Output:** AGENTS.md and `code-review.md` now say 3 rounds is a cap, not a quota; stop when no blocker or major remains.
+- **Verification:** documentation only.
+- **Decision:** Accepted (commit `13040d2`).
+
+### P-10: "https://github.com/lamtailoi2/prm323_lab3.git push lên trên này đi" ("push to this repository")
+- **Output:** checked that the GitHub repository was empty (private) before pushing, added `origin`, and pushed `main` with upstream tracking. No force push.
+- **Verification:** `gh repo view` → `isEmpty: false`, default branch `main`; `git status -sb` → `main...origin/main`.
+- **Decision:** Accepted.
+
+### P-11: "update flow mới đẩy flow save internships xuông flow phụ. Flow này sẽ là trong lúc apply (sau search và trước track)" ("update the flows: push Save Internships down to a sub-flow that happens during Apply, after Search and before Track")
+- **Clarification (AI asked, user answered):** three main flows, **Search → Apply → Track**: "tách làm 3 đúng r, nhma trong flow apply phải có xử lý j đó nữa ví dụ check xem cv những điểm nào chưa match, gợi ý cải thiện" ("splitting into 3 is right, but the Apply flow also needs some processing, e.g. check which points of the CV don't match and suggest improvements"). Scope: "Docs Lab 3 + bản copy" (Lab 3 docs plus the copies in `docs/lab2-handoff`).
+- **Output:** rewrote `lab2-handoff/ux/user-flow.md` (new flows, branches, diagrams, mappings) and updated `lab2-handoff/design/screen-spec.md` (related flows, new **CV Match Check** screen section, mapping table). Also updated README, MobAI scenarios 02–03, analytics events (`cv_match_check`, `cv_match_improve`), gaps (G-24), change log (DC-08, DC-09), fidelity-check list, `design-system.md` and an `InternshipCard` comment. Work done on branch `docs/flows-search-apply-track`.
+- **Verification:** searched for stale flow references (`Flow 1d`, `Search & Apply`, …); the only remaining ones are the intentional "old → new" description in DC-08 and the verbatim Lab 2 README. Relative links checked with a script.
+- **Decision:** Accepted. Matching rules, CV text extraction, any AI-generated suggestions and the Figma frame stay open (G-24).
+
+### P-12: "phần này chỉ review các phần thay đổi k đọc lại hết block mỗi lần review để tránh tốn kém" ("review only the changed parts; don't re-read whole blocks each round, to avoid cost")
+- **Output:** AGENTS.md and `code-review.md`: R1 reviews only the PR diff (`git diff main...HEAD`); R2/R3 only the diff since the last reviewed commit plus open findings; record the reviewed SHA per round.
+- **Verification:** documentation only.
+- **Decision:** Accepted (commit `37216e1`).
+
 ---
 
 ## Entry template

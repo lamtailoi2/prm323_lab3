@@ -33,6 +33,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-21 | App ID / bundle ID and repository naming not confirmed | Team + lecturer | Assumed |
 | G-22 | Keyword search strategy (Firestore has no full-text search) | Search owner | Open |
 | G-23 | "Recommended for you" logic not specified | Home owner | Open |
+| G-24 | CV Match Check (new Apply step): matching rules, data source, Figma frame | Apply owner + design owner | Open |
 
 ---
 
@@ -99,7 +100,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 - **Proposal (not implemented):** `home_recommended_limit` (int, number of cards in "Recommended for you") and `application_withdraw_enabled` (bool; screen-spec says "Withdraw application if allowed"). Defaults belong in `RemoteConfigDefaults.values`.
 
 ### G-12: File storage and privacy
-- **Found:** Lab 2 Flow 1a uploads a CV (PDF). Lab 3 requires uploading a PDF report and storing its URL, file name, owner UID and timestamp. New Firebase Storage buckets need the Blaze plan; the brief suggests Cloudinary.
+- **Found:** Flow 2a (Lab 2 Flow 1a) uploads a CV (PDF). Lab 3 requires uploading a PDF report and storing its URL, file name, owner UID and timestamp. New Firebase Storage buckets need the Blaze plan; the brief suggests Cloudinary.
 - **Risk:** Cloudinary *unsigned* uploads produce publicly reachable URLs. CVs and reports contain personal data (name, phone, email).
 - **Needed:** choose the provider. If Cloudinary: a dedicated unsigned preset restricted to PDF, a folder per purpose, client-side size limit (verify which server-side limits the preset can enforce), no API secret in the app, and a documented privacy trade-off. Alternatively, signed uploads via a backend.
 
@@ -145,4 +146,13 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 
 ### G-23: Recommendation logic
 - **Found:** Home shows "Recommended for you" (and Internship Detail shows a "% profile match" in the AI log), but no rule is specified.
-- **Proposal:** match listing skills against profile skills and preferred work modes, computed client-side, with no invented percentages shown until the rule is agreed.
+- **Proposal:** match listing skills against profile skills and preferred work modes, computed client-side, with no invented percentages shown until the rule is agreed. Share the matching code with the CV Match Check (G-24).
+
+### G-24: CV Match Check
+- **Found (2026-10-21):** the team restructured the flows to Search → Apply → Track (DC-08) and added a CV Match Check step to Apply (DC-09): show which requirements the CV / profile does not match and suggest improvements. Lab 2 has no screen for it; the closest existing parts are the "Your match" card in Internship Detail (AI log) and the "Match Card" component in Figma.
+- **Decided so far:** the step sits between Application Form and Application Review; it never blocks applying (`Continue to review` always available); suggestions are honest (never ask the student to claim skills they lack); status per requirement uses label + icon (see `user-flow.md` Flow 2d and `screen-spec.md` › CV Match Check).
+- **Open:**
+  1. **Matching rules.** Baseline proposal: compare the internship's `skills` and "Must have" items with the profile / form skills, case-insensitively, with a small synonym list (e.g. "REST" ↔ "REST API"). "Nice to have" items are informational only.
+  2. **CV content.** Whether to read text from the CV PDF (on-device extraction) or rely on declared skills only. Reading the PDF adds a dependency and accuracy limits.
+  3. **AI-generated suggestions.** If an LLM is used, it must run behind a backend you control: no API keys in the app (AGENTS.md rule 8), and the user must be told that CV text leaves the device.
+  4. **Design.** Figma frame for the screen (states: checking, all matched, gaps, failed), built from existing components (Match Card, Skill Tag, Bullet Item, Info Banner).

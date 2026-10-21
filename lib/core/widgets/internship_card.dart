@@ -46,7 +46,7 @@ class InternshipCard extends StatefulWidget {
   final String? postedText;
   final bool isSaved;
 
-  /// Optional badge such as "Applied" (Flow 1d).
+  /// Optional badge such as "Applied" (Flow 2c).
   final Widget? badge;
   final VoidCallback? onTap;
 
