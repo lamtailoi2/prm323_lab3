@@ -133,6 +133,7 @@ The View watches the provider, renders `AsyncValue` states with shared component
 - Conventional commit messages: `feat(saved): add unsave with undo`, `fix(auth): …`, `docs: …`, `test: …`, `chore: …`.
 - One focused pull request per feature or fix; at least one reviewer; CI-equivalent commands pasted in the description.
 - **AI review: at most 3 rounds per pull request.** This is a cap, not a quota. Stop as soon as no blocker or major finding remains; one round is often enough. If findings are still open after round 3, the agent stops and hands them to a human reviewer (see `docs/code-review.md`).
+- **Review only what changed.** Round 1 reviews the PR diff (`git diff main...HEAD`), not whole files or the whole codebase. Later rounds review only the diff since the previous round (`git diff <last-reviewed-commit>..HEAD`) plus the open findings. Read surrounding code only when a changed line cannot be judged without it.
 - Never rewrite shared history, commit generated build output, or commit secrets. Never fabricate commit history.
 
 ## Definition of done (feature)

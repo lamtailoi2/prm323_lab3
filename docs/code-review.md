@@ -12,6 +12,19 @@ Each pull request gets one entry. Record what the AI reviewer reported, what a h
 - Do not start a "new" review on the same PR to get around the limit. A new round counts as round 4.
 - Only blockers and majors justify another round. Minor and nit findings are batched into the next round or left to the human.
 
+## Review only the changes
+
+To keep reviews fast and cheap, an AI review never re-reads everything:
+
+| Round | Input |
+|---|---|
+| `R1` | The PR diff only: `git diff main...HEAD` |
+| `R2`, `R3` | Only the diff since the last reviewed commit (`git diff <last-reviewed-commit>..HEAD`), plus the list of open findings |
+
+- Read code outside the diff only when a changed line cannot be judged without it (e.g. the signature of a called function), and only that part.
+- Record the last reviewed commit SHA in each round so the next round knows where to start.
+- Do not re-report findings already decided in an earlier round.
+
 ## Checklist (reviewers)
 
 - [ ] Follows `AGENTS.md`: MVVM layers, Riverpod only, no Firebase in Views, tokens only.
@@ -29,7 +42,7 @@ Each pull request gets one entry. Record what the AI reviewer reported, what a h
 
 Tool / prompt: <AI tool and the exact review prompt>
 
-#### Round R1 (of max 3)
+#### Round R1 (of max 3) · reviewed `main...<sha>`
 
 | # | Finding (file:line) | Severity | Decision | Evidence / commit |
 |---|---|---|---|---|
@@ -39,7 +52,7 @@ Commands run:
 - flutter analyze → <result>
 - flutter test → <passed / failed counts>
 
-#### Round R2 / R3: same table, only if blockers or majors remain
+#### Round R2 / R3 · reviewed `<previous-sha>..<sha>`: same table, only if blockers or majors remain
 
 #### Escalated to human (after R3, if anything is still open)
 
