@@ -36,7 +36,7 @@ Layout tests load the bundled Inter font (`test/flutter_test_config.dart`), so w
 ### Blockers and follow-ups
 
 - Install the Android SDK command-line tools and platform 36, then run `flutter build apk --debug` (row 6).
-- Configure Firebase (`docs/firebase-setup.md`), then do a manual sign-in and sign-out check on Android and iOS (row 7).
+- Configure Firebase (`docs/guides/firebase-setup.md`), then do a manual sign-in and sign-out check on Android and iOS (row 7).
 - Add the Firestore emulator rules tests with the first feature collection (row 8).
 
 ## Run 2: Lab 3 alignment (2026-10-21)

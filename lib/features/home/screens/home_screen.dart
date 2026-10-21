@@ -5,7 +5,7 @@ import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/state_view.dart';
 
 /// Placeholder for the Home tab. The feature owner replaces it following
-/// docs/lab2-handoff/design/screen-spec.md (Home).
+/// docs/design/screen-spec.md (Home).
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 

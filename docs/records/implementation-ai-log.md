@@ -4,7 +4,7 @@ Every AI-assisted change is recorded here: the **exact prompt**, a summary of wh
 
 | Field | Meaning |
 |---|---|
-| Prompt | Verbatim user prompt (long prompts are stored in `docs/ai-prompts/` and linked) |
+| Prompt | Verbatim user prompt (long prompts are stored in `docs/records/prompts/` and linked) |
 | Output | What the AI changed or produced |
 | Verification | Commands run, with their real results, or manual checks |
 | Decision | Accepted · Modified (how) · Rejected (why) |
@@ -16,7 +16,7 @@ Every AI-assisted change is recorded here: the **exact prompt**, a summary of wh
 Tool: Claude Code (Opus 5.5, `claude-opus-5-5`), run from `prm323_lab3/` with read access to `../prm323_lab2/`. Operator: Lâm Tài Lợi.
 
 ### P-01: Initialize the repository
-- **Prompt:** [`ai-prompts/P-01-initialize-internly.md`](ai-prompts/P-01-initialize-internly.md) (verbatim), plus: "các file design docs sẽ nằm ở ../prm323_lab2" ("the design docs are in ../prm323_lab2").
+- **Prompt:** [`prompts/P-01-initialize-internly.md`](prompts/P-01-initialize-internly.md) (verbatim), plus: "các file design docs sẽ nằm ở ../prm323_lab2" ("the design docs are in ../prm323_lab2").
 - **Output:** inspected the empty working directory (not a Git repo), the toolchain (Flutter 3.47.3, Dart 3.13.3, Xcode 26.5; Android SDK incomplete; no Firebase / FlutterFire CLI) and the Lab 2 repo (`03f4aa3`). Found no `flutter-handoff.md` (G-01). Ran `git init` and `flutter create --org com.group3 --project-name internly --platforms android,ios --empty`, committed unchanged as the scaffold. Read the installed package sources to confirm current APIs before coding (google_sign_in 7.2, firebase_auth 7, Riverpod 3.4, go_router 18).
 - **Verification:** `git log` shows the scaffold commit; package APIs checked in `~/.pub-cache`.
 - **Decision:** Accepted. App ID `com.group3.internly` is an assumption (G-21).
@@ -27,12 +27,12 @@ Tool: Claude Code (Opus 5.5, `claude-opus-5-5`), run from `prm323_lab3/` with re
 - **Decision:** Accepted.
 
 ### P-03: "nếu cần thiết hãy copy các file docs từ lab2 qua nhé" ("copy the Lab 2 docs over if needed")
-- **Output:** read-only snapshot in `docs/lab2-handoff/` (DESIGN.md, screen-spec, design-decisions, user-flow, persona, Lab 2 README, 8 final screenshots) with a provenance note. Intermediate Stitch rounds and the AI design log were not copied. Lab 2's uncommitted change (`assets/stitch/home-final.png`) was left untouched.
+- **Output:** read-only snapshot in `docs/design/` (DESIGN.md, screen-spec, design-decisions, user-flow, persona, Lab 2 README, 8 final screenshots) with a provenance note. Intermediate Stitch rounds and the AI design log were not copied. Lab 2's uncommitted change (`assets/stitch/home-final.png`) was left untouched.
 - **Verification:** file list compared with the source; source commit recorded.
 - **Decision:** Accepted.
 
 ### P-04: "design system và components. Viết design system thành dạng md cho dễ" ("design system and components: write the design system up as Markdown"), with screenshots of Figma pages 04 and 05
-- **Output:** [`design-system.md`](lab2-handoff/design/design-system.md) consolidating DESIGN.md + Figma 04/05 + the README handoff: tokens with Dart and `ColorScheme` mapping, the 12 component sets with states, source precedence, and usage rules. Added `material_symbols_icons` because Figma 04 specifies Material Symbols Rounded.
+- **Output:** [`design-system.md`](../design/design-system.md) consolidating DESIGN.md + Figma 04/05 + the README handoff: tokens with Dart and `ColorScheme` mapping, the 12 component sets with states, source precedence, and usage rules. Added `material_symbols_icons` because Figma 04 specifies Material Symbols Rounded.
 - **Verification:** manual comparison against the screenshots; values not readable from the screenshots are marked **verify** and listed in G-07.
 - **Decision:** Accepted.
 
@@ -53,7 +53,7 @@ Tool: Claude Code (Opus 5.5, `claude-opus-5-5`), run from `prm323_lab3/` with re
 - **Decision:** Accepted.
 
 ### Note: manual change by the user
-- The user moved `docs/design-system.md` to `docs/lab2-handoff/design/design-system.md` (next to `DESIGN.md`). The AI kept the new location, fixed the six relative links inside the file, repointed references in README, AGENTS.md and docs, and marked the file as the one editable Lab 3 file in the snapshot README. Verified with a script that checks every relative Markdown link (the only remaining broken links are `ai/…` links inside the verbatim Lab 2 README, which only resolve in the Lab 2 repository).
+- The user moved `docs/design-system.md` to `docs/design/design-system.md` (next to `DESIGN.md`). The AI kept the new location, fixed the six relative links inside the file, repointed references in README, AGENTS.md and docs, and marked the file as the one editable Lab 3 file in the snapshot README. Verified with a script that checks every relative Markdown link (the only remaining broken links are `ai/…` links inside the verbatim Lab 2 README, which only resolve in the Lab 2 repository).
 
 ### P-08: Verification run (initialization)
 Commands the AI executed, with their real results (details in [`test-report.md`](test-report.md)):
@@ -80,8 +80,8 @@ Commands the AI executed, with their real results (details in [`test-report.md`]
 - **Decision:** Accepted.
 
 ### P-11: "update flow mới đẩy flow save internships xuông flow phụ. Flow này sẽ là trong lúc apply (sau search và trước track)" ("update the flows: push Save Internships down to a sub-flow that happens during Apply, after Search and before Track")
-- **Clarification (AI asked, user answered):** three main flows, **Search → Apply → Track**: "tách làm 3 đúng r, nhma trong flow apply phải có xử lý j đó nữa ví dụ check xem cv những điểm nào chưa match, gợi ý cải thiện" ("splitting into 3 is right, but the Apply flow also needs some processing, e.g. check which points of the CV don't match and suggest improvements"). Scope: "Docs Lab 3 + bản copy" (Lab 3 docs plus the copies in `docs/lab2-handoff`).
-- **Output:** rewrote `lab2-handoff/ux/user-flow.md` (new flows, branches, diagrams, mappings) and updated `lab2-handoff/design/screen-spec.md` (related flows, new **CV Match Check** screen section, mapping table). Also updated README, MobAI scenarios 02–03, analytics events (`cv_match_check`, `cv_match_improve`), gaps (G-24), change log (DC-08, DC-09), fidelity-check list, `design-system.md` and an `InternshipCard` comment. Work done on branch `docs/flows-search-apply-track`.
+- **Clarification (AI asked, user answered):** three main flows, **Search → Apply → Track**: "tách làm 3 đúng r, nhma trong flow apply phải có xử lý j đó nữa ví dụ check xem cv những điểm nào chưa match, gợi ý cải thiện" ("splitting into 3 is right, but the Apply flow also needs some processing, e.g. check which points of the CV don't match and suggest improvements"). Scope: "Docs Lab 3 + bản copy" (Lab 3 docs plus the Lab 2 copies, now in `docs/design/`).
+- **Output:** rewrote `docs/design/user-flow.md` (new flows, branches, diagrams, mappings) and updated `docs/design/screen-spec.md` (related flows, new **CV Match Check** screen section, mapping table). Also updated README, MobAI scenarios 02–03, analytics events (`cv_match_check`, `cv_match_improve`), gaps (G-24), change log (DC-08, DC-09), fidelity-check list, `design-system.md` and an `InternshipCard` comment. Work done on branch `docs/flows-search-apply-track`.
 - **Verification:** searched for stale flow references (`Flow 1d`, `Search & Apply`, …); the only remaining ones are the intentional "old → new" description in DC-08 and the verbatim Lab 2 README. Relative links checked with a script.
 - **Decision:** Accepted. Matching rules, CV text extraction, any AI-generated suggestions and the Figma frame stay open (G-24).
 
@@ -111,7 +111,7 @@ Commands the AI executed, with their real results (details in [`test-report.md`]
 
 ```markdown
 ### P-nn: <short title>
-- **Prompt:** "<verbatim prompt>" (or link to docs/ai-prompts/P-nn-….md)
+- **Prompt:** "<verbatim prompt>" (or link to docs/records/prompts/P-nn-….md)
 - **Output:** <files / behavior changed>
 - **Verification:** <commands + real results, manual checks, or "not verified">
 - **Decision:** Accepted / Modified (<how>) / Rejected (<why>)

@@ -2,7 +2,7 @@
 
 > **Lab 3 revision (2026-10-21, DC-08 / DC-09).** Flows are now Flow 1 Search → Flow 2 Apply (with the Save sub-flow 2e and the new CV Match Check, 2d) → Flow 3 Track. The CV Match Check screen is new and still needs a Figma frame (handoff-gaps G-24). This copy no longer matches Lab 2 commit `03f4aa3`.
 
-This document defines the UX purpose, content, actions, related flows, states, and design intent for each Internship Finder screen. It follows `design/DESIGN.md` as the source of truth for navigation, component naming, colors, typography, spacing, CTA hierarchy, and consistency rules.
+This document defines the UX purpose, content, actions, related flows, states, and design intent for each Internship Finder screen. It follows `DESIGN.md` as the source of truth for navigation, component naming, colors, typography, spacing, CTA hierarchy, and consistency rules.
 
 ## Home
 
@@ -498,7 +498,7 @@ Profile should make readiness for applications visible without creating pressure
 
 # Screen-to-Flow Mapping
 
-Flow numbers follow `ux/user-flow.md` (Lab 3 revision): Flow 1 = Search Internship, Flow 2 = Apply Internship (includes 2e Save for later), Flow 3 = Track Application.
+Flow numbers follow `user-flow.md` (Lab 3 revision): Flow 1 = Search Internship, Flow 2 = Apply Internship (includes 2e Save for later), Flow 3 = Track Application.
 
 | Screen | Flow 1: Search | Flow 2: Apply (incl. 2e Save) | Flow 3: Track | Notes |
 |---|---|---|---|---|

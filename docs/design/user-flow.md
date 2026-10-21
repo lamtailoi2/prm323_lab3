@@ -2,7 +2,7 @@
 
 > **Lab 3 revision (2026-10-21, DC-08 / DC-09).** This copy no longer matches Lab 2 commit `03f4aa3`. The three main flows are now **Search → Apply → Track**. *Save Internship* is a sub-flow inside Apply (2e): students save after searching and apply from Saved before tracking. Apply gained a **CV match check** step (2d) that shows unmatched requirements and suggests improvements. The CV match check needs Figma frames (handoff-gaps G-24).
 
-This document follows `ux/persona.md` (persona Minh, problem statement and success criterion), `design/DESIGN.md` (navigation and component rules) and `design/screen-spec.md` (screen purposes).
+This document follows `persona.md` (persona Minh, problem statement and success criterion), `DESIGN.md` (navigation and component rules) and `screen-spec.md` (screen purposes).
 
 | Flow | Name | Main path | Goal | Alternative / error path |
 |---|---|---|---|---|

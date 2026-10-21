@@ -29,7 +29,7 @@ Figma pages, in order:
 |---|---|
 | Product | Internship Finder, a mobile app (Android, 360–412 dp wide) |
 | Target users | Third- and fourth-year IT / Software Engineering students looking for an internship |
-| Persona | **Minh Nguyen, 21**, third-year Software Engineering student in Ho Chi Minh City. Searches in short mobile sessions of 2 to 5 minutes, reads English job descriptions slowly, applies to several companies and needs to know where each application stands. Details: [`ux/persona.md`](ux/persona.md) |
+| Persona | **Minh Nguyen, 21**, third-year Software Engineering student in Ho Chi Minh City. Searches in short mobile sessions of 2 to 5 minutes, reads English job descriptions slowly, applies to several companies and needs to know where each application stands. Details: [`ux/persona.md`](persona.md) |
 | Problem statement | IT students in their third and fourth year need a fast way to find, save and track internship applications that match their skills, because listings are scattered across many sources and they lose track of where they have applied. |
 | Success criterion | Find an internship by skill and work mode in under 30 seconds, and submit an application from Internship Detail in under 2 minutes with a stored CV. |
 
@@ -49,12 +49,12 @@ Every member wrote the Stitch prompts for their own screens and refined them ove
 
 | Step | What we did | Evidence |
 |---|---|---|
-| Analyze | Persona, problem statement, success criterion, information architecture and three user flows | [`ux/persona.md`](ux/persona.md), [`ux/user-flow.md`](ux/user-flow.md), Figma 01 |
-| Generate | Generated the first version of each screen in Google Stitch from verbatim prompts that state persona, task, mobile platform, constraints and style. `DESIGN.md`, `persona.md` and `user-flow.md` were given to Stitch as context | [`ai/ai-design-log.md`](ai/ai-design-log.md), [`design/DESIGN.md`](design/DESIGN.md) |
+| Analyze | Persona, problem statement, success criterion, information architecture and three user flows | [`ux/persona.md`](persona.md), [`ux/user-flow.md`](user-flow.md), Figma 01 |
+| Generate | Generated the first version of each screen in Google Stitch from verbatim prompts that state persona, task, mobile platform, constraints and style. `DESIGN.md`, `persona.md` and `user-flow.md` were given to Stitch as context | [`ai/ai-design-log.md`](ai/ai-design-log.md), [`design/DESIGN.md`](DESIGN.md) |
 | Critique | AI critique in every round, referencing Nielsen heuristics, accessibility and the persona | [`ai/ai-design-log.md`](ai/ai-design-log.md) |
-| Refine | 28 refinement rounds across 10 screens with before / after screenshots and an Accept or Modify decision for every output | [`ai/ai-design-log.md`](ai/ai-design-log.md), [`ai/screenshots/`](ai/screenshots/), [`design/design-decisions.md`](design/design-decisions.md) |
+| Refine | 28 refinement rounds across 10 screens with before / after screenshots and an Accept or Modify decision for every output | [`ai/ai-design-log.md`](ai/ai-design-log.md), [`ai/screenshots/`](ai/screenshots/), [`design/design-decisions.md`](design-decisions.md) |
 | Prototype | Wireframes, final UI, design system, components and a clickable prototype in Figma | Figma 02–06 |
-| Handoff | Screen specifications and the token → Flutter and component → widget mappings below | [`design/screen-spec.md`](design/screen-spec.md), [Flutter handoff](#flutter-handoff) |
+| Handoff | Screen specifications and the token → Flutter and component → widget mappings below | [`design/screen-spec.md`](screen-spec.md), [Flutter handoff](#flutter-handoff) |
 
 ## Repository structure
 
@@ -103,7 +103,7 @@ Eleven screens. Overlays and states are not counted as separate screens.
 | Flow 2 – Save Internship | Save an internship and open it again later | 2a Unsave + Undo · 2b Empty saved list · 2c Save error + Retry |
 | Flow 3 – Track Application | See the status of a submitted application | 3a No applications · 3b List load error · 3c Detail load error · 3d Withdraw + Undo |
 
-Full diagrams and the flow-to-screen mapping: [`ux/user-flow.md`](ux/user-flow.md) and Figma page 01.
+Full diagrams and the flow-to-screen mapping: [`ux/user-flow.md`](user-flow.md) and Figma page 01.
 
 **How to run the prototype**
 
@@ -154,7 +154,7 @@ Example (Internship Detail): r0 → R1 "less reading" (page 33 % shorter) → R2
 
 ## Flutter handoff
 
-Per-screen handoff (layout, components, states, interactions, navigation, UI constraints) will be added in `handoff/flutter-handoff.md`. The screen content and states are already defined in [`design/screen-spec.md`](design/screen-spec.md). Flutter code is not part of Lab 2.
+Per-screen handoff (layout, components, states, interactions, navigation, UI constraints) will be added in `handoff/flutter-handoff.md`. The screen content and states are already defined in [`design/screen-spec.md`](screen-spec.md). Flutter code is not part of Lab 2.
 
 **Token → Flutter**
 

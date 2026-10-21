@@ -5,7 +5,7 @@ import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/state_view.dart';
 
 /// Placeholder for the Search tab. The feature owner replaces it following
-/// docs/lab2-handoff/design/screen-spec.md (Search).
+/// docs/design/screen-spec.md (Search).
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
 

@@ -21,7 +21,7 @@ Before making changes:
    - `DESIGN.md`
    - `design/screen-spec.md`
    - Design tokens, component specifications, personas, and user flows
-3. Create `docs/handoff-gaps.md` documenting missing, ambiguous, or conflicting requirements.
+3. Create `docs/records/handoff-gaps.md` documenting missing, ambiguous, or conflicting requirements.
 4. Do not overwrite existing work or regenerate an existing Flutter project unnecessarily.
 5. If critical specifications are missing, record assumptions and unresolved decisions. Ask only when a decision is necessary to proceed safely.
 
@@ -341,11 +341,11 @@ Initialize all required documentation files with meaningful templates rather tha
 
 `docs/architecture.md` must explain module responsibilities, dependency flow, state management, and data ownership.
 
-`docs/handoff-gaps.md` must record actual gaps and resolutions.
+`docs/records/handoff-gaps.md` must record actual gaps and resolutions.
 
 `docs/design-change-log.md` must track UI changes and reasons.
 
-`docs/implementation-ai-log.md` must be maintained during development. Record the exact prompts, output summaries, verification methods, and accepted/modified/rejected decisions. Do not fabricate completed work or verification evidence.
+`docs/records/implementation-ai-log.md` must be maintained during development. Record the exact prompts, output summaries, verification methods, and accepted/modified/rejected decisions. Do not fabricate completed work or verification evidence.
 
 Prepare templates for the fidelity check, analytics plan, test report, and AI code review.
 

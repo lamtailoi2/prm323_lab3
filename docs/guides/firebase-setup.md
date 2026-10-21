@@ -108,11 +108,11 @@ adb shell setprop debug.firebase.analytics.app com.group3.internly
 # iOS: Xcode → Scheme → Run → Arguments → add -FIRDebugEnabled
 ```
 
-Event names and parameters: [`analytics-plan.md`](analytics-plan.md).
+Event names and parameters: [`analytics-plan.md`](../analytics-plan.md).
 
 ## 8. Remote Config
 
-Console → **Remote Config** → create each parameter with **the same key and type** as in [`firebase/remote-config-defaults.json`](../firebase/remote-config-defaults.json) (the app loads the same file as its in-app defaults), then **Publish**:
+Console → **Remote Config** → create each parameter with **the same key and type** as in [`firebase/remote-config-defaults.json`](../../firebase/remote-config-defaults.json) (the app loads the same file as its in-app defaults), then **Publish**:
 
 | Key | Type | Default | Changes |
 |---|---|---|---|
@@ -173,4 +173,4 @@ Expected: Splash, then **Login** (not "Firebase is not configured"). Signing in 
 
 ## 14. End-to-end tests (ARTEMIS)
 
-Setup, the zero-cost model choice (Gemini API free tier) and run commands are in [`test-plan.md`](test-plan.md).
+Setup, the zero-cost model choice (Gemini API free tier) and run commands are in [`test-plan.md`](../test-plan.md).

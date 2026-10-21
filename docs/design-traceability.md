@@ -2,7 +2,7 @@
 
 Maps every Lab 2 screen, flow and component to its Flutter route, widget and data source, with status, and records **every deviation from the design with its reason** (Lab 3 §3, §4 stage 1, §9). Written before feature work. Each feature PR updates its rows.
 
-Sources: [`lab2-handoff/design/screen-spec.md`](lab2-handoff/design/screen-spec.md), [`lab2-handoff/ux/user-flow.md`](lab2-handoff/ux/user-flow.md), [`lab2-handoff/design/design-system.md`](lab2-handoff/design/design-system.md), Figma <https://www.figma.com/design/UQveNSgQNYbuZyaNMa57FQ/Internship-Finder---Design-System>.
+Sources: [`design/screen-spec.md`](design/screen-spec.md), [`design/user-flow.md`](design/user-flow.md), [`design/design-system.md`](design/design-system.md), Figma <https://www.figma.com/design/UQveNSgQNYbuZyaNMa57FQ/Internship-Finder---Design-System>.
 
 **Status:** ✅ Done · 🟡 Placeholder / interim · ⬜ Planned · ⚠️ Deviation (see §4).
 
@@ -59,7 +59,7 @@ Routes marked *planned* are the agreed proposal. An owner who changes one update
 | Info Banner, Upload Dropzone, Bottom Sheet Option Row, Job Summary Card, CV File Card, Upload Progress Card, Match Card, Progress Stepper, Meta Tile, Section Header, Bullet Item, Benefit Item, Review Row | *to be built by the owning feature from Figma specs (G-16)* | — | ⬜ |
 | Map Preview Card | *not buildable from SerpAPI data (no coordinates)* | — | ⚠️ DC-10 |
 
-Design tokens → `lib/theme/` (ThemeData, ColorScheme, TextTheme, spacing / radius / elevation constants): ✅, cross-checked against Figma 04 in [`design-system.md`](lab2-handoff/design/design-system.md).
+Design tokens → `lib/theme/` (ThemeData, ColorScheme, TextTheme, spacing / radius / elevation constants): ✅, cross-checked against Figma 04 in [`design-system.md`](design/design-system.md).
 
 ## 4. Deviations from the Lab 2 design
 

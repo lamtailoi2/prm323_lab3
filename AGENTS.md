@@ -7,8 +7,8 @@ Instructions for everyone who changes this repository, human or AI agent. Read t
 - **Internly**: Flutter app (graded on Android; iOS also builds) for IT students to find, save, apply to and track internships. Product overview: [`README.md`](README.md).
 - **Architecture:** MVVM + Riverpod 3 + go_router; data from **SerpAPI (Google Jobs)** + Firebase. Details: [`docs/architecture.md`](docs/architecture.md).
 - **Constraint:** zero cost. Use only free plans and free tiers (handoff-gaps G-26).
-- **UI source of truth:** the Lab 2 design in [`docs/lab2-handoff/`](docs/lab2-handoff/README.md) and Figma, consolidated in [`docs/lab2-handoff/design/design-system.md`](docs/lab2-handoff/design/design-system.md).
-- **Open decisions:** [`docs/handoff-gaps.md`](docs/handoff-gaps.md). Read the relevant gap before building a feature.
+- **UI source of truth:** the Lab 2 design in [`docs/design/`](docs/design/README.md) and Figma, consolidated in [`docs/design/design-system.md`](docs/design/design-system.md).
+- **Open decisions:** [`docs/records/handoff-gaps.md`](docs/records/handoff-gaps.md). Read the relevant gap before building a feature.
 
 ## Commands
 
@@ -17,21 +17,21 @@ flutter pub get                 # install dependencies
 dart format lib test            # format (CI expects formatted code)
 flutter analyze                 # must print "No issues found!"
 flutter test                    # all tests must pass
-flutter run -d <device> --dart-define-from-file=.env   # needs Firebase config + .env (docs/firebase-setup.md)
+flutter run -d <device> --dart-define-from-file=.env   # needs Firebase config + .env (docs/guides/firebase-setup.md)
 ```
 
 Run `dart format`, `flutter analyze` and `flutter test` before every commit you ask someone to review. Paste the real results in the PR; never claim a result you did not see.
 
 ## Golden rules
 
-1. **Do not invent UI.** Screens, copy, colors, typography, spacing, radii, icons and flows come from Lab 2 / Figma. If something is missing, add it to `docs/handoff-gaps.md`. If you must deviate (platform constraint, accessibility failure, API limit), record it in `docs/design-traceability.md` §4 **in the same PR** and update Figma; an unrecorded difference is graded as a defect.
+1. **Do not invent UI.** Screens, copy, colors, typography, spacing, radii, icons and flows come from Lab 2 / Figma. If something is missing, add it to `docs/records/handoff-gaps.md`. If you must deviate (platform constraint, accessibility failure, API limit), record it in `docs/design-traceability.md` §4 **in the same PR** and update Figma; an unrecorded difference is graded as a defect.
 2. **MVVM layering is strict.** View → ViewModel → Service → Firebase. Views never import Firebase or call services. ViewModels never hold a `BuildContext`.
 3. **Riverpod only** for state and dependency injection. No `provider`, Bloc, GetX, `setState` for business state, or singletons accessed from widgets.
 4. **Tokens only.** No `Color(0x…)`, raw font sizes, raw `EdgeInsets` numbers or new radius values in feature code. Use `AppColors`, `Theme.of(context).textTheme`, `AppSpacing`, `AppRadii`, `AppSizes`, `AppElevation`.
 5. **Reuse shared components** from `lib/core/widgets/` before creating new ones. A new shared component must match a Figma component and be added to `design-system.md`.
 6. **Every data screen has an explicit `ViewState`** (`core/state/view_state.dart`: loading, empty, error, data) owned by its ViewModel, rendered with the skeleton / `StateView.empty` / `StateView.error` + `Retry`.
 7. **Never fake success.** No placeholder URLs saved as real results, no hard-coded "uploaded" states, no fake Firebase config, no tests that only tap without asserting a visible result.
-8. **No secrets in the repository:** service-account keys, API secrets, model API keys, `.env`, keystores, `.p8`, passwords. Build-time keys (e.g. `SERPAPI_KEY`) go in the untracked `.env` and are read with `String.fromEnvironment`. Firebase app config files are allowed (`docs/firebase-setup.md` §11).
+8. **No secrets in the repository:** service-account keys, API secrets, model API keys, `.env`, keystores, `.p8`, passwords. Build-time keys (e.g. `SERPAPI_KEY`) go in the untracked `.env` and are read with `String.fromEnvironment`. Firebase app config files are allowed (`docs/guides/firebase-setup.md` §11).
 9. **Security rules ship with the data.** A new Firestore collection needs field-validated rules in `firebase/firestore.rules` and emulator tests in the same PR. `allow write: if isOwner(uid)` alone is not acceptable.
 10. **Stay in scope.** Implement what the spec and the task ask for. No speculative features, abstractions or dependencies.
 11. **User data is user-scoped.** Every provider holding user data watches `currentUserIdProvider`, so sign-out drops it.
@@ -123,9 +123,9 @@ The View watches the provider, renders the state with shared components, and cal
 | When you… | Update |
 |---|---|
 | Deviate from the design, or finish / change a screen, route or component | `docs/design-traceability.md` (+ Figma) |
-| Find or resolve a missing requirement | `docs/handoff-gaps.md` |
+| Find or resolve a missing requirement | `docs/records/handoff-gaps.md` |
 | Add an analytics event | `docs/analytics-plan.md` |
-| Run Flutter tests for the PR | `docs/test-report.md` |
+| Run Flutter tests for the PR | `docs/records/test-report.md` |
 | Use an AI tool, get a review, verify a Firebase feature, run E2E tests | See "Logs and evidence required by Lab 3" below |
 
 ## Logs and evidence required by Lab 3
@@ -134,7 +134,7 @@ Work that is not logged with evidence is graded as missing. **Never fabricate ev
 
 | When you… | You must log | Where |
 |---|---|---|
-| Use **any** AI tool (code generator, chat assistant, review tool, ARTEMIS) | Tool + purpose in the disclosure table (§8); for code changes also the exact prompt, output summary, verification and decision | `docs/code-review.md` (disclosure) + README "AI tools used"; `docs/implementation-ai-log.md` |
+| Use **any** AI tool (code generator, chat assistant, review tool, ARTEMIS) | Tool + purpose in the disclosure table (§8); for code changes also the exact prompt, output summary, verification and decision | `docs/code-review.md` (disclosure) + README "AI tools used"; `docs/records/implementation-ai-log.md` |
 | Get an AI code review on a PR | Each finding: ID, tool, `file:line`, kind, decision (accepted / modified / rejected) + a valid reason; save the tool's raw output | `docs/code-review.md`; `evidence/code-review/` |
 | Fix an accepted review finding | One commit per finding, naming its ID: `fix(CR-03): …`; link the commit in the record | Git history + `docs/code-review.md` |
 | Deviate from Figma / Lab 2 | ID, change, reason (platform, accessibility, API limit, team decision); then update Figma | `docs/design-traceability.md` §4 |
@@ -142,7 +142,7 @@ Work that is not logged with evidence is graded as missing. **Never fabricate ev
 | Make a Firebase service work (Auth, Storage, FCM, Analytics, Crashlytics, Remote Config) | Console / app screenshots showing it works **and** its failure case | `evidence/<area>/` (see `evidence/README.md`) |
 | Add or fire an analytics event | Plan row (typed parameters + question) and a DebugView screenshot | `docs/analytics-plan.md`; `evidence/analytics/` |
 | Run ARTEMIS tests | Command, ≥ 3 runs per test, pass rate, average time, trace IDs / replays, cause and fix of every flaky / failed / skipped test; the exploratory session report | `docs/test-plan.md` §4–5; `evidence/artemis/` (`e2e_test/artifacts/runs.jsonl`) |
-| Run Flutter tests or builds for a PR | The real command output summary | `docs/test-report.md` + PR description |
+| Run Flutter tests or builds for a PR | The real command output summary | `docs/records/test-report.md` + PR description |
 
 Commits follow the Lab 3 stage order (Plan → Architect → Integrate → Instrument → Test → Review → Report) and show work over several days; do not squash the whole history into one upload.
 

@@ -10,7 +10,7 @@ import 'app_typography.dart';
 ///
 /// Token → Flutter mapping follows the Lab 2 README handoff table. Values
 /// that the handoff does not document are left at Material defaults and are
-/// listed in `docs/handoff-gaps.md` instead of being invented here.
+/// listed in `docs/records/handoff-gaps.md` instead of being invented here.
 abstract final class AppTheme {
   static ThemeData light() {
     const colorScheme = ColorScheme(
@@ -208,7 +208,7 @@ abstract final class AppTheme {
   ///
   /// Figma page 05: "Pressed uses reduced emphasis, not a new color". The
   /// exact opacity is not documented; 0.7 is estimated from the specimen and
-  /// must be verified in Figma (docs/handoff-gaps.md G-07).
+  /// must be verified in Figma (docs/records/handoff-gaps.md G-07).
   static const double pressedOpacity = 0.7;
 
   /// Shared recipe for the Primary / Secondary / Text button variants

@@ -9,7 +9,7 @@ import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import '../viewmodels/login_viewmodel.dart';
 
-/// Interim Login screen. Lab 2 has no Login design (docs/handoff-gaps.md
+/// Interim Login screen. Lab 2 has no Login design (docs/records/handoff-gaps.md
 /// G-03); this layout only uses existing tokens and components and is
 /// logged in docs/design-traceability.md (DC-01). The auth owner finalises
 /// it.

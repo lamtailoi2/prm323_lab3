@@ -43,7 +43,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 
 ### G-01: Flutter handoff file missing
 - **Found:** the Lab 2 README says per-screen handoff "will be added in `handoff/flutter-handoff.md`"; `handoff/` only contains `.gitkeep`.
-- **Handling:** tokens and components are consolidated in [`design-system.md`](lab2-handoff/design/design-system.md). Screen content, states and flows come from `screen-spec.md` and `user-flow.md`. Per-screen layout must be read from Figma page 03 by each screen owner.
+- **Handling:** tokens and components are consolidated in [`design-system.md`](../design/design-system.md). Screen content, states and flows come from `screen-spec.md` and `user-flow.md`. Per-screen layout must be read from Figma page 03 by each screen owner.
 
 ### G-02: Product name
 - **Found:** Lab 2 calls the product "Internship Finder"; the Lab 3 brief calls it "Internly".
@@ -66,7 +66,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 - **Proposal:** a "Diagnostics" group in Profile → "Settings & Support" (the Stitch Profile final already has this section). Never trigger a crash at startup.
 
 ### G-07: Values not documented in the handoff
-Values below are **estimated from the Figma screenshots** or left at Material defaults. Verify each in Figma inspect mode and update the code and [`design-system.md`](lab2-handoff/design/design-system.md).
+Values below are **estimated from the Figma screenshots** or left at Material defaults. Verify each in Figma inspect mode and update the code and [`design-system.md`](../design/design-system.md).
 
 | Value | Current | Where |
 |---|---|---|
@@ -119,11 +119,11 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 
 ### G-15: iOS in scope
 - **Found:** Lab 2 targets Android (360–412 dp, Material). The team asked for an Android + iOS repository.
-- **Resolution:** iOS uses the same Material design, with no Cupertino adaptation (DC-07). iOS-specific setup (Google Sign-In URL scheme, APNs for FCM, which needs a paid Apple Developer account) is in [`firebase-setup.md`](firebase-setup.md).
+- **Resolution:** iOS uses the same Material design, with no Cupertino adaptation (DC-07). iOS-specific setup (Google Sign-In URL scheme, APNs for FCM, which needs a paid Apple Developer account) is in [`firebase-setup.md`](../guides/firebase-setup.md).
 
 ### G-16: Figma access
 - **Found:** Figma pages 04 and 05 were provided as screenshots; inspect values (paddings, exact sizes) are not available offline. The README lists 31 components, but page 05 shows 12 sets. Missing specs: Save Toggle, Skill Tag, Badge, Snackbar, Info Banner, Text Area, Upload Dropzone, Bottom Sheet Option Row, Job Summary Card, CV File Card, Upload Progress Card, Match Card, Map Preview Card, Progress Stepper, Meta Tile, Section Header, Bullet Item, Benefit Item, Review Row.
-- **Action:** export pages 03–05 (PNG) into `docs/lab2-handoff/figma/`, and read component specs in Figma before building each one.
+- **Action:** export pages 03–05 (PNG) into `docs/design/figma/`, and read component specs in Figma before building each one.
 
 ### G-17: Allowance format
 - **Found:** the Figma card specimen shows `$1,200/month`. The Stitch Home final shows `12,000,000 VND / mo`, the Internship Detail prompt says `8–12M VND/month`, and the AI log standardised allowances to VND. Unpaid and undisclosed allowances must be distinguishable.
@@ -134,7 +134,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 - **Needed:** icon and color for Withdrawn (likely the neutral treatment). Check the Application Detail "withdrawn" frame on Figma page 03.
 
 ### G-19: Contrast failures
-- **Found (computed):** Rejected badge `#DC2626` on `#F1F5F9` = 4.41:1; selected filter chip `#2563EB` on `#DBEAFE` = 4.24:1. Both are below the 4.5:1 that DESIGN.md §13 requires for 14 sp text. Details in [`design-system.md` §3](lab2-handoff/design/design-system.md#3-contrast-check-computed).
+- **Found (computed):** Rejected badge `#DC2626` on `#F1F5F9` = 4.41:1; selected filter chip `#2563EB` on `#DBEAFE` = 4.24:1. Both are below the 4.5:1 that DESIGN.md §13 requires for 14 sp text. Details in [`design-system.md` §3](../design/design-system.md#3-contrast-check-computed).
 - **Proposals:** DC-04 and DC-05 in the change log (status: proposed, not applied).
 
 ### G-20: iOS dependency resolution

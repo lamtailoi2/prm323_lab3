@@ -141,7 +141,7 @@ class FirebaseAuthService implements AuthService {
       GoogleSignInExceptionCode.providerConfigurationError => AppException(
         AppErrorKind.configuration,
         'Google Sign-In is not set up for this build. '
-        'Check the SHA-1 and OAuth client (docs/firebase-setup.md).',
+        'Check the SHA-1 and OAuth client (docs/guides/firebase-setup.md).',
         cause: e,
       ),
       _ => AppException(

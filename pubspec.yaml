@@ -32,7 +32,7 @@ flutter:
   # iOS uses CocoaPods instead of Swift Package Manager for this project:
   # with SPM, firebase-ios-sdk 13 (FlutterFire 7.x) and GoogleSignIn-iOS 9
   # (google_sign_in_ios 6.3.x) require incompatible gtm-session-fetcher
-  # ranges. See docs/handoff-gaps.md (G-20).
+  # ranges. See docs/records/handoff-gaps.md (G-20).
   config:
     enable-swift-package-manager: false
 

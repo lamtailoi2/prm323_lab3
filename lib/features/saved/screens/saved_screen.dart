@@ -5,7 +5,7 @@ import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/state_view.dart';
 
 /// Placeholder for the Saved tab. The feature owner replaces it following
-/// docs/lab2-handoff/design/screen-spec.md (Saved Internships).
+/// docs/design/screen-spec.md (Saved Internships).
 class SavedScreen extends StatelessWidget {
   const SavedScreen({super.key});
 

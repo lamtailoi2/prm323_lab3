@@ -24,7 +24,7 @@ class FirebaseSetupRequiredApp extends StatelessWidget {
             title: 'Firebase is not configured',
             message:
                 'Run `flutterfire configure` and rebuild. '
-                'Setup steps are in docs/firebase-setup.md.'
+                'Setup steps are in docs/guides/firebase-setup.md.'
                 '${details == null ? '' : '\n\n$details'}',
           ),
         ),

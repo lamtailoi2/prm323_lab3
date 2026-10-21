@@ -1,6 +1,6 @@
 # Test plan: ARTEMIS end-to-end tests
 
-End-to-end tests drive the **Android** app with [Google ARTEMIS](https://github.com/google/artemis) from natural-language instructions (Lab 3 §7). Flutter unit, ViewModel and widget tests are reported in [`test-report.md`](test-report.md).
+End-to-end tests drive the **Android** app with [Google ARTEMIS](https://github.com/google/artemis) from natural-language instructions (Lab 3 §7). Flutter unit, ViewModel and widget tests are reported in [`test-report.md`](records/test-report.md).
 
 | Item | Value |
 |---|---|

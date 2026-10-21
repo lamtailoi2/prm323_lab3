@@ -2,7 +2,7 @@
 
 Internly is a mobile app that helps university IT and Software Engineering students **find internships that match their skills, save the ones they like, apply with a stored CV, and track every application in one place**.
 
-This repository is the PRM393 **Lab 3** implementation (Flutter + Firebase, graded on Android) of the Lab 2 UI/UX design. **Lab 2 is the source of truth for the UI**: screens, flows, tokens and components come from the [Lab 2 handoff](docs/lab2-handoff/README.md); every deviation is recorded in [`docs/design-traceability.md`](docs/design-traceability.md).
+This repository is the PRM393 **Lab 3** implementation (Flutter + Firebase, graded on Android) of the Lab 2 UI/UX design. **Lab 2 is the source of truth for the UI**: screens, flows, tokens and components come from the [Lab 2 handoff](docs/design/README.md); every deviation is recorded in [`docs/design-traceability.md`](docs/design-traceability.md).
 
 > **Status: foundation ready.** Design system, shared components, app shell, authenticated routing, Firebase bootstrap, SerpAPI client, rules and docs are in place. Feature screens are placeholders that each owner replaces ([Feature ownership](#feature-ownership)).
 
@@ -13,7 +13,7 @@ This repository is the PRM393 **Lab 3** implementation (Flutter + Firebase, grad
 | | |
 |---|---|
 | Topic | Internship finder and application tracker for IT students (approved Lab 2 topic) |
-| Persona | Minh, 21, third-year Software Engineering student: searches in 2–5 minute mobile sessions, one-handed, on unstable campus Wi-Fi; applies to several companies and loses track of them ([persona](docs/lab2-handoff/ux/persona.md)) |
+| Persona | Minh, 21, third-year Software Engineering student: searches in 2–5 minute mobile sessions, one-handed, on unstable campus Wi-Fi; applies to several companies and loses track of them ([persona](docs/design/persona.md)) |
 | Problem | Listings are scattered across many sources, and students lose track of where they have applied |
 | Success criteria | Find an internship by skill and work mode in **< 30 s**; submit an application from Internship Detail in **< 2 min** with a stored CV |
 | Data | **SerpAPI — Google Jobs** (`engine=google_jobs`) for live internship listings; **Cloud Firestore** for each student's own data (profile, saved, applications, notifications, report metadata) |
@@ -28,7 +28,7 @@ One journey in three flows: **search → apply (now, or later via Saved) → tra
 | **2. Apply** | Internship Detail → Apply → Application Form → **CV Match Check** → Review → Success | CV upload error + Retry; empty profile; already applied; CV gaps → suggestions → improve or continue; **2e Save for later** → Saved → open → Apply (unsave + Undo, empty list, save error + Retry) |
 | **3. Track** | Applications → Application Detail → status | No applications; list / detail load errors; withdraw + Undo |
 
-Details: [`user-flow.md`](docs/lab2-handoff/ux/user-flow.md) · screens: [`screen-spec.md`](docs/lab2-handoff/design/screen-spec.md) · route / widget / data source per screen: [`design-traceability.md`](docs/design-traceability.md).
+Details: [`user-flow.md`](docs/design/user-flow.md) · screens: [`screen-spec.md`](docs/design/screen-spec.md) · route / widget / data source per screen: [`design-traceability.md`](docs/design-traceability.md).
 
 ### Screens
 
@@ -51,7 +51,7 @@ Bottom navigation (fixed): **Home · Search · Saved · Applications · Profile*
 | E2E Python deps | Python ≥ 3.12, `artemis-client` @ that commit, pytest 9.1.1, pytest-asyncio 1.4.0, pytest-repeat 0.9.4, python-dotenv 1.2.4 |
 | Platforms | Android (min SDK 24, target 36), the graded platform · iOS 15.0 (CocoaPods) also builds |
 
-Exact versions are pinned in [`pubspec.yaml`](pubspec.yaml) and [`e2e_test/pyproject.toml`](e2e_test/pyproject.toml). **Everything runs on free plans** (Firebase Spark, SerpAPI free, Gemini API free tier for ARTEMIS); see [handoff-gaps G-26](docs/handoff-gaps.md#g-26-zero-cost-plan).
+Exact versions are pinned in [`pubspec.yaml`](pubspec.yaml) and [`e2e_test/pyproject.toml`](e2e_test/pyproject.toml). **Everything runs on free plans** (Firebase Spark, SerpAPI free, Gemini API free tier for ARTEMIS); see [handoff-gaps G-26](docs/records/handoff-gaps.md#g-26-zero-cost-plan).
 
 ## Getting started
 
@@ -71,12 +71,12 @@ flutter pub get
 cp .env.example .env          # set SERPAPI_KEY (Flutter reads it at build time only)
 ```
 
-Then follow [`docs/firebase-setup.md`](docs/firebase-setup.md):
+Then follow [`docs/guides/firebase-setup.md`](docs/guides/firebase-setup.md):
 
 1. **Firebase:** create the project, run `flutterfire configure` (Android `com.group3.internly`), and commit `android/app/google-services.json`.
 2. **Google Sign-In:** enable the Google provider and add each developer's **SHA-1 and SHA-256**.
 3. **Firestore and Storage rules:** `firebase deploy --only firestore:rules,firestore:indexes,storage`.
-4. **Storage:** choose the zero-cost option, Firebase Storage on Blaze within the no-cost quota or Cloudinary free ([§10](docs/firebase-setup.md#10-file-storage-cv-upload-pdf-report)).
+4. **Storage:** choose the zero-cost option, Firebase Storage on Blaze within the no-cost quota or Cloudinary free ([§10](docs/guides/firebase-setup.md#10-file-storage-cv-upload-pdf-report)).
 5. **Crashlytics** enabled; **Remote Config** parameters created from [`firebase/remote-config-defaults.json`](firebase/remote-config-defaults.json).
 
 Without Firebase configuration the app starts on "Firebase is not configured". This is intended: it never fakes a connection.
@@ -101,7 +101,7 @@ cd e2e_test && cp .env.example .env && uv sync
 uv run pytest --count 3 -v  # every test 3 times
 ```
 
-Results: [`docs/test-report.md`](docs/test-report.md) (Flutter) and [`docs/test-plan.md`](docs/test-plan.md) §4 (ARTEMIS).
+Results: [`docs/records/test-report.md`](docs/records/test-report.md) (Flutter) and [`docs/test-plan.md`](docs/test-plan.md) §4 (ARTEMIS).
 
 ## Deliverables map
 
@@ -138,17 +138,17 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 
 | Document | Purpose |
 |---|---|
-| [`docs/lab2-handoff/design/design-system.md`](docs/lab2-handoff/design/design-system.md) | Tokens and components, Figma ↔ code cross-check, contrast results |
-| [`docs/firebase-setup.md`](docs/firebase-setup.md) | Firebase, Google Sign-In, Storage, Remote Config, SerpAPI key |
-| [`docs/handoff-gaps.md`](docs/handoff-gaps.md) | Missing / conflicting requirements and decisions |
-| [`docs/implementation-ai-log.md`](docs/implementation-ai-log.md) | Prompts, outputs, verification and decisions for AI-assisted work |
+| [`docs/design/design-system.md`](docs/design/design-system.md) | Tokens and components, Figma ↔ code cross-check, contrast results |
+| [`docs/guides/firebase-setup.md`](docs/guides/firebase-setup.md) | Firebase, Google Sign-In, Storage, Remote Config, SerpAPI key |
+| [`docs/records/handoff-gaps.md`](docs/records/handoff-gaps.md) | Missing / conflicting requirements and decisions |
+| [`docs/records/implementation-ai-log.md`](docs/records/implementation-ai-log.md) | Prompts, outputs, verification and decisions for AI-assisted work |
 
 ## AI tools used
 
 | Tool | Purpose |
 |---|---|
 | Google Stitch | Lab 2 screen generation (design phase) |
-| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements ([log](docs/implementation-ai-log.md)) |
+| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements ([log](docs/records/implementation-ai-log.md)) |
 | Google ARTEMIS + Gemini (free tier) | End-to-end tests and the exploratory session |
 | AI code review tool | _to be added_ ([`code-review.md`](docs/code-review.md)) |
 
@@ -157,6 +157,6 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 - Feature screens are placeholders; the Login screen is interim (DC-01).
 - Firebase is not configured in the repository yet; Google Sign-In needs per-developer SHA fingerprints.
 - The SerpAPI key is compiled into the APK and the free plan has a small monthly quota (G-25).
-- The Android build was not verified on the machine that initialized the repo (incomplete Android SDK); the iOS simulator build was ([`test-report.md`](docs/test-report.md)).
+- The Android build was not verified on the machine that initialized the repo (incomplete Android SDK); the iOS simulator build was ([`test-report.md`](docs/records/test-report.md)).
 - iOS uses CocoaPods because Swift Package Manager cannot resolve Firebase iOS SDK 13 with GoogleSignIn-iOS 9 (G-20).
-- Open decisions are tracked in [`handoff-gaps.md`](docs/handoff-gaps.md).
+- Open decisions are tracked in [`handoff-gaps.md`](docs/records/handoff-gaps.md).

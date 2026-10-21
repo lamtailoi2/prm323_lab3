@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 ///
 /// Only the 13 documented semantic tokens are defined here. The four Figma
 /// helper colors (pressed, error container, disabled container, inverse
-/// surface) have no documented values yet; see `docs/handoff-gaps.md` (G-07).
+/// surface) have no documented values yet; see `docs/records/handoff-gaps.md` (G-07).
 /// Do not add one-off colors in screens.
 abstract final class AppColors {
   /// `color/primary` — primary CTA, selected navigation, focused inputs.

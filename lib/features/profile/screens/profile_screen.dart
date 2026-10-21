@@ -10,7 +10,7 @@ import '../../../theme/app_spacing.dart';
 import '../../auth/viewmodels/sign_out_viewmodel.dart';
 
 /// Placeholder for the Profile tab. The feature owner replaces it following
-/// docs/lab2-handoff/design/screen-spec.md (Profile). Sign out lives in the
+/// docs/design/screen-spec.md (Profile). Sign out lives in the
 /// "Settings & Support" section of the final design; it is exposed here so
 /// the auth flow can be exercised from day one.
 class ProfileScreen extends ConsumerWidget {

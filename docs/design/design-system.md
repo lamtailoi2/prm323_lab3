@@ -1,18 +1,18 @@
 # Internly Design System and Components (Flutter reference)
 
-This is the single Flutter-facing reference for Internly's visual language. It consolidates the Lab 2 design sources and records how each token and component maps to code. When this file and the code disagree, fix the code or record the deviation in [`design-traceability.md`](../../design-traceability.md) §4 (and update Figma). Do not quietly diverge.
+This is the single Flutter-facing reference for Internly's visual language. It consolidates the Lab 2 design sources and records how each token and component maps to code. When this file and the code disagree, fix the code or record the deviation in [`design-traceability.md`](../design-traceability.md) §4 (and update Figma). Do not quietly diverge.
 
 ## Sources and precedence
 
 | # | Source | What it defines | Location |
 |---|---|---|---|
-| 1 | `DESIGN.md` (Lab 2) | Tokens, component rules, accessibility rules. **Source of truth.** | [`lab2-handoff/design/DESIGN.md`](DESIGN.md) |
+| 1 | `DESIGN.md` (Lab 2) | Tokens, component rules, accessibility rules. **Source of truth.** | [`DESIGN.md`](DESIGN.md) |
 | 2 | Figma page **04 Design System** | Token specimens, the "Stitch Design Contract", icon family | Screenshot shared by the team on 2026-10-21 (not stored in the repo yet, see G-16) |
 | 3 | Figma page **05 Components**, "Editable specimen library" | 12 native component sets, 45 specimens with states | Screenshot shared by the team on 2026-10-21 (not stored in the repo yet, see G-16) |
-| 4 | Lab 2 README "Flutter handoff" | Token → Flutter and component → widget tables, contrast results | [`lab2-handoff/lab2-README.md`](../lab2-README.md) |
+| 4 | Lab 2 README "Flutter handoff" | Token → Flutter and component → widget tables, contrast results | [`lab2-README.md`](lab2-README.md) |
 | 5 | Lab 2 AI design log prompts | Pixel details that exist nowhere else (e.g. text field label and focus specs) | Lab 2 repo, `ai/ai-design-log.md` |
 
-If two sources conflict, the higher row wins. Figma (rows 2–3) is the final UI, so it overrides Stitch screenshots and AI-log prompts. Values read from screenshots instead of Figma inspect mode are marked **(verify)** and tracked in [`handoff-gaps.md`](../../handoff-gaps.md).
+If two sources conflict, the higher row wins. Figma (rows 2–3) is the final UI, so it overrides Stitch screenshots and AI-log prompts. Values read from screenshots instead of Figma inspect mode are marked **(verify)** and tracked in [`handoff-gaps.md`](../records/handoff-gaps.md).
 
 Figma file: <https://www.figma.com/design/UQveNSgQNYbuZyaNMa57FQ/Internship-Finder---Design-System> (page 04 `node-id=1-4`, page 05 `node-id=1-5`).
 
@@ -20,7 +20,7 @@ Figma file: <https://www.figma.com/design/UQveNSgQNYbuZyaNMa57FQ/Internship-Find
 
 ## 1. Foundations
 
-Code lives in [`lib/theme/`](../../../lib/theme/). Screens read styles through `Theme.of(context)` or the token classes. They never use raw hex values, font sizes, or paddings.
+Code lives in [`lib/theme/`](../../lib/theme/). Screens read styles through `Theme.of(context)` or the token classes. They never use raw hex values, font sizes, or paddings.
 
 ### 1.1 Color: 13 semantic tokens
 
@@ -259,7 +259,7 @@ Findings (pass mark 4.5:1, because 14 sp semibold is not "large text"):
 - **A11Y-2:** *Selected filter chip* label (`primary` on `primaryContainer`) = **4.24:1**, which fails. The check icon keeps meaning from being color-only, but the label is still below 4.5:1.
 - **A11Y-3:** The input border (`border` on white) is 1.48:1, below 3:1 for UI components. Lab 2 already lists this as a known limitation (a visible label is always present).
 
-These conflict with DESIGN.md §13 ("Normal text contrast must target at least 4.5:1"). The proposed fixes are logged in [`design-traceability.md`](../../design-traceability.md) (DC-04, DC-05) as **proposed**. They need team approval before any token or component changes.
+These conflict with DESIGN.md §13 ("Normal text contrast must target at least 4.5:1"). The proposed fixes are logged in [`design-traceability.md`](../design-traceability.md) (DC-04, DC-05) as **proposed**. They need team approval before any token or component changes.
 
 ---
 
@@ -271,4 +271,4 @@ These conflict with DESIGN.md §13 ("Normal text contrast must target at least 4
 4. Every list screen implements Loading (skeleton), Empty (`StateView.empty`) and Error (`StateView.error` + `Retry`).
 5. Every status shows label + icon. Selection shows a check.
 6. New component or variant → add it here, under the matching Figma set, before using it in a screen.
-7. Check new screens at 360 dp and 412 dp (widget test) and fill in the verification checklist in [`design-traceability.md`](../../design-traceability.md) §5.
+7. Check new screens at 360 dp and 412 dp (widget test) and fill in the verification checklist in [`design-traceability.md`](../design-traceability.md) §5.
