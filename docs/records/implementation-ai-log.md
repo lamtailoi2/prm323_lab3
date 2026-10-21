@@ -105,6 +105,16 @@ Commands the AI executed, with their real results (details in [`test-report.md`]
 - **Verification:** checked `flutter_tools` source: `--dart-define-from-file` accepts `.env` (comments and empty values allowed). Checked the ARTEMIS SDK source (`ArtemisClient.run(..., expected_output, locked_app_package)`, `TaskResult.output/trace_id`) and its default model config (Gemini). `flutter analyze` → no issues; `flutter test` → 79 passed; `py_compile` of `e2e_test/*.py` passed. ARTEMIS not run (no device / Firebase config / model key here).
 - **Decision:** Accepted. Open for the user: Storage on Blaze at $0 (card required) vs Cloudinary free (G-12).
 
+### P-15: "/Users/loi/go/projects/prm323_lab3/docs tổ chức lại folder này đi để tùm lum hết vậy" ("reorganize the docs folder, it is a mess")
+- **Output:** kept the five handout-required files at `docs/` root; moved the Lab 2 copies and `design-system.md` to `docs/design/`, `firebase-setup.md` to `docs/guides/`, gaps / AI log / test report / prompts to `docs/records/`; added `docs/README.md` as an index. A script rewrote every relative Markdown link (recomputed from the old to the new location) and path mentions in code comments, UI strings, rules and `pubspec.yaml`.
+- **Verification:** dry run reviewed before applying; link and anchor check → 0 problems (except the known `ai/…` links inside the verbatim Lab 2 README); `flutter analyze` → no issues; `flutter test` → 79 passed.
+- **Decision:** Accepted.
+
+### P-16: "dùng cloudinary sẽ xử lý quyền truy cập ở tầng service" ("use Cloudinary; handle access control in the service layer")
+- **Output:** `FileStorageService` + `CloudinaryStorageService` (unsigned preset, `internly/<reports|cvs>/<uid>/`, signed-in check, PDF signature and 10 MB checks, 128-bit random ids, progress callback, error mapping; new `AppErrorKind.invalidInput`); `.env.example` gains the Cloudinary settings; `storage.rules` marked as reference (not deployed); G-12 resolved with the accepted risks; setup guide §10, README, architecture, traceability, AGENTS.md, evidence and test-plan updated.
+- **Verification:** 5 new unit tests (own-folder path, random id, progress to 1.0, signed-out rejection without a request, non-PDF and oversized rejection, missing config, preset / size / quota / network errors). Cloudinary itself not called (no account configured here).
+- **Decision:** Accepted. Known limits recorded: public delivery URLs, preset name in the APK.
+
 ---
 
 ## Entry template

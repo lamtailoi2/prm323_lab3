@@ -2,6 +2,12 @@ rules_version = '2';
 
 // Internly — Cloud Storage Security Rules (Lab 3 §6).
 //
+// NOT DEPLOYED: to stay at zero cost, files are stored on Cloudinary
+// (docs/records/handoff-gaps.md G-12) and this policy is enforced in the
+// service layer (lib/services/file_storage_service.dart). The file is kept
+// as the reference policy and is ready if the project moves to Firebase
+// Storage (`firebase deploy --only storage`).
+//
 // Every file lives under a per-user folder; a user can read and write only
 // their own folder. Everything else is denied.
 //   reports/{uid}/{fileName}  generated PDF reports (export and upload)

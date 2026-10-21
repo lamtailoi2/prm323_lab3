@@ -98,7 +98,7 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `NotificationCenterViewModel` | Notification Center | `NotificationService`, `AnalyticsService` | Planned |
 | `ReportExportViewModel` | Report export | `ReportExportService`, `FileStorageService`, `ApplicationService`, `AnalyticsService` | Planned |
 
-Services that exist today: `AuthService`, `SerpApiClient`, `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`.
+Services that exist today: `AuthService`, `SerpApiClient`, `FileStorageService` (Cloudinary), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`.
 
 ## 4. Sequence: Flow 1 search (planned implementation)
 
@@ -148,7 +148,7 @@ sequenceDiagram
 |---|---|---|---|
 | Internship listings | **SerpAPI** `google_jobs` (real-time, read-only) | External | Through `SerpApiClient` → `InternshipService` only |
 | Profile, saved internships, applications, notifications, report metadata | **Cloud Firestore** under `users/{uid}/…` | The signed-in user | Owner only, with field-validated rules (`firebase/firestore.rules`) |
-| CVs, generated PDF reports | **Cloud Storage** `cvs/{uid}/…`, `reports/{uid}/…` | The signed-in user | Owner only, PDF ≤ 10 MB (`firebase/storage.rules`) |
+| CVs, generated PDF reports | **Cloudinary** (free plan) `internly/cvs/{uid}/…`, `internly/reports/{uid}/…`; metadata in Firestore `users/{uid}/…` | The signed-in user | Enforced in `CloudinaryStorageService`: own folder only, signed in, PDF ≤ 10 MB, random ids; listing only via owner-only Firestore metadata (G-12) |
 | Feature switches, limits | **Remote Config** (defaults in `firebase/remote-config-defaults.json`) | App team | Read-only in the app; real-time updates |
 
 Rules for feature owners:
@@ -166,15 +166,16 @@ Rules for feature owners:
 | Initialization | `app/bootstrap.dart` | Placeholder config → "Firebase is not configured" screen |
 | Auth (Google) | `services/auth_service.dart` | Cancelled picker → info message; network / config → error message |
 | SerpAPI | `services/serp_api_client.dart` | Missing / invalid key, quota (429), network, timeout → `AppException`; no results → empty |
+| File storage (Cloudinary) | `services/file_storage_service.dart` | Signed out → permission denied; not a PDF / too large → invalid input; preset / quota / network errors → message; progress reported |
 | Analytics | `services/analytics_service.dart` | Failures swallowed; names validated in debug |
 | Crashlytics | `services/crashlytics_service.dart` | Global handlers at bootstrap; user ID + `last_screen` key; `crashForTesting()` only from the demo area |
 | Remote Config | `services/remote_config_service.dart` | Defaults from JSON before `runApp`; fetch and real-time updates in the background |
-| Firestore, Storage, FCM, PDF export | Added by their features | Each shows a visible message for offline, permission denied and cancel |
+| Firestore, FCM, PDF generation | Added by their features | Each shows a visible message for offline, permission denied and cancel |
 
 ## 8. Secrets and configuration
 
 - Firebase config files are app configuration and are committed (Lab 3 §9).
-- The SerpAPI key comes from the untracked `.env` via `flutter run --dart-define-from-file=.env`. It is compiled into the APK, so use a free-plan key only (G-25).
+- The SerpAPI key and the Cloudinary cloud name / unsigned preset come from the untracked `.env` via `flutter run --dart-define-from-file=.env`. They are compiled into the APK, so use free-plan values only (G-12, G-25). The Cloudinary API secret is never used by the app.
 - Never commit service-account JSON, keystores, `.p8` keys, model API keys or test-account credentials.
 
 ## 9. Testing

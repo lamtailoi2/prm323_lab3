@@ -18,16 +18,16 @@ Routes marked *planned* are the agreed proposal. An owner who changes one update
 | 3 | Search Results | `/search/results` *(planned)* | `SearchResultsScreen` | SerpAPI `google_jobs` | Search | ⬜ |
 | 4 | Internship Detail | `/{tab}/internships/:jobKey` *(planned)* | `InternshipDetailScreen` | SerpAPI listing + Firestore `users/{uid}/savedInternships`, `…/applications` (saved / applied state) | Search | ⬜ ⚠️ DC-10 |
 | 5 | Saved Internships | `/saved` | `SavedScreen` | Firestore `users/{uid}/savedInternships` (real-time listener) | Saved | 🟡 placeholder |
-| 6 | Application Form | `/apply/:jobKey` *(planned, root navigator: no bottom nav)* | `ApplicationFormScreen` | Firestore `users/{uid}` (prefill), Cloud Storage `cvs/{uid}/…` | Apply | ⬜ |
+| 6 | Application Form | `/apply/:jobKey` *(planned, root navigator: no bottom nav)* | `ApplicationFormScreen` | Firestore `users/{uid}` (prefill), Cloudinary `internly/cvs/{uid}/…` (`FileStorageService`) | Apply | ⬜ |
 | 7 | CV Match Check *(Lab 3)* | `/apply/:jobKey/match` *(planned)* | `CvMatchScreen` | Listing qualifications (SerpAPI) vs profile skills; Remote Config `cv_match_enabled` | Apply | ⬜ ⚠️ DC-09 |
 | 8 | Application Review | `/apply/:jobKey/review` *(planned)* | `ApplicationReviewScreen` | In-memory form state | Apply | ⬜ |
 | 9 | Application Success | `/apply/:jobKey/success` *(planned)* | `ApplicationSuccessScreen` | Firestore write result | Apply | ⬜ |
 | 10 | My Applications | `/applications` | `MyApplicationsScreen` | Firestore `users/{uid}/applications` (real-time, sorted by date) | Track | 🟡 placeholder |
 | 11 | Application Detail | `/applications/:jobKey` *(planned)* | `ApplicationDetailScreen` | Firestore application document | Track | ⬜ |
-| 12 | Profile | `/profile` | `ProfileScreen` | Firestore `users/{uid}`, Cloud Storage `cvs/{uid}/…` | Profile | 🟡 placeholder (DC-03) |
+| 12 | Profile | `/profile` | `ProfileScreen` | Firestore `users/{uid}`, Cloudinary `internly/cvs/{uid}/…` | Profile | 🟡 placeholder (DC-03) |
 | — | Firebase demo area *(Lab 3)* | `/profile/firebase` *(planned)* | `FirebaseDemoScreen` | Remote Config values, Crashlytics test actions, links to the two screens below | Profile | ⬜ (G-06) |
 | — | Notification Center *(Lab 3)* | `/profile/notifications` *(planned)* | `NotificationCenterScreen` | FCM + Firestore `users/{uid}/notifications` | Notifications | ⬜ (G-04, G-13) |
-| — | Report export *(Lab 3)* | `/profile/export` *(planned)* | `ReportExportScreen` | PDF from the user's applications → Cloud Storage `reports/{uid}/…` + Firestore metadata | Report | ⬜ (G-05) |
+| — | Report export *(Lab 3)* | `/profile/export` *(planned)* | `ReportExportScreen` | PDF from the user's applications → Cloudinary `internly/reports/{uid}/…` (`FileStorageService`) + Firestore metadata | Report | ⬜ (G-05) |
 
 ## 2. Flows
 

@@ -21,7 +21,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-09 | Lab 3 specification document not in the repository | Team | Resolved (handout received 2026-10-21) |
 | G-10 | Nobody can change an application's status (no employer side) | Applications owner | Open |
 | G-11 | Remote Config parameters not chosen | Profile owner | Assumed (2 defaults in `firebase/remote-config-defaults.json`) |
-| G-12 | CV / PDF storage provider and privacy of uploaded files | Team | Open: $0 option chosen by the user (see G-26) |
+| G-12 | CV / PDF storage provider and privacy of uploaded files | Team | Resolved (Cloudinary free, access control in the service layer) |
 | G-13 | Notification data source (who sends FCM, where history is stored) | Notifications owner | Assumed (console sends; client stores history) |
 | G-14 | No seed / demo data for internship listings | Search owner | Resolved (SerpAPI, no seeding) |
 | G-15 | iOS added to scope; Lab 2 designed for Android only | Team | Resolved (Material on both) |
@@ -103,7 +103,14 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 
 ### G-12: File storage and privacy
 - **Lab 3 requires Cloud Storage:** files under a per-user path (`reports/{uid}/…`), progress and URL shown, and `storage.rules` that restrict each user to their own folder (`firebase/storage.rules` is ready). Cloudinary would only be an equivalent if the lecturer approves it.
-- **Cost:** by Firebase's announcement, new Storage buckets need the **Blaze** plan. Blaze costs $0 within the no-cost quota, but it requires a billing account (card). The user wants to spend nothing, so the choice is open: **(a)** Firebase Storage on Blaze with a budget alert (full marks, card on file, $0 in practice), or **(b)** Cloudinary free plan (no card; per-user access cannot be enforced, so part of the Storage criterion is at risk). See G-26.
+- **Cost:** by Firebase's announcement, new Storage buckets need the **Blaze** plan, which requires a billing account (card) even at $0.
+- **Decision (user, 2026-10-21):** use the **Cloudinary free plan** (no card) and handle access control **in the service layer** (`CloudinaryStorageService`):
+  1. Uploads always go to `internly/<reports|cvs>/<current uid>/`; callers cannot choose the UID.
+  2. Signed-out users are rejected before any request.
+  3. Only real PDFs (`%PDF-` signature) ≤ 10 MB are sent.
+  4. A 128-bit random id per file makes URLs unguessable.
+  5. Files are listed only through Firestore metadata under `users/{uid}/…`, which the Firestore rules restrict to the owner.
+- **Remaining risk (accepted):** delivery URLs are public (anyone holding a link can open the file), and the unsigned preset name ships in the APK, so someone could upload junk PDFs to the account. Mitigations: preset limited to PDF and the `internly/` folder; rotate the preset after grading. Lab 3 grades "rules restrict access" for Cloud Storage; `firebase/storage.rules` is kept (not deployed) and the service-layer checks are tested (`test/services/file_storage_service_test.dart`). Record this choice in the report as a cost constraint.
 - **Found:** Flow 2a (Lab 2 Flow 1a) uploads a CV (PDF). Lab 3 requires uploading a PDF report and storing its URL, file name, owner UID and timestamp. New Firebase Storage buckets need the Blaze plan; the brief suggests Cloudinary.
 - **Risk:** Cloudinary *unsigned* uploads produce publicly reachable URLs. CVs and reports contain personal data (name, phone, email).
 - **Needed:** choose the provider. If Cloudinary: a dedicated unsigned preset restricted to PDF, a folder per purpose, client-side size limit (verify which server-side limits the preset can enforce), no API secret in the app, and a documented privacy trade-off. Alternatively, signed uploads via a backend.
@@ -181,7 +188,7 @@ The user wants **no spending at all**, including AI models. Every requirement ca
 | Need | $0 option | Limits / notes |
 |---|---|---|
 | Firebase Auth, Firestore, FCM, Analytics, Crashlytics, Remote Config | Spark (free) plan | Free quotas are far above lab usage |
-| Cloud Storage | See G-12: Blaze at $0 within quota (card required) **or** Cloudinary free (no card) | Decision pending |
+| File storage | **Cloudinary free plan** (no card), access control in the service layer (G-12) | Public delivery URLs; small free quota |
 | Internship data | SerpAPI free plan (no card) | Small monthly quota (G-25) |
 | ARTEMIS | Open source (Apache 2.0) | — |
 | ARTEMIS model | Gemini API key from Google AI Studio **without enabling billing** (free tier). ARTEMIS's default config already uses Gemini models | Rate limits (slower runs); free-tier prompts may be used by Google to improve its products, so use only test data. If a configured model is not available on the free tier, switch that node to a free Flash / Flash-Lite model in `config/artemis.jsonc`. A local Ollama preset exists but is weaker (the Pro explorer expects Gemini models) |

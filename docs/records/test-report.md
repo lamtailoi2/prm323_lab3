@@ -52,6 +52,15 @@ Branch `chore/lab3-spec-alignment`. Same environment as Run 1.
 | 5 | `python3 -m py_compile e2e_test/*.py` | Passed (syntax only, local Python 3.9) |
 | 6 | ARTEMIS suite (`uv run pytest --count 3`) | **Not run**: needs an Android device, Firebase config, and the ARTEMIS host with a model key |
 
+## Run 3: docs reorganization + Cloudinary storage (2026-10-21)
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Completed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **84 tests, all passed** (79 + 5 Cloudinary storage tests) |
+| 4 | Markdown link and anchor check (script) | 0 problems, except the known `ai/…` links in the verbatim Lab 2 README |
+
 ---
 
 ## Run template

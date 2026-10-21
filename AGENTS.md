@@ -31,7 +31,7 @@ Run `dart format`, `flutter analyze` and `flutter test` before every commit you 
 5. **Reuse shared components** from `lib/core/widgets/` before creating new ones. A new shared component must match a Figma component and be added to `design-system.md`.
 6. **Every data screen has an explicit `ViewState`** (`core/state/view_state.dart`: loading, empty, error, data) owned by its ViewModel, rendered with the skeleton / `StateView.empty` / `StateView.error` + `Retry`.
 7. **Never fake success.** No placeholder URLs saved as real results, no hard-coded "uploaded" states, no fake Firebase config, no tests that only tap without asserting a visible result.
-8. **No secrets in the repository:** service-account keys, API secrets, model API keys, `.env`, keystores, `.p8`, passwords. Build-time keys (e.g. `SERPAPI_KEY`) go in the untracked `.env` and are read with `String.fromEnvironment`. Firebase app config files are allowed (`docs/guides/firebase-setup.md` §11).
+8. **No secrets in the repository:** service-account keys, API secrets, model API keys, `.env`, keystores, `.p8`, passwords. Build-time settings (`SERPAPI_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET`) go in the untracked `.env`; the Cloudinary API secret is never used and are read with `String.fromEnvironment`. Firebase app config files are allowed (`docs/guides/firebase-setup.md` §11).
 9. **Security rules ship with the data.** A new Firestore collection needs field-validated rules in `firebase/firestore.rules` and emulator tests in the same PR. `allow write: if isOwner(uid)` alone is not acceptable.
 10. **Stay in scope.** Implement what the spec and the task ask for. No speculative features, abstractions or dependencies.
 11. **User data is user-scoped.** Every provider holding user data watches `currentUserIdProvider`, so sign-out drops it.
@@ -46,7 +46,7 @@ Run `dart format`, `flutter analyze` and `flutter test` before every commit you 
 | A widget used by one feature | `lib/features/<feature>/widgets/` | |
 | A widget used by 2+ features | `lib/core/widgets/` | Must map to a Figma component |
 | A model used by 2+ features | `lib/models/` | Otherwise `features/<feature>/models/` |
-| Firebase / HTTP access | `lib/services/<name>_service.dart` | Interface + implementation + provider in one file. SerpAPI only through `SerpApiClient` |
+| Firebase / HTTP access | `lib/services/<name>_service.dart` | Interface + implementation + provider in one file. SerpAPI only through `SerpApiClient`; uploads only through `FileStorageService` |
 | A pure helper | `lib/core/utils/` | Unit-tested |
 | A route | `lib/app/router.dart` | Under the owning tab branch, always with a `name` |
 | A design token | `lib/theme/` | Only from DESIGN.md / Figma, and update `design-system.md` |

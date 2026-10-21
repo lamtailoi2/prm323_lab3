@@ -20,6 +20,10 @@ enum AppErrorKind {
   /// (e.g. the SerpAPI monthly search quota).
   rateLimited,
 
+  /// The input does not meet the rules (e.g. a file that is not a PDF or is
+  /// too large). Fixable by the user.
+  invalidInput,
+
   /// Anything else.
   unknown,
 }
