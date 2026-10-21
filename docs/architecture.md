@@ -147,7 +147,7 @@ sequenceDiagram
 | Data | Source | Owner | Access |
 |---|---|---|---|
 | Internship listings | **SerpAPI** `google_jobs` (real-time, read-only) | External | Through `SerpApiClient` → `InternshipService` only |
-| Profile, saved internships, applications, notifications, report metadata | **Cloud Firestore** under `users/{uid}/…` | The signed-in user | Owner only, with field-validated rules (`firebase/firestore.rules`) |
+| Profile, saved internships, applications, notifications, report metadata | **Cloud Firestore** under `users/{uid}/…` | The signed-in user | Owner only: `users/{uid}/**` (`firebase/firestore.rules`, final) |
 | CVs, generated PDF reports | **Cloud Storage for Firebase** `cvs/{uid}/…`, `reports/{uid}/…` (Blaze, US bucket, no-cost quota); metadata in Firestore `users/{uid}/…` | The signed-in user | `firebase/storage.rules`: owner only, PDF ≤ 10 MB; the service checks the same before uploading (G-12) |
 | Feature switches, limits | **Remote Config** (defaults in `firebase/remote-config-defaults.json`) | App team | Read-only in the app; real-time updates |
 
@@ -155,7 +155,7 @@ Rules for feature owners:
 
 1. Listings are not stored in Firestore. Saved items and applications keep a **snapshot** of the listing fields they show (title, company, location, apply link), because SerpAPI listings expire (G-25).
 2. Firestore document IDs use a short, URL-safe key derived from the SerpAPI `job_id` (the raw ID is long and may contain `/`).
-3. Validate every Firestore write in the rules (keys, types, sizes, `request.time` timestamps). `allow write: if isOwner(uid)` alone is not acceptable.
+3. The rules are final and generic (owner-only `users/{uid}/**`, ≤ 50 fields per document), so features never change them. Validation of field values happens in ViewModels and services; nothing in Firestore belongs to anyone but its owner (statuses are self-tracked, G-25).
 4. Parse defensively with `FirestoreReader`; skip and log (Crashlytics non-fatal) malformed documents instead of failing a list.
 5. Read server timestamps in listeners with `ServerTimestampBehavior.estimate`.
 

@@ -81,14 +81,15 @@ Check with `git diff android/ ios/` that both Gradle plugins were added. Crashly
 ## 5. Cloud Firestore
 
 1. Console → **Firestore Database → Create database** → **production mode**. Pick a nearby region (e.g. `asia-southeast1`); it cannot be changed later.
-2. Deploy the rules and indexes from this repository (`firebase.json` points to `firebase/`):
-   ```bash
-   firebase use --add          # select the project; creates .firebaserc
-   firebase deploy --only firestore:rules,firestore:indexes
-   firebase deploy --only storage   # after §10
-   ```
-3. Never edit rules only in the console. Change `firebase/firestore.rules` in a pull request, test with the emulator, and deploy.
-4. Local emulators (optional): `firebase emulators:start --only auth,firestore`.
+2. **Owner publishes the rules once.** `firebase/firestore.rules` is final (owner-only `users/{uid}/**`), and `firebase/storage.rules` is final (owner-only `reports/{uid}`, `cvs/{uid}`, PDF ≤ 10 MB). Either:
+   - with the CLI (`firebase.json` points to `firebase/`):
+     ```bash
+     firebase use --add          # select the project; creates .firebaserc
+     firebase deploy --only firestore:rules,firestore:indexes,storage   # storage after §10
+     ```
+   - or without the CLI: Firebase console → Firestore → **Rules** → paste `firebase/firestore.rules` → **Publish**; Storage → **Rules** → paste `firebase/storage.rules` → **Publish**.
+3. **Keeping them in sync:** only the owner publishes rules. A teammate who needs a change edits `firebase/*.rules` in a PR and tags the owner; after merge the owner publishes again. Never edit rules only in the console. To check for drift, compare the console's Rules history with the files.
+4. Local emulators (optional, needs the CLI): `firebase emulators:start --only auth,firestore,storage`.
 
 Internship listings are **not** stored in Firestore; they come from SerpAPI (§13). Firestore only holds each user's own data under `users/{uid}`.
 

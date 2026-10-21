@@ -94,7 +94,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 
 ### G-10: Application status changes
 - **Found:** statuses Under review, Interview, Accepted and Rejected exist, but Lab 2 has no employer or admin side to set them.
-- **Constraint:** security rules must not let a student set these statuses. Students may only create with `submitted` and toggle withdraw/undo.
+- **Resolved (2026-10-21):** with SerpAPI listings there is no employer side, so students track their own statuses (G-25 point 6). The final Firestore rules allow owners to write anything under `users/{uid}`.
 - **Options:** update statuses from the Firebase console or an Admin SDK script for demos, or add a Cloud Function (requires the Blaze plan).
 
 ### G-11: Remote Config parameters

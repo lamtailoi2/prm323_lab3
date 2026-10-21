@@ -32,7 +32,7 @@ Run `dart format`, `flutter analyze` and `flutter test` before every commit you 
 6. **Every data screen has an explicit `ViewState`** (`core/state/view_state.dart`: loading, empty, error, data) owned by its ViewModel, rendered with the skeleton / `StateView.empty` / `StateView.error` + `Retry`.
 7. **Never fake success.** No placeholder URLs saved as real results, no hard-coded "uploaded" states, no fake Firebase config, no tests that only tap without asserting a visible result.
 8. **No secrets in the repository:** service-account keys, API secrets, model API keys, `.env`, keystores, `.p8`, passwords. Build-time settings (`SERPAPI_KEY`, `DEBUG_KEYSTORE_BASE64` for the shared debug key) go in the untracked `.env`, shared privately, never via Git and are read with `String.fromEnvironment`. Firebase app config files are allowed (`docs/guides/firebase-setup.md` §11).
-9. **Security rules ship with the data.** A new Firestore collection needs field-validated rules in `firebase/firestore.rules` and emulator tests in the same PR. `allow write: if isOwner(uid)` alone is not acceptable.
+9. **Rules are final; keep data under `users/{uid}`.** `firebase/firestore.rules` lets a signed-in user read and write only their own `users/{uid}/**` subtree (any subcollection), so features need no rules change. Never store shared or other users' data in Firestore without discussing a rules change first; files go only to `reports/{uid}` / `cvs/{uid}` (`firebase/storage.rules`).
 10. **Stay in scope.** Implement what the spec and the task ask for. No speculative features, abstractions or dependencies.
 11. **User data is user-scoped.** Every provider holding user data watches `currentUserIdProvider`, so sign-out drops it.
 12. **Testable by ARTEMIS.** Key widgets (buttons, list items, cards) have a Semantics label or tooltip; shared components already do.
@@ -153,6 +153,7 @@ Commits follow the Lab 3 stage order (Plan → Architect → Integrate → Instr
 - One focused pull request per feature or fix; at least one reviewer; CI-equivalent commands pasted in the description.
 - **AI review: at most 3 rounds per pull request.** This is a cap, not a quota. Stop as soon as no blocker or major finding remains; one round is often enough. If findings are still open after round 3, the agent stops and hands them to a human reviewer (see `docs/code-review.md`).
 - **Review only what changed.** Round 1 reviews the PR diff (`git diff main...HEAD`), not whole files or the whole codebase. Later rounds review only the diff since the previous round (`git diff <last-reviewed-commit>..HEAD`) plus the open findings. Read surrounding code only when a changed line cannot be judged without it.
+- **Rules are deployed only by the owner.** Anyone may change `firebase/*.rules`, but only in a PR that tags the owner. After merge, the owner publishes them (`firebase deploy --only firestore:rules,storage`, or paste into Firebase console → Rules → Publish). Never edit rules only in the console.
 - Never rewrite shared history, commit generated build output, or commit secrets. Never fabricate commit history.
 
 ## Definition of done (feature)
@@ -160,6 +161,6 @@ Commits follow the Lab 3 stage order (Plan → Architect → Integrate → Instr
 - [ ] Matches Figma and `screen-spec.md` at 360 and 412 dp (verification checklist in `design-traceability.md` §5)
 - [ ] `ViewState` loading / empty / error / data + validation states implemented
 - [ ] ViewModel and widget tests added; `flutter analyze` clean; `flutter test` green
-- [ ] Firestore rules + emulator tests for any new collection
+- [ ] All Firestore data under `users/{uid}/…` (no rules change needed)
 - [ ] Analytics events from the plan implemented and verified in DebugView
 - [ ] Docs updated (table above); ARTEMIS test cases for the feature added to `e2e_test/`

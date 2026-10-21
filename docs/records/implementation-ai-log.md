@@ -128,6 +128,12 @@ Commands the AI executed, with their real results (details in [`test-report.md`]
 - **Verification:** `keytool` generation, SHA listing and base64 round trip tested locally (temporary keystore deleted afterwards). The Gradle change was **not** built here (no Android SDK on this machine): a teammate must run `flutter build apk --debug --dart-define-from-file=.env` once to confirm.
 - **Decision:** Accepted.
 
+### P-19: Rules set up once: "setup rule 1 lần k đc à", "nếu dùng cli thì sao", "rồi rule k sync tính sao nếu k dùng cli (user not owner)", "chốt 1 trươc đi"
+(Can the rules be set up only once? What if we use the CLI? How do rules stay in sync without the CLI for non-owners? Settle option 1 first.)
+- **Output:** final Firestore rules: a signed-in user reads and writes only `users/{uid}/**` (any subcollection), ≤ 50 fields per document, everything else denied, so features never need a rules change (all Firestore data is the user's own; statuses self-tracked, G-10 resolved). Sync convention (option 1): anyone may change `firebase/*.rules` only via a PR tagging the owner; only the owner publishes (CLI deploy or console paste). AGENTS.md, architecture §6, setup guide §5 and G-10 updated. Option 3 (GitHub Actions auto-deploy) deferred at the user's request.
+- **Verification:** rules reviewed by reading (no emulator or Firebase project on this machine); `flutter analyze` clean.
+- **Decision:** Accepted.
+
 ---
 
 ## Entry template

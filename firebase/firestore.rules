@@ -1,47 +1,36 @@
 rules_version = '2';
 
-// Internly — Firestore Security Rules (foundation).
+// Internly — Firestore Security Rules (final; set up once).
 //
-// Secure by default: every path that is not matched below is denied.
-// Each feature owner adds a match block for its collection, with field
-// validation and emulator tests, in the same pull request as the feature.
-// Data ownership model: docs/architecture.md §6.
+// Data ownership (docs/architecture.md §6): every document belongs to exactly
+// one user and lives under users/{uid}: profile, saved internships,
+// applications (students track their own statuses), notifications, report
+// metadata. Internship listings are not stored here; they come from SerpAPI.
+//
+// A signed-in user can read and write only their own subtree, including any
+// subcollection added later, so features never need a rules change. Every
+// other path is denied. Publish: Firebase console → Firestore → Rules → paste
+// this file → Publish (or `firebase deploy --only firestore:rules`).
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     function isOwner(uid) {
-      return isSignedIn() && request.auth.uid == uid;
+      return request.auth != null && request.auth.uid == uid;
     }
 
-    // Internship listings are NOT stored in Firestore: they come from SerpAPI
-    // (Google Jobs) at request time. Firestore only holds each user's own data.
+    // Keeps a single document small (Firestore also caps documents at 1 MiB).
+    function isReasonableWrite() {
+      return request.resource.data.size() <= 50;
+    }
 
-    // ---- User-owned data (scoped to the authenticated UID) ----------------
     match /users/{uid} {
-      allow read: if isOwner(uid);
-      // Profile writes stay closed until the Profile feature adds validated
-      // create/update rules.
-      allow write: if false;
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && isReasonableWrite();
 
-      // Template for a user-owned subcollection. Copy it, rename it and
-      // validate every field; never use `allow write: if isOwner(uid)` alone,
-      // because a student could then write any field (e.g. their own
-      // application status).
-      //
-      // match /savedInternships/{jobKey} {
-      //   allow read, delete: if isOwner(uid);
-      //   allow create: if isOwner(uid)
-      //     && request.resource.data.keys().hasOnly(
-      //          ['jobId', 'title', 'companyName', 'location', 'savedAt'])
-      //     && request.resource.data.title is string
-      //     && request.resource.data.title.size() <= 200
-      //     && request.resource.data.savedAt == request.time;
-      //   allow update: if false;
-      // }
+      match /{document=**} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && isReasonableWrite();
+      }
     }
   }
 }
