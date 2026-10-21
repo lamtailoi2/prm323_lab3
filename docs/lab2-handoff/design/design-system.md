@@ -1,6 +1,6 @@
 # Internly Design System and Components (Flutter reference)
 
-This is the single Flutter-facing reference for Internly's visual language. It consolidates the Lab 2 design sources and records how each token and component maps to code. When this file and the code disagree, fix the code or log a change in [`design-change-log.md`](../../design-change-log.md). Do not quietly diverge.
+This is the single Flutter-facing reference for Internly's visual language. It consolidates the Lab 2 design sources and records how each token and component maps to code. When this file and the code disagree, fix the code or record the deviation in [`design-traceability.md`](../../design-traceability.md) §4 (and update Figma). Do not quietly diverge.
 
 ## Sources and precedence
 
@@ -259,7 +259,7 @@ Findings (pass mark 4.5:1, because 14 sp semibold is not "large text"):
 - **A11Y-2:** *Selected filter chip* label (`primary` on `primaryContainer`) = **4.24:1**, which fails. The check icon keeps meaning from being color-only, but the label is still below 4.5:1.
 - **A11Y-3:** The input border (`border` on white) is 1.48:1, below 3:1 for UI components. Lab 2 already lists this as a known limitation (a visible label is always present).
 
-These conflict with DESIGN.md §13 ("Normal text contrast must target at least 4.5:1"). The proposed fixes are logged in [`design-change-log.md`](../../design-change-log.md) as **proposed**. They need team approval before any token or component changes.
+These conflict with DESIGN.md §13 ("Normal text contrast must target at least 4.5:1"). The proposed fixes are logged in [`design-traceability.md`](../../design-traceability.md) (DC-04, DC-05) as **proposed**. They need team approval before any token or component changes.
 
 ---
 
@@ -271,4 +271,4 @@ These conflict with DESIGN.md §13 ("Normal text contrast must target at least 4
 4. Every list screen implements Loading (skeleton), Empty (`StateView.empty`) and Error (`StateView.error` + `Retry`).
 5. Every status shows label + icon. Selection shows a check.
 6. New component or variant → add it here, under the matching Figma set, before using it in a screen.
-7. Check new screens at 360 dp and 412 dp (widget test) and record the result in [`fidelity-check.md`](../../fidelity-check.md).
+7. Check new screens at 360 dp and 412 dp (widget test) and fill in the verification checklist in [`design-traceability.md`](../../design-traceability.md) §5.

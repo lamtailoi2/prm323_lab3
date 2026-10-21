@@ -1,123 +1,124 @@
 # Internly — Internship Finder
 
-Internly is a mobile app (Android and iOS) that helps university IT and Software Engineering students **find internships that match their skills, save the ones they like, apply with a stored CV, and track every application in one place**.
+Internly is a mobile app that helps university IT and Software Engineering students **find internships that match their skills, save the ones they like, apply with a stored CV, and track every application in one place**.
 
-This repository is the Lab 3 implementation (Flutter + Firebase) of the Lab 2 UI/UX design. **Lab 2 is the source of truth for the UI**: screens, flows, tokens and components come from the [Lab 2 handoff](docs/lab2-handoff/README.md) and are not reinvented here.
+This repository is the PRM393 **Lab 3** implementation (Flutter + Firebase, graded on Android) of the Lab 2 UI/UX design. **Lab 2 is the source of truth for the UI**: screens, flows, tokens and components come from the [Lab 2 handoff](docs/lab2-handoff/README.md); every deviation is recorded in [`docs/design-traceability.md`](docs/design-traceability.md).
 
-> **Status: initialized foundation.** The design system, shared components, app shell, authenticated routing, Firebase bootstrap and docs are in place. Feature screens are placeholders that each owner replaces (see [Feature ownership](#feature-ownership)).
+> **Status: foundation ready.** Design system, shared components, app shell, authenticated routing, Firebase bootstrap, SerpAPI client, rules and docs are in place. Feature screens are placeholders that each owner replaces ([Feature ownership](#feature-ownership)).
+
+**Demo video:** _link to be added_
 
 ## Product overview
 
 | | |
 |---|---|
-| Target users | Third- and fourth-year IT / Software Engineering students in Vietnam looking for an internship |
-| Persona | Minh, 21: searches in 2–5 minute mobile sessions, one-handed, on unstable campus Wi-Fi; applies to several companies and loses track of them ([persona](docs/lab2-handoff/ux/persona.md)) |
+| Topic | Internship finder and application tracker for IT students (approved Lab 2 topic) |
+| Persona | Minh, 21, third-year Software Engineering student: searches in 2–5 minute mobile sessions, one-handed, on unstable campus Wi-Fi; applies to several companies and loses track of them ([persona](docs/lab2-handoff/ux/persona.md)) |
 | Problem | Listings are scattered across many sources, and students lose track of where they have applied |
 | Success criteria | Find an internship by skill and work mode in **< 30 s**; submit an application from Internship Detail in **< 2 min** with a stored CV |
+| Data | **SerpAPI — Google Jobs** (`engine=google_jobs`) for live internship listings; **Cloud Firestore** for each student's own data (profile, saved, applications, notifications, report metadata) |
 
-### Core user flows
+### User flows
 
-One journey in three flows: **search → apply (now, or later via Saved) → track**. Revised in Lab 3 (DC-08): Save is now a sub-flow of Apply, and Apply has a new CV match check (DC-09).
+One journey in three flows: **search → apply (now, or later via Saved) → track**. Revised in Lab 3: Save is a sub-flow of Apply (DC-08), and Apply has a CV match check (DC-09).
 
-| Flow | Path | Branches |
+| Flow | Path | Alternative / error paths |
 |---|---|---|
-| **1. Search Internship** | Home → Search → Filters → Results → Internship Detail | No results → Clear filters, results/detail load error + Retry |
-| **2. Apply Internship** | Internship Detail → Apply → Application Form → **CV Match Check** → Review → Success | CV upload error + Retry, empty profile, already applied (no duplicates), CV gaps → suggestions → improve or continue; **2e Save for later**: Save → Saved Internships → open → Apply (unsave + Undo, empty list, save error + Retry) |
-| **3. Track Application** | Applications → Application Detail → status | No applications, list/detail load errors, withdraw + Undo |
+| **1. Search** | Home → Search → Filters → Results → Internship Detail | No results → Clear filters; results / detail load error → Retry |
+| **2. Apply** | Internship Detail → Apply → Application Form → **CV Match Check** → Review → Success | CV upload error + Retry; empty profile; already applied; CV gaps → suggestions → improve or continue; **2e Save for later** → Saved → open → Apply (unsave + Undo, empty list, save error + Retry) |
+| **3. Track** | Applications → Application Detail → status | No applications; list / detail load errors; withdraw + Undo |
 
-Details: [`user-flow.md`](docs/lab2-handoff/ux/user-flow.md) · screen content and states: [`screen-spec.md`](docs/lab2-handoff/design/screen-spec.md).
+Details: [`user-flow.md`](docs/lab2-handoff/ux/user-flow.md) · screens: [`screen-spec.md`](docs/lab2-handoff/design/screen-spec.md) · route / widget / data source per screen: [`design-traceability.md`](docs/design-traceability.md).
 
 ### Screens
 
-Bottom navigation (fixed): **Home · Search · Saved · Applications · Profile**.
+Bottom navigation (fixed): **Home · Search · Saved · Applications · Profile**. Lab 2 screens: Home, Search, Search Results, Internship Detail, Saved Internships, Application Form, Application Review, Application Success, My Applications, Application Detail, Profile. Lab 3 additions: Login, CV Match Check, and a **Firebase demo area on Profile** (Notification Center, report export and upload, Remote Config values, Crashlytics test actions).
 
-| Lab 2 screens | Lab 3 additions (not designed in Lab 2) |
+## Tech stack and pinned versions
+
+| Component | Version |
 |---|---|
-| Home, Search, Search Results, Internship Detail, Saved Internships, Application Form, Application Review, Application Success, My Applications, Application Detail, Profile | CV Match Check (Apply step, DC-09), Login (Google Sign-In), Notification Center, PDF report export, Remote Config display, Crashlytics test controls (see [handoff gaps](docs/handoff-gaps.md)) |
+| Flutter / Dart | **3.47.3** stable / **3.13.3** |
+| `flutter_riverpod` (state + DI) | 3.4.3 |
+| `go_router` | 18.1.1 |
+| `firebase_core` / `firebase_auth` / `cloud_firestore` | 5.0.0 / 7.0.0 / 7.0.0 |
+| `firebase_analytics` / `firebase_crashlytics` / `firebase_remote_config` | 13.0.0 / 6.0.0 / 7.0.0 |
+| `google_sign_in` | 7.2.0 |
+| `http` (SerpAPI) | 1.6.0 |
+| `material_symbols_icons` | 4.2960.0 |
+| Inter font | 4.1 (bundled, OFL) |
+| Google ARTEMIS | commit `351ca8422f7b5b54e80a9c1ce03a222e02415b6b` (2026-09-29) |
+| E2E Python deps | Python ≥ 3.12, `artemis-client` @ that commit, pytest 9.1.1, pytest-asyncio 1.4.0, pytest-repeat 0.9.4, python-dotenv 1.2.4 |
+| Platforms | Android (min SDK 24, target 36), the graded platform · iOS 15.0 (CocoaPods) also builds |
 
-### Tech stack
-
-| Concern | Choice |
-|---|---|
-| Framework | Flutter 3.47 / Dart 3.13, Material 3 |
-| Architecture | MVVM (View → ViewModel → Service) |
-| State management and DI | Riverpod 3 (`flutter_riverpod`) |
-| Navigation | `go_router` (stateful shell for the 5 tabs, auth redirect) |
-| Backend | Firebase: Auth (Google Sign-In), Cloud Firestore, Analytics, Crashlytics, Remote Config; FCM planned |
-| Design | Inter (bundled), Material Symbols Rounded (`material_symbols_icons`), tokens from Lab 2 `DESIGN.md` |
-| Platforms | Android (min SDK 24) and iOS (15.0, CocoaPods) |
-
-## Repository structure
-
-```
-lib/
-  app/            bootstrap, app, router (auth guard), bottom-nav shell
-  theme/          design tokens → ThemeData
-  core/           errors, utils (FirestoreReader, Validators), shared widgets (Figma components)
-  models/         shared domain models
-  services/       Auth, Analytics, Crashlytics, Remote Config (+ Riverpod providers)
-  features/       auth, home, internships (search), saved, applications, profile
-firebase/         firestore.rules, firestore.indexes.json
-test/             unit, ViewModel, widget and routing tests
-mobai_tests/      the 10 end-to-end scenarios
-docs/             architecture, design system, setup, plans, logs, Lab 2 snapshot
-assets/fonts/     Inter (OFL)
-```
-
-More: [`docs/architecture.md`](docs/architecture.md) · coding rules for contributors and AI agents: [`AGENTS.md`](AGENTS.md).
+Exact versions are pinned in [`pubspec.yaml`](pubspec.yaml) and [`e2e_test/pyproject.toml`](e2e_test/pyproject.toml). **Everything runs on free plans** (Firebase Spark, SerpAPI free, Gemini API free tier for ARTEMIS); see [handoff-gaps G-26](docs/handoff-gaps.md#g-26-zero-cost-plan).
 
 ## Getting started
 
 ### Prerequisites
 
-- Flutter **3.47+** (stable) with Dart 3.13+. Check with `flutter doctor`.
-- **Android:** Android SDK with `cmdline-tools`, platform 36, JDK 17, and an emulator or device.
-- **iOS (macOS only):** Xcode and CocoaPods.
-- For Firebase: Node.js LTS, `firebase-tools`, `flutterfire_cli` (see setup).
+- Flutter **3.47.3** (stable). Check with `flutter doctor`.
+- **Android:** Android SDK with `cmdline-tools`, platform 36, JDK 17, and a device or emulator.
+- Firebase: Node.js LTS, `firebase-tools`, `flutterfire_cli`.
+- A free SerpAPI key.
+- E2E tests: Python 3.12+, `uv`, ADB, a Google ARTEMIS checkout.
 
-### Install
+### Install and configure
 
 ```bash
-git clone <repo-url> && cd <repo>
+git clone https://github.com/lamtailoi2/prm323_lab3.git && cd prm323_lab3
 flutter pub get
+cp .env.example .env          # set SERPAPI_KEY (Flutter reads it at build time only)
 ```
 
-### Configure Firebase (required to get past the setup screen)
+Then follow [`docs/firebase-setup.md`](docs/firebase-setup.md):
 
-The repo ships **without** Firebase config. Follow [`docs/firebase-setup.md`](docs/firebase-setup.md):
+1. **Firebase:** create the project, run `flutterfire configure` (Android `com.group3.internly`), and commit `android/app/google-services.json`.
+2. **Google Sign-In:** enable the Google provider and add each developer's **SHA-1 and SHA-256**.
+3. **Firestore and Storage rules:** `firebase deploy --only firestore:rules,firestore:indexes,storage`.
+4. **Storage:** choose the zero-cost option, Firebase Storage on Blaze within the no-cost quota or Cloudinary free ([§10](docs/firebase-setup.md#10-file-storage-cv-upload-pdf-report)).
+5. **Crashlytics** enabled; **Remote Config** parameters created from [`firebase/remote-config-defaults.json`](firebase/remote-config-defaults.json).
 
-1. Create a Firebase project and run `flutterfire configure` (Android `com.group3.internly`, iOS `com.group3.internly`).
-2. **Google Sign-In:** enable the Google provider, add each developer's **SHA-1 and SHA-256** (Android), and add the `REVERSED_CLIENT_ID` URL scheme (iOS).
-3. Create Firestore and deploy rules: `firebase deploy --only firestore:rules,firestore:indexes`.
-4. Enable Crashlytics; create the Remote Config parameters.
-5. Storage for CV and PDF uploads (Cloudinary or another provider) is an open decision: [`firebase-setup.md` §10](docs/firebase-setup.md#10-file-storage-cv-upload-pdf-report), [G-12](docs/handoff-gaps.md#g-12-file-storage-and-privacy).
-
-Without configuration the app starts on "Firebase is not configured". That is intended: it never fakes a connection.
+Without Firebase configuration the app starts on "Firebase is not configured". This is intended: it never fakes a connection.
 
 ### Run
 
 ```bash
-flutter devices                 # list emulators / devices
-flutter run -d <android-device-id>
-flutter run -d <ios-simulator-id>
-flutter build apk --debug       # Android build
-flutter build ios --simulator   # iOS simulator build (uses CocoaPods)
+flutter devices
+flutter run -d <android-device-id> --dart-define-from-file=.env
+flutter build apk --debug --dart-define-from-file=.env
 ```
 
-### Test and quality gate
+### Tests
 
 ```bash
-dart format lib test            # format
-flutter analyze                 # must report "No issues found!"
-flutter test                    # unit, ViewModel, widget and routing tests
-flutter test --coverage         # optional coverage report in coverage/
+dart format lib test        # format
+flutter analyze             # must print "No issues found!"
+flutter test                # unit, ViewModel, widget and routing tests
+
+# End-to-end (Google ARTEMIS, Android device, see docs/test-plan.md)
+cd e2e_test && cp .env.example .env && uv sync
+uv run pytest --count 3 -v  # every test 3 times
 ```
 
-End-to-end scenarios: [`mobai_tests/README.md`](mobai_tests/README.md). Latest results: [`docs/test-report.md`](docs/test-report.md).
+Results: [`docs/test-report.md`](docs/test-report.md) (Flutter) and [`docs/test-plan.md`](docs/test-plan.md) §4 (ARTEMIS).
+
+## Deliverables map
+
+| Lab 3 deliverable | Location |
+|---|---|
+| App code (MVVM layers) | [`lib/`](lib/) |
+| Design traceability | [`docs/design-traceability.md`](docs/design-traceability.md) |
+| Architecture | [`docs/architecture.md`](docs/architecture.md) |
+| Analytics event plan | [`docs/analytics-plan.md`](docs/analytics-plan.md) |
+| Test plan + ARTEMIS suite | [`docs/test-plan.md`](docs/test-plan.md), [`e2e_test/`](e2e_test/) |
+| AI code review record | [`docs/code-review.md`](docs/code-review.md) |
+| Firebase config and rules | [`firebase/`](firebase/) (`firestore.rules`, `storage.rules`, `remote-config-defaults.json`), `android/app/google-services.json` |
+| Evidence (console, DebugView, Crashlytics, ARTEMIS) | [`evidence/`](evidence/) |
+| Final report, slides | Submitted separately (not in the repository) |
+| Demo video | Link at the top of this README |
 
 ## Feature ownership
-
-Shared code (`theme/`, `core/`, `app/`, `services/`) is in place. Each feature owner builds their screens on top of it, on a feature branch, through a pull request:
 
 | Feature | Screens | Folder |
 |---|---|---|
@@ -126,33 +127,36 @@ Shared code (`theme/`, `core/`, `app/`, `services/`) is in place. Each feature o
 | Saved | Saved Internships | `features/saved/` |
 | Apply | Application Form, CV Match Check, Review, Success | `features/applications/` |
 | Track | My Applications, Application Detail | `features/applications/` |
-| Profile | Profile, Remote Config display, diagnostics | `features/profile/` |
+| Profile | Profile, Firebase demo area | `features/profile/` |
 | Auth | Login (final design) | `features/auth/` |
 | Notifications | Notification Center, FCM | `features/notifications/` |
 | Report | PDF export and upload | `features/report_export/` |
 
-## Documentation
+Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
+
+## Other documentation
 
 | Document | Purpose |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | Coding conventions and rules (people and AI agents) |
-| [`docs/architecture.md`](docs/architecture.md) | Layers, DI, navigation, data ownership |
 | [`docs/lab2-handoff/design/design-system.md`](docs/lab2-handoff/design/design-system.md) | Tokens and components, Figma ↔ code cross-check, contrast results |
-| [`docs/firebase-setup.md`](docs/firebase-setup.md) | Firebase, Google Sign-In, Firestore, FCM, storage setup |
-| [`docs/handoff-gaps.md`](docs/handoff-gaps.md) | Missing / conflicting requirements and open decisions |
-| [`docs/design-change-log.md`](docs/design-change-log.md) | Every UI deviation from Lab 2 and why |
-| [`docs/analytics-plan.md`](docs/analytics-plan.md) | Analytics events and privacy rules |
-| [`docs/fidelity-check.md`](docs/fidelity-check.md) | Screen-by-screen comparison with Figma |
-| [`docs/test-report.md`](docs/test-report.md) | Test runs and results |
-| [`docs/code-review.md`](docs/code-review.md) | AI-assisted code review log |
-| [`docs/implementation-ai-log.md`](docs/implementation-ai-log.md) | Prompts, outputs, verification and decisions |
-| [`docs/lab2-handoff/`](docs/lab2-handoff/README.md) | Read-only snapshot of the Lab 2 design |
+| [`docs/firebase-setup.md`](docs/firebase-setup.md) | Firebase, Google Sign-In, Storage, Remote Config, SerpAPI key |
+| [`docs/handoff-gaps.md`](docs/handoff-gaps.md) | Missing / conflicting requirements and decisions |
+| [`docs/implementation-ai-log.md`](docs/implementation-ai-log.md) | Prompts, outputs, verification and decisions for AI-assisted work |
+
+## AI tools used
+
+| Tool | Purpose |
+|---|---|
+| Google Stitch | Lab 2 screen generation (design phase) |
+| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements ([log](docs/implementation-ai-log.md)) |
+| Google ARTEMIS + Gemini (free tier) | End-to-end tests and the exploratory session |
+| AI code review tool | _to be added_ ([`code-review.md`](docs/code-review.md)) |
 
 ## Known limitations
 
-- Feature screens are placeholders; the Login screen is an interim design (DC-01).
-- Firebase is not configured in the repository; Google Sign-In needs per-developer SHA fingerprints.
-- The Android build was not verified on the machine that initialized the repo (incomplete Android SDK); see [`test-report.md`](docs/test-report.md).
-- iOS uses CocoaPods because Swift Package Manager cannot resolve Firebase iOS SDK 13 together with GoogleSignIn-iOS 9 ([G-20](docs/handoff-gaps.md#g-20-ios-dependency-resolution)).
-- Open product decisions (main CRUD entity, storage provider, notifications source, Remote Config parameters) are tracked in [`handoff-gaps.md`](docs/handoff-gaps.md).
-- Firestore rules only cover the shared foundation; each feature adds validated rules for its collections.
+- Feature screens are placeholders; the Login screen is interim (DC-01).
+- Firebase is not configured in the repository yet; Google Sign-In needs per-developer SHA fingerprints.
+- The SerpAPI key is compiled into the APK and the free plan has a small monthly quota (G-25).
+- The Android build was not verified on the machine that initialized the repo (incomplete Android SDK); the iOS simulator build was ([`test-report.md`](docs/test-report.md)).
+- iOS uses CocoaPods because Swift Package Manager cannot resolve Firebase iOS SDK 13 with GoogleSignIn-iOS 9 (G-20).
+- Open decisions are tracked in [`handoff-gaps.md`](docs/handoff-gaps.md).

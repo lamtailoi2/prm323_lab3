@@ -22,6 +22,6 @@ These files are copied unchanged from the Lab 2 repository so this repository is
 
 Not copied: the Lab 2 AI design log and its intermediate screenshots (Lab 2 deliverables, available in the source repository).
 
-**Do not edit the Lab 2 files** except through a design-change-log entry. Files maintained in Lab 3: `design/design-system.md`, and `ux/user-flow.md` and `design/screen-spec.md` since DC-08 / DC-09. `lab2-README.md` still shows the original Lab 2 flows. Lab 3 decisions and deviations go to [`../design-change-log.md`](../design-change-log.md). Missing or conflicting requirements go to [`../handoff-gaps.md`](../handoff-gaps.md). The consolidated Flutter reference is [`design/design-system.md`](design/design-system.md).
+**Do not edit the Lab 2 files** except through a deviation entry in `design-traceability.md`. Files maintained in Lab 3: `design/design-system.md`, and `ux/user-flow.md` and `design/screen-spec.md` since DC-08 / DC-09. `lab2-README.md` still shows the original Lab 2 flows. Lab 3 decisions and deviations go to [`../design-traceability.md`](../design-traceability.md) §4. Missing or conflicting requirements go to [`../handoff-gaps.md`](../handoff-gaps.md). The consolidated Flutter reference is [`design/design-system.md`](design/design-system.md).
 
 Links inside the copied files that point to `ai/…` resolve only in the source repository.

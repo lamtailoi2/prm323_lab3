@@ -13,27 +13,29 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-01 | `handoff/flutter-handoff.md` does not exist | Team | Assumed |
 | G-02 | Product name: "Internship Finder" (Lab 2) vs "Internly" (Lab 3) | Team | Assumed |
 | G-03 | No Login screen in Lab 2 | Auth owner | Assumed (interim UI) |
-| G-04 | No Notification Center screen in Lab 2 | Notifications owner | Open |
-| G-05 | No PDF report export in Lab 2 | Report owner | Open |
-| G-06 | No place in the UI for Remote Config values and Crashlytics test controls | Profile owner | Open |
+| G-04 | No Notification Center screen in Lab 2 | Notifications owner | Assumed (Firebase demo area on Profile, per Lab 3 §3) |
+| G-05 | No PDF report export in Lab 2 | Report owner | Assumed (Firebase demo area on Profile, per Lab 3 §3) |
+| G-06 | No place in the UI for Remote Config values and Crashlytics test controls | Profile owner | Resolved (Firebase demo area on Profile, Lab 3 §3) |
 | G-07 | Component values not documented (estimated from screenshots) | Design owner | Open (verify in Figma) |
-| G-08 | Main entity for the Lab 3 CRUD requirement not defined | Team + lecturer | Open (blocks MobAI scenario 6) |
-| G-09 | Lab 3 specification document not in the repository | Team | Open |
+| G-08 | Main entity for a CRUD requirement not defined | Team | Resolved (not required by the Lab 3 handout) |
+| G-09 | Lab 3 specification document not in the repository | Team | Resolved (handout received 2026-10-21) |
 | G-10 | Nobody can change an application's status (no employer side) | Applications owner | Open |
-| G-11 | Remote Config parameters not chosen | Profile owner | Open |
-| G-12 | CV / PDF storage provider and privacy of uploaded files | Team | Open |
-| G-13 | Notification data source (who sends FCM, where history is stored) | Notifications owner | Open |
-| G-14 | No seed / demo data for internship listings | Search owner | Open |
+| G-11 | Remote Config parameters not chosen | Profile owner | Assumed (2 defaults in `firebase/remote-config-defaults.json`) |
+| G-12 | CV / PDF storage provider and privacy of uploaded files | Team | Open: $0 option chosen by the user (see G-26) |
+| G-13 | Notification data source (who sends FCM, where history is stored) | Notifications owner | Assumed (console sends; client stores history) |
+| G-14 | No seed / demo data for internship listings | Search owner | Resolved (SerpAPI, no seeding) |
 | G-15 | iOS added to scope; Lab 2 designed for Android only | Team | Resolved (Material on both) |
 | G-16 | Figma pages available only as screenshots; 19 of 31 components not covered | Design owner | Open |
 | G-17 | Allowance format: `$1,200/month` (Figma) vs VND per month (Stitch / AI log) | Home / Search owner | Open |
 | G-18 | No "Withdrawn" status badge specimen | Applications owner | Open |
 | G-19 | Two Figma color pairs fail WCAG AA contrast | Design owner | Open (proposals DC-04, DC-05) |
 | G-20 | iOS: SPM cannot resolve Firebase 13 + GoogleSignIn 9 | Tech lead | Resolved (CocoaPods; see note) |
-| G-21 | App ID / bundle ID and repository naming not confirmed | Team + lecturer | Assumed |
-| G-22 | Keyword search strategy (Firestore has no full-text search) | Search owner | Open |
+| G-21 | App ID / bundle ID and repository naming not confirmed | Team | Resolved (keep `prm323_lab3`, user decision) |
+| G-22 | Keyword search strategy (Firestore has no full-text search) | Search owner | Resolved (SerpAPI query) |
 | G-23 | "Recommended for you" logic not specified | Home owner | Open |
 | G-24 | CV Match Check (new Apply step): matching rules, data source, Figma frame | Apply owner + design owner | Open |
+| G-25 | Consequences of using SerpAPI (Google Jobs) as the data source | Search + Apply owners | Open |
+| G-26 | Zero-cost constraint: every service and tool must run at $0 | Team | Resolved (plan below) |
 
 ---
 
@@ -79,7 +81,8 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 | Shadow of plain `AlertDialog` / bottom sheet | Material elevation | use `AppDialog` for exact `elevation/2` |
 
 ### G-08: Main entity for CRUD
-- **Found:** Lab 3 requires create / read / update / delete for "the main entity" and MobAI scenario 6 ("create, edit and delete the main entity"). Lab 2 flows only **create** an application (submit) and **withdraw** it (with Undo). There is no edit or delete.
+- **Resolved (2026-10-21):** this requirement came from the initialization brief, not from the Lab 3 handout, which does not require CRUD of a main entity. The application record still gets create / update / delete naturally if students track their own statuses (G-25 point 6). The notes below are kept for history.
+- **Found:** the initialization brief required create / read / update / delete for "the main entity". Lab 2 flows only **create** an application (submit) and **withdraw** it (with Undo).
 - **Options:**
   1. *Application*: create = submit; update = withdraw/undo, or edit the short introduction while status is Submitted (needs design); delete = remove a withdrawn application (needs design).
   2. *Profile*: create on first sign-in, edit in Profile, delete = remove CV or reset profile.
@@ -87,8 +90,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 - **Needs:** team decision checked against the Lab 3 specification (G-09). Any new UI goes to the change log.
 
 ### G-09: Lab 3 specification
-- **Found:** only the task brief is available; the official Lab 3 assignment (grading rubric, naming rules, the "main entity" definition) is not in the repository.
-- **Action:** add it (or a link) to `docs/` and re-check G-08, G-11 and G-21 against it.
+- **Resolved (2026-10-21):** the handout "PRM393 — Lab 3: Cloud-Enabled Mobile App (Firebase, Google ARTEMIS, AI Code Review)" was received. Its required files are `docs/design-traceability.md`, `architecture.md`, `analytics-plan.md`, `test-plan.md`, `code-review.md`, `e2e_test/`, `firebase/storage.rules`, `firebase/remote-config-defaults.json` and `evidence/`. User decisions on it: keep the repository name, submit the report and slides separately, video link in README later, SerpAPI data (G-25), zero cost (G-26), keep the new flows (DC-08/09), ARTEMIS. It names E2E testing with **Google ARTEMIS** (the PDF footer says "Patrol"; the body and rubric say ARTEMIS, which we use).
 
 ### G-10: Application status changes
 - **Found:** statuses Under review, Interview, Accepted and Rejected exist, but Lab 2 has no employer or admin side to set them.
@@ -97,9 +99,11 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 
 ### G-11: Remote Config parameters
 - **Required:** at least two parameters, with in-app defaults, that change real behavior, and their current values displayed (G-06).
-- **Proposal (not implemented):** `home_recommended_limit` (int, number of cards in "Recommended for you") and `application_withdraw_enabled` (bool; screen-spec says "Withdraw application if allowed"). Defaults belong in `RemoteConfigDefaults.values`.
+- **Assumed:** `home_recommended_limit` (number, default 5: cards in "Recommended for you") and `cv_match_enabled` (boolean, default true: feature flag for the CV Match Check step), matching the handout's examples ("max items", "a feature flag for a screen"). Defaults live in `firebase/remote-config-defaults.json`; key constants in `RemoteConfigKeys`. The owning features must use them so the change is visible.
 
 ### G-12: File storage and privacy
+- **Lab 3 requires Cloud Storage:** files under a per-user path (`reports/{uid}/…`), progress and URL shown, and `storage.rules` that restrict each user to their own folder (`firebase/storage.rules` is ready). Cloudinary would only be an equivalent if the lecturer approves it.
+- **Cost:** by Firebase's announcement, new Storage buckets need the **Blaze** plan. Blaze costs $0 within the no-cost quota, but it requires a billing account (card). The user wants to spend nothing, so the choice is open: **(a)** Firebase Storage on Blaze with a budget alert (full marks, card on file, $0 in practice), or **(b)** Cloudinary free plan (no card; per-user access cannot be enforced, so part of the Storage criterion is at risk). See G-26.
 - **Found:** Flow 2a (Lab 2 Flow 1a) uploads a CV (PDF). Lab 3 requires uploading a PDF report and storing its URL, file name, owner UID and timestamp. New Firebase Storage buckets need the Blaze plan; the brief suggests Cloudinary.
 - **Risk:** Cloudinary *unsigned* uploads produce publicly reachable URLs. CVs and reports contain personal data (name, phone, email).
 - **Needed:** choose the provider. If Cloudinary: a dedicated unsigned preset restricted to PDF, a folder per purpose, client-side size limit (verify which server-side limits the preset can enforce), no API secret in the app, and a documented privacy trade-off. Alternatively, signed uploads via a backend.
@@ -109,6 +113,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 - **Options:** the client stores received messages in `users/{uid}/notifications` (foreground, opened-app and background handlers), or a server writes them. Also decide where FCM tokens are stored.
 
 ### G-14: Seed data
+- **Resolved:** listings come from SerpAPI Google Jobs at request time (user decision, 2026-10-21); nothing is seeded. The notes below are kept for history.
 - **Found:** listings are read-only for clients, so the app cannot create them.
 - **Needed:** a seeding path (Firebase console import, or a local Admin SDK script run with `gcloud auth application-default login`, never a committed service-account key) and a demo data set. Per the Lab 2 AI log, demo listings must not be presented as real, verified vacancies.
 
@@ -138,9 +143,10 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 
 ### G-21: Identifiers and repository naming
 - **Assumption:** Android `applicationId` and iOS bundle ID are `com.group3.internly`. Change them **before** registering the apps in Firebase if the team prefers another ID.
-- **Open:** the brief says "PRM393 Lab 3", while the Lab 2 repository and folders use "prm323". Check the lecturer's required repository name before creating the GitHub repository.
+- **Resolved (user decision):** the repository stays `lamtailoi2/prm323_lab3`, although the handout asks for `PRM393_Lab03_<StudentID>`. The report and slides are submitted separately (not in the repository).
 
 ### G-22: Keyword search
+- **Resolved:** SerpAPI performs the search (`q` with the keyword plus "internship", `location`, work-from-home filter). Check the current SerpAPI Google Jobs parameters when implementing.
 - **Found:** Search matches "internships, companies, or skills"; Firestore has no full-text search.
 - **Options:** query by filters (skills `array-contains-any`, work mode, city) and filter keywords client-side; store normalized `searchKeywords` arrays; or use an external search service (out of scope).
 
@@ -156,3 +162,29 @@ Values below are **estimated from the Figma screenshots** or left at Material de
   2. **CV content.** Whether to read text from the CV PDF (on-device extraction) or rely on declared skills only. Reading the PDF adds a dependency and accuracy limits.
   3. **AI-generated suggestions.** If an LLM is used, it must run behind a backend you control: no API keys in the app (AGENTS.md rule 8), and the user must be told that CV text leaves the device.
   4. **Design.** Figma frame for the screen (states: checking, all matched, gaps, failed), built from existing components (Match Card, Skill Tag, Bullet Item, Info Banner).
+
+### G-25: SerpAPI (Google Jobs) as the data source
+- **Decision (user, 2026-10-21):** internship listings come from SerpAPI's `google_jobs` engine. Lab 3 requires real data and no mocks; `SerpApiClient` is ready in `lib/services/`.
+- **Consequences to handle in the features:**
+  1. **API key in the app.** The key comes from `.env` through `--dart-define-from-file` and is compiled into the APK, so anyone with the APK can extract it. Use a free-plan key only (no card), never commit `.env`, and rotate the key after grading. A proxy would need a paid backend.
+  2. **Quota.** The free plan has a small monthly search quota (check the SerpAPI dashboard). Cache results for a short time per query, avoid searching on every keystroke, and keep ARTEMIS runs within the quota (15 tests × 3 runs). Record the cache as a design decision (reason: API limit). The client maps HTTP 429 to `AppErrorKind.rateLimited` with a visible message.
+  3. **Coverage in Vietnam.** Google Jobs coverage varies by country. Run a test query early (e.g. `q=intern`, `location=Ho Chi Minh City, Vietnam`), and widen the location if results are thin.
+  4. **IDs.** `job_id` is long and may contain `/`. Derive a short URL-safe key for Firestore document IDs, routes and analytics (≤ 100 characters).
+  5. **Listings expire.** Saved items and applications store a snapshot of the fields they display.
+  6. **Applying is external.** Google Jobs gives `apply_options` links to employer sites; the app cannot submit to the employer. Proposal: Flow 2 ends by recording the application in Firestore (the student's own tracking record) and offering the employer's apply link. Statuses (Under review, Interview, …) are then **updated by the student**, which also gives the main entity its update and delete (G-08, G-10). Record the UI change as DC-10.
+  7. **Missing fields.** Salary, company size, logo and office location are often absent: show "Not disclosed" or hide the row; the Map Preview Card cannot be built (DC-10).
+  8. **CV Match Check input:** `job_highlights` (Qualifications) and the description text vs the profile skills (G-24).
+
+### G-26: Zero-cost plan
+The user wants **no spending at all**, including AI models. Every requirement can be met at $0:
+
+| Need | $0 option | Limits / notes |
+|---|---|---|
+| Firebase Auth, Firestore, FCM, Analytics, Crashlytics, Remote Config | Spark (free) plan | Free quotas are far above lab usage |
+| Cloud Storage | See G-12: Blaze at $0 within quota (card required) **or** Cloudinary free (no card) | Decision pending |
+| Internship data | SerpAPI free plan (no card) | Small monthly quota (G-25) |
+| ARTEMIS | Open source (Apache 2.0) | — |
+| ARTEMIS model | Gemini API key from Google AI Studio **without enabling billing** (free tier). ARTEMIS's default config already uses Gemini models | Rate limits (slower runs); free-tier prompts may be used by Google to improve its products, so use only test data. If a configured model is not available on the free tier, switch that node to a free Flash / Flash-Lite model in `config/artemis.jsonc`. A local Ollama preset exists but is weaker (the Pro explorer expects Gemini models) |
+| Android device | Own phone or the Android Emulator | — |
+| AI code review | A free tool such as Gemini Code Assist on GitHub (free for individuals), or CodeRabbit / SonarCloud if the repository is made public | Check each tool's current free terms before use |
+| iOS push (APNs) | Not needed: Lab 3 grades Android only | Apple Developer Program would cost money; skip iOS push |

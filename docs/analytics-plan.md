@@ -1,64 +1,51 @@
-# Analytics plan
+# Analytics event plan
 
-Google Analytics for Firebase through `AnalyticsService` (`lib/services/analytics_service.dart`). Views never log events: ViewModels call the service after the action succeeds (or fails, where noted).
+Google Analytics for Firebase through `AnalyticsService` (`lib/services/analytics_service.dart`). The plan follows Lab 3 Appendix A: every event has typed parameters, the product question it answers, and the Lab 2 flow step it measures. Read in funnel order, the events show **where students leave each flow** and **how close the app comes to the Lab 2 success criterion** (find an internship in < 30 s; apply in < 2 min).
 
 ## Rules
 
-1. **Names:** `snake_case`, starting with a letter, at most 40 characters. No reserved prefixes (`firebase_`, `google_`, `ga_`) and no reserved names (e.g. `screen_view` must go through `logScreenView`, and `notification_open`, `app_remove`, `error` are reserved). `AnalyticsNames.isValidEventName` asserts this in debug builds.
-2. **Parameters:** at most 25 per event; names up to 40 characters; string values up to 100 characters. Use IDs and enums, not free text.
-3. **Privacy:** never log passwords, tokens, email, name, phone, CV file names, cover messages or raw search text containing personal data. The user ID is set to the pseudonymous Firebase UID only (done in `bootstrap.dart`).
-4. **Reliability:** analytics failures never block a flow (`FirebaseAnalyticsService` swallows errors).
-5. **Verify** every new event in DebugView (see `firebase-setup.md` §7) and record it in `test-report.md`.
+1. **Names:** Firebase recommended names where one fits (`login`, `search`, `screen_view`); otherwise `snake_case`, at most 40 characters, starting with a letter, with no reserved prefix (`firebase_`, `google_`, `ga_`) and no reserved name (`notification_open`, `error`, `app_remove`, …). `AnalyticsNames.isValidEventName` asserts this in debug builds.
+2. **Parameters:** at most 25 per event; string values ≤ 100 characters (truncate titles). Use IDs and enums, never free text typed by the user except the search term.
+3. **No personal data:** no email, name, phone, CV file name, cover message or token. The user ID is the pseudonymous Firebase UID, set after sign-in (`bootstrap.dart`).
+4. **`internship_id`:** a short stable key derived from the SerpAPI `job_id` (the raw `job_id` is longer than 100 characters; see G-25).
+5. **Who logs:** ViewModels, after the action succeeds (or fails, where stated). Views never log.
+6. **Evidence:** a DebugView screenshot for every event in `evidence/analytics/` (Lab 3 §6).
 
 ## Events
 
 Status: **Implemented** (in code and tested) · **Planned** (owner implements with the feature).
 
-### Session and navigation
+| # | Event | Trigger | Parameters (type) | Question it answers | Flow step | Status |
+|---|---|---|---|---|---|---|
+| 1 | `login` | Google sign-in succeeds | `method` (string, `google`) | How many students return each week? | Sign-in | Implemented |
+| 2 | `logout` | Student signs out (logged before sign-out) | — | How long do sessions last before sign-out? | Sign-out | Implemented |
+| 3 | `screen_view` | Every named route is shown | `screen_name` (string), `screen_class` (string) | Which screens do students reach in each flow, and where do they stop? | All flows | Implemented (`router.dart`) |
+| 4 | `search` | Search results load | `search_term` (string, ≤ 100), `result_count` (int), `elapsed_sec` (int, Home opened → results) | Which skills are searched, which return nothing, and do students reach results in < 30 s? | Flow 1 | Planned |
+| 5 | `search_filter_apply` | Filter sheet "Show results" | `work_mode` (string), `location` (string, city), `skill_count` (int), `result_count` (int) | Which filters do students use, and which narrow results to zero? | Flow 1 | Planned |
+| 6 | `view_internship` | Internship Detail opens | `internship_id` (string), `internship_title` (string), `company_name` (string), `source` (string: `home` / `search` / `saved`) | Which internships are opened most after a search? | Flow 1 end / Flow 2 start | Planned |
+| 7 | `internship_save` | Save succeeds | `internship_id` (string), `source` (string) | Which saved internships later turn into applications? | Flow 2e | Planned |
+| 8 | `apply_start` | `Apply now` tapped | `internship_id` (string), `source` (string: `detail` / `saved`) | How many detail views lead to starting an application? | Flow 2 | Planned |
+| 9 | `cv_match_check` | CV Match Check finishes | `internship_id` (string), `result` (string: `all_matched` / `gaps` / `failed`), `matched_count` (int), `missing_count` (int) | How often do CVs miss requirements, and do gaps stop students from submitting? | Flow 2d | Planned |
+| 10 | `application_create` | Application submitted | `internship_id` (string), `cv_source` (string: `profile` / `uploaded`), `duration_sec` (int, `apply_start` → submit) | How many started applications are submitted, and in under 2 minutes? | Flow 2 end | Planned |
+| 11 | `view_application` | Application Detail opens | `internship_id` (string), `status` (string) | Which statuses do students check most often? | Flow 3 end | Planned |
+| 12 | `application_update` | Student changes an application (e.g. status, withdraw / undo) | `internship_id` (string), `from_status` (string), `to_status` (string) | How do applications progress over time? | Flow 3 (main entity: update) | Planned (G-08) |
+| 13 | `application_delete` | Student deletes an application | `internship_id` (string), `status` (string) | Which applications do students give up on? | Flow 3 (main entity: delete) | Planned (G-08) |
+| 14 | `export_report` | PDF generated **and** uploaded | `report_type` (string), `item_count` (int), `file_size_kb` (int) | Which students export, and how many applications does a report hold? | Export and upload | Planned |
+| 15 | `notification_center_open` | Notification Center opens | `unread_count` (int) | Do students read the notifications they receive? | FCM | Planned |
 
-| Event | When | Parameters | Status |
-|---|---|---|---|
-| `login` (GA4 recommended) | Google sign-in succeeded | `method`: `google` | Implemented (`LoginViewModel`) |
-| `logout` | User signs out (logged before sign-out) | none | Implemented (`SignOutViewModel`) |
-| `screen_view` | Every route change | `screen_name` = the `GoRoute.name` (`home`, `search`, `saved`, `my_applications`, `profile`, `login`, …), `screen_class` = same | Implemented (`router.dart`, automatic for every named route) |
+Coverage required by Lab 3 §6 (≥ 7 events): sign-in (1), sign-out (2), main search / primary action (4, 8, 10), each detail screen (6, 11), export and upload (14).
 
-### Main entity (CRUD)
+## Funnels to build in the console
 
-The entity is not decided yet (handoff-gaps G-08). Use the pattern `<entity>_<action>`. If the entity is **Application**:
-
-| Event | When | Parameters | Status |
-|---|---|---|---|
-| `application_view` | Application Detail loaded | `internship_id`, `status` | Planned |
-| `application_create` | Application submitted (Flow 2 end) | `internship_id`, `cv_source` (`profile` / `uploaded`) | Planned |
-| `application_update` | Application changed (e.g. withdraw / undo) | `internship_id`, `from_status`, `to_status` | Planned |
-| `application_delete` | Application deleted | `internship_id` | Planned |
-
-### Required Lab 2 flow events
-
-| Event | Flow | When | Parameters | Status |
-|---|---|---|---|---|
-| `search` (GA4 recommended) | Flow 1 | Search submitted | `search_term` (trimmed, max 100 chars, skill/keyword only), `result_count` | Planned |
-| `search_filter_apply` | Flow 1 | Filter sheet "Show results" | `work_modes`, `skill_count`, `has_location`, `result_count` | Planned |
-| `apply_start` | Flow 2 | `Apply now` tapped on Internship Detail | `internship_id`, `source` (`search` / `saved` / `home`) | Planned |
-| `cv_upload_failed` | Flow 2a | CV upload failed | `reason` (`network` / `size` / `type` / `unknown`) | Planned |
-| `cv_match_check` | Flow 2d | CV Match Check finished | `internship_id`, `result` (`all_matched` / `gaps` / `failed`), `matched_count`, `missing_count` (counts only, never CV content) | Planned |
-| `cv_match_improve` | Flow 2d | A suggestion action is tapped | `action` (`edit_skills` / `replace_cv` / `edit_introduction`) | Planned |
-| `internship_save` | Flow 2e | Save succeeded | `internship_id`, `source` (`home` / `search_results` / `detail`) | Planned |
-| `internship_unsave` | Flow 2e.1 | Unsave (and `undo` param if undone) | `internship_id`, `undo` (`true` / `false`) | Planned |
-| `application_status_view` | Flow 3 | Status visible on Application Detail | `status` | Planned |
-
-### Other Lab 3 features
-
-| Event | When | Parameters | Status |
-|---|---|---|---|
-| `export_pdf` | PDF report generated **and** uploaded | `report_type`, `page_count`, `size_kb` | Planned |
-| `export_pdf_failed` | Generation or upload failed | `stage` (`generate` / `upload` / `save_metadata`), `reason` | Planned |
-| `notification_center_open` | Notification Center opened | `unread_count` | Planned |
-| `remote_config_view` | Remote Config values displayed | none | Planned |
+| Funnel | Steps | Success criterion |
+|---|---|---|
+| Find (Flow 1) | `screen_view(home)` → `search` → `view_internship` | `search.elapsed_sec` < 30 |
+| Apply (Flow 2) | `view_internship` → `apply_start` → `cv_match_check` → `application_create` | `application_create.duration_sec` < 120 |
+| Save → apply (2e) | `internship_save` → `apply_start(source=saved)` → `application_create` | — |
 
 ## Adding an event
 
-1. Add a row here (status Planned), with parameters that follow the rules above.
-2. Call `ref.read(analyticsServiceProvider).logEvent('<name>', {...})` from the ViewModel.
-3. Assert the call in the ViewModel test with `FakeAnalyticsService` (`test/helpers/fakes.dart`).
-4. Verify in DebugView, then set the status to Implemented.
+1. Add or update its row here, with typed parameters and the question it answers.
+2. Call `ref.read(analyticsServiceProvider).logEvent('<name>', {...})` from the ViewModel (read the provider before any `await`).
+3. Assert it in the ViewModel test with `FakeAnalyticsService`.
+4. Check it in DebugView, save the screenshot in `evidence/analytics/`, and set the status to Implemented.

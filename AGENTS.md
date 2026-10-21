@@ -4,8 +4,9 @@ Instructions for everyone who changes this repository, human or AI agent. Read t
 
 ## Project in brief
 
-- **Internly**: Flutter app (Android + iOS) for IT students to find, save, apply to and track internships. Product overview: [`README.md`](README.md).
-- **Architecture:** MVVM + Riverpod 3 + go_router + Firebase. Details: [`docs/architecture.md`](docs/architecture.md).
+- **Internly**: Flutter app (graded on Android; iOS also builds) for IT students to find, save, apply to and track internships. Product overview: [`README.md`](README.md).
+- **Architecture:** MVVM + Riverpod 3 + go_router; data from **SerpAPI (Google Jobs)** + Firebase. Details: [`docs/architecture.md`](docs/architecture.md).
+- **Constraint:** zero cost. Use only free plans and free tiers (handoff-gaps G-26).
 - **UI source of truth:** the Lab 2 design in [`docs/lab2-handoff/`](docs/lab2-handoff/README.md) and Figma, consolidated in [`docs/lab2-handoff/design/design-system.md`](docs/lab2-handoff/design/design-system.md).
 - **Open decisions:** [`docs/handoff-gaps.md`](docs/handoff-gaps.md). Read the relevant gap before building a feature.
 
@@ -16,23 +17,25 @@ flutter pub get                 # install dependencies
 dart format lib test            # format (CI expects formatted code)
 flutter analyze                 # must print "No issues found!"
 flutter test                    # all tests must pass
-flutter run -d <device>         # run (needs Firebase config, see docs/firebase-setup.md)
+flutter run -d <device> --dart-define-from-file=.env   # needs Firebase config + .env (docs/firebase-setup.md)
 ```
 
 Run `dart format`, `flutter analyze` and `flutter test` before every commit you ask someone to review. Paste the real results in the PR; never claim a result you did not see.
 
 ## Golden rules
 
-1. **Do not invent UI.** Screens, copy, colors, typography, spacing, radii, icons and flows come from Lab 2 / Figma. If something is missing, add it to `docs/handoff-gaps.md`. If you must deviate, log it in `docs/design-change-log.md` **in the same PR**.
+1. **Do not invent UI.** Screens, copy, colors, typography, spacing, radii, icons and flows come from Lab 2 / Figma. If something is missing, add it to `docs/handoff-gaps.md`. If you must deviate (platform constraint, accessibility failure, API limit), record it in `docs/design-traceability.md` §4 **in the same PR** and update Figma; an unrecorded difference is graded as a defect.
 2. **MVVM layering is strict.** View → ViewModel → Service → Firebase. Views never import Firebase or call services. ViewModels never hold a `BuildContext`.
 3. **Riverpod only** for state and dependency injection. No `provider`, Bloc, GetX, `setState` for business state, or singletons accessed from widgets.
 4. **Tokens only.** No `Color(0x…)`, raw font sizes, raw `EdgeInsets` numbers or new radius values in feature code. Use `AppColors`, `Theme.of(context).textTheme`, `AppSpacing`, `AppRadii`, `AppSizes`, `AppElevation`.
 5. **Reuse shared components** from `lib/core/widgets/` before creating new ones. A new shared component must match a Figma component and be added to `design-system.md`.
-6. **Every data screen has loading, empty and error states** (skeleton or labeled spinner, `StateView.empty`, `StateView.error` with `Retry`).
+6. **Every data screen has an explicit `ViewState`** (`core/state/view_state.dart`: loading, empty, error, data) owned by its ViewModel, rendered with the skeleton / `StateView.empty` / `StateView.error` + `Retry`.
 7. **Never fake success.** No placeholder URLs saved as real results, no hard-coded "uploaded" states, no fake Firebase config, no tests that only tap without asserting a visible result.
-8. **No secrets in the client or the repository:** service-account keys, Cloudinary API secret, AWS keys, `.p8`, keystores, passwords. Firebase app config files are allowed (see `docs/firebase-setup.md` §11).
+8. **No secrets in the repository:** service-account keys, API secrets, model API keys, `.env`, keystores, `.p8`, passwords. Build-time keys (e.g. `SERPAPI_KEY`) go in the untracked `.env` and are read with `String.fromEnvironment`. Firebase app config files are allowed (`docs/firebase-setup.md` §11).
 9. **Security rules ship with the data.** A new Firestore collection needs field-validated rules in `firebase/firestore.rules` and emulator tests in the same PR. `allow write: if isOwner(uid)` alone is not acceptable.
 10. **Stay in scope.** Implement what the spec and the task ask for. No speculative features, abstractions or dependencies.
+11. **User data is user-scoped.** Every provider holding user data watches `currentUserIdProvider`, so sign-out drops it.
+12. **Testable by ARTEMIS.** Key widgets (buttons, list items, cards) have a Semantics label or tooltip; shared components already do.
 
 ## Where code goes
 
@@ -43,7 +46,7 @@ Run `dart format`, `flutter analyze` and `flutter test` before every commit you 
 | A widget used by one feature | `lib/features/<feature>/widgets/` | |
 | A widget used by 2+ features | `lib/core/widgets/` | Must map to a Figma component |
 | A model used by 2+ features | `lib/models/` | Otherwise `features/<feature>/models/` |
-| Firebase / HTTP access | `lib/services/<name>_service.dart` | Interface + implementation + provider in one file |
+| Firebase / HTTP access | `lib/services/<name>_service.dart` | Interface + implementation + provider in one file. SerpAPI only through `SerpApiClient` |
 | A pure helper | `lib/core/utils/` | Unit-tested |
 | A route | `lib/app/router.dart` | Under the owning tab branch, always with a `name` |
 | A design token | `lib/theme/` | Only from DESIGN.md / Figma, and update `design-system.md` |
@@ -55,7 +58,7 @@ Run `dart format`, `flutter analyze` and `flutter test` before every commit you 
 - **Imports:** relative imports inside `lib/`; `package:internly/...` in `test/`. Order: `dart:`, `package:`, then relative (the analyzer enforces this).
 - **Widgets:** prefer `StatelessWidget` / `ConsumerWidget`; small and composable; `const` constructors wherever possible; no business logic in `build`.
 - **Models:** `@immutable`, `final` fields, `const` constructors. Firestore parsing goes through `FirestoreReader` in `factory X.fromFirestore(String id, Map<String, Object?>? data)`; writes go through `toFirestore()` / `toCreateMap()`. Required fields throw `FormatException`; services skip and log malformed documents. Don't override `==` by ID only, because Riverpod uses `==` to decide whether to notify.
-- **Errors:** services catch SDK exceptions and throw `AppException(kind, userMessage, cause: e)`. `message` is plain language and safe to show; `cause` is for logging only. `AppErrorKind.cancelled` is not an error state.
+- **Errors:** services catch SDK exceptions and throw `AppException(kind, userMessage, cause: e)`. `message` is plain language and safe to show; `cause` is for logging only. `AppErrorKind.cancelled` is shown as an info message, not as an error.
 - **Async in ViewModels:** read all providers **before** the first `await`; after each `await`, check `ref.mounted` before touching `state`; ignore repeated taps while `state.isLoading`.
 - **Comments:** explain *why*, not *what*. Reference gap or change IDs (`G-12`, `DC-03`) when code exists because of a decision.
 - **UI copy:** use the exact labels from the design (`Apply now`, `Retry`, `Search internships`…), in sentence case, with specific CTAs. Plain, supportive tone (DESIGN.md §14).
@@ -105,7 +108,7 @@ class SavedViewModel extends Notifier<AsyncValue<void>> {
 }
 ```
 
-The View watches the provider, renders `AsyncValue` states with shared components, and calls `ref.read(provider.notifier).method()` on user actions.
+The View watches the provider, renders the state with shared components, and calls `ref.read(provider.notifier).method()` on user actions. Data screens use `ViewState<T>` instead of `AsyncValue<void>` (see `docs/architecture.md` §3).
 
 ## Testing rules
 
@@ -113,19 +116,35 @@ The View watches the provider, renders `AsyncValue` states with shared component
 - Every screen or shared widget: widget tests at both widths (`checkWidths`, `pumpThemed`) asserting visible text and states, plus `meetsGuideline(androidTapTargetGuideline)` for interactive widgets.
 - Models / parsing: valid document, missing optional fields, invalid required fields.
 - No test may depend on a real Firebase project or network.
-- E2E (MobAI) specs in `mobai_tests/` must assert a visible outcome.
+- E2E: ARTEMIS tests in `e2e_test/` follow `docs/test-plan.md` §6 (one instruction per test, JSON report, assertions on reported values, ≥ 3 runs).
 
 ## Documentation to update in the same PR
 
 | When you… | Update |
 |---|---|
-| Deviate from the design | `docs/design-change-log.md` |
+| Deviate from the design, or finish / change a screen, route or component | `docs/design-traceability.md` (+ Figma) |
 | Find or resolve a missing requirement | `docs/handoff-gaps.md` |
 | Add an analytics event | `docs/analytics-plan.md` |
-| Finish a screen | `docs/fidelity-check.md` |
-| Run tests for the PR | `docs/test-report.md` |
-| Use an AI tool for the change | `docs/implementation-ai-log.md` (exact prompt, output summary, verification, decision) |
-| Get an AI code review | `docs/code-review.md` |
+| Run Flutter tests for the PR | `docs/test-report.md` |
+| Use an AI tool, get a review, verify a Firebase feature, run E2E tests | See "Logs and evidence required by Lab 3" below |
+
+## Logs and evidence required by Lab 3
+
+Work that is not logged with evidence is graded as missing. **Never fabricate evidence, test results or history**: record "not run" instead (Lab 3 §11).
+
+| When you… | You must log | Where |
+|---|---|---|
+| Use **any** AI tool (code generator, chat assistant, review tool, ARTEMIS) | Tool + purpose in the disclosure table (§8); for code changes also the exact prompt, output summary, verification and decision | `docs/code-review.md` (disclosure) + README "AI tools used"; `docs/implementation-ai-log.md` |
+| Get an AI code review on a PR | Each finding: ID, tool, `file:line`, kind, decision (accepted / modified / rejected) + a valid reason; save the tool's raw output | `docs/code-review.md`; `evidence/code-review/` |
+| Fix an accepted review finding | One commit per finding, naming its ID: `fix(CR-03): …`; link the commit in the record | Git history + `docs/code-review.md` |
+| Deviate from Figma / Lab 2 | ID, change, reason (platform, accessibility, API limit, team decision); then update Figma | `docs/design-traceability.md` §4 |
+| Build or change a screen, route or component | Its row: route, widget, data source, status | `docs/design-traceability.md` §1–3 |
+| Make a Firebase service work (Auth, Storage, FCM, Analytics, Crashlytics, Remote Config) | Console / app screenshots showing it works **and** its failure case | `evidence/<area>/` (see `evidence/README.md`) |
+| Add or fire an analytics event | Plan row (typed parameters + question) and a DebugView screenshot | `docs/analytics-plan.md`; `evidence/analytics/` |
+| Run ARTEMIS tests | Command, ≥ 3 runs per test, pass rate, average time, trace IDs / replays, cause and fix of every flaky / failed / skipped test; the exploratory session report | `docs/test-plan.md` §4–5; `evidence/artemis/` (`e2e_test/artifacts/runs.jsonl`) |
+| Run Flutter tests or builds for a PR | The real command output summary | `docs/test-report.md` + PR description |
+
+Commits follow the Lab 3 stage order (Plan → Architect → Integrate → Instrument → Test → Review → Report) and show work over several days; do not squash the whole history into one upload.
 
 ## Git workflow
 
@@ -138,9 +157,9 @@ The View watches the provider, renders `AsyncValue` states with shared component
 
 ## Definition of done (feature)
 
-- [ ] Matches Figma and `screen-spec.md` at 360 and 412 dp (fidelity check filled in)
-- [ ] Loading / empty / error / validation states implemented
+- [ ] Matches Figma and `screen-spec.md` at 360 and 412 dp (verification checklist in `design-traceability.md` §5)
+- [ ] `ViewState` loading / empty / error / data + validation states implemented
 - [ ] ViewModel and widget tests added; `flutter analyze` clean; `flutter test` green
 - [ ] Firestore rules + emulator tests for any new collection
 - [ ] Analytics events from the plan implemented and verified in DebugView
-- [ ] Docs updated (table above); MobAI scenario spec updated
+- [ ] Docs updated (table above); ARTEMIS test cases for the feature added to `e2e_test/`

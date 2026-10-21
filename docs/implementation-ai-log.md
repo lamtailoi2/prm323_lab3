@@ -90,6 +90,21 @@ Commands the AI executed, with their real results (details in [`test-report.md`]
 - **Verification:** documentation only.
 - **Decision:** Accepted (commit `37216e1`).
 
+### P-13: Lab 3 handout review ("review xem có thiếu gì nữa k đây yêu của lab3", "review whether anything is missing; here are the Lab 3 requirements") with the handout PDF
+- **Output:** gap list against the handout: E2E with ARTEMIS instead of MobAI, required Cloud Storage + `storage.rules`, required `docs/design-traceability.md`, cancelled sign-in must show a message, sign-out must clear local data, pinned versions, missing required files, and the risk of the flow change (DC-08/09).
+- **Verification:** read the handout (18 pages) and compared each requirement with the repository.
+- **Decision:** Accepted.
+
+### P-14: User decisions on the review
+- **Prompt (verbatim):** "report/Lab03_<ID>.pdf slides/Lab03_<ID>_slides.pdf này bỏ đi nộp riêng, còn video tạm cứ để vào readme nào có tui sẽ bổ sung 5 k cần hỏi j tui qyết k đổi tên repo, dữ liệu sẽ dùng serph API (google jobs), cloud cái nào free thì dùng, đổi flow, cái nào free thì dùng chắc là ARTEMIS" (report and slides are submitted separately; video link later; no need to ask the lecturer; keep the repository name; data from SerpAPI Google Jobs; use whichever cloud is free; keep the flow change; ARTEMIS).
+- **Follow-ups (verbatim):** "tạo .env.example cho tui đi tui k rõ là flutter có dùng .env k" (create `.env.example`; does Flutter use `.env`?) · "có tốn tiền k z, tui k muốn tốn bất kì 1 đồng nào kể cả model AI" (does it cost money? spend nothing, including AI models) · "lab3-requirements.md đề có yêu cầu k thì xoá đi nhiều file lmaws rồi" (delete `lab3-requirements.md` if the handout does not require it; too many files) · "AGENTS.md có rule phải ghi log theo như đề yêu cầu chưa" (does AGENTS.md require the logs the handout asks for?).
+- **Output (branch `chore/lab3-spec-alignment`):**
+  - Code: pinned dependency versions; `ViewState` sealed class; `SerpApiClient` (key from `.env` via `--dart-define-from-file`, error mapping, no key leaks); cancelled sign-in shows an info message; `currentUserIdProvider` for sign-out clearing; Crashlytics `setCustomKey` + `last_screen`; Remote Config defaults loaded from `firebase/remote-config-defaults.json` with real-time updates; `InternshipCard` Semantics summary.
+  - Config: `firebase/storage.rules`, `firebase.json` storage + emulator, `firestore.rules` without the `internships` collection, `.env.example`, `e2e_test/` (pyproject pinned to ARTEMIS `351ca84`, conftest, 3 runnable tests, `.env.example`).
+  - Docs: `design-traceability.md` (replaces the design change log and fidelity check), `test-plan.md` (15 cases, coverage table, $0 model), `analytics-plan.md` (Appendix A, 15 events), `code-review.md` (Appendix C + disclosure), `architecture.md` (Mermaid layer and sequence diagrams, ViewModel table), README (pinned versions, deliverables map, AI tools, video placeholder), AGENTS.md (logs and evidence rules), `evidence/README.md`, gaps G-25 / G-26. Removed `mobai_tests/`, `design-change-log.md`, `fidelity-check.md` and, at the user's request, `lab3-requirements.md`.
+- **Verification:** checked `flutter_tools` source: `--dart-define-from-file` accepts `.env` (comments and empty values allowed). Checked the ARTEMIS SDK source (`ArtemisClient.run(..., expected_output, locked_app_package)`, `TaskResult.output/trace_id`) and its default model config (Gemini). `flutter analyze` → no issues; `flutter test` → 79 passed; `py_compile` of `e2e_test/*.py` passed. ARTEMIS not run (no device / Firebase config / model key here).
+- **Decision:** Accepted. Open for the user: Storage on Blaze at $0 (card required) vs Cloudinary free (G-12).
+
 ---
 
 ## Entry template

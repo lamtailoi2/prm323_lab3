@@ -1,67 +1,50 @@
-# Code review log (AI-assisted)
+# AI-assisted code review
 
-Each pull request gets one entry. Record what the AI reviewer reported, what a human decided, and the evidence. Do not mark a finding "fixed" without the commit that fixes it.
+AI finds; we decide (Lab 3 §8). This file holds the review record in the Appendix C format, the AI tool disclosure, and the review process rules.
 
-## Review round limit
+## Requirements (Lab 3 §8)
 
-**AI agents review a pull request for at most 3 rounds.** A round is one AI review pass followed by one round of fixes.
+- [ ] At least one AI review tool run on **pull requests** (not the whole repo); tool output saved in `evidence/code-review/`.
+- [ ] ≥ **5 findings** tied to a file and line, covering ≥ **2 kinds**: bug, security, architecture (MVVM rule broken), performance, test gap, maintainability.
+- [ ] A decision for every finding (accepted / modified / rejected) with a valid reason: a requirement in the Lab 3 handout, a rule in §5, a measurable effect (crash, latency, rebuild count) or a real constraint (scope, time, API limits). "The AI said so" and "I didn't like it" are not reasons.
+- [ ] ≥ **3 fixes**, each in **its own commit naming the finding ID** (e.g. `fix(CR-01): move SerpAPI call out of SearchScreen`), linked below.
+- [ ] Every AI tool used in the lab disclosed (table at the end).
 
-- **3 is a maximum, not a requirement.** Stop after any round that leaves no blocker or major finding; most PRs should need only `R1`.
-- Number each round (`R1`, `R2`, `R3`) in the entry.
-- After `R3`, the agent stops reviewing that PR, even if findings remain. Open findings go to a **human reviewer**, who accepts the risk, asks for a specific fix, or rejects the finding. Record the decision in the entry.
-- Do not start a "new" review on the same PR to get around the limit. A new round counts as round 4.
-- Only blockers and majors justify another round. Minor and nit findings are batched into the next round or left to the human.
+## Process rules
 
-## Review only the changes
+**At most 3 AI review rounds per pull request.** This is a cap, not a quota: stop as soon as no blocker or major finding remains (often after `R1`). After `R3` the agent stops, and any open findings go to a human reviewer.
 
-To keep reviews fast and cheap, an AI review never re-reads everything:
+**Review only the changes:**
 
 | Round | Input |
 |---|---|
 | `R1` | The PR diff only: `git diff main...HEAD` |
-| `R2`, `R3` | Only the diff since the last reviewed commit (`git diff <last-reviewed-commit>..HEAD`), plus the list of open findings |
+| `R2`, `R3` | Only the diff since the last reviewed commit (`git diff <last-reviewed-sha>..HEAD`) plus the open findings |
 
-- Read code outside the diff only when a changed line cannot be judged without it (e.g. the signature of a called function), and only that part.
-- Record the last reviewed commit SHA in each round so the next round knows where to start.
-- Do not re-report findings already decided in an earlier round.
+- Read code outside the diff only when a changed line cannot be judged without it, and only that part.
+- Record the reviewed SHA range per round. Do not re-report findings already decided.
 
-## Checklist (reviewers)
+## Review record (Appendix C)
 
-- [ ] Follows `AGENTS.md`: MVVM layers, Riverpod only, no Firebase in Views, tokens only.
-- [ ] Every new screen state (loading / empty / error) exists and matches `design-system.md`.
-- [ ] New Firestore collection → rules with field validation + emulator tests in the same PR.
-- [ ] No secrets or personal data in code, logs, analytics events or test fixtures.
-- [ ] Tests added: ViewModel (fakes), widget at 360 and 412 dp, model parsing for invalid data.
-- [ ] `dart format`, `flutter analyze` (no issues) and `flutter test` pass; results pasted below.
-- [ ] Docs updated: change log, gaps, analytics plan, fidelity check, AI log.
+| ID | Tool | File:line | Kind | Finding (summary) | Decision | Reason | Fix commit | PR / round |
+|---|---|---|---|---|---|---|---|---|
+| CR-01 | | | | | | | | |
 
-## Entry template
+### Per-PR log
 
 ```markdown
-### PR #__: <title>  (author: __, reviewer: __, date: __)
-
-Tool / prompt: <AI tool and the exact review prompt>
-
-#### Round R1 (of max 3) · reviewed `main...<sha>`
-
-| # | Finding (file:line) | Severity | Decision | Evidence / commit |
-|---|---|---|---|---|
-| 1 | | blocker / major / minor / nit | accepted · modified · rejected (why) | |
-
-Commands run:
-- flutter analyze → <result>
-- flutter test → <passed / failed counts>
-
-#### Round R2 / R3 · reviewed `<previous-sha>..<sha>`: same table, only if blockers or majors remain
-
-#### Escalated to human (after R3, if anything is still open)
-
-| # | Finding | Human decision (accept risk / fix / reject) | By |
-|---|---|---|---|
-
-Outcome: approved / changes requested · rounds used: _ (max 3).
+### PR #__: <title>  (reviewer tool: __, date: __)
+- R1 · reviewed `main...<sha>` → findings CR-__ … CR-__
+- R2 · reviewed `<sha>..<sha>` (only if a blocker / major remained)
+- Escalated to human after R3: <finding IDs + decision> (if any)
+- flutter analyze → <result>; flutter test → <passed/total>
 ```
 
-## Entries
+## AI tools used (disclosure)
 
-_None yet. The first entry is expected with the first feature pull request._
+| Tool | Version / model | Used for | Where recorded |
+|---|---|---|---|
+| Google Stitch | — | Lab 2 screen generation and refinement | Lab 2 `ai/ai-design-log.md` |
+| Claude Code | Opus 5.5 (`claude-opus-5-5`) | Repository initialization: design tokens, shared widgets, services, routing, tests, documentation; requirement review against the Lab 3 handout | [`implementation-ai-log.md`](implementation-ai-log.md) |
+| Google ARTEMIS | commit `351ca84` + model on the host | End-to-end test execution and the exploratory session | [`test-plan.md`](test-plan.md) |
+| *AI code review tool* | *to fill (e.g. CodeRabbit, Copilot code review)* | *PR review* | this file |

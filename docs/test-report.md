@@ -16,7 +16,7 @@ Records every test run that a pull request or milestone relies on. Paste real ou
 | 6 | `flutter build apk --debug` | **Not run**: Android toolchain incomplete on this machine (`flutter doctor`: "cmdline-tools component is missing"). Run it on a machine with a full Android SDK. |
 | 7 | App launch on device / simulator | **Not run**: Firebase is not configured (placeholder `firebase_options.dart`), so the app would show the setup screen by design |
 | 8 | Firestore rules (emulator) | **Not run**: Firebase CLI not installed. The foundation rules only contain shared ownership rules; collection rules and their tests ship with each feature |
-| 9 | MobAI end-to-end | **Not run**: feature screens not built yet; specs in `mobai_tests/README.md` |
+| 9 | End-to-end | **Not run**: feature screens not built yet (later replaced by ARTEMIS, see Run 2) |
 
 ### What the 65 tests cover
 
@@ -39,6 +39,19 @@ Layout tests load the bundled Inter font (`test/flutter_test_config.dart`), so w
 - Configure Firebase (`docs/firebase-setup.md`), then do a manual sign-in and sign-out check on Android and iOS (row 7).
 - Add the Firestore emulator rules tests with the first feature collection (row 8).
 
+## Run 2: Lab 3 alignment (2026-10-21)
+
+Branch `chore/lab3-spec-alignment`. Same environment as Run 1.
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Completed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **79 tests, all passed** (+14: `ViewState`, SerpAPI client incl. key-leak check, Remote Config defaults asset, cancel message, card semantics, `currentUserIdProvider`, Crashlytics `last_screen` key) |
+| 4 | `flutter test` × 3 consecutive runs | 79/79 each time. A flaky test was found and fixed first: `FakeAuthService` subscribed to its change stream late and could drop an event; it now subscribes on listen |
+| 5 | `python3 -m py_compile e2e_test/*.py` | Passed (syntax only, local Python 3.9) |
+| 6 | ARTEMIS suite (`uv run pytest --count 3`) | **Not run**: needs an Android device, Firebase config, and the ARTEMIS host with a model key |
+
 ---
 
 ## Run template
@@ -52,7 +65,7 @@ Environment: <OS, Flutter, device / emulator, commit>
 |---|---|---|
 | 1 | flutter analyze | |
 | 2 | flutter test | <passed>/<total> |
-| 3 | <build / MobAI scenario> | |
+| 3 | <build / other check> | |
 
 Failures and follow-ups: <links to issues / commits>
 ```

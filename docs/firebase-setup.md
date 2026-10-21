@@ -25,7 +25,7 @@ firebase login
 ## 2. Create the Firebase project
 
 1. In the [Firebase console](https://console.firebase.google.com/), click **Add project**, name it (e.g. `internly-<group>`), and **enable Google Analytics** (needed for Analytics events and Crashlytics breadcrumbs).
-2. The **Spark** (free) plan is enough for Auth, Firestore, Analytics, Crashlytics, Remote Config and FCM. Cloud Storage for new projects and Cloud Functions need **Blaze** (handoff-gaps G-10, G-12).
+2. The **Spark** (free) plan is enough for Auth, Firestore, Analytics, Crashlytics, Remote Config and FCM. Cloud Storage buckets for new projects need **Blaze** ($0 within the no-cost quota, but a billing account is required). This project must not spend money: see §10 and handoff-gaps G-12 / G-26 before upgrading.
 
 ## 3. Register the apps and generate the config
 
@@ -85,11 +85,12 @@ Check with `git diff android/ ios/` that both Gradle plugins were added. Crashly
    ```bash
    firebase use --add          # select the project; creates .firebaserc
    firebase deploy --only firestore:rules,firestore:indexes
+   firebase deploy --only storage   # after Storage is enabled (§10)
    ```
 3. Never edit rules only in the console. Change `firebase/firestore.rules` in a pull request, test with the emulator, and deploy.
 4. Local emulators (optional): `firebase emulators:start --only auth,firestore`.
 
-Seed data for `internships` is an open decision (handoff-gaps G-14). Never commit a service-account key to seed data.
+Internship listings are **not** stored in Firestore; they come from SerpAPI (§13). Firestore only holds each user's own data under `users/{uid}`.
 
 ## 6. Crashlytics
 
@@ -111,7 +112,14 @@ Event names and parameters: [`analytics-plan.md`](analytics-plan.md).
 
 ## 8. Remote Config
 
-Console → **Remote Config** → create each parameter with **the same key and type** as in `RemoteConfigDefaults.values` (`lib/services/remote_config_service.dart`), then **Publish**. The app always ships with defaults, so it works before the first fetch and offline. Fetch interval: 1 minute in debug, 1 hour in release.
+Console → **Remote Config** → create each parameter with **the same key and type** as in [`firebase/remote-config-defaults.json`](../firebase/remote-config-defaults.json) (the app loads the same file as its in-app defaults), then **Publish**:
+
+| Key | Type | Default | Changes |
+|---|---|---|---|
+| `home_recommended_limit` | Number | 5 | Number of cards in Home "Recommended for you" |
+| `cv_match_enabled` | Boolean | true | Shows or skips the CV Match Check step (Flow 2d) |
+
+The app listens for real-time updates, so a published change applies without restarting or rebuilding (Lab 3 §6). It also fetches at startup (minimum interval: 1 minute in debug, 1 hour in release) and works offline with the defaults.
 
 ## 9. Cloud Messaging (FCM)
 
@@ -123,11 +131,17 @@ Set this up together with the notifications feature (G-04, G-13):
 
 ## 10. File storage (CV upload, PDF report)
 
-The provider is undecided (G-12). If Cloudinary is chosen:
+Lab 3 grades **Cloud Storage** with per-user folders and `storage.rules` (`firebase/storage.rules`: `reports/{uid}/…` and `cvs/{uid}/…`, owner only, PDF ≤ 10 MB). Choose one zero-cost option (G-12, G-26):
 
-- Use an **unsigned upload preset** dedicated to PDFs: allowed formats `pdf`, a fixed folder, and unique file names. Check in the Cloudinary console which size limits the preset can enforce server-side, and also enforce the size limit in the app before uploading.
-- Only the **cloud name** and **preset name** may be in the app. The **API secret never** goes in the app or the repository.
-- Unsigned uploads produce public URLs. Document this privacy trade-off before storing CVs or reports containing personal data.
+**Option A: Firebase Cloud Storage (full marks).**
+1. Console → **Storage → Get started**. If asked to upgrade to Blaze, link a billing account. Usage for this lab stays inside the no-cost quota, so it costs $0.
+2. Create a **budget alert** (Google Cloud console → Billing → Budgets & alerts, e.g. $1) so any unexpected usage is noticed immediately.
+3. `firebase deploy --only storage`, then add `firebase_storage` to the app in the export / CV feature.
+
+**Option B: Cloudinary free plan (no billing account).**
+- Use an **unsigned upload preset** for PDFs only (allowed format `pdf`, fixed folder per user, unique names), and check the file size in the app before uploading.
+- Only the **cloud name** and **preset name** go into the app (via `.env`); the **API secret never** does.
+- Unsigned uploads give public URLs and cannot restrict each user to their own folder, so part of the Lab 3 Storage criterion is not met. Record the reason (cost constraint) in `design-traceability.md`.
 
 ## 11. What may and may not be committed
 
@@ -135,7 +149,7 @@ The provider is undecided (G-12). If Cloudinary is chosen:
 |---|---|
 | `lib/firebase_options.dart`, `google-services.json`, `GoogleService-Info.plist` (app configuration, not secrets; protect them with Security Rules and API-key restrictions) | Service-account JSON (`*-firebase-adminsdk-*.json`) |
 | `firebase.json`, `firebase/firestore.rules`, `firebase/firestore.indexes.json` | APNs keys (`.p8`), keystores (`.jks`, `.keystore`), `key.properties` |
-| `.firebaserc` (project alias only) | Cloudinary API secret, AWS keys, `.env` files with secrets |
+| `.firebaserc` (project alias only), `.env.example` | `.env` (SerpAPI key), `e2e_test/.env`, Cloudinary API secret, AWS keys, model API keys |
 
 If the GitHub repository is public, restrict the Firebase API keys in Google Cloud console → **APIs & Services → Credentials**: Android key → package `com.group3.internly` + SHA-1; iOS key → bundle ID.
 
@@ -143,7 +157,20 @@ If the GitHub repository is public, restrict the Firebase API keys in Google Clo
 
 ```bash
 flutter pub get
-flutter run            # pick an Android emulator / iOS simulator
+cp .env.example .env                        # add SERPAPI_KEY (§13)
+flutter run --dart-define-from-file=.env    # pick an Android device / emulator
 ```
 
 Expected: Splash, then **Login** (not "Firebase is not configured"). Signing in with Google opens Home; Profile → **Sign out** returns to Login. The user appears in Console → Authentication → Users.
+
+## 13. SerpAPI key (internship data)
+
+1. Create a free SerpAPI account (no card) and copy the key from <https://serpapi.com/manage-api-key>.
+2. `cp .env.example .env` and set `SERPAPI_KEY=…`. `.env` is git-ignored.
+3. Run or build with `--dart-define-from-file=.env`. Flutter reads the file at **build time** only and compiles the value into the app (`String.fromEnvironment('SERPAPI_KEY')`); there is no runtime `.env` loading.
+4. Without a key, searches show "Job search is not set up for this build". With an exhausted free quota they show "The job search limit has been reached" (HTTP 429).
+5. The key is extractable from the APK: keep it a free-plan key and rotate it after grading (handoff-gaps G-25).
+
+## 14. End-to-end tests (ARTEMIS)
+
+Setup, the zero-cost model choice (Gemini API free tier) and run commands are in [`test-plan.md`](test-plan.md).
