@@ -1,0 +1,82 @@
+# Implementation AI log
+
+Every AI-assisted change is recorded here: the **exact prompt**, a summary of what the AI produced, **how it was verified**, and what the team **accepted, modified or rejected**. Only record verification that actually ran. "Not verified" is a valid entry.
+
+| Field | Meaning |
+|---|---|
+| Prompt | Verbatim user prompt (long prompts are stored in `docs/ai-prompts/` and linked) |
+| Output | What the AI changed or produced |
+| Verification | Commands run, with their real results, or manual checks |
+| Decision | Accepted · Modified (how) · Rejected (why) |
+
+---
+
+## Session 2026-10-21: repository initialization
+
+Tool: Claude Code (Opus 5.5, `claude-opus-5-5`), run from `prm323_lab3/` with read access to `../prm323_lab2/`. Operator: Lâm Tài Lợi.
+
+### P-01: Initialize the repository
+- **Prompt:** [`ai-prompts/P-01-initialize-internly.md`](ai-prompts/P-01-initialize-internly.md) (verbatim), plus: "các file design docs sẽ nằm ở ../prm323_lab2" ("the design docs are in ../prm323_lab2").
+- **Output:** inspected the empty working directory (not a Git repo), the toolchain (Flutter 3.47.3, Dart 3.13.3, Xcode 26.5; Android SDK incomplete; no Firebase / FlutterFire CLI) and the Lab 2 repo (`03f4aa3`). Found no `flutter-handoff.md` (G-01). Ran `git init` and `flutter create --org com.group3 --project-name internly --platforms android,ios --empty`, committed unchanged as the scaffold. Read the installed package sources to confirm current APIs before coding (google_sign_in 7.2, firebase_auth 7, Riverpod 3.4, go_router 18).
+- **Verification:** `git log` shows the scaffold commit; package APIs checked in `~/.pub-cache`.
+- **Decision:** Accepted. App ID `com.group3.internly` is an assumption (G-21).
+
+### P-02: "flutter repo cho cả ios / android nhé" ("make the Flutter repo for both iOS and Android")
+- **Output:** platforms `android,ios`; iOS setup steps (URL scheme, APNs) added to `firebase-setup.md`; logged as G-15 / DC-07.
+- **Verification:** `flutter build ios --simulator --debug`, see P-08.
+- **Decision:** Accepted.
+
+### P-03: "nếu cần thiết hãy copy các file docs từ lab2 qua nhé" ("copy the Lab 2 docs over if needed")
+- **Output:** read-only snapshot in `docs/lab2-handoff/` (DESIGN.md, screen-spec, design-decisions, user-flow, persona, Lab 2 README, 8 final screenshots) with a provenance note. Intermediate Stitch rounds and the AI design log were not copied. Lab 2's uncommitted change (`assets/stitch/home-final.png`) was left untouched.
+- **Verification:** file list compared with the source; source commit recorded.
+- **Decision:** Accepted.
+
+### P-04: "design system và components. Viết design system thành dạng md cho dễ" ("design system and components: write the design system up as Markdown"), with screenshots of Figma pages 04 and 05
+- **Output:** [`design-system.md`](lab2-handoff/design/design-system.md) consolidating DESIGN.md + Figma 04/05 + the README handoff: tokens with Dart and `ColorScheme` mapping, the 12 component sets with states, source precedence, and usage rules. Added `material_symbols_icons` because Figma 04 specifies Material Symbols Rounded.
+- **Verification:** manual comparison against the screenshots; values not readable from the screenshots are marked **verify** and listed in G-07.
+- **Decision:** Accepted.
+
+### P-05: "đối chiếu lại với theme (token) đã tạo nhé" ("cross-check against the theme tokens already created")
+- **Output:** Figma ↔ code table. All 13 colors, 8 text styles, spacing, radius and elevation tokens match. Component differences fixed in `AppTheme` / widgets: Secondary button border → primary; disabled fill → surfaceVariant for all variants; pressed = reduced emphasis, no ripple; loading keeps the default look; App Bar without bottom border (DC-06); StateView rewritten to the Figma Loading / Empty / Error specimens. Computed WCAG contrast for the new color pairs: Rejected badge 4.41:1 and selected chip 4.24:1 fail AA (G-19). Fixes were proposed as DC-04 / DC-05, not applied.
+- **Verification:** contrast computed with a script (WCAG 2.1 formula); `flutter analyze` → no issues; theme assertions in `test/theme/app_theme_test.dart`.
+- **Decision:** Accepted. DC-04 and DC-05 await team approval.
+
+### P-06: "bạn chỉ dựng init dự án thôi (dựng common, componenets, utils, ...) các thứ dùng chung còn details để đó cho ng khác làm" ("only set up the project init: common code, components, utils… leave the details to others")
+- **Context:** sent after the user **rejected** a tool call that was writing feature models (application status, application, exported report).
+- **Output:** scope reduced. Removed the feature models already written (Internship, WorkMode, StoredFile, UserProfile, SavedInternship, ApplicationStatus); kept the shared `AppUser`. Built the remaining shared components with primitive inputs only (`AppTextField`, `AppSearchField`, `InternshipCard`, `AppTag`, `StatusBadge`, `showAppDialog`, skeletons, `Validators`). Feature screens are placeholders (DC-02). Notification, report and file-storage service interfaces were **not** created; their constraints are documented as gaps (G-04, G-05, G-12, G-13). Firestore rules contain only the shared ownership rules plus a commented template.
+- **Verification:** see P-08.
+- **Decision:** **Modified** at the user's request (AI scope reduced). Rejected tool call: writing feature models.
+
+### P-07: "overview dự án ghi vào README, tạo AGENTS.md cho coding convention, rule, tóm tắt overview" ("put the project overview in README; create AGENTS.md for coding conventions, rules and a short overview"), then "trong code-review lưu ý là agents k review quá 3 vòng" ("in code-review, note that agents must not review more than 3 rounds")
+- **Output:** `README.md` (product overview, stack, setup, run, test, ownership, docs, limitations); `AGENTS.md` (golden rules, folder placement, Dart / Riverpod conventions, testing, docs-per-PR, Git workflow, definition of done); `CLAUDE.md` importing `AGENTS.md`; a 3-round AI review cap in `code-review.md` and `AGENTS.md`.
+- **Verification:** documentation only; links checked by reading.
+- **Decision:** Accepted.
+
+### Note: manual change by the user
+- The user moved `docs/design-system.md` to `docs/lab2-handoff/design/design-system.md` (next to `DESIGN.md`). The AI kept the new location, fixed the six relative links inside the file, repointed references in README, AGENTS.md and docs, and marked the file as the one editable Lab 3 file in the snapshot README. Verified with a script that checks every relative Markdown link (the only remaining broken links are `ai/…` links inside the verbatim Lab 2 README, which only resolve in the Lab 2 repository).
+
+### P-08: Verification run (initialization)
+Commands the AI executed, with their real results (details in [`test-report.md`](test-report.md)):
+
+| Command | Result |
+|---|---|
+| `dart format lib test` | Formatted; no further diffs |
+| `flutter analyze` | `No issues found!` |
+| `flutter test` | 65 tests, all passed |
+| `flutter build ios --simulator --debug` (SPM) | **Failed**: SPM dependency conflict, firebase-ios-sdk 13 vs GoogleSignIn-iOS 9 (`gtm-session-fetcher`) (G-20) |
+| `flutter build ios --simulator --debug` (CocoaPods) | **Passed**: `✓ Built build/ios/iphonesimulator/Runner.app` (Firebase iOS 12.19.0, GoogleSignIn 9.2.0, GTMSessionFetcher 3.5.0) |
+| Android build | **Not run**: Android SDK incomplete on this machine (no cmdline-tools / platforms) |
+
+- **Decision:** SPM disabled for the project (CocoaPods); accepted as a workaround until `google_sign_in_ios` supports GoogleSignIn-iOS 10.
+
+---
+
+## Entry template
+
+```markdown
+### P-nn: <short title>
+- **Prompt:** "<verbatim prompt>" (or link to docs/ai-prompts/P-nn-….md)
+- **Output:** <files / behavior changed>
+- **Verification:** <commands + real results, manual checks, or "not verified">
+- **Decision:** Accepted / Modified (<how>) / Rejected (<why>)
+```

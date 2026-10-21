@@ -18,9 +18,10 @@ These files are copied unchanged from the Lab 2 repository so this repository is
 | [`ux/persona.md`](ux/persona.md) | Persona, problem statement, success criterion |
 | [`lab2-README.md`](lab2-README.md) | Lab 2 overview, token → Flutter and component → widget tables |
 | [`screenshots/`](screenshots/) | Final Google Stitch outputs (`*-final.png`). The Figma final UI overrides them where they differ |
+| [`design/design-system.md`](design/design-system.md) | **Lab 3 file (editable):** design system + components consolidated for Flutter, Figma ↔ code cross-check |
 
 Not copied: the Lab 2 AI design log and its intermediate screenshots (Lab 2 deliverables, available in the source repository).
 
-**Do not edit these files.** Lab 3 decisions and deviations go to [`../design-change-log.md`](../design-change-log.md). Missing or conflicting requirements go to [`../handoff-gaps.md`](../handoff-gaps.md). The consolidated Flutter reference is [`../design-system.md`](../design-system.md).
+**Do not edit the Lab 2 files** (everything except `design/design-system.md`, which is maintained in Lab 3). Lab 3 decisions and deviations go to [`../design-change-log.md`](../design-change-log.md). Missing or conflicting requirements go to [`../handoff-gaps.md`](../handoff-gaps.md). The consolidated Flutter reference is [`design/design-system.md`](design/design-system.md).
 
 Links inside the copied files that point to `ai/…` resolve only in the source repository.
