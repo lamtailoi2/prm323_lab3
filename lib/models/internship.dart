@@ -2,26 +2,28 @@ import 'package:flutter/foundation.dart';
 
 import '../core/utils/firestore_reader.dart';
 import '../core/utils/job_key.dart';
+import '../core/utils/job_role.dart';
 import '../core/utils/posted_age.dart';
 import '../core/utils/skill_matcher.dart';
 
-/// Work arrangement, as far as a Google Jobs listing reveals it. Nothing in
-/// the data says "on-site", so an unknown mode stays `null` and is hidden
-/// instead of guessed (DC-10).
+/// Work arrangement, as far as a Google Jobs listing reveals it. An unknown
+/// mode stays `null` and is hidden instead of guessed (DC-10).
 enum WorkMode {
   remote('Remote'),
-  hybrid('Hybrid');
+  hybrid('Hybrid'),
+  onSite('On-site');
 
   const WorkMode(this.label);
 
   final String label;
 }
 
-/// An internship listing from SerpAPI Google Jobs (G-25).
+/// An internship listing mirrored from SerpAPI Google Jobs into Firestore by
+/// the sync function (G-25).
 ///
-/// Listings are fetched live and never stored in Firestore. Saved items and
-/// applications keep a snapshot of the fields they display, because listings
-/// expire.
+/// The Firestore document holds the raw SerpAPI object plus sync metadata;
+/// this model reuses [Internship.fromSerpApi] for the listing fields so the
+/// parser stays in one place.
 @immutable
 class Internship {
   const Internship({
@@ -32,9 +34,13 @@ class Internship {
     this.location,
     this.workMode,
     this.salary,
-    this.postedText,
+    this.postedTextSource,
+    this.postedAt,
     this.logoUrl,
     this.skills = const <String>[],
+    this.syncedAt,
+    this.searchKeyword,
+    this.searchRank,
   });
 
   /// Parses one entry of `jobs_results`. Throws [FormatException] when
@@ -59,7 +65,7 @@ class Internship {
         texts: [title, ...extensions],
       ),
       salary: detected?.optionalString('salary')?.trim(),
-      postedText: detected?.optionalString('posted_at')?.trim(),
+      postedTextSource: detected?.optionalString('posted_at')?.trim(),
       logoUrl: _httpsUrl(reader.optionalString('thumbnail')),
       skills: findSkills(
         [
@@ -68,6 +74,39 @@ class Internship {
           reader.optionalString('description') ?? '',
         ].join('\n'),
       ),
+    );
+  }
+
+  /// Parses a `/internships/{key}` document written by the sync function.
+  ///
+  /// The document ID is authoritative for [key]; the listing fields come from
+  /// the stored raw SerpAPI object. `postedAt` is anchored to `syncedAt`, so
+  /// the relative age keeps increasing after the listing was cached.
+  factory Internship.fromFirestore(String key, Map<String, Object?> data) {
+    final reader = FirestoreReader('internships/$key', data);
+    final raw = reader.requireMap('raw').toMap();
+    final parsed = Internship.fromSerpApi(raw);
+    final syncedAt = reader.optionalDateTime('syncedAt');
+    final age = parsePostedAge(parsed.postedTextSource);
+    final postedAt = syncedAt == null || age == null
+        ? null
+        : syncedAt.subtract(age);
+
+    return Internship(
+      jobId: parsed.jobId,
+      key: key,
+      title: parsed.title,
+      companyName: parsed.companyName,
+      location: parsed.location,
+      workMode: parsed.workMode,
+      salary: parsed.salary,
+      postedTextSource: parsed.postedTextSource,
+      postedAt: postedAt,
+      logoUrl: parsed.logoUrl,
+      skills: parsed.skills,
+      syncedAt: syncedAt,
+      searchKeyword: reader.optionalString('searchKeyword'),
+      searchRank: reader.optionalInt('searchRank'),
     );
   }
 
@@ -84,11 +123,19 @@ class Internship {
   final WorkMode? workMode;
 
   /// Salary text as Google shows it; `null` when the listing does not say
-  /// (G-17).
+  /// (G-17). The Home feature formats it with `formatAllowance`.
   final String? salary;
 
-  /// Relative date as Google shows it, e.g. "2 days ago".
-  final String? postedText;
+  /// Google's original relative date, e.g. "2 days ago".
+  final String? postedTextSource;
+
+  /// Absolute posting time derived from [syncedAt] and [postedTextSource].
+  final DateTime? postedAt;
+
+  /// Relative date for display. Synced listings get a live compact form
+  /// (`2d ago`); directly parsed listings keep Google's wording.
+  String? get postedText =>
+      postedAt == null ? postedTextSource : formatPostedAge(postedAt);
 
   /// Company logo (`thumbnail`), https only.
   final String? logoUrl;
@@ -96,18 +143,40 @@ class Internship {
   /// Known skills the listing mentions, title first ([findSkills]).
   final List<String> skills;
 
-  /// Age parsed from [postedText]; `null` when unknown.
-  Duration? get postedAge => parsePostedAge(postedText);
+  /// IT job family inferred from the title/keyword ([jobRoleFor]); `null`
+  /// for non-IT listings, which Home hides.
+  JobRole? get role =>
+      jobRoleFor(title: title, searchKeyword: searchKeyword, skills: skills);
+
+  /// When the sync function last wrote this document.
+  final DateTime? syncedAt;
+
+  /// The keyword whose SerpAPI query found this listing.
+  final String? searchKeyword;
+
+  /// Position in that SerpAPI response (0 = most relevant).
+  final int? searchRank;
+
+  /// Age parsed from the listing; `null` when unknown.
+  Duration? get postedAge {
+    if (postedAt case final date?) return DateTime.now().difference(date);
+    return parsePostedAge(postedTextSource);
+  }
 
   static WorkMode? _workMode({
     required bool workFromHome,
     required List<String> texts,
   }) {
     if (workFromHome) return WorkMode.remote;
-    final mentionsHybrid = texts.any(
-      (text) => text.toLowerCase().contains('hybrid'),
-    );
-    return mentionsHybrid ? WorkMode.hybrid : null;
+    final combined = texts.join('\n').toLowerCase();
+    if (combined.contains('hybrid')) return WorkMode.hybrid;
+    if (RegExp(
+      r'on[-\s]?site|at (the )?office|tại văn phòng',
+      caseSensitive: false,
+    ).hasMatch(combined)) {
+      return WorkMode.onSite;
+    }
+    return null;
   }
 
   static String? _httpsUrl(String? value) {

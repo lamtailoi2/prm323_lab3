@@ -66,6 +66,41 @@ void main() {
     expect(internship.skills, isEmpty);
   });
 
+  test('on-site wording is detected', () {
+    final internship = Internship.fromSerpApi(
+      job({
+        'title': 'Backend Intern',
+        'extensions': ['On-site', 'Full-time'],
+      }),
+    );
+    expect(internship.workMode, WorkMode.onSite);
+  });
+
+  test('fromFirestore reads the raw job and anchors postedAt to syncedAt', () {
+    final syncedAt = DateTime.utc(2026, 10, 20, 12);
+    final internship = Internship.fromFirestore('abc123', {
+      'raw': job(),
+      'syncedAt': syncedAt,
+      'searchKeyword': 'flutter internship',
+      'searchRank': 3,
+    });
+
+    expect(internship.key, 'abc123');
+    expect(internship.jobId, 'eyJqb2IiOiIxIn0=');
+    expect(internship.title, 'Mobile Developer Intern (Hybrid)');
+    expect(internship.syncedAt, syncedAt);
+    expect(internship.postedAt, syncedAt.subtract(const Duration(days: 2)));
+    expect(internship.searchKeyword, 'flutter internship');
+    expect(internship.searchRank, 3);
+  });
+
+  test('fromFirestore skips a document without raw job data', () {
+    expect(
+      () => Internship.fromFirestore('abc123', {'syncedAt': DateTime.now()}),
+      throwsFormatException,
+    );
+  });
+
   test('ignores a non-https logo', () {
     final internship = Internship.fromSerpApi(
       job({'thumbnail': 'http://example.com/logo.png'}),

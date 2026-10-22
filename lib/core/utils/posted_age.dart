@@ -24,3 +24,17 @@ Duration? parsePostedAge(String? text) {
     _ => Duration(days: count * 365),
   };
 }
+
+/// Compact relative age for the Internship Card, matching the design samples
+/// (`Just now`, `2d ago`) rather than Google's wording (`2 days ago`).
+String formatPostedAge(DateTime? postedAt, {DateTime? now}) {
+  if (postedAt == null) return '';
+  final age = (now ?? DateTime.now()).difference(postedAt);
+  if (age.isNegative || age.inMinutes < 1) return 'Just now';
+  if (age.inHours < 1) return '${age.inMinutes}m ago';
+  if (age.inDays < 1) return '${age.inHours}h ago';
+  if (age.inDays < 7) return '${age.inDays}d ago';
+  if (age.inDays < 30) return '${age.inDays ~/ 7}w ago';
+  if (age.inDays < 365) return '${age.inDays ~/ 30}mo ago';
+  return '${age.inDays ~/ 365}y ago';
+}

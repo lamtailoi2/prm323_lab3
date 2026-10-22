@@ -91,7 +91,7 @@ Check with `git diff android/ ios/` that both Gradle plugins were added. Crashly
 3. **Keeping them in sync:** only the owner publishes rules. A teammate who needs a change edits `firebase/*.rules` in a PR and tags the owner; after merge the owner publishes again. Never edit rules only in the console. To check for drift, compare the console's Rules history with the files.
 4. Local emulators (optional, needs the CLI): `firebase emulators:start --only auth,firestore,storage`.
 
-Internship listings are **not** stored in Firestore; they come from SerpAPI (§13). Firestore only holds each user's own data under `users/{uid}`.
+Internship listings live in the shared `internships/{jobKey}` collection. The scheduled function (§13) is the only writer; signed-in users may read it, and the app never calls SerpAPI. Each user's own data still lives under `users/{uid}`.
 
 ## 6. Crashlytics
 
@@ -157,19 +157,32 @@ If the GitHub repository is public, restrict the Firebase API keys in Google Clo
 
 ```bash
 flutter pub get
-cp .env.example .env                        # SERPAPI_KEY (§13)
+cp .env.example .env                        # debug signing key only
 flutter run --dart-define-from-file=.env    # pick an Android device / emulator
 ```
 
 Expected: Splash, then **Login** (not "Firebase is not configured"). Signing in with Google opens Home; Profile → **Sign out** returns to Login. The user appears in Console → Authentication → Users.
 
-## 13. SerpAPI key (internship data)
+## 13. SerpAPI sync Cloud Function (internship data)
+
+The app never holds a SerpAPI key. A scheduled Cloud Function mirrors Google Jobs into Firestore so the free quota is spent once for every user, not once per device.
 
 1. Create a free SerpAPI account (no card) and copy the key from <https://serpapi.com/manage-api-key>.
-2. `cp .env.example .env` and set `SERPAPI_KEY=…`. `.env` is git-ignored.
-3. Run or build with `--dart-define-from-file=.env`. Flutter reads the file at **build time** only and compiles the value into the app (`String.fromEnvironment('SERPAPI_KEY')`); there is no runtime `.env` loading.
-4. Without a key, searches show "Job search is not set up for this build". With an exhausted free quota they show "The job search limit has been reached" (HTTP 429).
-5. The key is extractable from the APK: keep it a free-plan key and rotate it after grading (handoff-gaps G-25).
+2. Enable the required Google Cloud APIs (the first deploy asks): **Cloud Functions**, **Cloud Scheduler**, **Secret Manager**, **Artifact Registry** and **Cloud Build**.
+3. Store the key in Secret Manager (Blaze is already required for Storage):
+   ```bash
+   firebase functions:secrets:set SERPAPI_KEY
+   # paste the key when prompted; never put it in .env or Git
+   ```
+4. Install and deploy:
+   ```bash
+   cd functions && npm install && cd ..
+   firebase deploy --only functions,firestore:rules
+   ```
+   `syncInternshipsJob` runs every 6 hours in `Asia/Ho_Chi_Minh`; the first run backfills five keywords with `location=Vietnam`, then each run refreshes one keyword.
+5. Verify: Console → Functions → `syncInternshipsJob` logs `internship sync complete`; Firestore → `internships` has documents and `sync/state` shows the last run. The app reads that pool without a key.
+6. Quota: five backfill searches, then about four per day (~120 per month) on the 250-search free plan. If the quota runs out, `sync/state.lastError` says so; the app keeps the last good listings until they expire after seven days.
+7. Rotating the key: `firebase functions:secrets:set SERPAPI_KEY` again and redeploy the function. Nothing in the app changes.
 
 ## 14. End-to-end tests (ARTEMIS)
 
@@ -190,7 +203,7 @@ Goal: the owner sets everything up once; teammates only receive one `.env` file 
    base64 < debug.keystore | tr -d '\n'      # Windows: [Convert]::ToBase64String([IO.File]::ReadAllBytes("debug.keystore"))
    ```
 2. Firebase console → Project settings → Android app → **Add fingerprint**: add the SHA-1 and SHA-256 above, once.
-3. Fill the root `.env`: `SERPAPI_KEY=…` and `DEBUG_KEYSTORE_BASE64=<the one-line base64>`. `android/app/build.gradle.kts` decodes it into the build folder and signs every debug build with it.
+3. Fill the root `.env`: `DEBUG_KEYSTORE_BASE64=<the one-line base64>`. `android/app/build.gradle.kts` decodes it into the build folder and signs every debug build with it. The SerpAPI key is **not** in this file; the owner sets it as the `SERPAPI_KEY` function secret (§13).
 4. Firebase console → **Users and permissions**: add teammates (Editor to deploy rules or change Remote Config, Viewer for evidence screenshots).
 5. Send `.env` privately (Zalo / Drive), **never through Git**. Delete the local `debug.keystore` file or keep it outside the repository; keystores must not be committed (Lab 3 §9).
 
@@ -203,6 +216,6 @@ flutter pub get
 flutter run --dart-define-from-file=.env
 ```
 
-Google Sign-In works immediately because the debug build carries the team key. Everyone shares the owner's SerpAPI quota; if it runs out, replace `SERPAPI_KEY` in your own `.env` with a free key of your own. Only teammates who deploy rules need `firebase-tools` and `firebase login` with their own Google account; nobody needs a service account.
+Google Sign-In works immediately because the debug build carries the team key. Internship data comes from the shared Firestore pool, so teammates do not need a SerpAPI key. Only teammates who deploy rules or functions need `firebase-tools` and `firebase login` with their own Google account; nobody needs a service account.
 
-This key is for **debug builds only**. A real release would need its own private keystore.
+The debug keystore is for **debug builds only**. A real release would need its own private keystore.

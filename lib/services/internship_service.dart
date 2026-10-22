@@ -1,93 +1,95 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/errors/app_exception.dart';
 import '../models/internship.dart';
 import 'crashlytics_service.dart';
-import 'serp_api_client.dart';
 
-/// Internship listings from SerpAPI Google Jobs (G-25). The only place that
-/// turns SerpAPI JSON into [Internship] models.
+/// Internship listings shared by every signed-in user.
+///
+/// Listings are written to Firestore by the scheduled `syncInternships` Cloud
+/// Function (SerpAPI → Firestore) and are read-only in the app. The app never
+/// calls SerpAPI directly, so the API key never ships in the APK.
 abstract interface class InternshipService {
-  /// Internships for [keyword] near [location] (default:
-  /// [SerpApiInternshipService.defaultLocation]), in Google's relevance
-  /// order. One SerpAPI page, so at most 10 results; an empty list when
-  /// nothing matches. Throws `AppException` on network, quota or key errors.
-  Future<List<Internship>> search({required String keyword, String? location});
+  /// Emits active listings whenever the shared collection changes. Documents
+  /// with `expiresAt <= now` are excluded by the query.
+  Stream<List<Internship>> watchActive();
 }
 
 final internshipServiceProvider = Provider<InternshipService>(
-  (ref) => SerpApiInternshipService(
-    ref.watch(serpApiClientProvider),
+  (ref) => FirestoreInternshipService(
+    FirebaseFirestore.instance,
     crashlytics: ref.watch(crashlyticsServiceProvider),
   ),
 );
 
-class SerpApiInternshipService implements InternshipService {
-  SerpApiInternshipService(
-    this._client, {
-    required this._crashlytics,
-    DateTime Function()? clock,
-    this.cacheTtl = const Duration(minutes: 10),
-  }) : _clock = clock ?? DateTime.now;
+class FirestoreInternshipService implements InternshipService {
+  FirestoreInternshipService(this._firestore, {required this._crashlytics});
 
-  /// The persona studies and commutes in Ho Chi Minh City (persona.md).
-  static const String defaultLocation = 'Ho Chi Minh City, Vietnam';
-
-  final SerpApiClient _client;
+  final FirebaseFirestore _firestore;
   final CrashlyticsService _crashlytics;
-  final DateTime Function() _clock;
-
-  /// Successful results are reused for this long per keyword and location,
-  /// so switching tabs or skills back and forth does not spend the
-  /// free-plan search quota again (G-25 point 2).
-  final Duration cacheTtl;
-
-  final Map<String, ({DateTime fetchedAt, List<Internship> results})> _cache =
-      {};
 
   @override
-  Future<List<Internship>> search({
-    required String keyword,
-    String? location,
-  }) async {
-    final place = location ?? defaultLocation;
-    final cacheKey = '${keyword.trim().toLowerCase()}|$place';
-    final cached = _cache[cacheKey];
-    if (cached != null && _clock().difference(cached.fetchedAt) < cacheTtl) {
-      return cached.results;
-    }
+  Stream<List<Internship>> watchActive() async* {
+    final query = _firestore
+        .collection('internships')
+        .where('expiresAt', isGreaterThan: Timestamp.now());
 
-    final body = await _client.search({
-      'engine': 'google_jobs',
-      'q': '${keyword.trim()} internship',
-      'location': place,
-      'hl': 'en',
-      'gl': 'vn',
-    });
-    final results = List<Internship>.unmodifiable(_parse(body['jobs_results']));
-    _cache[cacheKey] = (fetchedAt: _clock(), results: results);
-    return results;
+    try {
+      await for (final snapshot in query.snapshots()) {
+        yield _parse(snapshot);
+      }
+    } on FirebaseException catch (error) {
+      throw _toAppException(error);
+    } on Exception catch (error) {
+      throw AppException(
+        AppErrorKind.unknown,
+        'We could not load internships. Try again in a moment.',
+        cause: error,
+      );
+    }
   }
 
-  Iterable<Internship> _parse(Object? jobs) sync* {
-    if (jobs is! List) return; // No results.
-    for (final job in jobs) {
+  List<Internship> _parse(QuerySnapshot<Map<String, Object?>> snapshot) {
+    final results = <Internship>[];
+    for (final doc in snapshot.docs) {
       try {
-        if (job is! Map<String, Object?>) {
-          throw const FormatException('jobs_results: entry is not an object');
-        }
-        yield Internship.fromSerpApi(job);
+        results.add(Internship.fromFirestore(doc.id, doc.data()));
       } on FormatException catch (error, stack) {
-        // One malformed listing must not hide the others.
+        // One malformed document must not hide the others.
         unawaited(
           _crashlytics.recordError(
             error,
             stack,
-            reason: 'Skipped a malformed SerpAPI job',
+            reason: 'Skipped a malformed internship document',
           ),
         );
       }
     }
+    return List<Internship>.unmodifiable(results);
+  }
+
+  static AppException _toAppException(FirebaseException error) {
+    return switch (error.code) {
+      'permission-denied' => AppException(
+        AppErrorKind.permissionDenied,
+        'Internships are not available for this account.',
+        cause: error,
+      ),
+      'unavailable' ||
+      'deadline-exceeded' ||
+      'network-request-failed' => AppException(
+        AppErrorKind.network,
+        'We could not load internships. Check your connection and try again.',
+        cause: error,
+      ),
+      _ => AppException(
+        AppErrorKind.unknown,
+        'We could not load internships. Try again in a moment.',
+        cause: error,
+      ),
+    };
   }
 }

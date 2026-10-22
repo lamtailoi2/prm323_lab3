@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:internly/core/utils/allowance.dart';
 import 'package:internly/core/utils/job_key.dart';
 import 'package:internly/core/utils/posted_age.dart';
 import 'package:internly/core/utils/skill_matcher.dart';
@@ -39,6 +40,51 @@ void main() {
       expect(parsePostedAge(null), isNull);
       expect(parsePostedAge('Full-time'), isNull);
       expect(parsePostedAge(''), isNull);
+    });
+  });
+
+  group('formatPostedAge', () {
+    final now = DateTime.utc(2026, 10, 22, 12);
+
+    test('uses the compact Home wording', () {
+      expect(formatPostedAge(null), '');
+      expect(formatPostedAge(now, now: now), 'Just now');
+      expect(
+        formatPostedAge(now.subtract(const Duration(minutes: 17)), now: now),
+        '17m ago',
+      );
+      expect(
+        formatPostedAge(now.subtract(const Duration(hours: 3)), now: now),
+        '3h ago',
+      );
+      expect(
+        formatPostedAge(now.subtract(const Duration(days: 2)), now: now),
+        '2d ago',
+      );
+      expect(
+        formatPostedAge(now.subtract(const Duration(days: 8)), now: now),
+        '1w ago',
+      );
+      expect(
+        formatPostedAge(now.subtract(const Duration(days: 45)), now: now),
+        '1mo ago',
+      );
+      expect(
+        formatPostedAge(now.subtract(const Duration(days: 400)), now: now),
+        '1y ago',
+      );
+    });
+  });
+
+  group('formatAllowance', () {
+    test('normalises Google period wording without inventing pay', () {
+      expect(formatAllowance(null), 'Not disclosed');
+      expect(formatAllowance('  '), 'Not disclosed');
+      expect(formatAllowance('12,000,000 VND a month'), '12,000,000 VND / mo');
+      expect(formatAllowance('8M–12M VND per month'), '8M–12M VND / mo');
+      expect(formatAllowance('Negotiable'), 'Negotiable');
+      expect(formatAllowance('USD 20/hour'), 'USD 20/hour');
+      expect(formatAllowance('12M   VND   monthly'), '12M VND / mo');
     });
   });
 

@@ -9,6 +9,8 @@ import 'package:internly/models/app_user.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
+import 'package:internly/services/internship_service.dart';
+import 'package:internly/services/remote_config_service.dart';
 
 import '../helpers/fakes.dart';
 import '../helpers/pump.dart';
@@ -82,13 +84,19 @@ void main() {
       final auth = FakeAuthService(initialUser: user);
       analytics = FakeAnalyticsService();
       crashlytics = FakeCrashlyticsService();
+      final internships = FakeInternshipService();
+      final remoteConfig = FakeRemoteConfigService();
       addTearDown(auth.dispose);
+      addTearDown(internships.dispose);
+      addTearDown(remoteConfig.dispose);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             authServiceProvider.overrideWithValue(auth),
             analyticsServiceProvider.overrideWithValue(analytics),
             crashlyticsServiceProvider.overrideWithValue(crashlytics),
+            internshipServiceProvider.overrideWithValue(internships),
+            remoteConfigServiceProvider.overrideWithValue(remoteConfig),
           ],
           child: const InternlyApp(),
         ),
@@ -106,7 +114,7 @@ void main() {
 
       await tester.tap(find.text('Continue with Google'));
       await tester.pumpAndSettle();
-      expect(find.text('Home is not built yet'), findsOneWidget);
+      expect(find.text('Find your next internship'), findsOneWidget);
       expect(analytics.events, contains('login:google'));
     });
 
@@ -118,7 +126,13 @@ void main() {
         expect(find.byType(NavigationBar), findsOneWidget);
         for (final destination in AppDestination.values) {
           expect(find.text(destination.label), findsWidgets);
-          expect(find.byIcon(destination.icon), findsOneWidget);
+          expect(
+            find.descendant(
+              of: find.byType(NavigationBar),
+              matching: find.byIcon(destination.icon),
+            ),
+            findsOneWidget,
+          );
         }
         expect(tester.takeException(), isNull);
       });

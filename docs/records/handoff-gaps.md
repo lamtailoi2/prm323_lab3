@@ -32,9 +32,9 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-20 | iOS: SPM cannot resolve Firebase 13 + GoogleSignIn 9 | Tech lead | Resolved (CocoaPods; see note) |
 | G-21 | App ID / bundle ID and repository naming not confirmed | Team | Resolved (keep `prm323_lab3`, user decision) |
 | G-22 | Keyword search strategy (Firestore has no full-text search) | Search owner | Resolved (SerpAPI query) |
-| G-23 | "Recommended for you" logic not specified | Home owner | Open |
+| G-23 | "Recommended for you" logic not specified | Home owner | Resolved (sync rank + recency) |
 | G-24 | CV Match Check (new Apply step): matching rules, data source, Figma frame | Apply owner + design owner | Open |
-| G-25 | Consequences of using SerpAPI (Google Jobs) as the data source | Search + Apply owners | Open |
+| G-25 | Consequences of using SerpAPI (Google Jobs) as the data source | Search + Apply owners | Resolved (shared Firestore mirror) |
 | G-26 | Zero-cost constraint: every service and tool must run at $0 | Team | Resolved (plan below) |
 
 ---
@@ -71,7 +71,6 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 | Value | Current | Where |
 |---|---|---|
 | Pressed state opacity ("reduced emphasis") | 0.7 | `AppTheme.pressedOpacity` |
-| Text button default fill | `surface` | `AppTheme` text button style |
 | App Bar "Main" title style | `type/heading/large` | `AppTopBar.main` |
 | Error State icon size | 32 dp | `StateView._errorIconSize` |
 | Internship Card inner gaps, tag text style | 4/8 dp, `type/caption` | `InternshipCard`, `AppTag` |
@@ -159,7 +158,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 
 ### G-23: Recommendation logic
 - **Found:** Home shows "Recommended for you" (and Internship Detail shows a "% profile match" in the AI log), but no rule is specified.
-- **Proposal:** match listing skills against profile skills and preferred work modes, computed client-side, with no invented percentages shown until the rule is agreed. Share the matching code with the CV Match Check (G-24).
+- **Resolved (2026-10-22):** Home ranks the synced pool by the SerpAPI result position (`searchRank`, lower is more relevant) and then by posting date, capped by Remote Config `home_recommended_limit`. No profile matching and no invented percentage are shown in this slice. Profile-aware ranking remains a future decision that must share its code with CV Match Check (G-24).
 
 ### G-24: CV Match Check
 - **Found (2026-10-21):** the team restructured the flows to Search → Apply → Track (DC-08) and added a CV Match Check step to Apply (DC-09): show which requirements the CV / profile does not match and suggest improvements. Lab 2 has no screen for it; the closest existing parts are the "Your match" card in Internship Detail (AI log) and the "Match Card" component in Figma.
@@ -171,13 +170,14 @@ Values below are **estimated from the Figma screenshots** or left at Material de
   4. **Design.** Figma frame for the screen (states: checking, all matched, gaps, failed), built from existing components (Match Card, Skill Tag, Bullet Item, Info Banner).
 
 ### G-25: SerpAPI (Google Jobs) as the data source
-- **Decision (user, 2026-10-21):** internship listings come from SerpAPI's `google_jobs` engine. Lab 3 requires real data and no mocks; `SerpApiClient` is ready in `lib/services/`.
+- **Decision (user, 2026-10-21):** internship listings come from SerpAPI's `google_jobs` engine. Lab 3 requires real data and no mocks.
+- **Updated (2026-10-22):** a scheduled Cloud Function (`functions/src/sync.ts`) mirrors SerpAPI into the shared `/internships/{jobKey}` Firestore collection every 6 hours. The app reads only Firestore, so the key never ships in the APK and the quota is shared by all users.
 - **Consequences to handle in the features:**
-  1. **API key in the app.** The key comes from `.env` through `--dart-define-from-file` and is compiled into the APK, so anyone with the APK can extract it. Use a free-plan key only (no card), never commit `.env`, and rotate the key after grading. A proxy would need a paid backend.
-  2. **Quota.** The free plan has a small monthly search quota (check the SerpAPI dashboard). Cache results for a short time per query, avoid searching on every keystroke, and keep ARTEMIS runs within the quota (15 tests × 3 runs). Record the cache as a design decision (reason: API limit). The client maps HTTP 429 to `AppErrorKind.rateLimited` with a visible message.
-  3. **Coverage in Vietnam.** Google Jobs coverage varies by country. Run a test query early (e.g. `q=intern`, `location=Ho Chi Minh City, Vietnam`), and widen the location if results are thin.
-  4. **IDs.** `job_id` is long and may contain `/`. Derive a short URL-safe key for Firestore document IDs, routes and analytics (≤ 100 characters).
-  5. **Listings expire.** Saved items and applications store a snapshot of the fields they display.
+  1. **API key location.** `SERPAPI_KEY` lives in Secret Manager and is attached only to the scheduled function. Rotate it in the console/CLI and redeploy; the app needs no update. Never put it in `.env`, the repository or a client build.
+  2. **Quota.** The free plan allows 250 searches/month (checked 2026-10-22). The first sync backfills five keywords (5 searches), then each 6-hour run refreshes one keyword (about 120/month), so the first month is about 125 searches. If the quota runs out, `sync/state.lastError` records it and the app keeps the last good pool until documents expire after 7 days.
+  3. **Coverage in Vietnam.** Google Jobs needs a location; the same query with no `location` returned zero in testing. The sync uses `location=Vietnam` and five proven queries: `IT internship Vietnam`, `thực tập IT`, `thực tập backend`, `thực tập data`, `thực tập tester` (40 distinct jobs in the 2026-10-22 run). `thực tập mobile` and `thực tập devops` returned nothing and are not queried. The app filters the nationwide pool by the listing's stored `location` (Ho Chi Minh City, Hanoi, …); this is the future Search location filter, not a sync parameter. “Hasn't returned any results” is treated as an empty page, not a failed run.
+  4. **IDs.** `job_id` is long and may contain `/`. Both the function and the app derive the same 16-hex FNV-1a key (`jobKeyFor`) for Firestore document IDs, routes and analytics (≤ 100 characters).
+  5. **Listings expire.** The function sets `expiresAt` to 7 days after a listing is last seen and deletes expired documents; the app query excludes them. Saved items and applications still store a snapshot of the fields they display.
   6. **Applying is external.** Google Jobs gives `apply_options` links to employer sites; the app cannot submit to the employer. Proposal: Flow 2 ends by recording the application in Firestore (the student's own tracking record) and offering the employer's apply link. Statuses (Under review, Interview, …) are then **updated by the student**, which also gives the main entity its update and delete (G-08, G-10). Record the UI change as DC-10.
   7. **Missing fields.** Salary, company size, logo and office location are often absent: show "Not disclosed" or hide the row; the Map Preview Card cannot be built (DC-10).
   8. **CV Match Check input:** `job_highlights` (Qualifications) and the description text vs the profile skills (G-24).
@@ -189,6 +189,7 @@ The user wants **no spending at all**, including AI models. Every requirement ca
 |---|---|---|
 | Firebase Auth, Firestore, FCM, Analytics, Crashlytics, Remote Config | Spark (free) plan | Free quotas are far above lab usage |
 | File storage | **Cloud Storage for Firebase on Blaze**, bucket in `US-CENTRAL1` / `US-EAST1` / `US-WEST1` (Always Free tier), $1 budget alert (G-12) | Card required; budget alerts do not cap spending |
+| Scheduled internship sync | **Cloud Functions (2nd gen) + Cloud Scheduler on the same Blaze plan**, 1 job every 6 hours, 5 searches on the first run (G-25) | Card required (already for Storage); free monthly invocations far exceed this job; `retryCount: 0` avoids quota doubles |
 | Internship data | SerpAPI free plan (no card) | Small monthly quota (G-25) |
 | ARTEMIS | Open source (Apache 2.0) | — |
 | ARTEMIS model | Gemini API key from Google AI Studio **without enabling billing** (free tier). ARTEMIS's default config already uses Gemini models | Rate limits (slower runs); free-tier prompts may be used by Google to improve its products, so use only test data. If a configured model is not available on the free tier, switch that node to a free Flash / Flash-Lite model in `config/artemis.jsonc`. A local Ollama preset exists but is weaker (the Pro explorer expects Gemini models) |

@@ -16,6 +16,10 @@ class FirestoreReader {
 
   bool has(String key) => _data[key] != null;
 
+  /// A copy of the wrapped document data, for handing a nested object to a
+  /// model parser.
+  Map<String, Object?> toMap() => Map<String, Object?>.unmodifiable(_data);
+
   String requireString(String key) {
     final value = _data[key];
     if (value is String && value.trim().isNotEmpty) return value;

@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/job_role.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 
-/// "Browse by skill": a horizontally scrolling row of filter chips. At most
+/// "Browse by Role": a horizontally scrolling row of filter chips. At most
 /// one is selected; the selected chip shows a check, not only a color.
-class SkillShortcuts extends StatelessWidget {
-  const SkillShortcuts({
+class RoleShortcuts extends StatelessWidget {
+  const RoleShortcuts({
     super.key,
-    required this.skills,
+    required this.roles,
     required this.selected,
     required this.onSelected,
   });
 
-  final List<String> skills;
-  final String? selected;
-  final ValueChanged<String> onSelected;
+  final List<JobRole> roles;
+  final JobRole? selected;
+  final ValueChanged<JobRole> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -26,15 +27,16 @@ class SkillShortcuts extends StatelessWidget {
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.screenHorizontal,
         ),
-        itemCount: skills.length,
+        itemCount: roles.length,
         separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.s8),
         itemBuilder: (context, index) {
-          final skill = skills[index];
+          final role = roles[index];
           return Center(
             child: FilterChip(
-              label: Text(skill),
-              selected: skill == selected,
-              onSelected: (_) => onSelected(skill),
+              label: Text(role.label),
+              selected: role == selected,
+              showCheckmark: true,
+              onSelected: (_) => onSelected(role),
             ),
           );
         },

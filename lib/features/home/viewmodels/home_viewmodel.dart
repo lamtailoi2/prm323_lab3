@@ -6,31 +6,39 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
+import '../../../core/utils/job_role.dart';
 import '../../../models/internship.dart';
+import '../../../services/analytics_service.dart';
 import '../../../services/internship_service.dart';
 import '../../../services/remote_config_service.dart';
 
-/// The two Home lists. Both come from one SerpAPI page, so opening Home
-/// costs a single search of the free-plan quota (G-25).
+/// The two Home lists, built from the shared Firestore listing pool.
 @immutable
 class HomeFeed {
   const HomeFeed({required this.recommended, required this.recent});
 
-  /// The first `home_recommended_limit` results in Google's relevance order
-  /// for the selected skill (interim rule until profile skills exist, G-23).
+  /// The first `home_recommended_limit` listings by sync rank / recency,
+  /// optionally filtered by the selected skill.
   final List<Internship> recommended;
 
-  /// The other results, newest first.
+  /// The remaining listings, newest first, capped by `home_recent_limit`.
   final List<Internship> recent;
 }
 
 @immutable
 class HomeState {
-  const HomeState({this.selectedSkill, this.feed = const ViewLoading()});
+  const HomeState({
+    this.selectedRole,
+    this.availableRoles = const <JobRole>[],
+    this.feed = const ViewLoading(),
+  });
 
-  /// The "Browse by skill" shortcut in use; `null` shows IT internships in
-  /// general.
-  final String? selectedSkill;
+  /// The "Browse by Role" shortcut in use; `null` shows all IT listings.
+  final JobRole? selectedRole;
+
+  /// Roles with at least one current listing; empty while loading so the
+  /// header can fall back to the full list.
+  final List<JobRole> availableRoles;
   final ViewState<HomeFeed> feed;
 }
 
@@ -38,98 +46,159 @@ final homeViewModelProvider =
     NotifierProvider.autoDispose<HomeViewModel, HomeState>(HomeViewModel.new);
 
 class HomeViewModel extends Notifier<HomeState> {
-  /// "Browse by skill" shortcuts, in the order of the Lab 2 Home design.
-  static const List<String> skills = <String>[
-    'Flutter',
-    'React',
-    'NestJS',
-    'MongoDB',
-    'Python',
-  ];
-
-  /// Searched when no skill is selected ("IT internship").
-  static const String defaultKeyword = 'IT';
+  /// IT job families shown by "Browse by Role", in a stable order.
+  static const List<JobRole> roles = JobRole.values;
 
   List<Internship> _results = const <Internship>[];
-
-  /// Only the latest request may update the state, so a slow answer for a
-  /// previously selected skill cannot overwrite the current one.
-  int _requestId = 0;
+  StreamSubscription<List<Internship>>? _subscription;
+  DateTime _openedAt = DateTime.now();
 
   @override
   HomeState build() {
+    final service = ref.watch(internshipServiceProvider);
     final remoteConfig = ref.watch(remoteConfigServiceProvider);
-    // A new home_recommended_limit from the console re-splits the loaded
-    // page without another search (TC-12).
+    _openedAt = DateTime.now();
+
     final updates = remoteConfig.onUpdated.listen((_) {
       if (state.feed is ViewData<HomeFeed>) _showResults();
     });
-    ref.onDispose(updates.cancel);
-    unawaited(Future.microtask(_load));
+    ref.onDispose(() {
+      unawaited(updates.cancel());
+      unawaited(_subscription?.cancel());
+    });
+
+    _subscribe(service);
     return const HomeState();
   }
 
-  /// Selects [skill], or clears it when it is already selected, and loads
-  /// the matching internships.
-  Future<void> selectSkill(String skill) async {
-    final next = state.selectedSkill == skill ? null : skill;
-    state = HomeState(selectedSkill: next);
-    await _load();
+  /// Selects [role], or clears it when it is already selected. The shared
+  /// pool is already in memory, so filtering is immediate and costs no
+  /// network request.
+  void selectRole(JobRole role) {
+    final next = state.selectedRole == role ? null : role;
+    state = HomeState(
+      selectedRole: next,
+      availableRoles: state.availableRoles,
+      feed: state.feed,
+    );
+    if (state.feed is ViewData<HomeFeed> || state.feed is ViewEmpty<HomeFeed>) {
+      _showResults();
+    }
   }
 
   Future<void> retry() async {
     if (state.feed.isLoading) return;
-    state = HomeState(selectedSkill: state.selectedSkill);
-    await _load();
+    final service = ref.read(internshipServiceProvider);
+    state = HomeState(
+      selectedRole: state.selectedRole,
+      availableRoles: state.availableRoles,
+    );
+    _subscribe(service);
   }
 
-  Future<void> _load() async {
-    if (!ref.mounted) return;
-    final service = ref.read(internshipServiceProvider);
-    final skill = state.selectedSkill;
-    final requestId = ++_requestId;
+  void _subscribe(InternshipService service) {
+    unawaited(_subscription?.cancel());
+    _subscription = service.watchActive().listen(_onData, onError: _onError);
+  }
 
-    try {
-      final results = await service.search(keyword: skill ?? defaultKeyword);
-      if (!ref.mounted || requestId != _requestId) return;
-      _results = results;
-      _showResults();
-    } on AppException catch (error) {
-      if (!ref.mounted || requestId != _requestId) return;
-      state = HomeState(selectedSkill: skill, feed: ViewError(error));
-    }
+  void _onData(List<Internship> results) {
+    if (!ref.mounted) return;
+    _results = results;
+    _showResults();
+  }
+
+  void _onError(Object error, StackTrace stack) {
+    if (!ref.mounted) return;
+    final appError = error is AppException
+        ? error
+        : AppException(
+            AppErrorKind.unknown,
+            'We could not load internships. Try again in a moment.',
+            cause: error,
+          );
+    state = HomeState(
+      selectedRole: state.selectedRole,
+      availableRoles: state.availableRoles,
+      feed: ViewError(appError),
+    );
   }
 
   void _showResults() {
-    final limit = ref
-        .read(remoteConfigServiceProvider)
-        .getInt(RemoteConfigKeys.homeRecommendedLimit);
-    final split = math.min(math.max(limit, 0), _results.length);
+    final selected = state.selectedRole;
+    final itJobs = _results
+        .where((internship) => internship.role != null)
+        .toList(growable: false);
+    final available = <JobRole>[
+      for (final role in roles)
+        if (itJobs.any((internship) => internship.role == role)) role,
+    ];
+    if (selected != null && !available.contains(selected)) {
+      available.add(selected);
+    }
+    final filtered = selected == null
+        ? itJobs
+        : itJobs
+              .where((internship) => internship.role == selected)
+              .toList(growable: false);
+
+    final remoteConfig = ref.read(remoteConfigServiceProvider);
+    final recommendedLimit = math.max(
+      0,
+      remoteConfig.getInt(RemoteConfigKeys.homeRecommendedLimit),
+    );
+    final recentLimit = math.max(
+      0,
+      remoteConfig.getInt(RemoteConfigKeys.homeRecentLimit),
+    );
+
+    final ranked = [...filtered]..sort(_byRecommendation);
+    final recommended = ranked.take(recommendedLimit).toList(growable: false);
+    final recommendedKeys = {
+      for (final internship in recommended) internship.key,
+    };
+    final recent =
+        filtered
+            .where((internship) => !recommendedKeys.contains(internship.key))
+            .toList()
+          ..sort(_byNewest);
+
     final feed = HomeFeed(
-      recommended: List.unmodifiable(_results.take(split)),
-      recent: List.unmodifiable(_newestFirst(_results.skip(split))),
+      recommended: List.unmodifiable(recommended),
+      recent: List.unmodifiable(recent.take(recentLimit)),
     );
     state = HomeState(
-      selectedSkill: state.selectedSkill,
-      feed: ViewState.fromData(feed, isEmpty: _results.isEmpty),
+      selectedRole: selected,
+      availableRoles: List.unmodifiable(available),
+      feed: ViewState.fromData(feed, isEmpty: filtered.isEmpty),
+    );
+    _logSearch(selected, filtered.length);
+  }
+
+  void _logSearch(JobRole? role, int resultCount) {
+    final analytics = ref.read(analyticsServiceProvider);
+    unawaited(
+      analytics.logEvent('search', {
+        'search_term': role?.label ?? 'IT',
+        'result_count': resultCount,
+        'elapsed_sec': DateTime.now().difference(_openedAt).inSeconds,
+      }),
     );
   }
 
-  /// Sorts by posted age; listings without a known age keep their relevance
-  /// order after the dated ones.
-  static List<Internship> _newestFirst(Iterable<Internship> items) {
-    final indexed = items.indexed.toList();
-    int byAge(Duration? a, Duration? b) {
-      if (a == null || b == null) {
-        return a == b ? 0 : (a == null ? 1 : -1);
-      }
-      return a.compareTo(b);
-    }
+  static int _byRecommendation(Internship a, Internship b) {
+    const unknownRank = 1 << 30;
+    final rank = (a.searchRank ?? unknownRank).compareTo(
+      b.searchRank ?? unknownRank,
+    );
+    return rank != 0 ? rank : _byNewest(a, b);
+  }
 
-    indexed.sort((a, b) {
-      final age = byAge(a.$2.postedAge, b.$2.postedAge);
-      return age != 0 ? age : a.$1.compareTo(b.$1);
-    });
-    return [for (final (_, internship) in indexed) internship];
+  static int _byNewest(Internship a, Internship b) {
+    final first = a.postedAt;
+    final second = b.postedAt;
+    if (first == null && second == null) return 0;
+    if (first == null) return 1;
+    if (second == null) return -1;
+    return second.compareTo(first);
   }
 }

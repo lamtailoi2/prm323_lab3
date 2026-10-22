@@ -13,13 +13,13 @@ Routes marked *planned* are the agreed proposal. An owner who changes one update
 | # | Lab 2 screen | Route | Flutter widget | Data source | Owner | Status |
 |---|---|---|---|---|---|---|
 | — | Login *(Lab 3)* | `/login` | `LoginScreen` | Firebase Auth (Google) | Auth | 🟡 interim (DC-01) |
-| 1 | Home | `/home` | `HomeScreen` | SerpAPI `google_jobs` (recommended by profile skills, recently posted); Remote Config `home_recommended_limit` | Home | 🟡 placeholder |
+| 1 | Home | `/home` | `HomeScreen` | Shared Firestore pool `/internships` (synced from SerpAPI every 6h): `searchRank` + `postedAt`, role filter, Remote Config `home_recommended_limit` / `home_recent_limit` | Home | ✅ UI · 🟡 save/bell pending |
 | 2 | Search | `/search` | `SearchScreen` | — (query input, filter sheet) | Search | 🟡 placeholder |
-| 3 | Search Results | `/search/results` *(planned)* | `SearchResultsScreen` | SerpAPI `google_jobs` | Search | ⬜ |
-| 4 | Internship Detail | `/{tab}/internships/:jobKey` *(planned)* | `InternshipDetailScreen` | SerpAPI listing + Firestore `users/{uid}/savedInternships`, `…/applications` (saved / applied state) | Search | ⬜ ⚠️ DC-10 |
+| 3 | Search Results | `/search/results` *(planned)* | `SearchResultsScreen` | Shared Firestore pool `/internships` (synced from SerpAPI) | Search | ⬜ |
+| 4 | Internship Detail | `/{tab}/internships/:jobKey` *(planned)* | `InternshipDetailScreen` | Firestore `/internships/{jobKey}` + `users/{uid}/savedInternships`, `…/applications` (saved / applied state) | Search | ⬜ ⚠️ DC-10 |
 | 5 | Saved Internships | `/saved` | `SavedScreen` | Firestore `users/{uid}/savedInternships` (real-time listener) | Saved | 🟡 placeholder |
 | 6 | Application Form | `/apply/:jobKey` *(planned, root navigator: no bottom nav)* | `ApplicationFormScreen` | Firestore `users/{uid}` (prefill), Cloud Storage `cvs/{uid}/…` (`FileStorageService`) | Apply | ⬜ |
-| 7 | CV Match Check *(Lab 3)* | `/apply/:jobKey/match` *(planned)* | `CvMatchScreen` | Listing qualifications (SerpAPI) vs profile skills; Remote Config `cv_match_enabled` | Apply | ⬜ ⚠️ DC-09 |
+| 7 | CV Match Check *(Lab 3)* | `/apply/:jobKey/match` *(planned)* | `CvMatchScreen` | Listing qualifications (`/internships/{jobKey}`) vs profile skills; Remote Config `cv_match_enabled` | Apply | ⬜ ⚠️ DC-09 |
 | 8 | Application Review | `/apply/:jobKey/review` *(planned)* | `ApplicationReviewScreen` | In-memory form state | Apply | ⬜ |
 | 9 | Application Success | `/apply/:jobKey/success` *(planned)* | `ApplicationSuccessScreen` | Firestore write result | Apply | ⬜ |
 | 10 | My Applications | `/applications` | `MyApplicationsScreen` | Firestore `users/{uid}/applications` (real-time, sorted by date) | Track | 🟡 placeholder |
@@ -77,6 +77,9 @@ Every difference between Figma and the app is listed here with its reason. Lab 3
 | DC-08 | 2026-10-21 | Flows | Flows restructured to **1 Search → 2 Apply → 3 Track**; Save becomes sub-flow 2e of Apply; branches renumbered | Team decision: saving is a step towards applying | Applied in docs | ⬜ update Figma pages 01 and 06 (prototype) |
 | DC-09 | 2026-10-21 | CV Match Check (new screen in Apply) | Step between Application Form and Review: matched vs unmatched requirements, one suggestion per gap, never blocking | Team decision (G-24) | Approved | ⬜ add frames + prototype link |
 | DC-10 | 2026-10-21 | Internship Detail, Apply, cards | Listings come from SerpAPI Google Jobs: fields such as allowance, company size or office location can be missing; there is no map location; applying to the employer happens on an external site | **API limit** (G-25) | Expected: each screen owner records the exact UI change here | ⬜ per screen |
+| DC-11 | 2026-10-22 | Home (card Save, app-bar bell) | Both controls show an honest "coming soon" SnackBar instead of faking a saved state or opening an empty Notification Center | The Saved service and Notification Center are owned by later features; Lab 3 forbids fake success | Temporary until those features land | n/a (no visual change) |
+| DC-12 | 2026-10-22 | Home (search entry) | Hint shortened to `Search internships`; the shared field still uses the full placeholder elsewhere | Team decision: the full placeholder wrapped to two lines at 360 dp and made the Home search entry taller than the design (screen-spec allows a placeholder "such as") | Applied | ⬜ update Home frame hint |
+| DC-13 | 2026-10-22 | Home (Browse by Skill → Browse by Role) | The five fixed skill chips become role chips: Frontend, Backend, Full-stack, Mobile, Data/AI, Tester/QA, DevOps/Cloud, Other IT. Only roles present in the current pool are shown; non-IT listings are hidden. Skills remain as card tags. | **API/data limit**: Google Jobs has no category field, and the Lab 2 skill chips were sparse against real data (Flutter 1, NestJS 1, MongoDB 2, React 8, Python 8). The team chose an IT-only role taxonomy for discovery. | Applied | ⬜ add Home role chips frame |
 
 ## 5. Screen verification checklist
 
