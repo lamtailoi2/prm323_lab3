@@ -1,5 +1,11 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
+    // START: FlutterFire Configuration
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
+    // END: FlutterFire Configuration
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -22,7 +28,7 @@ val sharedDebugKeystore: File? = run {
     if (encoded.isNullOrEmpty()) return@run null
     val keystore = layout.buildDirectory.file("shared-debug.keystore").get().asFile
     keystore.parentFile.mkdirs()
-    keystore.writeBytes(java.util.Base64.getDecoder().decode(encoded))
+    keystore.writeBytes(Base64.getDecoder().decode(encoded))
     keystore
 }
 

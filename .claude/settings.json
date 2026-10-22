@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($flutterfire = Join-Path $env:LOCALAPPDATA 'Pub\\\\Cache\\\\bin\\\\flutterfire.bat'; \"y\" | & $flutterfire configure --project=prm-lab3 --platforms=android,ios --android-package-name=com.group3.internly --ios-bundle-id=com.group3.internly --out=lib/firebase_options.dart)",
+      "Bash(firebase apps:init --help)",
+      "Bash(firebase apps:list --project prm-lab3)",
+      "WebSearch",
+      "Bash(firebase apps:create android \"internly \\(android\\)\" --package-name=com.group3.internly --project=prm-lab3)",
+      "Bash(firebase use *)",
+      "Bash(node -e \"const data=require\\('fs'\\).readFileSync\\(0,'utf8'\\); JSON.parse\\(data\\); console.log\\('valid JSON'\\)\")",
+      "Bash(firebase deploy *)",
+      "Bash(flutter analyze *)",
+      "Bash(timeout 90 flutter run --dart-define-from-file=.env -d emulator-5554)",
+      "Bash(timeout 120 flutter build apk --debug --dart-define-from-file=.env)",
+      "Bash(flutter build *)"
+    ]
+  }
+}
