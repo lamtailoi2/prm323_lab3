@@ -1,11 +1,13 @@
+import 'dart:io' show File;
+import 'dart:math' as math;
 import 'dart:typed_data' show Uint8List;
 
-import 'package:flutter/foundation.dart' show math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/errors/app_exception.dart';
-import '../services/file_storage_service.dart' show UploadedFile;
 import '../services/auth_service.dart';
+import '../services/file_storage_service.dart'
+    show FileStorageService, StorageFolder, UploadedFile;
 import '../services/local_auth_service.dart';
 
 /// Local [FileStorageService] implementation that stores PDFs in the
@@ -16,7 +18,8 @@ import '../services/local_auth_service.dart';
 /// (`reports`, `cvs`) so the generated paths are compatible with the
 /// existing rules/structure.
 class LocalFileStorageService implements FileStorageService {
-  LocalFileStorageService({AuthService? auth}) : _auth = auth ?? LocalAuthService();
+  LocalFileStorageService({AuthService? auth})
+    : _auth = auth ?? LocalAuthService();
 
   final AuthService _auth;
 
@@ -78,11 +81,16 @@ class LocalFileStorageService implements FileStorageService {
     );
   }
 
-  String _randomHex(int byteCount) =>
-      List.generate(byteCount, (_) => (math.Random().nextInt(256)).toRadixString(16).padLeft(2, '0')).join();
+  String _randomHex(int byteCount) => List.generate(
+    byteCount,
+    (_) => (math.Random().nextInt(256)).toRadixString(16).padLeft(2, '0'),
+  ).join();
 
   String _slug(String fileName) {
-    final base = fileName.replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '');
+    final base = fileName.replaceAll(
+      RegExp(r'\.pdf$', caseSensitive: false),
+      '',
+    );
     final slug = base
         .toLowerCase()
         .replaceAll(RegExp('[^a-z0-9]+'), '-')

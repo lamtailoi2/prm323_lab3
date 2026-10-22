@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/errors/app_exception.dart';
 import '../models/app_user.dart';
 import '../services/auth_service.dart';
 
@@ -30,12 +29,14 @@ class LocalAuthService implements AuthService {
   Future<AppUser> signInWithGoogle() async {
     // No-op: return the current user or a test user. The platform redirect
     // is handled externally; the router proceeds when authStateChanges emits.
-    final effectiveUser = _user ?? AppUser(
-      uid: 'local-uid',
-      email: 'local@test',
-      displayName: 'Local User',
-      photoUrl: null,
-    );
+    final effectiveUser =
+        _user ??
+        AppUser(
+          uid: 'local-uid',
+          email: 'local@test',
+          displayName: 'Local User',
+          photoUrl: null,
+        );
     _emit(effectiveUser);
     return effectiveUser;
   }
