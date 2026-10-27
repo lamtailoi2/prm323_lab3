@@ -1,6 +1,6 @@
 # Internly architecture
 
-Internly is a Flutter app (Android graded, iOS also builds) built with **MVVM**, **Riverpod 3** for state management and dependency injection, **go_router** for navigation, **SerpAPI (Google Jobs)** for internship listings, and **Firebase** for identity, user data, files, messaging, analytics, crash reporting and remote configuration. Written before feature work (Lab 3 §4 stage 2); every feature PR keeps it true to the code.
+Internly is a Flutter app (Android graded, iOS also builds) built with **MVVM**, **Riverpod 3** for state management and dependency injection, **go_router** for navigation, **SerpAPI (Google Jobs)** behind a scheduled Cloud Function, and **Firebase** for identity, the shared listing pool, user data, files, messaging, analytics, crash reporting and remote configuration. The function mirrors SerpAPI into Firestore every six hours; the app only reads Firestore. Written before feature work (Lab 3 §4 stage 2); every feature PR keeps it true to the code.
 
 ## 1. Layers
 
@@ -10,16 +10,18 @@ Dependencies point **down only**; a layer never imports from the layer above it.
 flowchart TB
     V["View — features/*/screens, features/*/widgets, core/widgets<br/>renders ViewState, forwards user events; no SDK or HTTP calls"]
     VM["ViewModel — features/*/viewmodels (Riverpod Notifier)<br/>owns ViewState (loading / empty / error / data), business logic, analytics events"]
-    S["Services — lib/services (interfaces + implementations, injected with Riverpod)<br/>wrap SerpAPI and every Firebase SDK; return models; translate exceptions into AppException"]
+    S["Services — lib/services (interfaces + implementations, injected with Riverpod)<br/>wrap Firestore and every Firebase SDK; return models; translate exceptions into AppException"]
     M["Models — lib/models, features/*/models<br/>plain Dart data classes"]
+    CF["Cloud Function — functions/src<br/>scheduled sync every 6 hours"]
     API[("SerpAPI<br/>google_jobs")]
     FB[("Firebase<br/>Auth · Firestore · Storage · FCM · Analytics · Crashlytics · Remote Config")]
 
     V -- "user events" --> VM
     VM -- "state changes" --> V
     VM -- "async calls" --> S
-    S --> API
     S --> FB
+    CF --> API
+    CF --> FB
     VM -.-> M
     S -.-> M
     T["Theme — lib/theme (tokens → ThemeData)"] -.-> V
@@ -27,9 +29,9 @@ flowchart TB
 
 | Layer | May depend on | Must not |
 |---|---|---|
-| **View** | ViewModels, `core/widgets`, `theme` | Import Firebase / `http`, call services, contain business logic (filtering, ranking, validation) in `build()` |
+| **View** | ViewModels, `core/widgets`, `theme` | Import Firebase SDKs, call services, contain business logic (filtering, ranking, validation) in `build()` |
 | **ViewModel** | Services (through providers), models, `core/state`, `core/errors`, `core/utils` | Import widgets (except `foundation`), hold a `BuildContext`, navigate |
-| **Service** | SDKs, `http`, models, `core/errors`, `core/utils` | Know about screens or UI state |
+| **Service** | SDKs, models, `core/errors`, `core/utils` | Call SerpAPI, know about screens or UI state |
 | **Model** | `core/utils` (parsing) | Import Firebase SDKs (except `Timestamp` via `FirestoreReader`) |
 
 ## 2. Folder structure
@@ -45,13 +47,14 @@ lib/
   core/utils/                FirestoreReader (safe parsing), Validators
   core/widgets/              Lab 2 components as reusable widgets (button, field, card, app bar, dialog, states…)
   models/                    models shared by several features (AppUser)
-  services/                  service interfaces + implementations + Riverpod providers (auth, SerpAPI, analytics, crashlytics, remote config; feature services added here)
+  services/                  service interfaces + implementations + Riverpod providers (auth, Firestore listings, analytics, crashlytics, remote config; feature services added here)
   features/<feature>/
     screens/                 one file per screen (View)
     viewmodels/              Notifier classes + providers (ViewModel)
     widgets/                 widgets used by this feature only
 assets/fonts/                Inter (OFL)
 firebase/                    firestore.rules, storage.rules, firestore.indexes.json, remote-config-defaults.json
+functions/                   scheduled SerpAPI → Firestore sync (TypeScript, Node 22)
 e2e_test/                    ARTEMIS pytest suite (conftest.py, pyproject.toml, test_*.py)
 test/                        Flutter unit, ViewModel, widget and routing tests (mirrors lib/)
 docs/                        design traceability, architecture, plans, logs, Lab 2 snapshot
@@ -98,42 +101,39 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `NotificationCenterViewModel` | Notification Center | `NotificationService`, `AnalyticsService` | Planned |
 | `ReportExportViewModel` | Report export | `ReportExportService`, `FileStorageService`, `ApplicationService`, `AnalyticsService` | Planned |
 
-Services that exist today: `AuthService`, `SerpApiClient`, `FileStorageService` (Cloud Storage for Firebase), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`.
+Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `FileStorageService` (Cloud Storage for Firebase), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`.
 
-## 4. Sequence: Flow 1 search (planned implementation)
+## 4. Sequence: Home feed (shared Firestore pool)
 
 ```mermaid
 sequenceDiagram
     actor Student
-    participant V as SearchScreen (View)
-    participant VM as SearchViewModel
+    participant V as HomeScreen (View)
+    participant VM as HomeViewModel
     participant IS as InternshipService
-    participant SC as SerpApiClient
-    participant API as SerpAPI google_jobs
+    participant FS as Cloud Firestore
     participant A as AnalyticsService
 
-    Student->>V: types "Flutter", picks Remote, taps Show results
-    V->>VM: search(query, filters)
-    VM-->>V: ViewLoading → card skeletons
-    VM->>IS: searchInternships(query, filters)
-    IS->>SC: search({engine: google_jobs, q, location, …})
-    SC->>API: GET /search.json?…&api_key=…
-    alt results
-        API-->>SC: 200 { jobs_results: [...] }
-        SC-->>IS: JSON map
-        IS-->>VM: List<Internship> (parsed, invalid items skipped)
+    Student->>V: opens Home
+    V->>VM: provider build (autoDispose)
+    VM->>IS: watchActive()
+    IS->>FS: internships where expiresAt > now
+    alt listings
+        FS-->>IS: snapshot of active documents
+        IS-->>VM: List<Internship> (malformed docs skipped + logged)
+        VM->>VM: split into Recommended / Recently Posted (Remote Config limits)
         VM->>A: logEvent("search", {search_term, result_count, elapsed_sec})
-        VM-->>V: ViewData(list) → InternshipCard list
-    else no results
-        API-->>SC: 200 { error: "Google hasn't returned any results…" }
+        VM-->>V: ViewData → InternshipCard list
+    else empty pool
         IS-->>VM: []
-        VM-->>V: ViewEmpty → "No results found" + Clear filters
-    else network / quota / key error
-        SC-->>IS: throws AppException(network | rateLimited | configuration)
+        VM-->>V: ViewEmpty → "No results found" + Search internships
+    else permission / network error
         IS-->>VM: AppException
         VM-->>V: ViewError → message + Retry
     end
 ```
+
+The pool itself is filled by `syncInternshipsJob` every six hours (Plan → backfill all keywords once, then one keyword per run). The function writes `/internships/{jobKey}` with the raw SerpAPI job, `searchKeyword`, `searchRank`, `syncedAt` and `expiresAt`; clients can read but never write it.
 
 ## 5. Navigation
 
@@ -146,16 +146,16 @@ sequenceDiagram
 
 | Data | Source | Owner | Access |
 |---|---|---|---|
-| Internship listings | **SerpAPI** `google_jobs` (real-time, read-only) | External | Through `SerpApiClient` → `InternshipService` only |
+| Internship listings | **Cloud Firestore** `internships/{jobKey}`, mirrored from SerpAPI `google_jobs` every 6 hours (read-only in the app) | Scheduled Cloud Function (Admin SDK) | Signed-in users read; client writes are denied. App reads through `InternshipService` only |
 | Profile, saved internships, applications, notifications, report metadata | **Cloud Firestore** under `users/{uid}/…` | The signed-in user | Owner only: `users/{uid}/**` (`firebase/firestore.rules`, final) |
 | CVs, generated PDF reports | **Cloud Storage for Firebase** `cvs/{uid}/…`, `reports/{uid}/…` (Blaze, US bucket, no-cost quota); metadata in Firestore `users/{uid}/…` | The signed-in user | `firebase/storage.rules`: owner only, PDF ≤ 10 MB; the service checks the same before uploading (G-12) |
 | Feature switches, limits | **Remote Config** (defaults in `firebase/remote-config-defaults.json`) | App team | Read-only in the app; real-time updates |
 
 Rules for feature owners:
 
-1. Listings are not stored in Firestore. Saved items and applications keep a **snapshot** of the listing fields they show (title, company, location, apply link), because SerpAPI listings expire (G-25).
+1. The shared pool lives in `/internships`, not under `users/{uid}`. Saved items and applications still keep a **snapshot** of the listing fields they show (title, company, location, apply link), because listings expire (G-25).
 2. Firestore document IDs use a short, URL-safe key derived from the SerpAPI `job_id` (the raw ID is long and may contain `/`).
-3. The rules are final and generic (owner-only `users/{uid}/**`, ≤ 50 fields per document), so features never change them. Validation of field values happens in ViewModels and services; nothing in Firestore belongs to anyone but its owner (statuses are self-tracked, G-25).
+3. The rules are final and generic: owner-only `users/{uid}/**`, read-only `/internships`, and `/sync/**` denied to clients. Features never change them. Validation of field values happens in ViewModels and services (statuses are self-tracked, G-25).
 4. Parse defensively with `FirestoreReader`; skip and log (Crashlytics non-fatal) malformed documents instead of failing a list.
 5. Read server timestamps in listeners with `ServerTimestampBehavior.estimate`.
 
@@ -165,7 +165,8 @@ Rules for feature owners:
 |---|---|---|
 | Initialization | `app/bootstrap.dart` | Placeholder config → "Firebase is not configured" screen |
 | Auth (Google) | `services/auth_service.dart` | Cancelled picker → info message; network / config → error message |
-| SerpAPI | `services/serp_api_client.dart` | Missing / invalid key, quota (429), network, timeout → `AppException`; no results → empty |
+| SerpAPI sync | `functions/src/sync.ts` (scheduled) | Missing secret / quota / network → logged + `sync/state.lastError`; the app keeps serving the last good pool |
+| Listings | `services/internship_service.dart` | permission denied / offline → `AppException` with Retry; malformed documents skipped and logged |
 | File storage | `services/file_storage_service.dart` | Signed out → permission denied; not a PDF / too large → invalid input; `unauthorized` / `quota-exceeded` / `retry-limit-exceeded` → message; progress reported |
 | Analytics | `services/analytics_service.dart` | Failures swallowed; names validated in debug |
 | Crashlytics | `services/crashlytics_service.dart` | Global handlers at bootstrap; user ID + `last_screen` key; `crashForTesting()` only from the demo area |
@@ -175,14 +176,14 @@ Rules for feature owners:
 ## 8. Secrets and configuration
 
 - Firebase config files are app configuration and are committed (Lab 3 §9).
-- The SerpAPI key comes from the untracked `.env` via `flutter run --dart-define-from-file=.env`. It is compiled into the APK, so use a free-plan key only (G-25).
+- The SerpAPI key lives in **Secret Manager** as `SERPAPI_KEY` and is read only by the scheduled function. It is not part of the APK or the Flutter `.env` (G-25).
 - Never commit service-account JSON, keystores, `.p8` keys, model API keys or test-account credentials.
 
 ## 9. Testing
 
 | Level | Location | Tools |
 |---|---|---|
-| Unit (utils, services, models) | `test/core`, `test/services` | `flutter_test`, `package:http/testing.dart` |
+| Unit (utils, services, models) | `test/core`, `test/services`, `functions/src` | `flutter_test`, Node `node:test` |
 | ViewModel | `test/features/<feature>` | `ProviderContainer.test` + fakes (`test/helpers/fakes.dart`) |
 | Widget (components, screens at 360 / 412 dp) | `test/core/widgets`, `test/features` | `pumpThemed`, `checkWidths`, real Inter font |
 | App routing | `test/app` | Full `InternlyApp` with overridden services |

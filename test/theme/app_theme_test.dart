@@ -90,6 +90,12 @@ void main() {
       expect(side.color, AppColors.primary);
     });
 
+    test('text button has no background block', () {
+      final background = theme.textButtonTheme.style!.backgroundColor!;
+      expect(background.resolve({}), Colors.transparent);
+      expect(background.resolve({WidgetState.disabled}), Colors.transparent);
+    });
+
     test('pressed primary uses reduced emphasis, not a new color', () {
       final bg = theme.filledButtonTheme.style!.backgroundColor!.resolve({
         WidgetState.pressed,

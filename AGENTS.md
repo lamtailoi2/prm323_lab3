@@ -31,8 +31,8 @@ Run `dart format`, `flutter analyze` and `flutter test` before every commit you 
 5. **Reuse shared components** from `lib/core/widgets/` before creating new ones. A new shared component must match a Figma component and be added to `design-system.md`.
 6. **Every data screen has an explicit `ViewState`** (`core/state/view_state.dart`: loading, empty, error, data) owned by its ViewModel, rendered with the skeleton / `StateView.empty` / `StateView.error` + `Retry`.
 7. **Never fake success.** No placeholder URLs saved as real results, no hard-coded "uploaded" states, no fake Firebase config, no tests that only tap without asserting a visible result.
-8. **No secrets in the repository:** service-account keys, API secrets, model API keys, `.env`, keystores, `.p8`, passwords. Build-time settings (`SERPAPI_KEY`, `DEBUG_KEYSTORE_BASE64` for the shared debug key) go in the untracked `.env`, shared privately, never via Git and are read with `String.fromEnvironment`. Firebase app config files are allowed (`docs/guides/firebase-setup.md` §11).
-9. **Rules are final; keep data under `users/{uid}`.** `firebase/firestore.rules` lets a signed-in user read and write only their own `users/{uid}/**` subtree (any subcollection), so features need no rules change. Never store shared or other users' data in Firestore without discussing a rules change first; files go only to `reports/{uid}` / `cvs/{uid}` (`firebase/storage.rules`).
+8. **No secrets in the repository:** service-account keys, API secrets, model API keys, `.env`, keystores, `.p8`, passwords. The SerpAPI key is a Cloud Function secret (`SERPAPI_KEY` in Secret Manager), never in the app or `.env`. The shared debug key (`DEBUG_KEYSTORE_BASE64`) goes in the untracked `.env`, shared privately, never via Git, and is read with `String.fromEnvironment`. Firebase app config files are allowed (`docs/guides/firebase-setup.md` §11).
+9. **Rules are final; keep user data under `users/{uid}`.** `firebase/firestore.rules` lets a signed-in user read and write only their own `users/{uid}/**` subtree (any subcollection), so features need no rules change. The shared `/internships/{key}` pool is the one exception: signed-in users read it, only the scheduled function writes it; `/sync/**` is function-only. Never add another shared or other users' data without a discussed rules change; files go only to `reports/{uid}` / `cvs/{uid}` (`firebase/storage.rules`).
 10. **Stay in scope.** Implement what the spec and the task ask for. No speculative features, abstractions or dependencies.
 11. **User data is user-scoped.** Every provider holding user data watches `currentUserIdProvider`, so sign-out drops it.
 12. **Testable by ARTEMIS.** Key widgets (buttons, list items, cards) have a Semantics label or tooltip; shared components already do.
@@ -46,7 +46,7 @@ Run `dart format`, `flutter analyze` and `flutter test` before every commit you 
 | A widget used by one feature | `lib/features/<feature>/widgets/` | |
 | A widget used by 2+ features | `lib/core/widgets/` | Must map to a Figma component |
 | A model used by 2+ features | `lib/models/` | Otherwise `features/<feature>/models/` |
-| Firebase / HTTP access | `lib/services/<name>_service.dart` | Interface + implementation + provider in one file. SerpAPI only through `SerpApiClient`; uploads only through `FileStorageService` |
+| Firebase / HTTP access | `lib/services/<name>_service.dart` | Interface + implementation + provider in one file. SerpAPI only through the scheduled function in `functions/`; app reads only through `InternshipService`; uploads only through `FileStorageService` |
 | A pure helper | `lib/core/utils/` | Unit-tested |
 | A route | `lib/app/router.dart` | Under the owning tab branch, always with a `name` |
 | A design token | `lib/theme/` | Only from DESIGN.md / Figma, and update `design-system.md` |

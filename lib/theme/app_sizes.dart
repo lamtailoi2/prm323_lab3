@@ -17,6 +17,14 @@ abstract final class AppSizes {
   static const double iconSmall = 20;
   static const double icon = 24;
 
+  /// Company logo tile in the internship card (Home screenshot, verify in
+  /// Figma: G-07).
+  static const double companyLogo = 40;
+
+  /// Home app-bar brand mark and the profile avatar (Home screenshot).
+  static const double brandMark = 32;
+  static const double profileAvatar = 32;
+
   /// Layout widths that every screen must be checked at.
   static const double baseWidth = 360;
   static const double responsiveCheckWidth = 412;

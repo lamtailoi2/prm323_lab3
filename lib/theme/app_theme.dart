@@ -87,7 +87,8 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: _buttonStyle(
-          background: AppColors.surface,
+          background: Colors.transparent,
+          disabledBackground: Colors.transparent,
           foreground: AppColors.primary,
         ),
       ),
@@ -217,6 +218,7 @@ abstract final class AppTheme {
     required Color background,
     required Color foreground,
     Color? border,
+    Color? disabledBackground,
     bool pressedReducesBackground = false,
   }) {
     Color resolveForeground(Set<WidgetState> states) {
@@ -240,7 +242,7 @@ abstract final class AppTheme {
       overlayColor: const WidgetStatePropertyAll(Colors.transparent),
       backgroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
-          return AppColors.surfaceVariant;
+          return disabledBackground ?? AppColors.surfaceVariant;
         }
         if (states.contains(WidgetState.pressed) && pressedReducesBackground) {
           return background.withValues(alpha: pressedOpacity);

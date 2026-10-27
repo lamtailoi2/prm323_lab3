@@ -1,4 +1,5 @@
 {
   "home_recommended_limit": 5,
+  "home_recent_limit": 10,
   "cv_match_enabled": true
 }

@@ -22,6 +22,7 @@ class InternshipCard extends StatefulWidget {
     required this.companyName,
     required this.location,
     required this.workMode,
+    this.logoUrl,
     this.tags = const <String>[],
     this.allowanceText,
     this.postedText,
@@ -32,18 +33,27 @@ class InternshipCard extends StatefulWidget {
     this.semanticsLabel,
   });
 
+  /// Shown instead of the allowance when the listing does not state one
+  /// (G-17, DC-10).
+  static const String allowanceNotDisclosed = 'Not disclosed';
+
   final String title;
   final String companyName;
-  final String location;
+  final String? location;
 
-  /// Display label, e.g. "Hybrid".
-  final String workMode;
+  /// Company logo from SerpAPI's `thumbnail`; a neutral tile is shown when
+  /// missing or when the image fails to load.
+  final String? logoUrl;
+
+  /// Display label, e.g. "Hybrid"; `null` when the listing does not say
+  /// (DC-10) and the work-mode row is hidden.
+  final String? workMode;
   final List<String> tags;
 
   /// e.g. a monthly allowance. Formatting is decided by the feature (G-17).
   final String? allowanceText;
 
-  /// e.g. "Posted 2 days ago".
+  /// e.g. "2d ago".
   final String? postedText;
   final bool isSaved;
 
@@ -93,42 +103,42 @@ class _InternshipCardState extends State<InternshipCard> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      ExcludeSemantics(
+                        child: _CompanyLogo(url: widget.logoUrl),
+                      ),
+                      const SizedBox(width: AppSpacing.s12),
                       Expanded(
-                        child: ExcludeSemantics(
-                          child: Text(
-                            widget.title,
-                            style: textTheme.titleMedium,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ExcludeSemantics(
+                              child: Text(
+                                widget.title,
+                                style: textTheme.titleMedium,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.s4),
+                            ExcludeSemantics(
+                              child: Text(
+                                widget.companyName,
+                                style: textTheme.bodyMedium,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       if (widget.onSaveToggle != null) _saveButton(),
                     ],
                   ),
+                  const SizedBox(height: AppSpacing.s12),
                   ExcludeSemantics(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: _details(textTheme),
                     ),
                   ),
-                  if (widget.postedText != null || widget.badge != null) ...[
-                    const SizedBox(height: AppSpacing.s4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ExcludeSemantics(
-                            child: Text(
-                              widget.postedText ?? '',
-                              style: textTheme.bodySmall,
-                            ),
-                          ),
-                        ),
-                        // The badge (e.g. Applied) keeps its own semantics.
-                        ?widget.badge,
-                      ],
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -140,15 +150,14 @@ class _InternshipCardState extends State<InternshipCard> {
 
   List<Widget> _details(TextTheme textTheme) {
     return [
-      const SizedBox(height: AppSpacing.s4),
-      Text(widget.companyName, style: textTheme.bodyMedium),
-      const SizedBox(height: AppSpacing.s8),
       Wrap(
         spacing: AppSpacing.s16,
         runSpacing: AppSpacing.s4,
         children: [
-          _Meta(icon: Symbols.location_on_rounded, text: widget.location),
-          _Meta(icon: Symbols.work_rounded, text: widget.workMode),
+          if (widget.workMode case final workMode?)
+            _Meta(icon: Symbols.work_rounded, text: workMode),
+          if (widget.location case final location?)
+            _Meta(icon: Symbols.location_on_rounded, text: location),
         ],
       ),
       if (widget.tags.isNotEmpty) ...[
@@ -159,9 +168,32 @@ class _InternshipCardState extends State<InternshipCard> {
           children: [for (final tag in widget.tags) AppTag(label: tag)],
         ),
       ],
-      if (widget.allowanceText != null) ...[
+      if (widget.allowanceText != null ||
+          widget.postedText != null ||
+          widget.badge != null) ...[
         const SizedBox(height: AppSpacing.s8),
-        Text(widget.allowanceText!, style: textTheme.labelLarge),
+        Row(
+          children: [
+            if (widget.allowanceText case final allowance?)
+              Expanded(
+                child: Text(
+                  allowance,
+                  style: textTheme.labelLarge?.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
+              )
+            else
+              const Spacer(),
+            if (widget.postedText case final posted?) ...[
+              Text(posted, style: textTheme.bodySmall),
+            ],
+            if (widget.badge case final badge?) ...[
+              const SizedBox(width: AppSpacing.s8),
+              badge,
+            ],
+          ],
+        ),
       ],
     ];
   }
@@ -169,7 +201,7 @@ class _InternshipCardState extends State<InternshipCard> {
   String _summary() {
     return [
       '${widget.title} at ${widget.companyName}',
-      '${widget.location}, ${widget.workMode}',
+      [widget.location, widget.workMode].whereType<String>().join(', '),
       if (widget.tags.isNotEmpty) 'Skills: ${widget.tags.join(', ')}',
       ?widget.allowanceText,
       ?widget.postedText,
@@ -190,6 +222,47 @@ class _InternshipCardState extends State<InternshipCard> {
           fill: saved ? 1 : 0,
           color: saved ? AppColors.primary : AppColors.textSecondary,
         ),
+      ),
+    );
+  }
+}
+
+class _CompanyLogo extends StatelessWidget {
+  const _CompanyLogo({this.url});
+
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: AppSizes.companyLogo,
+      child: ClipRRect(
+        borderRadius: AppRadii.mediumAll,
+        child: ColoredBox(
+          color: AppColors.surfaceVariant,
+          child: url == null
+              ? const _LogoFallback()
+              : Image.network(
+                  url!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const _LogoFallback(),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LogoFallback extends StatelessWidget {
+  const _LogoFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Icon(
+        Symbols.business_center_rounded,
+        size: AppSizes.iconSmall,
+        color: AppColors.primary,
       ),
     );
   }

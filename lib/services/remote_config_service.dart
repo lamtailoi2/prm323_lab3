@@ -14,6 +14,9 @@ abstract final class RemoteConfigKeys {
   /// Number of cards in Home "Recommended for you".
   static const String homeRecommendedLimit = 'home_recommended_limit';
 
+  /// Number of cards in Home "Recently Posted".
+  static const String homeRecentLimit = 'home_recent_limit';
+
   /// Feature flag for the CV Match Check step in Apply (Flow 2d).
   static const String cvMatchEnabled = 'cv_match_enabled';
 }

@@ -129,6 +129,24 @@ Commands executed, with their real results (details in [`test-report.md`](test-r
 - **Verification:** `flutter analyze` clean and `flutter test` 85 passed on `main` before pushing; `main` equals `origin/main`.
 - **Decision:** Accepted.
 
+### P-18: Home UI + SerpAPI → Firestore sync
+- **Request:** implement the Figma Home design and change listings to a scheduled SerpAPI → Firestore sync so the app never holds the key.
+- **Output:** `HomeScreen` (brand mark, bell placeholder, profile avatar, read-only search entry, `Browse by Skill` / `All skills`, skill filter, `Recently Posted`), rewritten `InternshipCard` (logo fallback, allowance, posted age, tags), Firestore-backed `InternshipService` and `HomeViewModel` (Remote Config limits), `Internship.fromFirestore`, `formatAllowance`, `formatPostedAge`, Node 22 `functions/` sync (`syncInternshipsJob`, Secret Manager `SERPAPI_KEY`, 6-hour rotation, 7-day expiry), read-only `/internships` rules, and docs (architecture, setup, G-23/G-25, traceability, analytics, test report).
+- **Verification:** `dart format lib test` → formatted; `flutter analyze` → No issues found; `flutter test` → 119 passed; `cd functions && npm test` → 5 passed; `npm run build` → passed. Deployment, real SerpAPI sync and APK build: not run (no Firebase credentials / Android SDK here).
+- **Decision:** Accepted for the Home slice. Save and bell intentionally show an honest coming-soon message (DC-11) until their features land.
+
+### P-19: Home role taxonomy + SerpAPI keyword/location tuning
+- **Request:** check and optimize the SerpAPI config; use three to five keywords with `location=Vietnam` because the app filters by role and location; replace Home skill shortcuts with IT-only roles; verify the sync.
+- **Output:** added `JobRole`/`jobRoleFor` (`lib/core/utils/job_role.dart`) and `Internship.role`; Home now shows `Browse by Role`, filters the IT-only pool by role and hides non-IT listings; skills stay as card tags. Replaced the skill-shortcut widget with `RoleShortcuts`, updated ViewModel, screen and tests, and recorded DC-13. Sync config now uses five proven queries with `location=Vietnam`; `fetchJobs` accepts an optional location for a future filter-driven query. Deployed `syncInternshipsJob` and reran the scheduler.
+- **Verification:** `flutter analyze` → No issues found; `flutter test` → 124 passed; `cd functions && npm test` → 7 passed; `npm run build` → passed; `firebase deploy --only functions` → successful; sync state → `fetched=40`, `written=40`, `backfill=true`, no `lastError`. After a hot restart, the rebuilt iOS simulator shows `Browse by Role`, the role chips and a `Frontend Developer Intern` card; screenshot saved as `evidence/screens/home-roles-actions-20261022.png`; widget tests also cover the chips at 360/412 dp.
+- **Decision:** Accepted for the Home slice and sync config. Location-specific filtering remains the Search feature's job and is not baked into the sync.
+
+### P-20: Transparent Home section actions + E2E evidence
+- **Request:** make the Home section-header text actions (`All roles`, `View all`) transparent with no white block behind them, then record the professional prompt and save E2E evidence ([normalized prompt](prompts/P-20-home-role-actions.md)).
+- **Output:** `AppTheme.textButtonTheme` now uses a transparent background in every state, so `AppButtonVariant.text` no longer paints a surface block while keeping its 48 dp target. Added the theme assertion, a Home-role ARTEMIS case (`TC-16`) and its test-plan row. Saved the simulator screenshot and the real ARTEMIS environment check.
+- **Verification:** `dart format lib test` → 0 changed; `flutter analyze` → `No issues found!`; `flutter test` → **125 passed**; hot reload + screenshot at RGB `248,250,252` behind `All roles`/`View all` (no white pill). ARTEMIS suite **not run**: `adb devices` is empty and no ARTEMIS daemon listens on `127.0.0.1:8000`; see `evidence/artemis/e2e-environment-20261022.md`.
+- **Decision:** Accepted for the text-action style and test coverage. E2E execution remains pending an Android device/emulator and the ARTEMIS host.
+
 ---
 
 ## Entry template

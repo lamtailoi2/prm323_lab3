@@ -12,19 +12,30 @@ import '../../theme/app_typography.dart';
 ///
 /// Clean surface, no shadow. Back and actions each keep a 48 dp target.
 class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
-  const AppTopBar.main({super.key, required this.title, this.actions})
-    : _isMain = true,
-      onBack = null;
+  const AppTopBar.main({
+    super.key,
+    required this.title,
+    this.actions,
+    this.leading,
+    this.leadingWidth,
+  }) : _isMain = true,
+       onBack = null;
 
   const AppTopBar.back({
     super.key,
     required this.title,
     this.actions,
     this.onBack,
-  }) : _isMain = false;
+  }) : _isMain = false,
+       leading = null,
+       leadingWidth = null;
 
   final String title;
   final List<Widget>? actions;
+
+  /// Optional leading slot for the main variant, e.g. the Home brand mark.
+  final Widget? leading;
+  final double? leadingWidth;
 
   /// Overrides the default `Navigator.maybePop` for the back button.
   final VoidCallback? onBack;
@@ -37,14 +48,18 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       automaticallyImplyLeading: false,
+      leadingWidth: leadingWidth,
       leading: _isMain
-          ? null
+          ? leading
           : IconButton(
               icon: const Icon(Symbols.arrow_back_rounded),
               tooltip: 'Back',
               onPressed: onBack ?? () => Navigator.maybePop(context),
             ),
       title: Text(title),
+      titleSpacing: _isMain && leading != null
+          ? AppSpacing.s8
+          : NavigationToolbar.kMiddleSpacing,
       // Main titles use type/heading/large ("screen titles", Figma page 04);
       // verify against the Figma App Bar component (G-07).
       titleTextStyle: _isMain ? AppTypography.headingLarge : null,

@@ -4,7 +4,7 @@ Internly is a mobile app that helps university IT and Software Engineering stude
 
 This repository is the PRM393 **Lab 3** implementation (Flutter + Firebase, graded on Android) of the Lab 2 UI/UX design. **Lab 2 is the source of truth for the UI**: screens, flows, tokens and components come from the [Lab 2 handoff](docs/design/README.md); every deviation is recorded in [`docs/design-traceability.md`](docs/design-traceability.md).
 
-> **Status: foundation ready.** Design system, shared components, app shell, authenticated routing, Firebase bootstrap, SerpAPI client, rules and docs are in place. Feature screens are placeholders that each owner replaces ([Feature ownership](#feature-ownership)).
+> **Status: foundation ready; Home reads the synced listing pool.** Design system, shared components, app shell, authenticated routing, Firebase bootstrap, the scheduled SerpAPI → Firestore sync, rules and docs are in place. The remaining feature screens are placeholders that each owner replaces ([Feature ownership](#feature-ownership)).
 
 **Demo video:** _link to be added_
 
@@ -16,7 +16,7 @@ This repository is the PRM393 **Lab 3** implementation (Flutter + Firebase, grad
 | Persona | Minh, 21, third-year Software Engineering student: searches in 2–5 minute mobile sessions, one-handed, on unstable campus Wi-Fi; applies to several companies and loses track of them ([persona](docs/design/persona.md)) |
 | Problem | Listings are scattered across many sources, and students lose track of where they have applied |
 | Success criteria | Find an internship by skill and work mode in **< 30 s**; submit an application from Internship Detail in **< 2 min** with a stored CV |
-| Data | **SerpAPI — Google Jobs** (`engine=google_jobs`) for live internship listings; **Cloud Firestore** for each student's own data (profile, saved, applications, notifications, report metadata); **Cloud Storage for Firebase** for CV and PDF report files |
+| Data | **SerpAPI — Google Jobs** (`engine=google_jobs`), mirrored into a shared **Cloud Firestore** listing pool by a scheduled function every 6 hours; **Cloud Firestore** for each student's own data (profile, saved, applications, notifications, report metadata); **Cloud Storage for Firebase** for CV and PDF report files |
 
 ### User flows
 
@@ -45,7 +45,6 @@ Bottom navigation (fixed): **Home · Search · Saved · Applications · Profile*
 | `firebase_analytics` / `firebase_crashlytics` / `firebase_remote_config` | 13.0.0 / 6.0.0 / 7.0.0 |
 | `google_sign_in` | 7.2.0 |
 | `firebase_storage` | 14.0.0 |
-| `http` (SerpAPI) | 1.6.0 |
 | `material_symbols_icons` | 4.2960.0 |
 | Inter font | 4.1 (bundled, OFL) |
 | Google ARTEMIS | commit `351ca8422f7b5b54e80a9c1ce03a222e02415b6b` (2026-09-29) |
@@ -60,8 +59,8 @@ Exact versions are pinned in [`pubspec.yaml`](pubspec.yaml) and [`e2e_test/pypro
 
 - Flutter **3.47.3** (stable). Check with `flutter doctor`.
 - **Android:** Android SDK with `cmdline-tools`, platform 36, JDK 17, and a device or emulator.
-- Firebase: Node.js LTS, `firebase-tools`, `flutterfire_cli`.
-- A free SerpAPI key.
+- Firebase: Node.js 22 (Cloud Functions runtime), `firebase-tools`, `flutterfire_cli`.
+- A free SerpAPI key (**owner only**, for the sync function secret).
 - E2E tests: Python 3.12+, `uv`, ADB, a Google ARTEMIS checkout.
 
 ### Install and configure
@@ -79,7 +78,8 @@ Then follow [`docs/guides/firebase-setup.md`](docs/guides/firebase-setup.md):
 2. **Google Sign-In:** enable the Google provider and add each developer's **SHA-1 and SHA-256**.
 3. **Rules:** `firebase deploy --only firestore:rules,firestore:indexes,storage`.
 4. **Cloud Storage:** upgrade to Blaze, set a **$1 budget alert**, create the bucket in **US-CENTRAL1 / US-EAST1 / US-WEST1** ([§10](docs/guides/firebase-setup.md#10-cloud-storage-cv-upload-pdf-report-on-blaze-at-0)).
-5. **Crashlytics** enabled; **Remote Config** parameters created from [`firebase/remote-config-defaults.json`](firebase/remote-config-defaults.json).
+5. **Internship sync:** store `SERPAPI_KEY` in Secret Manager and deploy `functions/` ([§13](docs/guides/firebase-setup.md#13-serpapi-sync-cloud-function-internship-data)).
+6. **Crashlytics** enabled; **Remote Config** parameters created from [`firebase/remote-config-defaults.json`](firebase/remote-config-defaults.json).
 
 Without Firebase configuration the app starts on "Firebase is not configured". This is intended: it never fakes a connection.
 
@@ -89,6 +89,10 @@ Without Firebase configuration the app starts on "Firebase is not configured". T
 flutter devices
 flutter run -d <android-device-id> --dart-define-from-file=.env
 flutter build apk --debug --dart-define-from-file=.env
+
+# Internship data (owner once): see docs/guides/firebase-setup.md §13
+cd functions && npm install && cd ..
+firebase deploy --only functions,firestore:rules
 ```
 
 ### Tests
@@ -116,6 +120,7 @@ Results: [`docs/records/test-report.md`](docs/records/test-report.md) (Flutter) 
 | Test plan + ARTEMIS suite | [`docs/test-plan.md`](docs/test-plan.md), [`e2e_test/`](e2e_test/) |
 | AI code review record | [`docs/code-review.md`](docs/code-review.md) |
 | Firebase config and rules | [`firebase/`](firebase/) (`firestore.rules`, `storage.rules`, `remote-config-defaults.json`), `android/app/google-services.json` |
+| Scheduled internship sync | [`functions/`](functions/) (TypeScript Cloud Function, SerpAPI → Firestore) |
 | Evidence (console, DebugView, Crashlytics, ARTEMIS) | [`evidence/`](evidence/) |
 | Final report, slides | Submitted separately (not in the repository) |
 | Demo video | Link at the top of this README |
@@ -141,7 +146,7 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 | Document | Purpose |
 |---|---|
 | [`docs/design/design-system.md`](docs/design/design-system.md) | Tokens and components, Figma ↔ code cross-check, contrast results |
-| [`docs/guides/firebase-setup.md`](docs/guides/firebase-setup.md) | Firebase, Google Sign-In, Storage, Remote Config, SerpAPI key |
+| [`docs/guides/firebase-setup.md`](docs/guides/firebase-setup.md) | Firebase, Google Sign-In, Storage, Remote Config, SerpAPI sync secret |
 | [`docs/records/handoff-gaps.md`](docs/records/handoff-gaps.md) | Missing / conflicting requirements and decisions |
 | [`docs/records/implementation-ai-log.md`](docs/records/implementation-ai-log.md) | Prompts, outputs, verification and decisions for AI-assisted work |
 
@@ -151,6 +156,7 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 |---|---|
 | Google Stitch | Lab 2 screen generation (design phase) |
 | Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements ([log](docs/records/implementation-ai-log.md)) |
+| OpenCode (`deepseek-v4.1-flash-free`) | Home UI, scheduled SerpAPI → Firestore sync, rules and docs for the Home slice ([log](docs/records/implementation-ai-log.md)) |
 | Google ARTEMIS + Gemini (free tier) | End-to-end tests and the exploratory session |
 | AI code review tool | _to be added_ ([`code-review.md`](docs/code-review.md)) |
 
@@ -158,7 +164,7 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 
 - Feature screens are placeholders; the Login screen is interim (DC-01).
 - Firebase is not configured in the repository yet; Google Sign-In needs per-developer SHA fingerprints.
-- The SerpAPI key is compiled into the APK and the free plan has a small monthly quota (G-25).
+- SerpAPI is called by the scheduled sync function, not the app; the free plan still has a small monthly quota, so the pool refreshes gradually (G-25).
 - Cloud Storage needs the Blaze plan: budgets only alert and cannot cap spending, so the bucket must stay in a US no-cost region (G-12).
 - The Android build was not verified on the machine that initialized the repo (incomplete Android SDK); the iOS simulator build was ([`test-report.md`](docs/records/test-report.md)).
 - iOS uses CocoaPods because Swift Package Manager cannot resolve Firebase iOS SDK 13 with GoogleSignIn-iOS 9 (G-20).

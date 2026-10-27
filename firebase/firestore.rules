@@ -2,15 +2,18 @@ rules_version = '2';
 
 // Internly — Firestore Security Rules (final; set up once).
 //
-// Data ownership (docs/architecture.md §6): every document belongs to exactly
-// one user and lives under users/{uid}: profile, saved internships,
-// applications (students track their own statuses), notifications, report
-// metadata. Internship listings are not stored here; they come from SerpAPI.
+// Data ownership (docs/architecture.md §6):
+//   users/{uid}/**       every document belongs to exactly one user: profile,
+//                        saved internships, applications (self-tracked),
+//                        notifications, report metadata.
+//   internships/{key}    the shared listing pool, written only by the
+//                        scheduled sync Cloud Function (Admin SDK bypasses
+//                        these rules) and read by signed-in users.
+//   sync/**              function bookkeeping; not readable by clients.
 //
-// A signed-in user can read and write only their own subtree, including any
-// subcollection added later, so features never need a rules change. Every
-// other path is denied. Publish: Firebase console → Firestore → Rules → paste
-// this file → Publish (or `firebase deploy --only firestore:rules`).
+// A signed-in user can read and write only their own subtree, so features
+// never need a rules change. Publish: Firebase console → Firestore → Rules →
+// paste this file → Publish (or `firebase deploy --only firestore:rules`).
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -31,6 +34,15 @@ service cloud.firestore {
         allow read, delete: if isOwner(uid);
         allow create, update: if isOwner(uid) && isReasonableWrite();
       }
+    }
+
+    match /internships/{key} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    match /sync/{doc} {
+      allow read, write: if false;
     }
   }
 }
