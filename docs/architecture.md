@@ -96,12 +96,16 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `ApplyViewModel` | Application Form, CV Match Check, Review, Success | `ApplicationService`, `UserProfileService`, `FileStorageService`, `RemoteConfigService`, `AnalyticsService`, `CrashlyticsService` | Planned |
 | `MyApplicationsViewModel` | My Applications | `ApplicationService` | Planned |
 | `ApplicationDetailViewModel` | Application Detail | `ApplicationService`, `AnalyticsService` | Planned |
-| `ProfileViewModel` | Profile | `UserProfileService`, `FileStorageService` | Planned |
+| `ProfileViewModel` | Profile | `UserProfileService` (+ auth for email and photo) | Done |
+| `EditProfileViewModel` | Edit profile | `UserProfileService`, `AnalyticsService` | Done |
+| `EditSkillsViewModel`, `EditPreferencesViewModel` | Profile sheets | `UserProfileService`, `AnalyticsService` | Done |
+| `UpdateCvViewModel` | Update CV sheet | `DocumentPickerService`, `FileStorageService`, `UserProfileService`, `AnalyticsService` | Done |
+| `OpenCvViewModel` | Profile (View CV) | `ExternalLinkService` | Done |
 | `FirebaseDemoViewModel` | Firebase demo area | `RemoteConfigService`, `CrashlyticsService`, `NotificationService` | Planned |
 | `NotificationCenterViewModel` | Notification Center | `NotificationService`, `AnalyticsService` | Planned |
 | `ReportExportViewModel` | Report export | `ReportExportService`, `FileStorageService`, `ApplicationService`, `AnalyticsService` | Planned |
 
-Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `FileStorageService` (Cloud Storage for Firebase), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`.
+Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `UserProfileService` (Firestore `users/{uid}` listener + merge writes per section), `FileStorageService` (Cloud Storage for Firebase), `DocumentPickerService` (system file picker, `file_selector`), `ExternalLinkService` (opens a URL in another app, `url_launcher`), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`.
 
 ## 4. Sequence: Home feed (shared Firestore pool)
 
@@ -159,6 +163,19 @@ Rules for feature owners:
 4. Parse defensively with `FirestoreReader`; skip and log (Crashlytics non-fatal) malformed documents instead of failing a list.
 5. Read server timestamps in listeners with `ServerTimestampBehavior.estimate`.
 
+**Profile document `users/{uid}`** (`UserProfile`, `lib/models/user_profile.dart`; every field optional, the document exists only after the first save). Apply reads it for prefill, the CV from Profile and the skills used by CV Match Check.
+
+| Field | Type | Written by |
+|---|---|---|
+| `fullName`, `headline`, `university`, `major`, `phone`, `city`, `bio` (≤ 300) | string or null | Edit profile |
+| `yearOfStudy` (1–6), `graduationYear` | int or null | Edit profile (Academic standing picker) |
+| `skills` | string[] (values from `knownSkills`) | Edit skills sheet |
+| `preferences` | map: `targetRoles` (`software_engineer` / `mobile` / `frontend` / `backend` / `qa_tester`, the frame's roles), `workModes` (`hybrid` / `remote` / `on_site`), `location` (string or null) | Update preferences sheet |
+| `cv` | map: `fileName`, `url`, `storagePath`, `sizeBytes`, `uploadedAt` (only from a real `FileStorageService` upload) | Update CV sheet |
+| `updatedAt` | server timestamp | every write (merge per section) |
+
+Email and photo are never copied here; they come from the Google account. `city` (where the student lives) and `preferences.location` (where they want an internship) are both kept; Update preferences starts from `city` when its location is empty (G-30). Replacing the CV keeps the old file in Storage because submitted applications may still link to it.
+
 ## 7. Firebase and API integration points
 
 | Concern | Where | Failure handling |
@@ -171,7 +188,9 @@ Rules for feature owners:
 | Analytics | `services/analytics_service.dart` | Failures swallowed; names validated in debug |
 | Crashlytics | `services/crashlytics_service.dart` | Global handlers at bootstrap; user ID + `last_screen` key; `crashForTesting()` only from the demo area |
 | Remote Config | `services/remote_config_service.dart` | Defaults from JSON before `runApp`; fetch and real-time updates in the background |
-| Firestore, FCM, PDF generation | Added by their features | Each shows a visible message for offline, permission denied and cancel |
+| Profile | `services/user_profile_service.dart` | permission denied / offline → `AppException` (Retry on load, message in the form or sheet on save); malformed `cv` map ignored and logged |
+| File picking, external links | `services/document_picker_service.dart`, `services/external_link_service.dart` | Closed picker → no change; unreadable file or no app to open a link → message |
+| Firestore (other collections), FCM, PDF generation | Added by their features | Each shows a visible message for offline, permission denied and cancel |
 
 ## 8. Secrets and configuration
 
