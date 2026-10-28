@@ -204,6 +204,12 @@ Commands executed, with their real results (details in [`test-report.md`](test-r
 - **Decision:** Accepted. Built on PR #2 (profile model and service).
 - **Follow-up:** "push lên cái này đi rồi solve conflict với dev" (put it on PR #3 and resolve conflicts with `dev`): merged `origin/dev` (PR #2 merged) into `feat/home-allowance` without rewriting its pushed history, then cherry-picked the four location commits. Conflicts were append-only in the test report and AI log (both sides kept, in merge order) and one Home row in traceability (both changes combined). `flutter analyze` → No issues found!; `flutter test` → 242 passed.
 
+### P-30: Recommended ordered by the profile
+- **Request:** "tôi nghĩ là phần recommend sẽ bám vào các phần này bạn thấy sao" (Recommended should follow Technical skills, Target roles, Work mode and Location), then "làm đi".
+- **Output:** checked the pool first and proposed ranking instead of filtering (work mode is missing on 288 of 289 IT listings, so it is not used). Added `recommendationScore` (`lib/core/utils/recommendation.dart`) and `TargetRole.jobRoles`; `HomeViewModel` keeps the location filter and sorts Recommended by score, then sync rank and recency. The simulator run exposed two existing problems, both fixed: duplicate jobs from several sync keywords (171 of 322; now shown once) and two non-IT titles classified as Frontend (non-IT words added to `jobRoleFor`). G-23, the Home traceability row, Run 12 and one Home screenshot.
+- **Verification:** `flutter analyze` → No issues found!; `flutter test` → 252 passed; simulator with the student's profile: five distinct Hanoi Frontend listings, best skill matches first.
+- **Decision:** Accepted. An optional "Matches your skills: …" line on the card was proposed but not built (new UI, needs a design decision).
+
 ### P-31: Login from the Login frame
 - **Request:** "làm trang đăng nhập" (build the Login page), with a screenshot of the new Login frame and the campus photo.
 - **Questions asked first (answers from the user):** the frame is in Vietnamese but the app is English only (G-28) → translate to English; the underlined "Điều khoản" / "Bảo mật" have no content → honest coming-soon SnackBar (G-31); the Home work in progress → open its PR first (PR #4), then branch `feat/auth-login-ui` from `dev`.

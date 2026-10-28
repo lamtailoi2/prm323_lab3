@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../core/utils/firestore_reader.dart';
+import '../core/utils/job_role.dart';
 import 'internship.dart' show WorkMode;
 
 /// The student's own profile, stored in Firestore at `users/{uid}`.
@@ -156,15 +157,24 @@ class ProfileDetails {
 
 /// Target roles offered by the Update Preferences frame, in its order.
 enum TargetRole {
-  softwareEngineer('Software Engineer Intern'),
-  mobile('Mobile Intern'),
-  frontend('Frontend Intern'),
-  backend('Backend Intern'),
-  qaTester('QA / Tester Intern');
+  softwareEngineer('Software Engineer Intern', {
+    JobRole.backend,
+    JobRole.fullStack,
+    JobRole.otherIt,
+  }),
+  mobile('Mobile Intern', {JobRole.mobile}),
+  frontend('Frontend Intern', {JobRole.frontend}),
+  backend('Backend Intern', {JobRole.backend}),
+  qaTester('QA / Tester Intern', {JobRole.tester});
 
-  const TargetRole(this.label);
+  const TargetRole(this.label, this.jobRoles);
 
   final String label;
+
+  /// Home's listing roles (DC-13) that this target covers, for
+  /// "Recommended for you". "Software Engineer Intern" is the general
+  /// software role: backend, full-stack and generic IT titles.
+  final Set<JobRole> jobRoles;
 }
 
 /// What the student is looking for: target roles, work modes and a location.
