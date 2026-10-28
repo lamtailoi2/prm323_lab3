@@ -184,6 +184,22 @@ Branch `feat/home-recommend-profile` on top of `dev` `175b999`. Same environment
 
 ---
 
+## Run 13: Login from the Login frame (2026-10-28)
+
+Branch `feat/auth-login-ui` on top of `dev` `175b999`. Same environment as Run 8; simulator iPhone 17 Pro (iOS 26.5, 402 dp wide).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | 1 file would change: `lib/app/bootstrap.dart` (already unformatted on `dev`, not touched here) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **250 tests, all passed** (242 on `dev`, +8 in `test/features/auth/login_screen_test.dart`): frame content at 360 and 412 dp (wordmark, headline, pitch, Google button with the "G", photo, legal line on one line, button ≥ 48 dp, `androidTapTargetGuideline`, `labeledTapTargetGuideline`); sign-in calls the service and logs `login:google`; loading shows a spinner instead of the "G", the `Continue with Google, loading` label and ignores a second tap; error message above the button; cancelled picker shown as info; `Terms` / `Privacy` show their coming-soon SnackBars without signing in; 2× text on a 360 × 640 screen scrolls instead of overflowing. The existing router test still signs in through `Continue with Google` |
+| 4 | Layout check before the tests (temporary golden renders at 360 × 800, 412 × 915, 360 × 640 with an error; deleted afterwards) | First render wrapped the legal line onto two lines at 360 dp; fixed by giving it the standard 16 dp padding (DC-18). Second render matched the frame at both widths |
+| 5 | Simulator, signed out (`flutter run --dart-define-from-file=.env`) | **Passed**: Login matches the frame (photo, scrim, wordmark, white Google button, one-line legal text), light status-bar icons. Evidence: `evidence/auth/auth-login-redesign-20261028.png`, `evidence/screens/login-frame-vs-app-20261028.png` (frame left, app right) |
+| 6 | Simulator taps (Google sign-in, cancelled picker, `Terms` / `Privacy`) | **Not run** on the simulator in this run (no tap automation available here); covered by the widget tests in row 3 and by ARTEMIS TC-01 / TC-14, whose labels did not change |
+| 7 | Combined branch after merging `dev` (PR #4: Recommended by profile) | `dart format` only `lib/app/bootstrap.dart` (as on `dev`); `flutter analyze` **No issues found!**; `flutter test` **260 tests, all passed** (252 on `dev`, +8). Merge conflicts were only in the shared docs (Home / Login rows in traceability, P-30 / P-31 in the AI log) and kept both sides |
+
+---
+
 ## Run template
 
 ```markdown
