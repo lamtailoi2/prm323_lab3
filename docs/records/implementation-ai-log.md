@@ -149,6 +149,22 @@ Commands executed, with their real results (details in [`test-report.md`](test-r
 
 ---
 
+### P-21: Search Results UI and Real Firebase Data Integration
+- **Request:** implement Search Results screen matching the Figma/Lab 2 design without hardcoding, reading real listings from Firebase Firestore, supporting query, work mode filter chips, result count, sorting (most recent / best match), bookmarking/saving, and state handling.
+- **Output:**
+  - Built `SearchResultsScreen` (`lib/features/internships/screens/search_results_screen.dart`) with top bar actions, `AppSearchField` with filter badge, active filter chips (`✓ Remote ✕`, `✓ Flutter ✕`, `Clear filters`), dynamic result count header with green indicator, sort options popup, `InternshipCard` list, footer matching Figma, and ViewState handling (loading skeletons, empty state with clear filters, error with retry).
+  - Built `SearchResultsViewModel` (`lib/features/internships/viewmodels/search_results_viewmodel.dart`) using Riverpod `Notifier` to query Firestore `InternshipService.watchActive()`, filter dynamically by search query (title, company, skills, keywords) and work arrangement, sort results, manage saved state, and record to `SearchHistoryService`.
+  - Added `SearchResultsFilterSheet` (`lib/features/internships/widgets/search_results_filter_sheet.dart`) for interactive work arrangement selection.
+  - Implemented `SavedService` (`lib/services/saved_service.dart`) under `users/{uid}/savedInternships` following rule 9.
+  - Updated `AppSearchField` to display `filterCount` badge.
+  - Wired `/search/results` in `router.dart` and connected search submit/trending skill/recent search navigation in `SearchScreen`.
+  - Added `SearchFilterCriteria` (`lib/features/internships/models/search_filter_criteria.dart`) and full `SearchResultsFilterSheet` with work mode multi-select, location dropdown, skill chips, job type dropdown, allowance range dropdown, live matching count (`Show X results →`), and clear filters.
+  - Added unit tests in `search_results_viewmodel_test.dart` and widget tests in `search_results_screen_test.dart` (360 and 412 dp).
+- **Verification:** `dart format lib test` formatted cleanly; `flutter analyze` passed with 0 issues; `flutter test` passed all 170 tests (+19 tests).
+- **Decision:** Accepted.
+
+---
+
 ## Entry template
 
 ```markdown

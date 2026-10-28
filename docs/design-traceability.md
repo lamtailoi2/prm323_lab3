@@ -14,8 +14,8 @@ Routes marked *planned* are the agreed proposal. An owner who changes one update
 |---|---|---|---|---|---|---|
 | — | Login *(Lab 3)* | `/login` | `LoginScreen` | Firebase Auth (Google) | Auth | 🟡 interim (DC-01) |
 | 1 | Home | `/home` | `HomeScreen` | Shared Firestore pool `/internships` (synced from SerpAPI every 6h): `searchRank` + `postedAt`, role filter, Remote Config `home_recommended_limit` / `home_recent_limit` | Home | ✅ UI · 🟡 save/bell pending |
-| 2 | Search | `/search` | `SearchScreen` | — (query input, filter sheet) | Search | 🟡 placeholder |
-| 3 | Search Results | `/search/results` *(planned)* | `SearchResultsScreen` | Shared Firestore pool `/internships` (synced from SerpAPI) | Search | ⬜ |
+| 2 | Search | `/search` | `SearchScreen` | Shared Firestore pool `/internships` (`watchActive()` + `knownSkills` skill matching) for trending skills; Firestore `users/{uid}/searchHistory` (real-time listener) for recent searches | Search | ✅ UI · navigates to Search Results on submit / skill tap / recent search tap |
+| 3 | Search Results | `/search/results` | `SearchResultsScreen` | Shared Firestore pool `/internships` (synced from SerpAPI), Firestore `users/{uid}/savedInternships` for save toggle | Search | ✅ UI · live search, work mode filter & sort |
 | 4 | Internship Detail | `/{tab}/internships/:jobKey` *(planned)* | `InternshipDetailScreen` | Firestore `/internships/{jobKey}` + `users/{uid}/savedInternships`, `…/applications` (saved / applied state) | Search | ⬜ ⚠️ DC-10 |
 | 5 | Saved Internships | `/saved` | `SavedScreen` | Firestore `users/{uid}/savedInternships` (real-time listener) | Saved | 🟡 placeholder |
 | 6 | Application Form | `/apply/:jobKey` *(planned, root navigator: no bottom nav)* | `ApplicationFormScreen` | Firestore `users/{uid}` (prefill), Cloud Storage `cvs/{uid}/…` (`FileStorageService`) | Apply | ⬜ |
@@ -80,6 +80,7 @@ Every difference between Figma and the app is listed here with its reason. Lab 3
 | DC-11 | 2026-10-22 | Home (card Save, app-bar bell) | Both controls show an honest "coming soon" SnackBar instead of faking a saved state or opening an empty Notification Center | The Saved service and Notification Center are owned by later features; Lab 3 forbids fake success | Temporary until those features land | n/a (no visual change) |
 | DC-12 | 2026-10-22 | Home (search entry) | Hint shortened to `Search internships`; the shared field still uses the full placeholder elsewhere | Team decision: the full placeholder wrapped to two lines at 360 dp and made the Home search entry taller than the design (screen-spec allows a placeholder "such as") | Applied | ⬜ update Home frame hint |
 | DC-13 | 2026-10-22 | Home (Browse by Skill → Browse by Role) | The five fixed skill chips become role chips: Frontend, Backend, Full-stack, Mobile, Data/AI, Tester/QA, DevOps/Cloud, Other IT. Only roles present in the current pool are shown; non-IT listings are hidden. Skills remain as card tags. | **API/data limit**: Google Jobs has no category field, and the Lab 2 skill chips were sparse against real data (Flutter 1, NestJS 1, MongoDB 2, React 8, Python 8). The team chose an IT-only role taxonomy for discovery. | Applied | ⬜ add Home role chips frame |
+| DC-14 | 2026-10-28 | Search (promo banner) | "Summer 2026 Tech Cohorts" promotional banner removed entirely from the Search screen | No backing feature or data exists; Lab 3 forbids fake success (rule 7). Precedent: DC-11. | Applied | n/a (no visual change) |
 
 ## 5. Screen verification checklist
 

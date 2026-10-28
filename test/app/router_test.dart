@@ -11,6 +11,7 @@ import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
+import 'package:internly/services/search_history_service.dart';
 
 import '../helpers/fakes.dart';
 import '../helpers/pump.dart';
@@ -86,9 +87,11 @@ void main() {
       crashlytics = FakeCrashlyticsService();
       final internships = FakeInternshipService();
       final remoteConfig = FakeRemoteConfigService();
+      final searchHistory = FakeSearchHistoryService();
       addTearDown(auth.dispose);
       addTearDown(internships.dispose);
       addTearDown(remoteConfig.dispose);
+      addTearDown(searchHistory.dispose);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -97,6 +100,7 @@ void main() {
             crashlyticsServiceProvider.overrideWithValue(crashlytics),
             internshipServiceProvider.overrideWithValue(internships),
             remoteConfigServiceProvider.overrideWithValue(remoteConfig),
+            searchHistoryServiceProvider.overrideWithValue(searchHistory),
           ],
           child: const InternlyApp(),
         ),
@@ -146,7 +150,7 @@ void main() {
 
       await tester.tap(find.text('Search'));
       await tester.pumpAndSettle();
-      expect(find.text('Search is not built yet'), findsOneWidget);
+      expect(find.text('Work mode'), findsOneWidget);
 
       await tester.tap(find.text('Applications'));
       await tester.pumpAndSettle();

@@ -6,10 +6,12 @@ import '../features/applications/screens/my_applications_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/home/screens/home_screen.dart';
+import '../features/internships/screens/search_results_screen.dart';
 import '../features/internships/screens/search_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/saved/screens/saved_screen.dart';
 import '../models/app_user.dart';
+import '../models/internship.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
 import '../services/crashlytics_service.dart';
@@ -23,6 +25,7 @@ abstract final class AppRoutes {
   static const String login = '/login';
   static const String home = '/home';
   static const String search = '/search';
+  static const String searchResults = '/search/results';
   static const String saved = '/saved';
   static const String applications = '/applications';
   static const String profile = '/profile';
@@ -62,7 +65,34 @@ final routerProvider = Provider<GoRouter>((ref) {
             AppShell(navigationShell: navigationShell),
         branches: [
           _tab(AppRoutes.home, 'home', const HomeScreen()),
-          _tab(AppRoutes.search, 'search', const SearchScreen()),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.search,
+                name: 'search',
+                builder: (context, state) => const SearchScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'results',
+                    name: 'search_results',
+                    builder: (context, state) {
+                      final query = state.uri.queryParameters['q'] ?? '';
+                      final modeStr = state.uri.queryParameters['mode'];
+                      final workMode = modeStr != null
+                          ? WorkMode.values
+                                .where((m) => m.name == modeStr)
+                                .firstOrNull
+                          : null;
+                      return SearchResultsScreen(
+                        initialQuery: query,
+                        initialWorkMode: workMode,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
           _tab(AppRoutes.saved, 'saved', const SavedScreen()),
           _tab(
             AppRoutes.applications,

@@ -117,6 +117,26 @@ Branch: working tree on top of `main`. Environment: macOS (arm64), Flutter 3.47.
 
 ---
 
+## Run 9: Search Results UI & Real Firebase Data (2026-10-28)
+
+Branch: `feat/search-results`. Environment: Windows 11 (win32) · Flutter 3.47.8 stable · Dart 3.13.3.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Completed; **86 files checked, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** (ran in 1.6 s) |
+| 3 | `flutter test` | **170 tests, all passed** (+19 from Run 8: SearchResultsViewModel 11 tests + SearchResultsScreen 8 tests) |
+| 4 | `flutter build apk --debug` | **Not run**: Android toolchain still missing cmdline-tools on this machine (Run 1 row 6) |
+
+### What the +17 tests cover
+
+| File | Focus |
+|---|---|
+| `test/features/internships/search_results_viewmodel_test.dart` | SearchResultsViewModel: live Firestore pool querying, query filtering across titles and skills, work arrangement filtering, combined filters, clearing filters, sorting (most recent / best match), empty and error states with retry, save/unsave toggle |
+| `test/features/internships/search_results_screen_test.dart` | SearchResultsScreen at 360 and 412 dp: search bar with filter count badge, active filter chips (`✓ Remote ✕`, `✓ Flutter ✕`, `Clear filters`), dynamic result count header with green indicator, sort options, `InternshipCard` display with real data, footer notice, removing chips, clearing filters, bookmark toggle, touch targets ≥ 48 dp |
+
+---
+
 ## Run template
 
 ```markdown

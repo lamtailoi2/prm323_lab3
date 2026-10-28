@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/utils/job_key.dart';
+import 'package:internly/features/internships/models/search_history_entry.dart';
 import 'package:internly/models/app_user.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/services/analytics_service.dart';
@@ -9,6 +10,8 @@ import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
+import 'package:internly/services/saved_service.dart';
+import 'package:internly/services/search_history_service.dart';
 
 const testUser = AppUser(
   uid: 'uid-123',
@@ -221,6 +224,65 @@ class FakeCrashlyticsService implements CrashlyticsService {
   void crashForTesting() {}
 }
 
+/// In-memory [SearchHistoryService] backed by a broadcast stream, keyed by
+/// uid like Firestore would be.
+class FakeSearchHistoryService implements SearchHistoryService {
+  final Map<String, List<SearchHistoryEntry>> entriesByUid =
+      <String, List<SearchHistoryEntry>>{};
+  AppException? error;
+  int nextId = 0;
+
+  final StreamController<List<SearchHistoryEntry>> _updates =
+      StreamController<List<SearchHistoryEntry>>.broadcast();
+
+  @override
+  Stream<List<SearchHistoryEntry>> watchRecent(
+    String uid, {
+    int limit = 10,
+  }) async* {
+    final failure = error;
+    if (failure != null) throw failure;
+    yield _entriesFor(uid, limit);
+    yield* _updates.stream.map((_) => _entriesFor(uid, limit));
+  }
+
+  List<SearchHistoryEntry> _entriesFor(String uid, int limit) {
+    final entries = entriesByUid[uid] ?? const <SearchHistoryEntry>[];
+    return entries.take(limit).toList();
+  }
+
+  @override
+  Future<void> record(String uid, String term) async {
+    final trimmed = term.trim();
+    if (trimmed.isEmpty) return;
+    final entries = entriesByUid.putIfAbsent(uid, () => <SearchHistoryEntry>[])
+      ..removeWhere((entry) => entry.term == trimmed);
+    entries.insert(
+      0,
+      SearchHistoryEntry(
+        id: 'entry-${nextId++}',
+        term: trimmed,
+        searchedAt: DateTime.now(),
+      ),
+    );
+    _updates.add(const <SearchHistoryEntry>[]);
+  }
+
+  @override
+  Future<void> clear(String uid) async {
+    entriesByUid[uid] = <SearchHistoryEntry>[];
+    _updates.add(const <SearchHistoryEntry>[]);
+  }
+
+  /// Pushes a listener error, as a Firestore stream would.
+  void fail(AppException failure) {
+    error = failure;
+    _updates.addError(failure);
+  }
+
+  Future<void> dispose() => _updates.close();
+}
+
 /// Records analytics calls instead of sending them.
 class FakeAnalyticsService implements AnalyticsService {
   final List<String> events = <String>[];
@@ -244,4 +306,40 @@ class FakeAnalyticsService implements AnalyticsService {
 
   @override
   Future<void> setUserId(String? uid) async => userIds.add(uid);
+}
+
+/// In-memory [SavedService] for tests.
+class FakeSavedService implements SavedService {
+  final Map<String, Set<String>> savedByUid = <String, Set<String>>{};
+  AppException? error;
+  final StreamController<List<String>> _updates =
+      StreamController<List<String>>.broadcast();
+
+  @override
+  Stream<List<String>> watchSavedIds(String uid) async* {
+    final failure = error;
+    if (failure != null) throw failure;
+    yield (savedByUid[uid] ?? const <String>{}).toList(growable: false);
+    yield* _updates.stream;
+  }
+
+  @override
+  Future<void> save(String uid, String internshipId) async {
+    final failure = error;
+    if (failure != null) throw failure;
+    final set = savedByUid.putIfAbsent(uid, () => <String>{});
+    set.add(internshipId);
+    _updates.add(set.toList(growable: false));
+  }
+
+  @override
+  Future<void> unsave(String uid, String internshipId) async {
+    final failure = error;
+    if (failure != null) throw failure;
+    final set = savedByUid.putIfAbsent(uid, () => <String>{});
+    set.remove(internshipId);
+    _updates.add(set.toList(growable: false));
+  }
+
+  Future<void> dispose() => _updates.close();
 }
