@@ -12,7 +12,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 |---|---|---|---|
 | G-01 | `handoff/flutter-handoff.md` does not exist | Team | Assumed |
 | G-02 | Product name: "Internship Finder" (Lab 2) vs "Internly" (Lab 3) | Team | Assumed |
-| G-03 | No Login screen in Lab 2 | Auth owner | Assumed (interim UI) |
+| G-03 | No Login screen in Lab 2 | Auth owner | Resolved (Login frame received 2026-10-28; DC-18) |
 | G-04 | No Notification Center screen in Lab 2 | Notifications owner | Assumed (Firebase demo area on Profile, per Lab 3 §3) |
 | G-05 | No PDF report export in Lab 2 | Report owner | Assumed (Firebase demo area on Profile, per Lab 3 §3) |
 | G-06 | No place in the UI for Remote Config values and Crashlytics test controls | Profile owner | Resolved (Firebase demo area on Profile, Lab 3 §3) |
@@ -40,6 +40,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-28 | Profile "Settings & Support" rows (Notification preferences, Language, Help & Support) have no target screens | Profile owner | Assumed (honest coming-soon message, DC-17) |
 | G-30 | Edit Profile and Update Preferences frames ask twice for a city and for a target role | Profile owner | Resolved (user decision 2026-10-28) |
 | G-29 | Edit Profile `Change Photo` / `Remove` (JPG, PNG ≤ 5 MB) has no storage path: `storage.rules` allows only PDFs in `cvs/` and `reports/` | Profile owner | Resolved for now (Google photo only, user decision; DC-14) |
+| G-31 | Login "Terms" and "Privacy" links have no content or URL | Auth owner + team | Assumed (honest coming-soon message, DC-18) |
 
 ---
 
@@ -56,6 +57,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 ### G-03: Login screen
 - **Found:** Lab 3 requires Google Sign-In and "signed-out users can access only Login", but Lab 2's 11 screens include no Login or onboarding.
 - **Handling:** an interim Login screen built only from existing tokens and components (`features/auth/screens/login_screen.dart`, logged as DC-01). It supports loading and error states. The auth owner designs the final version and records it in the change log.
+- **Resolved (2026-10-28):** the design owner provided a Login frame: a campus photo under a dark scrim, the `Internly.` wordmark (blue dot), "Khởi đầu sự nghiệp IT", a one-line pitch, a white "Tiếp tục với Google" button with the Google "G", and "Bằng việc tiếp tục, bạn đồng ý với Điều khoản & Bảo mật." The app follows it with the differences in DC-18 (English copy per G-28, the Terms / Privacy links per G-31, the sign-in message). The photo is `assets/images/login_background.jpg` (supplied by the design owner with the frame; its source and license are still to be confirmed). The "G" is Google's own asset from the [Sign in with Google branding guidelines](https://developers.google.com/identity/branding-guidelines) (`signin-assets.zip`, light, icon only), cropped to the mark, as the guidelines require for a custom button.
 
 ### G-04: Notification Center
 - **Found:** not in the Lab 2 screen inventory. The only hint is a bell action in the Home app bar (Stitch final) and the App Bar "Main" specimen with a notification action (Figma 05).
@@ -225,4 +227,9 @@ The user wants **no spending at all**, including AI models. Every requirement ca
 - **Found (2026-10-28, review of the Profile screen):** the Edit Profile frame has "Location / Current City" and "Headline / Target Role"; the Update Preferences frame has "Location" and "Target roles". Students would type a city twice and state a target role twice; `city` and `headline` were also saved without being shown on Profile.
 - **Decision (user, 2026-10-28):** keep both city fields (where the student lives vs where they want an internship) and prefill an empty preferences Location from the current city; rename "Headline / Target Role" to "Headline", keep target roles only in Update preferences, and show the headline under the name on Profile (DC-14, DC-15, DC-16).
 - **Still not shown on Profile:** graduation year, current city and bio (stored for Apply prefill; the Lab 2 Profile frame has no place for them).
+
+### G-31: Terms and Privacy on Login
+- **Found (2026-10-28):** the Login frame ends with "By continuing, you agree to our Terms & Privacy" with both words underlined as links, but there is no terms of use or privacy policy text, page or URL anywhere in Lab 2 or the repository.
+- **Assumed (user, 2026-10-28):** keep the line and both links, as designed; each link shows an honest SnackBar (`The terms of use are coming soon.`, `The privacy policy is coming soon.`) instead of opening an empty page. Recorded as DC-18.
+- **Needed:** the text of both documents (what Internly stores: Google account name, email and photo, the profile in `users/{uid}`, CVs in `cvs/{uid}`, analytics and crash reports) and where they live (an in-app screen, or a public URL opened with `ExternalLinkService`). Until then the sentence asks for agreement to documents that do not exist yet.
 
