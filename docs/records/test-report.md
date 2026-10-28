@@ -117,6 +117,22 @@ Branch: working tree on top of `main`. Environment: macOS (arm64), Flutter 3.47.
 
 ---
 
+## Run 8: Save Toggle on Home (2026-10-28)
+
+Branch `feat/saved-internships`, commit `569be13` plus the Save Toggle working tree. Environment: Windows 11 (10.0.26200.9711), Flutter 3.47.8 / Dart 3.13.3, Android emulator `sdk gphone64 x86_64` (Android 17 / API 37, `-gpu swiftshader_indirect`), Firebase project `prm-lab3`.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Completed; 78 files checked, 0 changed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **131 tests, all passed** (125 before this change: +4 in `test/features/saved/saved_viewmodel_test.dart`, +2 net in `home_screen_test.dart`, where the "coming soon" case became save / unsave / failed-save) |
+| 4 | Save Toggle on the emulator (signed in, Home) | **Not run yet**: the app session (`flutter run`) is owned by the developer's terminal; the widget tests above cover the tap, the filled bookmark, `internship_save` and the failure message. Verify by hot restarting (`R`) and tapping a card bookmark, then checking `users/{uid}/savedInternships` and the Saved tab |
+| 5 | `firestore.rules` change | **None needed**: saved items live under `users/{uid}/savedInternships` (AGENTS.md rule 9) |
+| 6 | DebugView screenshot for `internship_save` | **Not run**: needs the on-device check in row 4 and the DebugView session; `evidence/analytics/` has no entry yet |
+| 7 | ARTEMIS case for saving | **Not run**: no ARTEMIS daemon on this machine (Run 7 row 5) |
+
+---
+
 ## Run template
 
 ```markdown

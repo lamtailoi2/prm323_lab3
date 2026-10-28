@@ -1,21 +1,38 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/errors/app_exception.dart';
 import '../models/internship.dart';
 import 'auth_service.dart';
 
-/// Stores each user's saved internships separately from the shared listings.
+/// Reads and writes the signed-in student's saved internships.
+///
+/// Every saved item is a copy of the shared listing stored under
+/// `users/{uid}/savedInternships/{key}` (rule 9 in AGENTS.md). Copying the
+/// fields the Saved screen shows means the item still renders after the
+/// listing expires from the shared pool (G-25).
+abstract interface class SavedInternshipService {
+  /// Emits the saved listings of the current user; empty when signed out.
+  Stream<List<Internship>> watchSaved();
+
+  /// Saves a copy of [internship] for the current user.
+  ///
+  /// Throws [AppException] when the listing disappeared from the shared pool
+  /// or the write failed.
+  Future<void> save(Internship internship);
+
+  /// Removes the saved item with [internshipKey].
+  Future<void> remove(String internshipKey);
+}
+
 final savedInternshipServiceProvider = Provider<SavedInternshipService>((ref) {
   final uid = ref.watch(currentUserIdProvider);
 
-  return SavedInternshipService(
-    firestore: FirebaseFirestore.instance,
-    uid: uid,
-  );
+  return FirestoreSavedInternshipService(FirebaseFirestore.instance, uid);
 });
 
-class SavedInternshipService {
-  SavedInternshipService({required this._firestore, required this._uid});
+class FirestoreSavedInternshipService implements SavedInternshipService {
+  FirestoreSavedInternshipService(this._firestore, this._uid);
 
   final FirebaseFirestore _firestore;
   final String? _uid;
@@ -31,7 +48,7 @@ class SavedInternshipService {
         .collection('savedInternships');
   }
 
-  /// Watches the current user's saved internship snapshots.
+  @override
   Stream<List<Internship>> watchSaved() {
     final collection = _savedCollection;
 
@@ -49,11 +66,11 @@ class SavedInternshipService {
 
           if (raw is! Map) continue;
 
-          final internshipData = Map<String, Object?>.from(raw);
-
-          internships.add(Internship.fromFirestore(doc.id, internshipData));
-        } on Exception {
-          // Skip invalid saved documents rather than breaking the whole list.
+          internships.add(
+            Internship.fromFirestore(doc.id, Map<String, Object?>.from(raw)),
+          );
+        } on FormatException {
+          // Skip malformed saved documents instead of breaking the list.
           continue;
         }
       }
@@ -62,37 +79,88 @@ class SavedInternshipService {
     });
   }
 
-  /// Saves a copy of the shared listing under the user's own UID.
+  @override
   Future<void> save(Internship internship) async {
     final collection = _savedCollection;
 
     if (collection == null) {
-      throw StateError('Please sign in to save internships.');
+      throw const AppException(
+        AppErrorKind.permissionDenied,
+        'Sign in to save internships.',
+      );
     }
 
-    final listing = await _firestore
-        .collection('internships')
-        .doc(internship.key)
-        .get();
+    try {
+      final listing = await _firestore
+          .collection('internships')
+          .doc(internship.key)
+          .get();
 
-    if (!listing.exists || listing.data() == null) {
-      throw StateError('This internship is no longer available.');
+      final data = listing.data();
+      if (!listing.exists || data == null) {
+        throw const AppException(
+          AppErrorKind.notFound,
+          'This internship is no longer available.',
+        );
+      }
+
+      await collection.doc(internship.key).set({
+        'internship': data,
+        'savedAt': FieldValue.serverTimestamp(),
+      });
+    } on AppException {
+      rethrow;
+    } on Exception catch (error) {
+      throw _failure(
+        error,
+        'We could not save this internship. Check your connection and try '
+        'again.',
+      );
     }
-
-    await collection.doc(internship.key).set({
-      'internship': listing.data(),
-      'savedAt': FieldValue.serverTimestamp(),
-    });
   }
 
-  /// Removes a saved internship for the current user.
+  @override
   Future<void> remove(String internshipKey) async {
     final collection = _savedCollection;
 
     if (collection == null) {
-      throw StateError('Please sign in to manage saved internships.');
+      throw const AppException(
+        AppErrorKind.permissionDenied,
+        'Sign in to manage saved internships.',
+      );
     }
 
-    await collection.doc(internshipKey).delete();
+    try {
+      await collection.doc(internshipKey).delete();
+    } on Exception catch (error) {
+      throw _failure(
+        error,
+        'We could not remove this internship. Check your connection and try '
+        'again.',
+      );
+    }
+  }
+
+  static AppException _failure(Object error, String fallback) {
+    if (error is FirebaseException) {
+      return switch (error.code) {
+        'permission-denied' || 'unauthenticated' => AppException(
+          AppErrorKind.permissionDenied,
+          "You don't have permission to change your saved internships.",
+          cause: error,
+        ),
+        'unavailable' ||
+        'deadline-exceeded' ||
+        'network-request-failed' => AppException(
+          AppErrorKind.network,
+          'We could not reach Internly. Check your connection and try '
+          'again.',
+          cause: error,
+        ),
+        _ => AppException(AppErrorKind.unknown, fallback, cause: error),
+      };
+    }
+
+    return AppException(AppErrorKind.unknown, fallback, cause: error);
   }
 }

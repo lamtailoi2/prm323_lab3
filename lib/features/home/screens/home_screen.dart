@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../app/router.dart';
+import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/job_role.dart';
@@ -19,6 +22,8 @@ import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
+import '../../saved/viewmodels/saved_providers.dart';
+import '../../saved/viewmodels/saved_viewmodel.dart';
 import '../viewmodels/home_viewmodel.dart';
 import '../widgets/home_section_header.dart';
 import '../widgets/role_shortcuts.dart';
@@ -37,6 +42,16 @@ class HomeScreen extends ConsumerWidget {
     final state = ref.watch(homeViewModelProvider);
     final viewModel = ref.read(homeViewModelProvider.notifier);
     final user = ref.watch(authStateChangesProvider).value;
+
+    // A failed save / unsave keeps the list as it is and explains why.
+    ref.listen<AsyncValue<void>>(savedViewModelProvider, (previous, next) {
+      final error = next.error;
+      if (error is AppException) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    });
+
     return Scaffold(
       appBar: AppTopBar.main(
         title: 'Home',
@@ -126,8 +141,6 @@ class HomeScreen extends ConsumerWidget {
           child: _FeedLists(
             feed: data,
             onOpenSearch: () => context.go(AppRoutes.search),
-            onSave: () =>
-                _showMessage(context, 'Saved internships are coming soon.'),
           ),
         ),
       ],
@@ -277,30 +290,26 @@ class _HomeHeader extends StatelessWidget {
   }
 }
 
-class _FeedLists extends StatelessWidget {
-  const _FeedLists({
-    required this.feed,
-    required this.onOpenSearch,
-    required this.onSave,
-  });
+class _FeedLists extends ConsumerWidget {
+  const _FeedLists({required this.feed, required this.onOpenSearch});
 
   final HomeFeed feed;
   final VoidCallback onOpenSearch;
-  final VoidCallback onSave;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final savedIds = ref.watch(savedInternshipIdsProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (feed.recommended.isNotEmpty) ...[
           _sectionHeader('Recommended for you'),
-          _cards(feed.recommended),
+          _cards(ref, feed.recommended, savedIds),
         ],
         if (feed.recent.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.section),
           _sectionHeader('Recently Posted'),
-          _cards(feed.recent),
+          _cards(ref, feed.recent, savedIds),
         ],
         const SizedBox(height: AppSpacing.section),
       ],
@@ -323,7 +332,11 @@ class _FeedLists extends StatelessWidget {
     );
   }
 
-  Widget _cards(List<Internship> internships) {
+  Widget _cards(
+    WidgetRef ref,
+    List<Internship> internships,
+    Set<String> savedIds,
+  ) {
     return Column(
       children: [
         for (final internship in internships)
@@ -343,7 +356,12 @@ class _FeedLists extends StatelessWidget {
               tags: internship.skills,
               allowanceText: formatAllowance(internship.salary),
               postedText: internship.postedText,
-              onSaveToggle: onSave,
+              isSaved: savedIds.contains(internship.key),
+              onSaveToggle: () => unawaited(
+                ref
+                    .read(savedViewModelProvider.notifier)
+                    .toggle(internship, source: 'home'),
+              ),
             ),
           ),
       ],

@@ -149,6 +149,24 @@ Commands executed, with their real results (details in [`test-report.md`](test-r
 
 ---
 
+## Session 2026-10-28: Saved internships (OpenCode)
+
+Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11 with an Android emulator. Operator: Kim Hao.
+
+### P-21: Recover the conflicted index and commit the Saved list
+- **Request:** "resolve my current index first rồi chuyển qua nhánh feat/saved-internships", then "commit luôn".
+- **Output:** diagnosed a half-applied `git stash pop` on `dev` (unmerged `lib/services/saved_internship_service.dart`, `saved_screen.dart` staged) whose stash base was `feat/saved-internships`; checked that the staged `saved_screen.dart` blob (`76a7ccf`) was identical to the stash copy before touching anything; `git reset --hard HEAD` on `dev`, `git checkout feat/saved-internships`, `git stash pop` (clean, stash dropped), `dart format` on the two feature files, then commit `569be13` with the known gaps written into the commit message.
+- **Verification:** `flutter analyze` → `No issues found!`; `flutter test` → 125 passed; `dart format --set-exit-if-changed lib test` → `lib/app/bootstrap.dart` (pre-existing on the branch, not touched) still differs.
+- **Decision:** Accepted as the starting point for the feature. The screen's direct service call, `AsyncValue` instead of `ViewState` and the missing tests were recorded as follow-ups; P-22 closes the MVVM gap for the toggle.
+
+### P-22: Save Toggle on the Home cards
+- **Request:** "xử lý tiếp hành động khi bấm bookmark save trên màn home, lưu ý tạo file gì hay code ở đâu phải thông báo và tổng hợp lại".
+- **Output:** `SavedInternshipService` became an interface + `FirestoreSavedInternshipService` + provider, throwing `AppException` (permission-denied / network / not-found); the stream providers moved from `features/saved/screens/` to `lib/features/saved/viewmodels/saved_providers.dart`, plus `savedInternshipIdsProvider` for the bookmark state; new `SavedViewModel.toggle(internship, source:)` with the loading guard, `ref.mounted` checks and the `internship_save` event; `HomeScreen` wires `InternshipCard.isSaved` / `onSaveToggle` and shows a failure SnackBar through `ref.listen`; `FakeSavedInternshipService` and `saved_viewmodel_test.dart` added, `home_screen_test.dart` covers save, unsave and failure; docs updated in `analytics-plan.md` (row 7), `design-traceability.md` (Home row, DC-11, DC-14) and `test-report.md` (Run 8).
+- **Verification:** `dart format lib test` → 78 files, 0 changed; `flutter analyze` → `No issues found!`; `flutter test` → **131 passed**. On-device save, DebugView screenshot and ARTEMIS case **not run** (the app session belongs to the developer's terminal); the exact manual step is recorded in `test-report.md` Run 8 rows 4 and 6.
+- **Decision:** Accepted for MVVM, analytics and tests. Open: `SavedScreen` still calls the service directly and uses `AsyncValue` (its own PR), no unsave undo, and the on-device / DebugView evidence is pending.
+
+---
+
 ## Entry template
 
 ```markdown

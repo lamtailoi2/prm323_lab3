@@ -7,7 +7,7 @@ import '../../../core/widgets/internship_card.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
 import '../../../services/saved_internship_service.dart';
-import 'saved_provider.dart';
+import '../viewmodels/saved_providers.dart';
 
 enum _SavedFilter {
   all('All IT'),
@@ -80,7 +80,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
             return StateView.empty(
               icon: Symbols.bookmark_border_rounded,
               title: 'No saved internships yet',
-              message: 'Save internships you like to find them here.',
+              message: 'Save opportunities to compare them and apply when you are ready.',
               actionLabel: 'Search internships',
               onAction: () => _openSearch(context),
             );
