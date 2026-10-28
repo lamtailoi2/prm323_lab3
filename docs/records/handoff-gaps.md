@@ -26,7 +26,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-14 | No seed / demo data for internship listings | Search owner | Resolved (SerpAPI, no seeding) |
 | G-15 | iOS added to scope; Lab 2 designed for Android only | Team | Resolved (Material on both) |
 | G-16 | Figma pages available only as screenshots; 19 of 31 components not covered | Design owner | Open |
-| G-17 | Allowance format: `$1,200/month` (Figma) vs VND per month (Stitch / AI log) | Home / Search owner | Open |
+| G-17 | Allowance format: `$1,200/month` (Figma) vs VND per month (Stitch / AI log) | Home / Search owner | Resolved (VND format; allowance read from the description, 2026-10-28) |
 | G-18 | No "Withdrawn" status badge specimen | Applications owner | Open |
 | G-19 | Two Figma color pairs fail WCAG AA contrast | Design owner | Open (proposals DC-04, DC-05) |
 | G-20 | iOS: SPM cannot resolve Firebase 13 + GoogleSignIn 9 | Tech lead | Resolved (CocoaPods; see note) |
@@ -134,6 +134,8 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 ### G-17: Allowance format
 - **Found:** the Figma card specimen shows `$1,200/month`. The Stitch Home final shows `12,000,000 VND / mo`, the Internship Detail prompt says `8–12M VND/month`, and the AI log standardised allowances to VND. Unpaid and undisclosed allowances must be distinguishable.
 - **Handling:** `InternshipCard` takes a preformatted `allowanceText`. The feature owner picks one VND format and uses it everywhere.
+- **Found (2026-10-28):** none of the 322 synced listings has `detected_extensions.salary`: Google Jobs does not structure pay for Vietnamese listings, so every card showed "Not disclosed". The pay is only written in the description: 74 listings give an amount, 70 say "Thỏa thuận", 50 are vague ("Attractive allowance"), 128 say nothing.
+- **Resolved (2026-10-28):** `allowanceFromText` (`lib/core/utils/allowance.dart`) reads the description when Google gives no salary. Format, used everywhere: `12,000,000 VND / mo`; ranges `2,000,000–3,000,000 VND / mo`; qualifiers `Up to` / `From` / `About` when the text says so; ` / mo` only when the text says monthly; `$500 / mo` for USD; `Negotiable` for "Thỏa thuận" / "negotiable". Vague text and other allowances (meal, lunch, parking, home office…) are ignored, and amounts outside 100,000–200,000,000 VND (or 50–10,000 USD) are rejected, so "Lương tháng 13" or "100% salary" never become pay. Result on the 2026-10-28 pool: 73 amounts, 70 negotiable, 179 not disclosed.
 
 ### G-18: Withdrawn badge
 - **Found:** Flow 3d sets the status to Withdrawn, but Figma 05 "Application Status" has only five specimens (Submitted, Under review, Interview, Accepted, Rejected).
@@ -179,7 +181,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
   4. **IDs.** `job_id` is long and may contain `/`. Both the function and the app derive the same 16-hex FNV-1a key (`jobKeyFor`) for Firestore document IDs, routes and analytics (≤ 100 characters).
   5. **Listings expire.** The function sets `expiresAt` to 7 days after a listing is last seen and deletes expired documents; the app query excludes them. Saved items and applications still store a snapshot of the fields they display.
   6. **Applying is external.** Google Jobs gives `apply_options` links to employer sites; the app cannot submit to the employer. Proposal: Flow 2 ends by recording the application in Firestore (the student's own tracking record) and offering the employer's apply link. Statuses (Under review, Interview, …) are then **updated by the student**, which also gives the main entity its update and delete (G-08, G-10). Record the UI change as DC-10.
-  7. **Missing fields.** Salary, company size, logo and office location are often absent: show "Not disclosed" or hide the row; the Map Preview Card cannot be built (DC-10).
+  7. **Missing fields.** Salary, company size, logo and office location are often absent: show "Not disclosed" or hide the row; the Map Preview Card cannot be built (DC-10). Salary is read from the description when the text states it (G-17).
   8. **CV Match Check input:** `job_highlights` (Qualifications) and the description text vs the profile skills (G-24).
 
 ### G-26: Zero-cost plan
