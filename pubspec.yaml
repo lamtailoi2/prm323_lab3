@@ -39,8 +39,10 @@ flutter:
     enable-swift-package-manager: false
 
   # Single source of the Remote Config in-app defaults (Lab 3 §9).
+  # Login photo and Google's "G" mark (1x–4x): see handoff-gaps G-03.
   assets:
     - firebase/remote-config-defaults.json
+    - assets/images/
 
   # Inter 4.1 (SIL Open Font License, see assets/fonts/inter/OFL.txt).
   # Weights match the Lab 2 typography tokens: 400, 500, 600, 700.
