@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/widgets/app_dialog.dart';
 import 'package:internly/core/widgets/app_search_field.dart';
+import 'package:internly/core/widgets/app_tag.dart';
 import 'package:internly/core/widgets/app_text_field.dart';
 import 'package:internly/core/widgets/app_top_bar.dart';
 import 'package:internly/core/widgets/internship_card.dart';
@@ -56,6 +57,93 @@ void main() {
         tester.getSize(find.byType(TextField)).height,
         greaterThanOrEqualTo(48),
       );
+    });
+
+    testWidgets('required marker is read as "required"', (tester) async {
+      await pumpThemed(
+        tester,
+        const AppTextField(label: 'Full name', isRequired: true),
+      );
+      final label = tester.widget<Text>(find.byType(Text).first);
+      expect(
+        label.textSpan?.toPlainText(includeSemanticsLabels: false),
+        'Full name *',
+      );
+      expect(find.text('Full name, required'), findsOneWidget);
+    });
+
+    testWidgets('prefix icon and suffix; the error icon replaces the suffix', (
+      tester,
+    ) async {
+      const lock = Icon(Symbols.lock_rounded);
+      await pumpThemed(
+        tester,
+        const AppTextField(
+          label: 'Phone number',
+          prefixIcon: Symbols.call_rounded,
+          suffix: lock,
+        ),
+      );
+      expect(find.byIcon(Symbols.call_rounded), findsOneWidget);
+      expect(find.byIcon(Symbols.lock_rounded), findsOneWidget);
+
+      await pumpThemed(
+        tester,
+        const AppTextField(
+          label: 'Phone number',
+          prefixIcon: Symbols.call_rounded,
+          suffix: lock,
+          errorText: 'Enter a valid phone number, e.g. 0908 123 456.',
+        ),
+      );
+      expect(find.byIcon(Symbols.lock_rounded), findsNothing);
+      expect(find.byIcon(Symbols.error_rounded), findsOneWidget);
+    });
+
+    testWidgets('read-only field opens a picker on tap', (tester) async {
+      var taps = 0;
+      await pumpThemed(
+        tester,
+        AppTextField(
+          label: 'Academic standing & graduation',
+          readOnly: true,
+          onTap: () => taps++,
+        ),
+      );
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      expect(taps, 1);
+      expect(tester.widget<TextField>(find.byType(TextField)).readOnly, isTrue);
+    });
+  });
+
+  group('AppTag', () {
+    testWidgets('compact tag hugs its label (Internship Card)', (tester) async {
+      await pumpThemed(
+        tester,
+        const Align(
+          alignment: Alignment.topLeft,
+          child: AppTag(label: 'Flutter'),
+        ),
+      );
+      // 12 sp caption (16 line height) + 4 dp padding above and below.
+      expect(tester.getSize(find.byType(AppTag)).height, 24);
+    });
+
+    testWidgets('large tag is 44 dp tall with the label centred', (
+      tester,
+    ) async {
+      await pumpThemed(
+        tester,
+        const Align(
+          alignment: Alignment.topLeft,
+          child: AppTag(label: 'Flutter', size: AppTagSize.large),
+        ),
+      );
+      final tag = tester.getRect(find.byType(AppTag));
+      final label = tester.getRect(find.text('Flutter'));
+      expect(tag.height, 44);
+      expect(label.center.dy, closeTo(tag.center.dy, 0.5));
     });
   });
 

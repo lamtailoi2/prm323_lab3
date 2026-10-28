@@ -36,6 +36,10 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-24 | CV Match Check (new Apply step): matching rules, data source, Figma frame | Apply owner + design owner | Open |
 | G-25 | Consequences of using SerpAPI (Google Jobs) as the data source | Search + Apply owners | Resolved (shared Firestore mirror) |
 | G-26 | Zero-cost constraint: every service and tool must run at $0 | Team | Resolved (plan below) |
+| G-27 | No Lab 2 frame for Edit profile (target of the Profile primary action) | Profile owner | Resolved (Edit Profile frame received 2026-10-28, DC-14) |
+| G-28 | Profile "Settings & Support" rows (Notification preferences, Language, Help & Support) have no target screens | Profile owner | Assumed (honest coming-soon message, DC-17) |
+| G-30 | Edit Profile and Update Preferences frames ask twice for a city and for a target role | Profile owner | Resolved (user decision 2026-10-28) |
+| G-29 | Edit Profile `Change Photo` / `Remove` (JPG, PNG ≤ 5 MB) has no storage path: `storage.rules` allows only PDFs in `cvs/` and `reports/` | Profile owner | Resolved for now (Google photo only, user decision; DC-14) |
 
 ---
 
@@ -78,6 +82,9 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 | Dialog inner padding | 24 dp | `AppDialog` |
 | Helper colors: inverse surface (SnackBar) | Material default (`onSurface`) | `AppTheme` |
 | Shadow of plain `AlertDialog` / bottom sheet | Material elevation | use `AppDialog` for exact `elevation/2` |
+| Profile header avatar | 56 dp | `AppSizes.profileHeaderAvatar` (Profile screenshot) |
+| CV file / sheet header icon tile | 40 dp, `primaryContainer`, radius 12 | `AppSizes.fileTile`, `FileTileIcon` (Profile screenshots) |
+| Edit profile photo | 80 dp | `AppSizes.editProfileAvatar` (Edit Profile frame) |
 
 ### G-08: Main entity for CRUD
 - **Resolved (2026-10-21):** this requirement came from the initialization brief, not from the Lab 3 handout, which does not require CRUD of a main entity. The application record still gets create / update / delete naturally if students track their own statuses (G-25 point 6). The notes below are kept for history.
@@ -198,3 +205,23 @@ The user wants **no spending at all**, including AI models. Every requirement ca
 | Android device | Own phone or the Android Emulator | — |
 | AI code review | A free tool such as Gemini Code Assist on GitHub (free for individuals), or CodeRabbit / SonarCloud if the repository is made public | Check each tool's current free terms before use |
 | iOS push (APNs) | Not needed: Lab 3 grades Android only | Apple Developer Program would cost money; skip iOS push |
+
+### G-27: Edit profile has no frame
+- **Found (2026-10-28):** `Edit Profile` is the primary action of the Lab 2 Profile frame, and Flow 2b/2d send students to Profile to fill in missing data, but Lab 2 had no Edit profile frame (only the Edit Skills, Update Preferences and Update CV sheets).
+- **Resolved (2026-10-28):** the design owner provided an Edit Profile frame (photo; "Academic & Personal Details": Full Name *, Headline / Target Role *, University / Institution, Major / Degree Program, Academic Standing & Graduation; "Contact & Location": University Email (locked), Phone Number, Location / Current City, Short Bio / Introduction 0/300; a "VNU V-Career Sync" banner; `Save Changes` / `Cancel`). The app follows it with the differences listed in DC-14. `/profile/edit` keeps the root navigator (no bottom navigation), like the Apply forms.
+- **Still open:** the picker behind "Academic Standing & Graduation" is not drawn. The app uses a sheet with Filter Chips: year of study 1–6, and graduation years in one horizontally scrolling row from this year to this year + 8 (six years of study plus two for delays; a stored earlier year is kept), scrolled to the stored year on open.
+
+### G-28: Settings rows without a destination
+- **Found (2026-10-28):** the Lab 2 Profile frame lists Notification Preferences, Language (`Tiếng Việt · EN`) and Help & Support, but no screen, content or behaviour is designed for them; the app is English only.
+- **Assumed:** the rows stay, as designed, and each shows an honest SnackBar (`… are coming soon.`, `Internly is available in English only for now.`); Language shows `English`. Recorded as DC-17. Notification preferences is the natural entry point for the Notification Center (G-04); the Firebase demo area (G-06) can be added to the same list.
+
+### G-29: Profile photo upload
+- **Found (2026-10-28):** the Edit Profile frame has `Change Photo` / `Remove` ("JPG, PNG up to 5MB"). `firebase/storage.rules` only allows PDFs under `cvs/{uid}` and `reports/{uid}` (AGENTS.md rule 9), and `FileStorageService` only uploads PDFs.
+- **Decision (user, 2026-10-28):** show the Google account photo only, without `Change Photo` / `Remove`, so no rules change is needed (DC-14).
+- **If revisited:** add an owner-only `avatars/{uid}/…` path (image/jpeg or image/png, ≤ 5 MB) in a PR that tags the rules owner, an image upload in `FileStorageService`, and a `photoUrl` field in `users/{uid}` that Home and Profile read before the Google photo.
+
+### G-30: Duplicate profile fields
+- **Found (2026-10-28, review of the Profile screen):** the Edit Profile frame has "Location / Current City" and "Headline / Target Role"; the Update Preferences frame has "Location" and "Target roles". Students would type a city twice and state a target role twice; `city` and `headline` were also saved without being shown on Profile.
+- **Decision (user, 2026-10-28):** keep both city fields (where the student lives vs where they want an internship) and prefill an empty preferences Location from the current city; rename "Headline / Target Role" to "Headline", keep target roles only in Update preferences, and show the headline under the name on Profile (DC-14, DC-15, DC-16).
+- **Still not shown on Profile:** graduation year, current city and bio (stored for Apply prefill; the Lab 2 Profile frame has no place for them).
+
