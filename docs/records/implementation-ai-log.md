@@ -147,6 +147,12 @@ Commands executed, with their real results (details in [`test-report.md`](test-r
 - **Verification:** `dart format lib test` → 0 changed; `flutter analyze` → `No issues found!`; `flutter test` → **125 passed**; hot reload + screenshot at RGB `248,250,252` behind `All roles`/`View all` (no white pill). ARTEMIS suite **not run**: `adb devices` is empty and no ARTEMIS daemon listens on `127.0.0.1:8000`; see `evidence/artemis/e2e-environment-20261022.md`.
 - **Decision:** Accepted for the text-action style and test coverage. E2E execution remains pending an Android device/emulator and the ARTEMIS host.
 
+### P-28: Home allowance from the listing description
+- **Request:** "trang home các jobs k lấy đc lương hả" (Home jobs show no salary?), then "PR profile sau đó làm lương" (do the salary after the Profile PR).
+- **Output:** found that SerpAPI never fills `detected_extensions.salary` for the Vietnamese pool (0 of 322) while 144 descriptions state an amount or "Thỏa thuận". Added `allowanceFromText` to `lib/core/utils/allowance.dart` and used it in `Internship.fromSerpApi` when Google gives no salary. G-17 resolved (format and rules), G-25 note, Home traceability row, test report Run 10, two Home screenshots in `evidence/screens/`.
+- **Verification:** `flutter analyze` → No issues found!; `flutter test` → 159 passed; the parser was run over the real pool on the simulator and every extracted amount compared with its source sentence (four misreadings fixed, see Run 10).
+- **Decision:** Accepted. Free-text parsing can still miss unusual wording; it never invents a value (vague text stays "Not disclosed").
+
 ---
 
 ## Entry template
