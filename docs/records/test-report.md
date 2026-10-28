@@ -196,6 +196,7 @@ Branch `feat/auth-login-ui` on top of `dev` `175b999`. Same environment as Run 8
 | 4 | Layout check before the tests (temporary golden renders at 360 × 800, 412 × 915, 360 × 640 with an error; deleted afterwards) | First render wrapped the legal line onto two lines at 360 dp; fixed by giving it the standard 16 dp padding (DC-18). Second render matched the frame at both widths |
 | 5 | Simulator, signed out (`flutter run --dart-define-from-file=.env`) | **Passed**: Login matches the frame (photo, scrim, wordmark, white Google button, one-line legal text), light status-bar icons. Evidence: `evidence/auth/auth-login-redesign-20261028.png`, `evidence/screens/login-frame-vs-app-20261028.png` (frame left, app right) |
 | 6 | Simulator taps (Google sign-in, cancelled picker, `Terms` / `Privacy`) | **Not run** on the simulator in this run (no tap automation available here); covered by the widget tests in row 3 and by ARTEMIS TC-01 / TC-14, whose labels did not change |
+| 7 | Combined branch after merging `dev` (PR #4: Recommended by profile) | `dart format` only `lib/app/bootstrap.dart` (as on `dev`); `flutter analyze` **No issues found!**; `flutter test` **260 tests, all passed** (252 on `dev`, +8). Merge conflicts were only in the shared docs (Home / Login rows in traceability, P-30 / P-31 in the AI log) and kept both sides |
 
 ---
 

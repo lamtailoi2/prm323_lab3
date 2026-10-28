@@ -216,6 +216,7 @@ Commands executed, with their real results (details in [`test-report.md`](test-r
 - **Output:** `LoginScreen` rebuilt from the frame (photo under a `textPrimary` scrim, `Internly.` wordmark, headline, pitch, legal line) and a feature-local `GoogleSignInButton` (white, Google's "G", spinner while loading). Assets: `assets/images/login_background.jpg` (the supplied photo, 960 × 600) and Google's "G" cut from the official `signin-assets.zip` (rendered to 1x–4x PNG with headless Chrome). G-03 resolved, G-31 added, DC-01 replaced by DC-18, Login and sign-in rows in traceability, README AI tools row, Run 13, two screenshots.
 - **Verification:** `flutter analyze` → No issues found!; `flutter test` → 250 passed (+8); simulator screenshot next to the frame. A temporary render showed the legal line wrapping at 360 dp; fixed before committing.
 - **Decision:** Accepted. Values that cannot be measured from a screenshot (32 dp side padding, 48 dp button, scrim and text opacities) are marked "verify in Figma: G-07". The photo's source and license are still to be confirmed by the design owner.
+- **Follow-up:** "PR lên dev" → PR #5; then "solve conflict" after PR #4 merged: merged `origin/dev` into `feat/auth-login-ui` without rewriting its pushed history. Conflicts were only in the shared docs (the Login and Home rows in traceability, P-30 / P-31 here) and both sides were kept. `flutter analyze` → No issues found!; `flutter test` → 260 passed.
 
 ---
 
