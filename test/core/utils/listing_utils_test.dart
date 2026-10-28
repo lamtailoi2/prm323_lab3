@@ -120,4 +120,72 @@ void main() {
       );
     });
   });
+
+  group('allowanceFromText (real listing text)', () {
+    final cases = <String, String?>{
+      'Thu nhập: Khoảng 2-3 triệu đồng /tháng Địa điểm làm việc: 68':
+          'About 2,000,000–3,000,000 VND / mo',
+      'Được trả mức thù lao 4.000.000 VNĐ/tháng trong thời gian là sinh viên.':
+          '4,000,000 VND / mo',
+      'Quyền lợiInternship allowance: 3M per monthBAP’s benefit':
+          '3,000,000 VND / mo',
+      'Lương: 1000K - 2000K VND một tháng   Loại hình công việc':
+          '1,000,000–2,000,000 VND / mo',
+      '3. Benefits:  Internship allowance: 10,000,000 VND/month  Insurance':
+          '10,000,000 VND / mo',
+      'Được hưởng trợ cấp hàng tháng (3tr/1 tháng), cơ hội làm việc':
+          '3,000,000 VND / mo',
+      'Quyền lợiAllowance: 500,000 VND/month.Holiday bonuses':
+          '500,000 VND / mo',
+      'Quyền lợi được hưởng  - Mức lương: khoảng 4,000,000 VND. - Hỗ trợ':
+          'About 4,000,000 VND',
+      'Trợ cấp: Lên đến 5.000.000 cho sinh viên xuất sắc':
+          'Up to 5,000,000 VND',
+      'Trợ cấp : lên đến 2.300.000       M': 'Up to 2,300,000 VND',
+      'Mức lương: Hỗ trợ lương theo năng lực (4tr - 6tr/tháng)':
+          '4,000,000–6,000,000 VND / mo',
+      'Stipend: \$500 per month for remote interns': '\$500 / mo',
+      'Allowance: 7,000,000VND gross/month.  - Lunch allowance: '
+              '700,000VND/month  - Home Office Support Allowance: '
+              '250,000VND/month.':
+          '7,000,000 VND / mo',
+      'Mức lương: Đến 3 triệu VNĐ)  We are seeking': 'Up to 3,000,000 VND',
+      'Mức lương: Từ 2 triệu VNĐ)  Hỗ trợ cài đặt': 'From 2,000,000 VND',
+      'Allowance: from 7,000,000 VND, open to negotiate': 'From 7,000,000 VND',
+      'Thu nhập: lương cứng 7 -> 10 triệu / tháng + thưởng':
+          '7,000,000–10,000,000 VND / mo',
+      'QUYỀN LỢI:  Thu nhập từ 5.000.000 – 10.000.000 VNĐ/tháng (có thể':
+          '5,000,000–10,000,000 VND / mo',
+      'Internship allowance: 3 million VND per month': '3,000,000 VND / mo',
+      // Not the internship pay: meal allowance, post-hire salary.
+      'Meal allowance of 730,000 VND/month. Medical benefit': null,
+      'Được phụ cấp ăn trưa 30.000 đồng/ngày': null,
+      'official salary of 15+ million VND/ month, 13th month salary': null,
+      'Mô tả công việc:   (Mức lương: Thỏa thuận)   Thu thập': 'Negotiable',
+      'Thông tin chungThu nhập: Thoả thuậnNơi làm việc': 'Negotiable',
+      // No amount and not negotiable: stays "Not disclosed".
+      'Phúc lợi: - Lương tháng 13  - Khám sức khỏe định kỳ': null,
+      'Competitive salary and 13th-month salary14+ annual leave days': null,
+      'Attractive allowance for Internship program (30 hours/week).': null,
+      'Social insurance based on 100% salary Modern office': null,
+      'Hạn nộp: 30/07/2026 Kinh nghiệm: 1 năm': null,
+    };
+
+    cases.forEach((text, expected) {
+      test(text, () => expect(allowanceFromText(text), expected));
+    });
+
+    test('an amount wins over "negotiable" elsewhere in the text', () {
+      expect(
+        allowanceFromText('Mức lương: Thỏa thuận. Trợ cấp: 3 triệu/tháng'),
+        '3,000,000 VND / mo',
+      );
+    });
+
+    test('formatAllowance keeps the extracted text as is', () {
+      for (final text in ['3,000,000 VND / mo', 'Negotiable']) {
+        expect(formatAllowance(text), text);
+      }
+    });
+  });
 }
