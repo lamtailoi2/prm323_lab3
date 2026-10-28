@@ -147,6 +147,50 @@ Commands executed, with their real results (details in [`test-report.md`](test-r
 - **Verification:** `dart format lib test` → 0 changed; `flutter analyze` → `No issues found!`; `flutter test` → **125 passed**; hot reload + screenshot at RGB `248,250,252` behind `All roles`/`View all` (no white pill). ARTEMIS suite **not run**: `adb devices` is empty and no ARTEMIS daemon listens on `127.0.0.1:8000`; see `evidence/artemis/e2e-environment-20261022.md`.
 - **Decision:** Accepted for the text-action style and test coverage. E2E execution remains pending an Android device/emulator and the ARTEMIS host.
 
+### P-21: Profile screen
+- **Request:** "làm màn profile đi" (build the Profile screen). Working request by the Profile owner; no verbatim prompt file.
+- **Output:** branch `feat/profile-ui`. `UserProfile` model (`users/{uid}`: details, skills, preferences, CV metadata) with `FirestoreReader` parsing; `UserProfileService` (live listener, merge write per section, Firestore errors → `AppException`, malformed `cv` logged to Crashlytics); `DocumentPickerService` (`file_selector`) and `ExternalLinkService` (`url_launcher`), both pinned. ViewModels: `ProfileViewModel` (`ViewState`, user-scoped), `EditProfileViewModel` (validation), `EditSkillsViewModel`, `EditPreferencesViewModel`, `UpdateCvViewModel` (10 MB pre-check, progress, upload to `cvs/{uid}` then save), `OpenCvViewModel`. Views: `ProfileScreen` (header, CV / Resume, Technical skills, Internship preferences, Settings & support with Sign out reachable in every state), `EditProfileScreen` at `/profile/edit` (no Lab 2 frame: G-27), three sheets from the Lab 2 Stitch frames. Events `profile_update` and `cv_upload`. Helpers `formatShortDate`, `formatFileSize`, `Validators.phone`; tokens `AppSizes.profileHeaderAvatar`, `AppSizes.fileTile`. Docs: traceability (rows, DC-14…DC-17, DC-03 removed), gaps G-27/G-28 and G-07 rows, analytics rows 16–17, architecture (ViewModels, services, profile schema), design-system sizes, test plan TC-14 wording + TC-17 (`e2e_test/test_profile_skills.py`).
+- **Verification:** `dart format lib test` → 0 changed; `flutter analyze` → No issues found!; `flutter test` → **186 passed** (125 on `main`, +61), 3 consecutive runs all green; `flutter build ios --simulator --debug` → built (new pods resolved); widget renders of Profile, the three sheets and Edit profile at 360 dp compared by eye with the Lab 2 frames (renders not stored as evidence). Real Firestore write, real Storage upload, DebugView events, Android build and ARTEMIS TC-17: **not run** (no Android toolchain / device / ARTEMIS host on this machine).
+- **Decision:** Accepted for review. Deviations recorded as DC-14…DC-17; settings rows without screens show honest coming-soon messages.
+
+### P-22: Run the Profile screen and investigate a stuck save
+- **Request:** "chạy thử tui xem" (run the app to try the Profile screen), then "save thành công nhma bị treo" (the save worked but the sheet hung) and "viết các log cần thiết đi" (write the logs needed).
+- **Output:** booted the iPhone 17 Pro simulator and ran the app with `flutter run` in tmux; opened Profile, the three sheets and Edit profile through the Dart VM service. For the hang: checked the server copy and the cache of `users/{uid}` (data saved, no pending writes) and that the Analytics plugin answered; added timing logs to `FirestoreUserProfileService._merge` (Crashlytics breadcrumb with the section name and duration only; a `debugPrint` used during the investigation was removed in P-26). Recorded Run 9 in the test report.
+- **Verification:** after hot reload, two repeated `Save preferences` taps logged `saved preferences in 890 ms` / `742 ms` and closed the sheet; the original hang did not reproduce. `flutter analyze` → No issues found!
+- **Decision:** Accepted (logs). Root cause of the single hang not confirmed; the most likely cause is a slow server acknowledgement. A timeout + "saved on this phone" message is proposed but not built, because it needs new copy (team decision).
+
+### P-23: Edit profile frame and sheets matched to the design
+- **Request:** "update edit profile" with a new Edit Profile frame, then "đảm bảo 2 cái này match với design nữa" (make the Update Preferences and Edit Skills sheets match their frames). Photo upload: the user chose the Google photo (no `storage.rules` change).
+- **Output:** `ProfileDetails` gains `headline`, `graduationYear`, `city`, `bio`; `EditProfileScreen` rebuilt from the frame (photo, two cards, required markers, clear button, icons, locked email, 300-character bio, `Save changes` + `Cancel`, app-bar `Cancel`) with an `AcademicStandingSheet` picker; `AppTextField` gains `prefixIcon`, `suffix`, `isRequired`, `readOnly` + `onTap`; `TargetRole` (the frame's five roles) replaces Home's `JobRole` in preferences; `SheetChip` / `SheetGroupHeader` give the sheets the frame's chip outline, "+" icons and uppercase headings; Edit skills restyled (selected box, count pill, red `Clear all`, outlined removable chips, opening selection first). Docs: G-27 resolved, G-29 added, DC-14 and DC-16 rewritten, schema, design-system Text Field options and sizes.
+- **Verification:** `flutter analyze` → No issues found!; `flutter test` → **193 passed**; hot restart on the simulator and screenshots compared with the frames; a 360 dp render found the academic value cut off, fixed by wrapping.
+- **Decision:** Accepted. Banner "VNU V-Career Sync" and photo change are left out on purpose (no such integration; rules allow PDFs only), recorded in DC-14 / G-29.
+
+### P-24: Profile tag height
+- **Request:** "height của badge sai, 44 px mới đúng"; clarified as the skill / preference tags on Profile.
+- **Output:** `AppTag` gains `size` (`compact` default for the Internship Card, `large` = `AppSizes.tagLarge` 44 dp); Profile Technical skills, Target roles and Work mode use `large`. Label style and horizontal padding unchanged. Follow-up "chưa update trong edit skills kìa": the selected and suggested chips of Edit skills are also 44 dp (`SheetChip(large: true)`, `SheetChip.largePadding` = 12 dp minus the 1 dp outline, a transparent outline on unselected large chips so selecting does not change the height, 20 dp delete icon); rows 4 dp apart; tap targets stay 48 dp.
+- **Follow-up:** "44 lun" (Update preferences too): 44 dp became the only `SheetChip` size, also used by the Academic standing picker; rows 4 dp apart in every sheet. "xong update evidence": sheet screenshots replaced / added in `evidence/screens/` (test report Run 9).
+- **Follow-up:** "này 36 và k có dấu tick" (Quick select): `SheetChip(compact: true, showCheckmark: false)` = 36 dp (8 dp padding minus the outline), outline only; the Location field still shows the chosen city. Test asserts both; preferences evidence re-taken.
+- **Verification:** `flutter analyze` → No issues found!; `flutter test` → 195 passed (Edit skills test asserts 44 dp for a removable chip and for selected and unselected suggestions; a first run measured 46 dp because of the outline, fixed as above); simulator screenshots after hot reload.
+- **Decision:** Accepted.
+
+### P-25: Review the Profile screen for duplicate fields
+- **Request:** "xem lại profile screen có field nào bị trùng k" (check whether any Profile field is duplicated).
+- **Output:** found two overlaps between the Edit Profile and Update Preferences frames (current city vs internship location; headline / target role vs target role chips) and four Edit profile fields not shown on Profile (headline, graduation year, city, bio). User decisions: keep both cities and prefill an empty preferences Location from the current city (`EditPreferencesViewModel.build`); rename the field to `Headline` and show it under the name in `ProfileHeaderCard`. Recorded as G-30 and in DC-14 / DC-15 / DC-16.
+- **Verification:** `flutter analyze` → No issues found!; `flutter test` → 197 passed.
+- **Decision:** Accepted.
+
+### P-26: Trim before the pull request
+- **Request:** "bạn đánh giá xem có nên lược bớt j k", then "làm đi, check lại profile screen xem có cái nào thừa k" (assess what to trim, do it, and check the Profile screen for anything redundant).
+- **Output:** merged test report Runs 8–13 into Run 8 (final checks) and Run 9 (simulator); moved the two pre-design-match sheet screenshots out of `evidence/` (superseded by the `-matched-` ones); left `lib/app/bootstrap.dart` as on `main` (formatter-only change); removed the investigation `debugPrint` from `FirestoreUserProfileService` (Crashlytics breadcrumb kept); shortened DC-14 / DC-15 / DC-16. Profile review: no unused code; simplified the two error listeners of `ProfileScreen` (their non-`AppException` fallbacks could never run) and reused `ProfileHint` for "Not set". Kept the design-sourced overlaps (app-bar bell and "Notification preferences"; "1 active file" and the default badge; app-bar and bottom `Cancel` in Edit profile).
+- **Verification:** `flutter analyze` → No issues found!; `flutter test` → 197 passed.
+- **Decision:** Accepted.
+
+### P-27: Graduation years as a scrolling row
+- **Request:** "nên design là scroll", then "ý là scroll năm từ 2026-2099 hay bao nhiêu range hợp lý á" (make Expected graduation a scroll; which year range is reasonable).
+- **Output:** recommended this year to this year + 8 (2026–2034): Year of study allows up to 6 years, plus 2 for delays; 2099 would mean 70+ items no student needs. `EditProfileViewModel.graduationYearsAhead`; `AcademicStandingSheet` shows the years in one horizontal `SingleChildScrollView` row and scrolls the stored year into view on open (a stored earlier year is still listed). Docs: DC-14, G-27, Run 8; evidence screenshot re-taken.
+- **Verification:** `flutter analyze` → No issues found!; `flutter test` → 198 passed (+1: a stored year 7 years ahead is selected and on screen when the picker opens); hot restart on the simulator.
+- **Decision:** Accepted.
+
 ---
 
 ## Entry template

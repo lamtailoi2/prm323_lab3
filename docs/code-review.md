@@ -45,7 +45,7 @@ AI finds; we decide (Lab 3 §8). This file holds the review record in the Append
 | Tool | Version / model | Used for | Where recorded |
 |---|---|---|---|
 | Google Stitch | — | Lab 2 screen generation and refinement | Lab 2 `ai/ai-design-log.md` |
-| Claude Code | Opus 5.5 (`claude-opus-5-5`) | Repository initialization: design tokens, shared widgets, services, routing, tests, documentation; requirement review against the Lab 3 handout | [`implementation-ai-log.md`](records/implementation-ai-log.md) |
+| Claude Code | Opus 5.5 (`claude-opus-5-5`) | Repository initialization: design tokens, shared widgets, services, routing, tests, documentation; requirement review against the Lab 3 handout; Profile screen, sheets, Edit profile, profile service and tests (P-21) | [`implementation-ai-log.md`](records/implementation-ai-log.md) |
 | OpenCode | `deepseek-v4.1-flash-free` | Home UI implementation, SerpAPI → Firestore sync function, rules and documentation (P-18) | [`implementation-ai-log.md`](records/implementation-ai-log.md) |
 | Google ARTEMIS | commit `351ca84` + model on the host | End-to-end test execution and the exploratory session | [`test-plan.md`](test-plan.md) |
 | *AI code review tool* | *to fill (e.g. CodeRabbit, Copilot code review)* | *PR review* | this file |
