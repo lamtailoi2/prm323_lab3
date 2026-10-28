@@ -146,6 +146,30 @@ iPhone 17 Pro simulator (iOS 26.5), `flutter run --dart-define-from-file=.env`, 
 
 Follow-up for row 4: the form waits for the server acknowledgement of the Firestore write, so a slow connection keeps the button spinning. `FirestoreUserProfileService` now leaves a Crashlytics breadcrumb per save (`profile: saving …` / `saved … in N ms`, no profile values). Proposed fix, pending a team decision: stop waiting after a timeout and say the change is saved on the phone and will sync.
 
+## Run 10: Home allowance from the description (2026-10-28)
+
+Branch `feat/home-allowance` on top of `dev` `2621e10` (numbered after the Profile PR's Runs 8–9). Same environment as Run 8.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib/core lib/models test` | 0 changed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **159 tests, all passed** (125 on `dev`, +34): `allowanceFromText` on 29 sentences copied from real listings plus two rules (an amount beats "negotiable"; `formatAllowance` keeps the result) (amounts, ranges, `triệu` / `tr` / `M` / `K` / `million`, currency stuck to the number, `Up to` / `From` / `About`, monthly or not, USD, negotiable, and the rejected cases: "Lương tháng 13", "13th-month salary", "100% salary", meal / lunch / home-office allowances, post-hire salary); `Internship.fromSerpApi` falls back to the description and keeps Google's salary when present |
+| 4 | Parser over the real pool (322 listings, via the Dart VM service on the simulator) | Before: 0 listings with pay. After: **73 amounts, 70 negotiable, 179 not disclosed**. A first pass found four misreadings (a "VND" suffix stuck to the number made the parser take the home-office allowance, a meal allowance, a missing `Up to` / `From`, and `7 -> 10 triệu` read as 10 M); all were fixed and added as tests, then every amount was checked against its listing text |
+| 5 | Home on the iPhone 17 Pro simulator | **Passed by eye**: cards show e.g. `From 5,000,000 VND / mo` and `3,000,000 VND / mo`, others `Not disclosed`. Evidence: `evidence/screens/home-allowance-recommended-20261028.png`, `evidence/screens/home-allowance-recent-20261028.png` |
+
+## Run 11: Recommended for you by preferred location (2026-10-28)
+
+Built on `feat/profile-ui` (PR #2), then added to PR #3: `feat/home-allowance` merged `dev` (with PR #2) and took these commits. Same environment as Run 8.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib/core lib/features test` | 0 changed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **208 tests, all passed** (198 on `feat/profile-ui`, +10): `foldText`; `matchesPreferredLocation` with the pool's real spellings (HCM, Hà Nội, Đà Nẵng, "Việt Nam" only, none, "All Vietnam", typed places, whole words); `HomeViewModel` keeps the preferred city in Recommended and every listing in Recently Posted, "All Vietnam" / no preference unfiltered, re-filters when the location changes without a new subscription, unfiltered when the profile fails to load. Home tests now override `currentUserIdProvider` and `UserProfileService` |
+| 4 | Real pool on the simulator (location = Ho Chi Minh City) | **Passed**: the 5 Recommended cards are all in Hồ Chí Minh; Recently Posted still shows 10 listings from every city. Pool spellings checked first: 99 "Việt Nam", 94 "Hà Nội", 89 HCM ("Thành phố Hồ Chí Minh, Hồ Chí Minh" / "Hồ Chí Minh"), 22 Đà Nẵng. Evidence: `evidence/screens/home-recommended-preferred-location-20261028.png` |
+| 5 | Combined branch after merging `dev` (PR #3: allowance + preferred location) | `dart format` 0 changed; `flutter analyze` **No issues found!**; `flutter test` **242 tests, all passed**. Merge conflicts were only in the shared docs (test report, AI log, Home row in traceability) and kept both sides |
+
 ---
 
 ## Run template

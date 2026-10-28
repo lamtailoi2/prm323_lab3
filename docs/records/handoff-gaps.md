@@ -26,13 +26,13 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-14 | No seed / demo data for internship listings | Search owner | Resolved (SerpAPI, no seeding) |
 | G-15 | iOS added to scope; Lab 2 designed for Android only | Team | Resolved (Material on both) |
 | G-16 | Figma pages available only as screenshots; 19 of 31 components not covered | Design owner | Open |
-| G-17 | Allowance format: `$1,200/month` (Figma) vs VND per month (Stitch / AI log) | Home / Search owner | Open |
+| G-17 | Allowance format: `$1,200/month` (Figma) vs VND per month (Stitch / AI log) | Home / Search owner | Resolved (VND format; allowance read from the description, 2026-10-28) |
 | G-18 | No "Withdrawn" status badge specimen | Applications owner | Open |
 | G-19 | Two Figma color pairs fail WCAG AA contrast | Design owner | Open (proposals DC-04, DC-05) |
 | G-20 | iOS: SPM cannot resolve Firebase 13 + GoogleSignIn 9 | Tech lead | Resolved (CocoaPods; see note) |
 | G-21 | App ID / bundle ID and repository naming not confirmed | Team | Resolved (keep `prm323_lab3`, user decision) |
 | G-22 | Keyword search strategy (Firestore has no full-text search) | Search owner | Resolved (SerpAPI query) |
-| G-23 | "Recommended for you" logic not specified | Home owner | Resolved (sync rank + recency) |
+| G-23 | "Recommended for you" logic not specified | Home owner | Resolved (sync rank + recency, filtered by the preferred location) |
 | G-24 | CV Match Check (new Apply step): matching rules, data source, Figma frame | Apply owner + design owner | Open |
 | G-25 | Consequences of using SerpAPI (Google Jobs) as the data source | Search + Apply owners | Resolved (shared Firestore mirror) |
 | G-26 | Zero-cost constraint: every service and tool must run at $0 | Team | Resolved (plan below) |
@@ -141,6 +141,8 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 ### G-17: Allowance format
 - **Found:** the Figma card specimen shows `$1,200/month`. The Stitch Home final shows `12,000,000 VND / mo`, the Internship Detail prompt says `8–12M VND/month`, and the AI log standardised allowances to VND. Unpaid and undisclosed allowances must be distinguishable.
 - **Handling:** `InternshipCard` takes a preformatted `allowanceText`. The feature owner picks one VND format and uses it everywhere.
+- **Found (2026-10-28):** none of the 322 synced listings has `detected_extensions.salary`: Google Jobs does not structure pay for Vietnamese listings, so every card showed "Not disclosed". The pay is only written in the description: 74 listings give an amount, 70 say "Thỏa thuận", 50 are vague ("Attractive allowance"), 128 say nothing.
+- **Resolved (2026-10-28):** `allowanceFromText` (`lib/core/utils/allowance.dart`) reads the description when Google gives no salary. Format, used everywhere: `12,000,000 VND / mo`; ranges `2,000,000–3,000,000 VND / mo`; qualifiers `Up to` / `From` / `About` when the text says so; ` / mo` only when the text says monthly; `$500 / mo` for USD; `Negotiable` for "Thỏa thuận" / "negotiable". Vague text and other allowances (meal, lunch, parking, home office…) are ignored, and amounts outside 100,000–200,000,000 VND (or 50–10,000 USD) are rejected, so "Lương tháng 13" or "100% salary" never become pay. Result on the 2026-10-28 pool: 73 amounts, 70 negotiable, 179 not disclosed.
 
 ### G-18: Withdrawn badge
 - **Found:** Flow 3d sets the status to Withdrawn, but Figma 05 "Application Status" has only five specimens (Submitted, Under review, Interview, Accepted, Rejected).
@@ -166,6 +168,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 ### G-23: Recommendation logic
 - **Found:** Home shows "Recommended for you" (and Internship Detail shows a "% profile match" in the AI log), but no rule is specified.
 - **Resolved (2026-10-22):** Home ranks the synced pool by the SerpAPI result position (`searchRank`, lower is more relevant) and then by posting date, capped by Remote Config `home_recommended_limit`. No profile matching and no invented percentage are shown in this slice. Profile-aware ranking remains a future decision that must share its code with CV Match Check (G-24).
+- **Updated (2026-10-28, user decision):** when the student has set a Location in Profile › Update preferences, "Recommended for you" keeps only listings in that city (`matchesPreferredLocation`: diacritic-free, whole words, Vietnamese and English spellings such as "Thành phố Hồ Chí Minh" / "Ho Chi Minh City" / "HCM"). Listings that only say "Việt Nam" or give no location are left out of Recommended for a specific city; "All Vietnam" or no preference keeps everything. "Recently Posted" is not filtered. If the profile cannot be loaded, Recommended falls back to the unfiltered ranking.
 
 ### G-24: CV Match Check
 - **Found (2026-10-21):** the team restructured the flows to Search → Apply → Track (DC-08) and added a CV Match Check step to Apply (DC-09): show which requirements the CV / profile does not match and suggest improvements. Lab 2 has no screen for it; the closest existing parts are the "Your match" card in Internship Detail (AI log) and the "Match Card" component in Figma.
@@ -186,7 +189,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
   4. **IDs.** `job_id` is long and may contain `/`. Both the function and the app derive the same 16-hex FNV-1a key (`jobKeyFor`) for Firestore document IDs, routes and analytics (≤ 100 characters).
   5. **Listings expire.** The function sets `expiresAt` to 7 days after a listing is last seen and deletes expired documents; the app query excludes them. Saved items and applications still store a snapshot of the fields they display.
   6. **Applying is external.** Google Jobs gives `apply_options` links to employer sites; the app cannot submit to the employer. Proposal: Flow 2 ends by recording the application in Firestore (the student's own tracking record) and offering the employer's apply link. Statuses (Under review, Interview, …) are then **updated by the student**, which also gives the main entity its update and delete (G-08, G-10). Record the UI change as DC-10.
-  7. **Missing fields.** Salary, company size, logo and office location are often absent: show "Not disclosed" or hide the row; the Map Preview Card cannot be built (DC-10).
+  7. **Missing fields.** Salary, company size, logo and office location are often absent: show "Not disclosed" or hide the row; the Map Preview Card cannot be built (DC-10). Salary is read from the description when the text states it (G-17).
   8. **CV Match Check input:** `job_highlights` (Qualifications) and the description text vs the profile skills (G-24).
 
 ### G-26: Zero-cost plan
