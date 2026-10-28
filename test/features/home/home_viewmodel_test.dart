@@ -6,9 +6,12 @@ import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/state/view_state.dart';
 import 'package:internly/core/utils/job_role.dart';
 import 'package:internly/features/home/viewmodels/home_viewmodel.dart';
+import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
+import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
+import 'package:internly/services/user_profile_service.dart';
 
 import '../../helpers/fakes.dart';
 
@@ -16,23 +19,29 @@ void main() {
   late FakeInternshipService internships;
   late FakeRemoteConfigService remoteConfig;
   late FakeAnalyticsService analytics;
+  late FakeUserProfileService profiles;
   late ProviderContainer container;
 
   setUp(() {
     internships = FakeInternshipService();
     remoteConfig = FakeRemoteConfigService();
     analytics = FakeAnalyticsService();
+    profiles = FakeUserProfileService();
     container = ProviderContainer.test(
       overrides: [
         internshipServiceProvider.overrideWithValue(internships),
         remoteConfigServiceProvider.overrideWithValue(remoteConfig),
         analyticsServiceProvider.overrideWithValue(analytics),
+        // Signed in before Home opens, as the router guarantees.
+        currentUserIdProvider.overrideWithValue(testUser.uid),
+        userProfileServiceProvider.overrideWithValue(profiles),
       ],
     );
   });
 
   tearDown(() async {
     await internships.dispose();
+    await profiles.dispose();
     remoteConfig.dispose();
   });
 
@@ -190,5 +199,76 @@ void main() {
     await settle();
     expect(feed().recommended.map((i) => i.jobId), ['job-1', 'job-2']);
     expect(internships.watchCalls, 1);
+  });
+
+  group('preferred location (Profile › Update preferences)', () {
+    final pool = [
+      testInternship('1', location: 'Thành phố Hồ Chí Minh, Hồ Chí Minh'),
+      testInternship('2', location: 'Hà Nội'),
+      testInternship('3', location: 'Việt Nam'),
+      testInternship('4', location: 'Hồ Chí Minh'),
+    ];
+
+    UserProfile living(String location) =>
+        UserProfile(preferences: InternshipPreferences(location: location));
+
+    test(
+      'Recommended keeps the preferred city; Recently Posted keeps all',
+      () async {
+        profiles.profile = living('Ho Chi Minh City');
+        internships.results = pool;
+        listen();
+        await settle();
+
+        expect(feed().recommended.map((i) => i.jobId), ['job-1', 'job-4']);
+        expect(
+          feed().recent.map((i) => i.jobId),
+          containsAll(['job-2', 'job-3']),
+        );
+      },
+    );
+
+    test('no preference or "All Vietnam" recommends every location', () async {
+      internships.results = pool;
+      listen();
+      await settle();
+      expect(feed().recommended, hasLength(4));
+
+      await profiles.updatePreferences(
+        testUser.uid,
+        const InternshipPreferences(location: 'All Vietnam'),
+      );
+      await settle();
+      expect(feed().recommended, hasLength(4));
+    });
+
+    test(
+      'changing the location re-filters without a new subscription',
+      () async {
+        profiles.profile = living('Ho Chi Minh City');
+        internships.results = pool;
+        listen();
+        await settle();
+
+        await profiles.updatePreferences(
+          testUser.uid,
+          const InternshipPreferences(location: 'Hanoi'),
+        );
+        await settle();
+        expect(feed().recommended.map((i) => i.jobId), ['job-2']);
+        expect(internships.watchCalls, 1);
+      },
+    );
+
+    test('a profile that cannot load leaves Recommended unfiltered', () async {
+      profiles.loadError = const AppException(
+        AppErrorKind.network,
+        'We could not load your profile. Check your connection and try again.',
+      );
+      internships.results = pool;
+      listen();
+      await settle();
+      expect(feed().recommended, hasLength(4));
+    });
   });
 }

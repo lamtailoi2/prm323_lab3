@@ -15,6 +15,7 @@ import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
+import 'package:internly/services/user_profile_service.dart';
 import 'package:internly/theme/app_theme.dart';
 
 import '../../helpers/fakes.dart';
@@ -25,8 +26,10 @@ void main() {
   late FakeRemoteConfigService remoteConfig;
   late FakeAuthService auth;
   late FakeAnalyticsService analytics;
+  late FakeUserProfileService profiles;
 
   setUp(() {
+    profiles = FakeUserProfileService();
     internships = FakeInternshipService();
     remoteConfig = FakeRemoteConfigService();
     auth = FakeAuthService(initialUser: testUser);
@@ -34,6 +37,7 @@ void main() {
   });
 
   tearDown(() async {
+    await profiles.dispose();
     await internships.dispose();
     await auth.dispose();
     remoteConfig.dispose();
@@ -66,6 +70,8 @@ void main() {
           remoteConfigServiceProvider.overrideWithValue(remoteConfig),
           authServiceProvider.overrideWithValue(auth),
           analyticsServiceProvider.overrideWithValue(analytics),
+          currentUserIdProvider.overrideWithValue(testUser.uid),
+          userProfileServiceProvider.overrideWithValue(profiles),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light(),
