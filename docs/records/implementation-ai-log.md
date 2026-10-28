@@ -204,6 +204,13 @@ Commands executed, with their real results (details in [`test-report.md`](test-r
 - **Decision:** Accepted. Built on PR #2 (profile model and service).
 - **Follow-up:** "push lên cái này đi rồi solve conflict với dev" (put it on PR #3 and resolve conflicts with `dev`): merged `origin/dev` (PR #2 merged) into `feat/home-allowance` without rewriting its pushed history, then cherry-picked the four location commits. Conflicts were append-only in the test report and AI log (both sides kept, in merge order) and one Home row in traceability (both changes combined). `flutter analyze` → No issues found!; `flutter test` → 242 passed.
 
+### P-31: Login from the Login frame
+- **Request:** "làm trang đăng nhập" (build the Login page), with a screenshot of the new Login frame and the campus photo.
+- **Questions asked first (answers from the user):** the frame is in Vietnamese but the app is English only (G-28) → translate to English; the underlined "Điều khoản" / "Bảo mật" have no content → honest coming-soon SnackBar (G-31); the Home work in progress → open its PR first (PR #4), then branch `feat/auth-login-ui` from `dev`.
+- **Output:** `LoginScreen` rebuilt from the frame (photo under a `textPrimary` scrim, `Internly.` wordmark, headline, pitch, legal line) and a feature-local `GoogleSignInButton` (white, Google's "G", spinner while loading). Assets: `assets/images/login_background.jpg` (the supplied photo, 960 × 600) and Google's "G" cut from the official `signin-assets.zip` (rendered to 1x–4x PNG with headless Chrome). G-03 resolved, G-31 added, DC-01 replaced by DC-18, Login and sign-in rows in traceability, README AI tools row, Run 13, two screenshots.
+- **Verification:** `flutter analyze` → No issues found!; `flutter test` → 250 passed (+8); simulator screenshot next to the frame. A temporary render showed the legal line wrapping at 360 dp; fixed before committing.
+- **Decision:** Accepted. Values that cannot be measured from a screenshot (32 dp side padding, 48 dp button, scrim and text opacities) are marked "verify in Figma: G-07". The photo's source and license are still to be confirmed by the design owner.
+
 ---
 
 ## Entry template
