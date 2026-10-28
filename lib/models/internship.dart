@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../core/utils/allowance.dart';
 import '../core/utils/firestore_reader.dart';
 import '../core/utils/job_key.dart';
 import '../core/utils/job_role.dart';
@@ -52,6 +53,7 @@ class Internship {
     final title = reader.requireString('title').trim();
     final extensions = reader.stringList('extensions');
     final detected = reader.optionalMap('detected_extensions');
+    final description = reader.optionalString('description') ?? '';
 
     return Internship(
       jobId: jobId,
@@ -64,14 +66,18 @@ class Internship {
             detected?.boolOr('work_from_home', fallback: false) ?? false,
         texts: [title, ...extensions],
       ),
-      salary: detected?.optionalString('salary')?.trim(),
+      // Google Jobs never fills `salary` for Vietnamese listings; the pay is
+      // only stated in the description (G-17).
+      salary:
+          detected?.optionalString('salary')?.trim() ??
+          allowanceFromText(description),
       postedTextSource: detected?.optionalString('posted_at')?.trim(),
       logoUrl: _httpsUrl(reader.optionalString('thumbnail')),
       skills: findSkills(
         [
           title,
           ..._highlightItems(json['job_highlights']),
-          reader.optionalString('description') ?? '',
+          description,
         ].join('\n'),
       ),
     );
@@ -122,7 +128,8 @@ class Internship {
   final String? location;
   final WorkMode? workMode;
 
-  /// Salary text as Google shows it; `null` when the listing does not say
+  /// Salary text as Google shows it, or else the allowance stated in the
+  /// description (`allowanceFromText`); `null` when the listing does not say
   /// (G-17). The Home feature formats it with `formatAllowance`.
   final String? salary;
 
