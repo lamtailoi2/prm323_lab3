@@ -271,4 +271,104 @@ void main() {
       expect(feed().recommended, hasLength(4));
     });
   });
+
+  group('profile match (target roles, then skills)', () {
+    // Sync order 1..5; titles decide the listing role.
+    final pool = [
+      testInternship('1', title: 'Tester Intern', searchRank: 0),
+      testInternship(
+        '2',
+        title: 'Fullstack Intern',
+        searchRank: 1,
+        skills: const ['React'],
+      ),
+      testInternship('3', title: 'Frontend Developer Intern', searchRank: 2),
+      testInternship(
+        '4',
+        title: 'Frontend Developer Intern',
+        searchRank: 3,
+        skills: const ['React', 'Vue'],
+      ),
+      testInternship('5', title: 'Backend Intern', searchRank: 4),
+    ];
+
+    List<String> recommendedIds() =>
+        feed().recommended.map((i) => i.jobId).toList();
+
+    test('without a profile the sync order is kept', () async {
+      internships.results = pool;
+      listen();
+      await settle();
+      expect(recommendedIds(), ['job-1', 'job-2', 'job-3', 'job-4', 'job-5']);
+    });
+
+    test('best match first; equal scores keep the sync order', () async {
+      profiles.profile = const UserProfile(
+        skills: ['React', 'Vue'],
+        preferences: InternshipPreferences(targetRoles: [TargetRole.frontend]),
+      );
+      internships.results = pool;
+      listen();
+      await settle();
+
+      // 4: frontend + 2 skills (5) · 2: full-stack + React (3) and
+      // 3: frontend (3), sync order · 1 and 5: no match (0), sync order.
+      expect(recommendedIds(), ['job-4', 'job-2', 'job-3', 'job-1', 'job-5']);
+    });
+
+    test(
+      'editing skills in Profile re-ranks without a new subscription',
+      () async {
+        profiles.profile = const UserProfile(
+          skills: ['React', 'Vue'],
+          preferences: InternshipPreferences(
+            targetRoles: [TargetRole.frontend],
+          ),
+        );
+        internships.results = pool;
+        listen();
+        await settle();
+
+        await profiles.updateSkills(testUser.uid, ['Vue']);
+        await settle();
+        expect(recommendedIds(), ['job-4', 'job-3', 'job-2', 'job-1', 'job-5']);
+        expect(internships.watchCalls, 1);
+      },
+    );
+
+    test('matching reorders but never removes listings', () async {
+      profiles.profile = const UserProfile(
+        preferences: InternshipPreferences(targetRoles: [TargetRole.mobile]),
+      );
+      internships.results = pool;
+      listen();
+      await settle();
+      expect(feed().recommended, hasLength(5));
+    });
+  });
+
+  test('the same job under several sync keywords is shown once', () async {
+    internships.results = [
+      testInternship(
+        'a',
+        title: 'Thực Tập Sinh Lập Trình (Backend + Frontend Web)',
+        companyName: 'Công ty Cổ phần ABC',
+        searchRank: 3,
+      ),
+      testInternship(
+        'b',
+        title: 'Thực tập sinh lập trình (Backend + Frontend Web)',
+        companyName: 'CÔNG TY CỔ PHẦN ABC',
+        searchRank: 1,
+      ),
+      testInternship('c', title: 'Frontend Developer Intern', searchRank: 2),
+    ];
+    listen();
+    await settle();
+
+    // The copy with the best sync rank (b) is kept; nothing is repeated in
+    // Recently Posted either.
+    expect(feed().recommended.map((i) => i.jobId), ['job-b', 'job-c']);
+    expect(feed().recent, isEmpty);
+  });
 }

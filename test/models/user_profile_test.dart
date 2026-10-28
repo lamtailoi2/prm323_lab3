@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/utils/firestore_reader.dart';
+import 'package:internly/core/utils/job_role.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/models/user_profile.dart';
 
@@ -172,6 +173,18 @@ void main() {
         'city': null,
         'bio': null,
       });
+    });
+  });
+
+  test('target roles map to the Home listing roles', () {
+    expect(TargetRole.frontend.jobRoles, {JobRole.frontend});
+    expect(TargetRole.backend.jobRoles, {JobRole.backend});
+    expect(TargetRole.mobile.jobRoles, {JobRole.mobile});
+    expect(TargetRole.qaTester.jobRoles, {JobRole.tester});
+    expect(TargetRole.softwareEngineer.jobRoles, {
+      JobRole.backend,
+      JobRole.fullStack,
+      JobRole.otherIt,
     });
   });
 }
