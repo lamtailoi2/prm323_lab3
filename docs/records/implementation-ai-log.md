@@ -201,7 +201,8 @@ Commands executed, with their real results (details in [`test-report.md`](test-r
 - **Request:** "phần recommend for you nếu có chọn location hcm thì chỉ nên gợi ý jobs hcm" (if the preferred location is HCM, Recommended should only suggest HCM jobs).
 - **Output:** `foldText` / `containsWords` (`lib/core/utils/text_fold.dart`, extracted from `job_role.dart`), `matchesPreferredLocation` (`lib/core/utils/location_match.dart`) with Vietnamese and English city spellings; `HomeViewModel` listens to the profile (user-scoped) and filters only "Recommended for you". Listings that only say "Việt Nam" are left out for a specific city; Recently Posted is unchanged. G-23 updated, Home traceability row, architecture table, Run 11, one Home screenshot.
 - **Verification:** `flutter analyze` → No issues found!; `flutter test` → 208 passed (one test expectation of mine was wrong, "Ninh" is a whole word in "Ninh Bình", and was replaced); simulator with location Ho Chi Minh City: 5 of 5 Recommended cards in HCM.
-- **Decision:** Accepted. Branch depends on PR #2 (profile model and service).
+- **Decision:** Accepted. Built on PR #2 (profile model and service).
+- **Follow-up:** "push lên cái này đi rồi solve conflict với dev" (put it on PR #3 and resolve conflicts with `dev`): merged `origin/dev` (PR #2 merged) into `feat/home-allowance` without rewriting its pushed history, then cherry-picked the four location commits. Conflicts were append-only in the test report and AI log (both sides kept, in merge order) and one Home row in traceability (both changes combined). `flutter analyze` → No issues found!; `flutter test` → 242 passed.
 
 ---
 

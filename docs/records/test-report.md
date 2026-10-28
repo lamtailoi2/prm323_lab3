@@ -160,7 +160,7 @@ Branch `feat/home-allowance` on top of `dev` `2621e10` (numbered after the Profi
 
 ## Run 11: Recommended for you by preferred location (2026-10-28)
 
-Branch `feat/home-recommend-location` on top of `feat/profile-ui` (PR #2), numbered after Run 10 (PR #3). Same environment as Run 8.
+Built on `feat/profile-ui` (PR #2), then added to PR #3: `feat/home-allowance` merged `dev` (with PR #2) and took these commits. Same environment as Run 8.
 
 | # | Command / scenario | Result |
 |---|---|---|
@@ -168,6 +168,7 @@ Branch `feat/home-recommend-location` on top of `feat/profile-ui` (PR #2), numbe
 | 2 | `flutter analyze` | **No issues found!** |
 | 3 | `flutter test` | **208 tests, all passed** (198 on `feat/profile-ui`, +10): `foldText`; `matchesPreferredLocation` with the pool's real spellings (HCM, Hà Nội, Đà Nẵng, "Việt Nam" only, none, "All Vietnam", typed places, whole words); `HomeViewModel` keeps the preferred city in Recommended and every listing in Recently Posted, "All Vietnam" / no preference unfiltered, re-filters when the location changes without a new subscription, unfiltered when the profile fails to load. Home tests now override `currentUserIdProvider` and `UserProfileService` |
 | 4 | Real pool on the simulator (location = Ho Chi Minh City) | **Passed**: the 5 Recommended cards are all in Hồ Chí Minh; Recently Posted still shows 10 listings from every city. Pool spellings checked first: 99 "Việt Nam", 94 "Hà Nội", 89 HCM ("Thành phố Hồ Chí Minh, Hồ Chí Minh" / "Hồ Chí Minh"), 22 Đà Nẵng. Evidence: `evidence/screens/home-recommended-preferred-location-20261028.png` |
+| 5 | Combined branch after merging `dev` (PR #3: allowance + preferred location) | `dart format` 0 changed; `flutter analyze` **No issues found!**; `flutter test` **242 tests, all passed**. Merge conflicts were only in the shared docs (test report, AI log, Home row in traceability) and kept both sides |
 
 ---
 
