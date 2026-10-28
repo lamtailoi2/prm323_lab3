@@ -32,7 +32,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-20 | iOS: SPM cannot resolve Firebase 13 + GoogleSignIn 9 | Tech lead | Resolved (CocoaPods; see note) |
 | G-21 | App ID / bundle ID and repository naming not confirmed | Team | Resolved (keep `prm323_lab3`, user decision) |
 | G-22 | Keyword search strategy (Firestore has no full-text search) | Search owner | Resolved (SerpAPI query) |
-| G-23 | "Recommended for you" logic not specified | Home owner | Resolved (sync rank + recency) |
+| G-23 | "Recommended for you" logic not specified | Home owner | Resolved (sync rank + recency, filtered by the preferred location) |
 | G-24 | CV Match Check (new Apply step): matching rules, data source, Figma frame | Apply owner + design owner | Open |
 | G-25 | Consequences of using SerpAPI (Google Jobs) as the data source | Search + Apply owners | Resolved (shared Firestore mirror) |
 | G-26 | Zero-cost constraint: every service and tool must run at $0 | Team | Resolved (plan below) |
@@ -168,6 +168,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 ### G-23: Recommendation logic
 - **Found:** Home shows "Recommended for you" (and Internship Detail shows a "% profile match" in the AI log), but no rule is specified.
 - **Resolved (2026-10-22):** Home ranks the synced pool by the SerpAPI result position (`searchRank`, lower is more relevant) and then by posting date, capped by Remote Config `home_recommended_limit`. No profile matching and no invented percentage are shown in this slice. Profile-aware ranking remains a future decision that must share its code with CV Match Check (G-24).
+- **Updated (2026-10-28, user decision):** when the student has set a Location in Profile › Update preferences, "Recommended for you" keeps only listings in that city (`matchesPreferredLocation`: diacritic-free, whole words, Vietnamese and English spellings such as "Thành phố Hồ Chí Minh" / "Ho Chi Minh City" / "HCM"). Listings that only say "Việt Nam" or give no location are left out of Recommended for a specific city; "All Vietnam" or no preference keeps everything. "Recently Posted" is not filtered. If the profile cannot be loaded, Recommended falls back to the unfiltered ranking.
 
 ### G-24: CV Match Check
 - **Found (2026-10-21):** the team restructured the flows to Search → Apply → Track (DC-08) and added a CV Match Check step to Apply (DC-09): show which requirements the CV / profile does not match and suggest improvements. Lab 2 has no screen for it; the closest existing parts are the "Your match" card in Internship Detail (AI log) and the "Match Card" component in Figma.

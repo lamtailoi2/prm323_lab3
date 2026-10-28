@@ -89,7 +89,7 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 |---|---|---|---|
 | `LoginViewModel` | Login | `AuthService`, `AnalyticsService` | Done |
 | `SignOutViewModel` | Profile | `AuthService`, `AnalyticsService` | Done |
-| `HomeViewModel` | Home | `InternshipService`, `UserProfileService`, `RemoteConfigService`, `AnalyticsService` | Planned |
+| `HomeViewModel` | Home | `InternshipService`, `UserProfileService` (preferred location), `RemoteConfigService`, `AnalyticsService` | Done |
 | `SearchViewModel` | Search, Search Results | `InternshipService`, `AnalyticsService` | Planned |
 | `InternshipDetailViewModel` | Internship Detail | `InternshipService`, `SavedInternshipService`, `ApplicationService`, `AnalyticsService` | Planned |
 | `SavedViewModel` | Saved Internships | `SavedInternshipService`, `AnalyticsService` | Planned |
