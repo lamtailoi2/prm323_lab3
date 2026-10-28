@@ -8,6 +8,8 @@ import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/job_role.dart';
 import '../../../core/utils/location_match.dart';
+import '../../../core/utils/recommendation.dart';
+import '../../../core/utils/text_fold.dart';
 import '../../../models/internship.dart';
 import '../../../models/user_profile.dart';
 import '../../../services/analytics_service.dart';
@@ -21,9 +23,10 @@ import '../../../services/user_profile_service.dart';
 class HomeFeed {
   const HomeFeed({required this.recommended, required this.recent});
 
-  /// The first `home_recommended_limit` listings by sync rank / recency,
-  /// optionally filtered by the selected role, and only in the student's
-  /// preferred location when one is set in Profile.
+  /// The first `home_recommended_limit` listings in the student's preferred
+  /// location (when set in Profile), best profile match first (target roles,
+  /// then shared skills), then by sync rank / recency; optionally filtered
+  /// by the selected role.
   final List<Internship> recommended;
 
   /// The remaining listings, newest first, capped by `home_recent_limit`.
@@ -58,9 +61,10 @@ class HomeViewModel extends Notifier<HomeState> {
   StreamSubscription<List<Internship>>? _subscription;
   DateTime _openedAt = DateTime.now();
 
-  /// Internship location from Profile › Update preferences; `null` until
-  /// the student sets one (then Recommended is not filtered).
-  String? _preferredLocation;
+  /// Location, target roles and skills from Profile; empty until the
+  /// student sets them (then Recommended keeps the sync order, unfiltered).
+  InternshipPreferences _preferences = const InternshipPreferences();
+  List<String> _skills = const <String>[];
 
   @override
   HomeState build() {
@@ -70,7 +74,8 @@ class HomeViewModel extends Notifier<HomeState> {
     final uid = ref.watch(currentUserIdProvider);
     final profiles = ref.watch(userProfileServiceProvider);
     _openedAt = DateTime.now();
-    _preferredLocation = null;
+    _preferences = const InternshipPreferences();
+    _skills = const <String>[];
 
     final updates = remoteConfig.onUpdated.listen((_) {
       if (state.feed is ViewData<HomeFeed>) _showResults();
@@ -81,8 +86,8 @@ class HomeViewModel extends Notifier<HomeState> {
               .watchProfile(uid)
               .listen(
                 _onProfile,
-                // The feed still works without the profile: Recommended is
-                // then simply not filtered by location.
+                // The feed still works without the profile: Recommended
+                // then keeps the plain sync order.
                 onError: (Object _, StackTrace _) {},
               );
     ref.onDispose(() {
@@ -96,9 +101,14 @@ class HomeViewModel extends Notifier<HomeState> {
   }
 
   void _onProfile(UserProfile? profile) {
-    final location = profile?.preferences.location;
-    if (!ref.mounted || location == _preferredLocation) return;
-    _preferredLocation = location;
+    final preferences = profile?.preferences ?? const InternshipPreferences();
+    final skills = profile?.skills ?? const <String>[];
+    if (!ref.mounted ||
+        (preferences == _preferences && listEquals(skills, _skills))) {
+      return;
+    }
+    _preferences = preferences;
+    _skills = skills;
     if (state.feed is ViewData<HomeFeed> || state.feed is ViewEmpty<HomeFeed>) {
       _showResults();
     }
@@ -158,9 +168,9 @@ class HomeViewModel extends Notifier<HomeState> {
 
   void _showResults() {
     final selected = state.selectedRole;
-    final itJobs = _results
-        .where((internship) => internship.role != null)
-        .toList(growable: false);
+    final itJobs = _distinct(
+      _results.where((internship) => internship.role != null),
+    );
     final available = <JobRole>[
       for (final role in roles)
         if (itJobs.any((internship) => internship.role == role)) role,
@@ -184,16 +194,34 @@ class HomeViewModel extends Notifier<HomeState> {
       remoteConfig.getInt(RemoteConfigKeys.homeRecentLimit),
     );
 
+    // Location filters; target roles and skills only reorder, so a narrow
+    // profile still gets a full Recommended list (G-23).
+    final wantedRoles = {
+      for (final target in _preferences.targetRoles) ...target.jobRoles,
+    };
+    final profileSkills = _skills.toSet();
+    final scores = {
+      for (final internship in filtered)
+        internship.key: recommendationScore(
+          role: internship.role,
+          listingSkills: internship.skills,
+          wantedRoles: wantedRoles,
+          profileSkills: profileSkills,
+        ),
+    };
     final ranked =
         filtered
             .where(
               (internship) => matchesPreferredLocation(
                 internship.location,
-                _preferredLocation,
+                _preferences.location,
               ),
             )
             .toList()
-          ..sort(_byRecommendation);
+          ..sort((a, b) {
+            final byScore = scores[b.key]!.compareTo(scores[a.key]!);
+            return byScore != 0 ? byScore : _byRecommendation(a, b);
+          });
     final recommended = ranked.take(recommendedLimit).toList(growable: false);
     final recommendedKeys = {
       for (final internship in recommended) internship.key,
@@ -225,6 +253,20 @@ class HomeViewModel extends Notifier<HomeState> {
         'elapsed_sec': DateTime.now().difference(_openedAt).inSeconds,
       }),
     );
+  }
+
+  /// One listing per job. The same job appears under several sync keywords
+  /// with a different Google `job_id` each time (171 of 322 listings on
+  /// 2026-10-28), so the copy with the best sync rank is kept.
+  static List<Internship> _distinct(Iterable<Internship> listings) {
+    final best = <String, Internship>{};
+    for (final internship in [...listings]..sort(_byRecommendation)) {
+      best.putIfAbsent(
+        '${foldText(internship.title)}|${foldText(internship.companyName)}',
+        () => internship,
+      );
+    }
+    return List.unmodifiable(best.values);
   }
 
   static int _byRecommendation(Internship a, Internship b) {

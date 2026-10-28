@@ -13,7 +13,7 @@ Routes marked *planned* are the agreed proposal. An owner who changes one update
 | # | Lab 2 screen | Route | Flutter widget | Data source | Owner | Status |
 |---|---|---|---|---|---|---|
 | — | Login *(Lab 3)* | `/login` | `LoginScreen` | Firebase Auth (Google) | Auth | 🟡 interim (DC-01) |
-| 1 | Home | `/home` | `HomeScreen` | Shared Firestore pool `/internships` (synced from SerpAPI every 6h): `searchRank` + `postedAt`, role filter, Recommended limited to the Profile preferred location (`users/{uid}`, G-23), Remote Config `home_recommended_limit` / `home_recent_limit`; allowance from `detected_extensions.salary` or the description (G-17) | Home | ✅ UI · 🟡 save/bell pending |
+| 1 | Home | `/home` | `HomeScreen` | Shared Firestore pool `/internships` (synced from SerpAPI every 6h): `searchRank` + `postedAt`, role filter, Recommended limited to the Profile preferred location and ordered by target roles and shared skills (`users/{uid}`, G-23), duplicate jobs shown once, Remote Config `home_recommended_limit` / `home_recent_limit`; allowance from `detected_extensions.salary` or the description (G-17) | Home | ✅ UI · 🟡 save/bell pending |
 | 2 | Search | `/search` | `SearchScreen` | — (query input, filter sheet) | Search | 🟡 placeholder |
 | 3 | Search Results | `/search/results` *(planned)* | `SearchResultsScreen` | Shared Firestore pool `/internships` (synced from SerpAPI) | Search | ⬜ |
 | 4 | Internship Detail | `/{tab}/internships/:jobKey` *(planned)* | `InternshipDetailScreen` | Firestore `/internships/{jobKey}` + `users/{uid}/savedInternships`, `…/applications` (saved / applied state) | Search | ⬜ ⚠️ DC-10 |
