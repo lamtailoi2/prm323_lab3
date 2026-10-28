@@ -197,6 +197,12 @@ Commands executed, with their real results (details in [`test-report.md`](test-r
 - **Verification:** `flutter analyze` → No issues found!; `flutter test` → 159 passed; the parser was run over the real pool on the simulator and every extracted amount compared with its source sentence (four misreadings fixed, see Run 10).
 - **Decision:** Accepted. Free-text parsing can still miss unusual wording; it never invents a value (vague text stays "Not disclosed").
 
+### P-29: Recommended for you by preferred location
+- **Request:** "phần recommend for you nếu có chọn location hcm thì chỉ nên gợi ý jobs hcm" (if the preferred location is HCM, Recommended should only suggest HCM jobs).
+- **Output:** `foldText` / `containsWords` (`lib/core/utils/text_fold.dart`, extracted from `job_role.dart`), `matchesPreferredLocation` (`lib/core/utils/location_match.dart`) with Vietnamese and English city spellings; `HomeViewModel` listens to the profile (user-scoped) and filters only "Recommended for you". Listings that only say "Việt Nam" are left out for a specific city; Recently Posted is unchanged. G-23 updated, Home traceability row, architecture table, Run 11, one Home screenshot.
+- **Verification:** `flutter analyze` → No issues found!; `flutter test` → 208 passed (one test expectation of mine was wrong, "Ninh" is a whole word in "Ninh Bình", and was replaced); simulator with location Ho Chi Minh City: 5 of 5 Recommended cards in HCM.
+- **Decision:** Accepted. Branch depends on PR #2 (profile model and service).
+
 ---
 
 ## Entry template
