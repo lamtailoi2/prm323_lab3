@@ -170,6 +170,18 @@ Built on `feat/profile-ui` (PR #2), then added to PR #3: `feat/home-allowance` m
 | 4 | Real pool on the simulator (location = Ho Chi Minh City) | **Passed**: the 5 Recommended cards are all in Hồ Chí Minh; Recently Posted still shows 10 listings from every city. Pool spellings checked first: 99 "Việt Nam", 94 "Hà Nội", 89 HCM ("Thành phố Hồ Chí Minh, Hồ Chí Minh" / "Hồ Chí Minh"), 22 Đà Nẵng. Evidence: `evidence/screens/home-recommended-preferred-location-20261028.png` |
 | 5 | Combined branch after merging `dev` (PR #3: allowance + preferred location) | `dart format` 0 changed; `flutter analyze` **No issues found!**; `flutter test` **242 tests, all passed**. Merge conflicts were only in the shared docs (test report, AI log, Home row in traceability) and kept both sides |
 
+## Run 12: Recommended ordered by the profile (2026-10-28)
+
+Branch `feat/home-recommend-profile` on top of `dev` `175b999`. Same environment as Run 8.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib/core lib/features lib/models test` | 0 changed (`lib/app/bootstrap.dart` left as on `dev`) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **252 tests, all passed** (242 on `dev`, +10): `recommendationScore` (targeted role, Full-stack partial, shared skills case-insensitive and capped, empty profile), `TargetRole.jobRoles`, `jobRoleFor` keeps three real non-IT titles out of every role; `HomeViewModel` keeps the sync order without a profile, puts the best match first with ties in sync order, re-ranks when skills change without a new subscription, never removes listings by role, and shows a job synced under two keywords once |
+| 4 | Pool check before coding (322 listings) | IT 289; roles: Other IT 97, Full-stack 48, Data/AI 46, Backend 44, Tester 29, Frontend 16, Mobile 7, DevOps 2; work mode known for 1 of 289; 53 listings share ≥ 1 skill with the test profile; **171 duplicates** by title + company |
+| 5 | Simulator, profile Hanoi · Frontend Intern · Flutter, Dart, React Native, React, Vue | First run showed the same job three times and "Executive Assistant Intern" as Frontend (fixed: duplicates removed, non-IT words added). Final: five distinct Frontend listings in Hà Nội, the two sharing Vue / React first; Recently Posted 10. Evidence: `evidence/screens/home-recommended-profile-match-20261028.png` |
+
 ---
 
 ## Run template
