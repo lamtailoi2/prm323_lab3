@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,8 +5,7 @@ import '../models/internship.dart';
 import 'auth_service.dart';
 
 /// Stores each user's saved internships separately from the shared listings.
-final savedInternshipServiceProvider =
-    Provider<SavedInternshipService>((ref) {
+final savedInternshipServiceProvider = Provider<SavedInternshipService>((ref) {
   final uid = ref.watch(currentUserIdProvider);
 
   return SavedInternshipService(
@@ -17,17 +15,14 @@ final savedInternshipServiceProvider =
 });
 
 class SavedInternshipService {
-  SavedInternshipService({
-    required FirebaseFirestore firestore,
-    required String? uid,
-  })  : _firestore = firestore,
-        _uid = uid;
+  SavedInternshipService({required this._firestore, required this._uid});
 
   final FirebaseFirestore _firestore;
   final String? _uid;
 
   CollectionReference<Map<String, dynamic>>? get _savedCollection {
     final uid = _uid;
+
     if (uid == null || uid.isEmpty) return null;
 
     return _firestore
@@ -55,12 +50,8 @@ class SavedInternshipService {
           if (raw is! Map) continue;
 
           final internshipData = Map<String, Object?>.from(raw);
-          internships.add(
-            Internship.fromFirestore(
-              doc.id,
-              internshipData,
-            ),
-          );
+
+          internships.add(Internship.fromFirestore(doc.id, internshipData));
         } on Exception {
           // Skip invalid saved documents rather than breaking the whole list.
           continue;
@@ -74,6 +65,7 @@ class SavedInternshipService {
   /// Saves a copy of the shared listing under the user's own UID.
   Future<void> save(Internship internship) async {
     final collection = _savedCollection;
+
     if (collection == null) {
       throw StateError('Please sign in to save internships.');
     }
@@ -96,6 +88,7 @@ class SavedInternshipService {
   /// Removes a saved internship for the current user.
   Future<void> remove(String internshipKey) async {
     final collection = _savedCollection;
+
     if (collection == null) {
       throw StateError('Please sign in to manage saved internships.');
     }
