@@ -74,9 +74,10 @@ Every instruction states the start, the steps and what must be visible, and asks
 | TC-11 | Export and upload | Signed in; at least one application | Profile → Firebase demo → Export report → wait | Progress shown; success with file name `*.pdf` and a download URL; report listed with today's date | Happy | `test_export.py` | Planned |
 | TC-12 | Remote Config | Console values set to non-defaults before the run (e.g. `home_recommended_limit = 3`) | Profile → Firebase demo → read Remote Config values; open Home | Reported values == console values; Home shows exactly that many recommended cards | Happy | `test_profile.py` | Planned |
 | TC-13 | Notifications | Signed in; app in background; test message sent from the console | Open the notification from the shade | App opens the screen named in the message; Notification Center lists the message title | Native | `test_notifications.py` | Planned |
-| TC-14 | Sign-out | Signed in (test signs in first if needed) | Profile → Sign out → press Back | Login visible; bottom navigation not visible | Happy | `test_auth.py` | Ready |
+| TC-14 | Sign-out | Signed in (test signs in first if needed) | Profile → scroll to Settings & support → Sign out → press Back | Login visible; bottom navigation not visible | Happy | `test_auth.py` | Ready |
 | TC-15 | Permission | Fresh install on Android 13+ | First launch after sign-in | Notification permission dialog shown; after Allow, the Firebase demo area shows permission granted | Native | `test_notifications.py` | Planned |
 | TC-16 | Home role discovery | Signed in; at least one Frontend listing in the pool | Home → read `Browse by Role` / `All roles` → tap `Frontend` → tap `All roles` | `selected_role == "Frontend"` with a check mark; at least one recommended title; `after_all_roles_screen_title == "Search"` | Happy | `test_home_roles.py` | Ready (not run) |
+| TC-17 | Profile upkeep (Flow 2 alt., 2d `Edit skills`) | Signed in; `Docker` not yet in the profile skills (test removes it first if needed) | Profile → `Add skill` → search `dock` → tap `Docker` → `Save changes` | Sheet closed; `Technical skills` lists `Docker`; reported skills include `Docker` | Alt | `test_profile_skills.py` | Ready (not run) |
 
 ### Coverage (Lab 3 §7)
 
@@ -87,6 +88,7 @@ Every instruction states the start, the steps and what must be visible, and asks
 | Main search / primary action | TC-03, TC-06 |
 | Each top-level tab | TC-02 |
 | Home role discovery | TC-16 |
+| Profile (edit skills, Flow 2d target) | TC-17 |
 | Each kind of detail screen | Internship Detail TC-05 · Application Detail TC-09 |
 | Export and upload | TC-11 |
 | Remote Config values on screen | TC-12 |
@@ -103,6 +105,7 @@ Fill from `e2e_test/artifacts/runs.jsonl`; link traces / replays stored in `evid
 |---|---|---|---|---|---|---|
 | TC-01 | | | | | | |
 | TC-16 | 0 | 0 | n/a | n/a | **Not run**: no Android device/emulator and no ARTEMIS daemon (`evidence/artemis/e2e-environment-20261022.md`) | Case added 2026-10-22; must pass 3/3 before marked Done |
+| TC-17 | 0 | 0 | n/a | n/a | **Not run**: no Android device/emulator and no ARTEMIS daemon on this machine | Case added 2026-10-28; must pass 3/3 before marked Done |
 | … | | | | | | |
 
 **Flaky / failed / skipped tests:** a test that does not pass 3 of 3 is flaky. For each one, record the cause (app bug, timing, or ambiguous instruction) and the fix.
