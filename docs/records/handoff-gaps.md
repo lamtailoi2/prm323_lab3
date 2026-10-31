@@ -12,7 +12,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 |---|---|---|---|
 | G-01 | `handoff/flutter-handoff.md` does not exist | Team | Assumed |
 | G-02 | Product name: "Internship Finder" (Lab 2) vs "Internly" (Lab 3) | Team | Assumed |
-| G-03 | No Login screen in Lab 2 | Auth owner | Assumed (interim UI) |
+| G-03 | No Login screen in Lab 2 | Auth owner | Resolved (Login frame received 2026-10-28; DC-18) |
 | G-04 | No Notification Center screen in Lab 2 | Notifications owner | Assumed (Firebase demo area on Profile, per Lab 3 §3) |
 | G-05 | No PDF report export in Lab 2 | Report owner | Assumed (Firebase demo area on Profile, per Lab 3 §3) |
 | G-06 | No place in the UI for Remote Config values and Crashlytics test controls | Profile owner | Resolved (Firebase demo area on Profile, Lab 3 §3) |
@@ -26,16 +26,21 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-14 | No seed / demo data for internship listings | Search owner | Resolved (SerpAPI, no seeding) |
 | G-15 | iOS added to scope; Lab 2 designed for Android only | Team | Resolved (Material on both) |
 | G-16 | Figma pages available only as screenshots; 19 of 31 components not covered | Design owner | Open |
-| G-17 | Allowance format: `$1,200/month` (Figma) vs VND per month (Stitch / AI log) | Home / Search owner | Open |
+| G-17 | Allowance format: `$1,200/month` (Figma) vs VND per month (Stitch / AI log) | Home / Search owner | Resolved (VND format; allowance read from the description, 2026-10-28) |
 | G-18 | No "Withdrawn" status badge specimen | Applications owner | Open |
 | G-19 | Two Figma color pairs fail WCAG AA contrast | Design owner | Open (proposals DC-04, DC-05) |
 | G-20 | iOS: SPM cannot resolve Firebase 13 + GoogleSignIn 9 | Tech lead | Resolved (CocoaPods; see note) |
 | G-21 | App ID / bundle ID and repository naming not confirmed | Team | Resolved (keep `prm323_lab3`, user decision) |
 | G-22 | Keyword search strategy (Firestore has no full-text search) | Search owner | Resolved (SerpAPI query) |
-| G-23 | "Recommended for you" logic not specified | Home owner | Resolved (sync rank + recency) |
+| G-23 | "Recommended for you" logic not specified | Home owner | Resolved (preferred location, then target roles and skills, then sync rank + recency) |
 | G-24 | CV Match Check (new Apply step): matching rules, data source, Figma frame | Apply owner + design owner | Open |
 | G-25 | Consequences of using SerpAPI (Google Jobs) as the data source | Search + Apply owners | Resolved (shared Firestore mirror) |
 | G-26 | Zero-cost constraint: every service and tool must run at $0 | Team | Resolved (plan below) |
+| G-27 | No Lab 2 frame for Edit profile (target of the Profile primary action) | Profile owner | Resolved (Edit Profile frame received 2026-10-28, DC-14) |
+| G-28 | Profile "Settings & Support" rows (Notification preferences, Language, Help & Support) have no target screens | Profile owner | Assumed (honest coming-soon message, DC-17) |
+| G-30 | Edit Profile and Update Preferences frames ask twice for a city and for a target role | Profile owner | Resolved (user decision 2026-10-28) |
+| G-29 | Edit Profile `Change Photo` / `Remove` (JPG, PNG ≤ 5 MB) has no storage path: `storage.rules` allows only PDFs in `cvs/` and `reports/` | Profile owner | Resolved for now (Google photo only, user decision; DC-14) |
+| G-31 | Login "Terms" and "Privacy" links have no content or URL | Auth owner + team | Assumed (honest coming-soon message, DC-18) |
 
 ---
 
@@ -52,6 +57,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 ### G-03: Login screen
 - **Found:** Lab 3 requires Google Sign-In and "signed-out users can access only Login", but Lab 2's 11 screens include no Login or onboarding.
 - **Handling:** an interim Login screen built only from existing tokens and components (`features/auth/screens/login_screen.dart`, logged as DC-01). It supports loading and error states. The auth owner designs the final version and records it in the change log.
+- **Resolved (2026-10-28):** the design owner provided a Login frame: a campus photo under a dark scrim, the `Internly.` wordmark (blue dot), "Khởi đầu sự nghiệp IT", a one-line pitch, a white "Tiếp tục với Google" button with the Google "G", and "Bằng việc tiếp tục, bạn đồng ý với Điều khoản & Bảo mật." The app follows it with the differences in DC-18 (English copy per G-28, the Terms / Privacy links per G-31, the sign-in message). The photo is `assets/images/login_background.jpg` (supplied by the design owner with the frame; its source and license are still to be confirmed). The "G" is Google's own asset from the [Sign in with Google branding guidelines](https://developers.google.com/identity/branding-guidelines) (`signin-assets.zip`, light, icon only), cropped to the mark, as the guidelines require for a custom button.
 
 ### G-04: Notification Center
 - **Found:** not in the Lab 2 screen inventory. The only hint is a bell action in the Home app bar (Stitch final) and the App Bar "Main" specimen with a notification action (Figma 05).
@@ -78,6 +84,9 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 | Dialog inner padding | 24 dp | `AppDialog` |
 | Helper colors: inverse surface (SnackBar) | Material default (`onSurface`) | `AppTheme` |
 | Shadow of plain `AlertDialog` / bottom sheet | Material elevation | use `AppDialog` for exact `elevation/2` |
+| Profile header avatar | 56 dp | `AppSizes.profileHeaderAvatar` (Profile screenshot) |
+| CV file / sheet header icon tile | 40 dp, `primaryContainer`, radius 12 | `AppSizes.fileTile`, `FileTileIcon` (Profile screenshots) |
+| Edit profile photo | 80 dp | `AppSizes.editProfileAvatar` (Edit Profile frame) |
 
 ### G-08: Main entity for CRUD
 - **Resolved (2026-10-21):** this requirement came from the initialization brief, not from the Lab 3 handout, which does not require CRUD of a main entity. The application record still gets create / update / delete naturally if students track their own statuses (G-25 point 6). The notes below are kept for history.
@@ -134,6 +143,8 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 ### G-17: Allowance format
 - **Found:** the Figma card specimen shows `$1,200/month`. The Stitch Home final shows `12,000,000 VND / mo`, the Internship Detail prompt says `8–12M VND/month`, and the AI log standardised allowances to VND. Unpaid and undisclosed allowances must be distinguishable.
 - **Handling:** `InternshipCard` takes a preformatted `allowanceText`. The feature owner picks one VND format and uses it everywhere.
+- **Found (2026-10-28):** none of the 322 synced listings has `detected_extensions.salary`: Google Jobs does not structure pay for Vietnamese listings, so every card showed "Not disclosed". The pay is only written in the description: 74 listings give an amount, 70 say "Thỏa thuận", 50 are vague ("Attractive allowance"), 128 say nothing.
+- **Resolved (2026-10-28):** `allowanceFromText` (`lib/core/utils/allowance.dart`) reads the description when Google gives no salary. Format, used everywhere: `12,000,000 VND / mo`; ranges `2,000,000–3,000,000 VND / mo`; qualifiers `Up to` / `From` / `About` when the text says so; ` / mo` only when the text says monthly; `$500 / mo` for USD; `Negotiable` for "Thỏa thuận" / "negotiable". Vague text and other allowances (meal, lunch, parking, home office…) are ignored, and amounts outside 100,000–200,000,000 VND (or 50–10,000 USD) are rejected, so "Lương tháng 13" or "100% salary" never become pay. Result on the 2026-10-28 pool: 73 amounts, 70 negotiable, 179 not disclosed.
 
 ### G-18: Withdrawn badge
 - **Found:** Flow 3d sets the status to Withdrawn, but Figma 05 "Application Status" has only five specimens (Submitted, Under review, Interview, Accepted, Rejected).
@@ -159,6 +170,8 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 ### G-23: Recommendation logic
 - **Found:** Home shows "Recommended for you" (and Internship Detail shows a "% profile match" in the AI log), but no rule is specified.
 - **Resolved (2026-10-22):** Home ranks the synced pool by the SerpAPI result position (`searchRank`, lower is more relevant) and then by posting date, capped by Remote Config `home_recommended_limit`. No profile matching and no invented percentage are shown in this slice. Profile-aware ranking remains a future decision that must share its code with CV Match Check (G-24).
+- **Updated (2026-10-28, user decision):** when the student has set a Location in Profile › Update preferences, "Recommended for you" keeps only listings in that city (`matchesPreferredLocation`: diacritic-free, whole words, Vietnamese and English spellings such as "Thành phố Hồ Chí Minh" / "Ho Chi Minh City" / "HCM"). Listings that only say "Việt Nam" or give no location are left out of Recommended for a specific city; "All Vietnam" or no preference keeps everything. "Recently Posted" is not filtered. If the profile cannot be loaded, Recommended falls back to the unfiltered ranking.
+- **Updated (2026-10-28, user decision):** Recommended is also ordered by the profile: listings in the preferred location are scored by target role (3 points for a targeted role, 2 for Full-stack when Frontend or Backend is targeted; `TargetRole.jobRoles` maps the five sheet roles to Home's roles) plus one point per shared skill (at most 3), then sorted by score and, for equal scores, by sync rank and recency (`recommendationScore`, `lib/core/utils/recommendation.dart`). Roles and skills only reorder, so a narrow profile still gets a full list. **Work mode is not used:** 288 of 289 IT listings have none, so a filter would empty the list and a score would change nothing; revisit if the data starts to carry it. The same job synced under several keywords (171 of 322 listings) is shown once, keeping the copy with the best sync rank. "Sale", "MKT", "Executive Assistant" and "Non-Tech" titles were added to the non-IT words of `jobRoleFor`, which had placed two such listings under Frontend.
 
 ### G-24: CV Match Check
 - **Found (2026-10-21):** the team restructured the flows to Search → Apply → Track (DC-08) and added a CV Match Check step to Apply (DC-09): show which requirements the CV / profile does not match and suggest improvements. Lab 2 has no screen for it; the closest existing parts are the "Your match" card in Internship Detail (AI log) and the "Match Card" component in Figma.
@@ -179,7 +192,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
   4. **IDs.** `job_id` is long and may contain `/`. Both the function and the app derive the same 16-hex FNV-1a key (`jobKeyFor`) for Firestore document IDs, routes and analytics (≤ 100 characters).
   5. **Listings expire.** The function sets `expiresAt` to 7 days after a listing is last seen and deletes expired documents; the app query excludes them. Saved items and applications still store a snapshot of the fields they display.
   6. **Applying is external.** Google Jobs gives `apply_options` links to employer sites; the app cannot submit to the employer. Proposal: Flow 2 ends by recording the application in Firestore (the student's own tracking record) and offering the employer's apply link. Statuses (Under review, Interview, …) are then **updated by the student**, which also gives the main entity its update and delete (G-08, G-10). Record the UI change as DC-10.
-  7. **Missing fields.** Salary, company size, logo and office location are often absent: show "Not disclosed" or hide the row; the Map Preview Card cannot be built (DC-10).
+  7. **Missing fields.** Salary, company size, logo and office location are often absent: show "Not disclosed" or hide the row; the Map Preview Card cannot be built (DC-10). Salary is read from the description when the text states it (G-17).
   8. **CV Match Check input:** `job_highlights` (Qualifications) and the description text vs the profile skills (G-24).
 
 ### G-26: Zero-cost plan
@@ -196,3 +209,28 @@ The user wants **no spending at all**, including AI models. Every requirement ca
 | Android device | Own phone or the Android Emulator | — |
 | AI code review | A free tool such as Gemini Code Assist on GitHub (free for individuals), or CodeRabbit / SonarCloud if the repository is made public | Check each tool's current free terms before use |
 | iOS push (APNs) | Not needed: Lab 3 grades Android only | Apple Developer Program would cost money; skip iOS push |
+
+### G-27: Edit profile has no frame
+- **Found (2026-10-28):** `Edit Profile` is the primary action of the Lab 2 Profile frame, and Flow 2b/2d send students to Profile to fill in missing data, but Lab 2 had no Edit profile frame (only the Edit Skills, Update Preferences and Update CV sheets).
+- **Resolved (2026-10-28):** the design owner provided an Edit Profile frame (photo; "Academic & Personal Details": Full Name *, Headline / Target Role *, University / Institution, Major / Degree Program, Academic Standing & Graduation; "Contact & Location": University Email (locked), Phone Number, Location / Current City, Short Bio / Introduction 0/300; a "VNU V-Career Sync" banner; `Save Changes` / `Cancel`). The app follows it with the differences listed in DC-14. `/profile/edit` keeps the root navigator (no bottom navigation), like the Apply forms.
+- **Still open:** the picker behind "Academic Standing & Graduation" is not drawn. The app uses a sheet with Filter Chips: year of study 1–6, and graduation years in one horizontally scrolling row from this year to this year + 8 (six years of study plus two for delays; a stored earlier year is kept), scrolled to the stored year on open.
+
+### G-28: Settings rows without a destination
+- **Found (2026-10-28):** the Lab 2 Profile frame lists Notification Preferences, Language (`Tiếng Việt · EN`) and Help & Support, but no screen, content or behaviour is designed for them; the app is English only.
+- **Assumed:** the rows stay, as designed, and each shows an honest SnackBar (`… are coming soon.`, `Internly is available in English only for now.`); Language shows `English`. Recorded as DC-17. Notification preferences is the natural entry point for the Notification Center (G-04); the Firebase demo area (G-06) can be added to the same list.
+
+### G-29: Profile photo upload
+- **Found (2026-10-28):** the Edit Profile frame has `Change Photo` / `Remove` ("JPG, PNG up to 5MB"). `firebase/storage.rules` only allows PDFs under `cvs/{uid}` and `reports/{uid}` (AGENTS.md rule 9), and `FileStorageService` only uploads PDFs.
+- **Decision (user, 2026-10-28):** show the Google account photo only, without `Change Photo` / `Remove`, so no rules change is needed (DC-14).
+- **If revisited:** add an owner-only `avatars/{uid}/…` path (image/jpeg or image/png, ≤ 5 MB) in a PR that tags the rules owner, an image upload in `FileStorageService`, and a `photoUrl` field in `users/{uid}` that Home and Profile read before the Google photo.
+
+### G-30: Duplicate profile fields
+- **Found (2026-10-28, review of the Profile screen):** the Edit Profile frame has "Location / Current City" and "Headline / Target Role"; the Update Preferences frame has "Location" and "Target roles". Students would type a city twice and state a target role twice; `city` and `headline` were also saved without being shown on Profile.
+- **Decision (user, 2026-10-28):** keep both city fields (where the student lives vs where they want an internship) and prefill an empty preferences Location from the current city; rename "Headline / Target Role" to "Headline", keep target roles only in Update preferences, and show the headline under the name on Profile (DC-14, DC-15, DC-16).
+- **Still not shown on Profile:** graduation year, current city and bio (stored for Apply prefill; the Lab 2 Profile frame has no place for them).
+
+### G-31: Terms and Privacy on Login
+- **Found (2026-10-28):** the Login frame ends with "By continuing, you agree to our Terms & Privacy" with both words underlined as links, but there is no terms of use or privacy policy text, page or URL anywhere in Lab 2 or the repository.
+- **Assumed (user, 2026-10-28):** keep the line and both links, as designed; each link shows an honest SnackBar (`The terms of use are coming soon.`, `The privacy policy is coming soon.`) instead of opening an empty page. Recorded as DC-18.
+- **Needed:** the text of both documents (what Internly stores: Google account name, email and photo, the profile in `users/{uid}`, CVs in `cvs/{uid}`, analytics and crash reports) and where they live (an in-app screen, or a public URL opened with `ExternalLinkService`). Until then the sentence asks for agreement to documents that do not exist yet.
+

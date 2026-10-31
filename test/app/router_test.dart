@@ -12,6 +12,7 @@ import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
 import 'package:internly/services/search_history_service.dart';
+import 'package:internly/services/user_profile_service.dart';
 
 import '../helpers/fakes.dart';
 import '../helpers/pump.dart';
@@ -88,7 +89,9 @@ void main() {
       final internships = FakeInternshipService();
       final remoteConfig = FakeRemoteConfigService();
       final searchHistory = FakeSearchHistoryService();
+      final profiles = FakeUserProfileService();
       addTearDown(auth.dispose);
+      addTearDown(profiles.dispose);
       addTearDown(internships.dispose);
       addTearDown(remoteConfig.dispose);
       addTearDown(searchHistory.dispose);
@@ -101,6 +104,7 @@ void main() {
             internshipServiceProvider.overrideWithValue(internships),
             remoteConfigServiceProvider.overrideWithValue(remoteConfig),
             searchHistoryServiceProvider.overrideWithValue(searchHistory),
+            userProfileServiceProvider.overrideWithValue(profiles),
           ],
           child: const InternlyApp(),
         ),
@@ -177,10 +181,38 @@ void main() {
       await tester.tap(find.text('Profile'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Sign out'));
+      // Sign out is the last row of "Settings & support".
+      final signOut = find.text('Sign out');
+      await tester.scrollUntilVisible(
+        signOut,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(signOut);
+      await tester.pumpAndSettle();
+      await tester.tap(signOut);
       await tester.pumpAndSettle();
       expect(find.text('Continue with Google'), findsOneWidget);
       expect(analytics.events, contains('logout'));
+    });
+
+    testWidgets('Edit profile opens without the bottom navigation', (
+      tester,
+    ) async {
+      await pumpApp(tester, user: testUser);
+      await tester.tap(find.text('Profile'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit profile'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Full name, required'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(analytics.screens, ['home', 'profile', 'edit_profile']);
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.text('Full name, required'), findsNothing);
     });
   });
 }

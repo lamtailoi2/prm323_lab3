@@ -43,9 +43,9 @@ async def test_tc14_sign_out_returns_to_login(artemis):
     report = await run_case(
         artemis,
         "TC-14",
-        f"{SIGNED_IN} Tap 'Profile' in the bottom navigation, then tap "
-        "'Sign out'. After the Login screen appears, press the Android Back "
-        "button once. Report what is visible.",
+        f"{SIGNED_IN} Tap 'Profile' in the bottom navigation, scroll down to "
+        "'Settings & support' and tap 'Sign out'. After the Login screen "
+        "appears, press the Android Back button once. Report what is visible.",
         expected_output=(
             'JSON: {"login_button_visible": boolean, '
             '"bottom_nav_visible": boolean, "app_still_open": boolean}'

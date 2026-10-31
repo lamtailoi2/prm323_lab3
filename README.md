@@ -155,14 +155,14 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 | Tool | Purpose |
 |---|---|
 | Google Stitch | Lab 2 screen generation (design phase) |
-| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements ([log](docs/records/implementation-ai-log.md)) |
+| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements; Profile feature (P-21); Login screen from the Login frame (P-31) ([log](docs/records/implementation-ai-log.md)) |
 | OpenCode (`deepseek-v4.1-flash-free`) | Home UI, scheduled SerpAPI → Firestore sync, rules and docs for the Home slice ([log](docs/records/implementation-ai-log.md)) |
 | Google ARTEMIS + Gemini (free tier) | End-to-end tests and the exploratory session |
 | AI code review tool | _to be added_ ([`code-review.md`](docs/code-review.md)) |
 
 ## Known limitations
 
-- Feature screens are placeholders; the Login screen is interim (DC-01).
+- Search, Saved and Applications are still placeholders; the Login screen is interim (DC-01). Profile settings rows other than Sign out have no screens yet (G-28).
 - Firebase is not configured in the repository yet; Google Sign-In needs per-developer SHA fingerprints.
 - SerpAPI is called by the scheduled sync function, not the app; the free plan still has a small monthly quota, so the pool refreshes gradually (G-25).
 - Cloud Storage needs the Blaze plan: budgets only alert and cannot cap spending, so the bucket must stay in a US no-cost region (G-12).

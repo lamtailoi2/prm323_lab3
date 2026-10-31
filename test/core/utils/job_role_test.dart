@@ -58,4 +58,28 @@ void main() {
       JobRole.frontend,
     );
   });
+
+  test('non-IT titles from the real pool stay out of every role', () {
+    expect(
+      jobRoleFor(
+        title: 'Sale MKT Intern (Tiếng Nhật N3)',
+        searchKeyword: 'thực tập frontend',
+      ),
+      isNull,
+    );
+    expect(
+      jobRoleFor(
+        title: 'Executive Assistant Intern',
+        searchKeyword: 'IT internship Vietnam',
+        skills: const ['React'],
+      ),
+      isNull,
+    );
+    expect(
+      jobRoleFor(
+        title: 'Project Assistant Intern - Non-Tech (Fluent In English)',
+      ),
+      isNull,
+    );
+  });
 }

@@ -118,6 +118,8 @@ Icons used by the components below: `home`, `search`, `bookmark`, `description` 
 | Body text | ≥ 14 sp | Typography tokens |
 | Text contrast | ≥ 4.5:1 (normal), ≥ 3:1 (large text, controls) | See §3 for computed results |
 | Meaning | Never color alone: every status has label + icon; selection has a check | Component specs below |
+| Profile tags | Skill / preference tags on Profile and the chips in the Profile sheets are 44 dp tall; Update preferences "Quick select" chips are 36 dp, without a check (design owner, 2026-10-28); card tags keep the compact size | `AppTag(size: AppTagSize.large)`, `SheetChip`, `AppSizes.tagLarge` |
+| Avatars and tiles | Home app-bar avatar 32 dp; Profile header avatar 56 dp; Edit profile photo 80 dp; CV file / sheet header icon tile 40 dp (all **verify**, G-07) | `AppSizes.profileAvatar`, `AppSizes.profileHeaderAvatar`, `AppSizes.editProfileAvatar`, `AppSizes.fileTile` |
 
 ---
 
@@ -154,6 +156,8 @@ Status legend: **Themed** = done through `ThemeData`, no custom widget needed ·
 | Disabled | `surfaceVariant` fill, label and helper in `disabled` | ✅ fill; label color by `AppTextField` |
 
 The label sits **above** the field, so `AppTextField` renders it as a separate `Text`. Do not use `InputDecoration.labelText` (floating label). Validation belongs to the ViewModel: pass the message as `errorText` (helpers in `core/utils/validators.dart`).
+
+Optional parts, from the Edit Profile frame: `prefixIcon` (20 dp, `textSecondary`), `suffix` (e.g. clear or lock; the error icon replaces it while `errorText` is set), `isRequired` (label + ` *`, read as "required"), and `readOnly` + `onTap` for a field that opens a picker.
 
 ### 2.3 Search Field: 2 specimens · Built (`AppSearchField`)
 
