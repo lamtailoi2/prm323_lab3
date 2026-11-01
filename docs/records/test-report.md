@@ -200,6 +200,25 @@ Branch `feat/auth-login-ui` on top of `dev` `175b999`. Same environment as Run 8
 
 ---
 
+## Run 14: CV validation via LLM (2026-11-01)
+
+Branch `feat/LLM-validation` on top of `main` `7888eb5`. Environment: Windows 11 · Flutter 3.47.8 stable · Dart 3.13.7 · Node v24.22.1 · npm 11.19.1 (the functions package declares Node 22; npm printed an `EBADENGINE` warning but built and tested normally).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `npm run build` (`functions/`) | **Passed**: `tsc` completed with no errors (new `validate-cv.ts` + `index.ts` wiring) |
+| 2 | `npm test` (`functions/`) | **18 tests, 18 passed** (7 existing `job-key` / `selection` / `serp` tests + 11 new `validate-cv` tests). Covers path ownership (unauthenticated, another user's `cvs/{uid}/`, traversal, empty path), defensive JSON parsing (plain, fenced, missing `reason`, wrong type, garbage), valid / invalid verdicts, the `< 50 character` short-circuit (Gemini not called), fail-open on unparseable model output, the 12,000-character prompt cap, a missing `GEMINI_API_KEY`, and download / extraction / Gemini failures becoming safe `HttpsError`s. All external effects are stubs: no Firebase project, Storage, Gemini or network call |
+| 3 | `dart format lib test` | Completed; the new and changed files were formatted. `lib/app/bootstrap.dart` was restored to its `dev` state (missing final newline), as in Runs 12–13 |
+| 4 | `flutter analyze` | **No issues found!** |
+| 5 | `flutter test` | **275 tests, all passed** (260 on `main`, +15): `cv_validation_service_test.dart` (4: verdict parsing incl. trimmed reason and malformed payloads; error-code mapping), `cv_validation_viewmodel_test.dart` (6: valid → `ViewData` + `cv_validation_result` with `is_valid: true`, rejected CV → `ViewData` with `is_valid: false`, loading until the callable resolves, repeated taps start one call, failed check → `ViewError` with no analytics event, signed-out student cannot start), `cv_validation_step_test.dart` (5: `Checking your CV…`, automatic continue on valid, invalid branch with `Update CV` + `Retry` and a working retry, failed-check message, no overflow and 48 dp tap targets at 360 and 412 dp) |
+| 6 | Deploy `validateCv` to a Firebase project and upload real + garbage PDFs | **Not run**: no Firebase CLI login / dev project credentials and no `GEMINI_API_KEY` value on this machine. Command to run by the owner: `firebase functions:secrets:set GEMINI_API_KEY`, then `firebase deploy --only functions:validateCv` |
+| 7 | DebugView screenshot for `cv_validation_result` | **Not run**: needs row 6. Evidence must be saved as `evidence/analytics/analytics-cv-validation-result-<yyyymmdd>.png` |
+| 8 | Real Gemini / PDF smoke test | **Not run**: deliberately stubbed in every test (no real Firebase project or network in tests, AGENTS.md testing rules) |
+
+Failures and follow-ups: the Apply flow screens (Application Form, CV Match Check, Review) are still separate work; `CvValidationStep` is built and tested but not yet embedded in a route (G-24). The Figma frame for the step is still open (DC-19). Manual device verification and evidence (rows 6–8) remain.
+
+---
+
 ## Run template
 
 ```markdown
