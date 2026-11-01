@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,7 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:internly/app/router.dart';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/widgets/internship_card.dart';
+import 'package:internly/core/widgets/skeleton.dart';
 import 'package:internly/features/saved/screens/saved_screen.dart';
+import 'package:internly/features/saved/viewmodels/saved_providers.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
@@ -32,7 +36,11 @@ void main() {
     await auth.dispose();
   });
 
-  Future<void> pumpSaved(WidgetTester tester, {double width = 360}) async {
+  Future<void> pumpSaved(
+    WidgetTester tester, {
+    double width = 360,
+    Stream<List<Internship>>? savedStream,
+  }) async {
     setScreenSize(tester, width: width);
     final router = GoRouter(
       initialLocation: AppRoutes.saved,
@@ -52,6 +60,9 @@ void main() {
       ProviderScope(
         overrides: [
           savedInternshipServiceProvider.overrideWithValue(saved),
+          // Lets a test hold the first snapshot, to see the loading state.
+          if (savedStream != null)
+            savedInternshipsProvider.overrideWith((ref) => savedStream),
           authServiceProvider.overrideWithValue(auth),
           analyticsServiceProvider.overrideWithValue(analytics),
         ],
@@ -99,6 +110,38 @@ void main() {
       expect(find.text('Software Engineering Intern - Mobile'), findsOneWidget);
       expect(find.byType(InternshipCard), findsNWidgets(2));
       expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final width in checkWidths) {
+    testWidgets('loading shows card skeletons at $width dp', (tester) async {
+      final controller = StreamController<List<Internship>>();
+      addTearDown(controller.close);
+
+      await pumpSaved(tester, width: width, savedStream: controller.stream);
+      await tester.pump();
+
+      // Same shape as the loaded list: the filter shortcuts plus card-shaped
+      // placeholders, never a spinner or a blank screen (design-system §2.9).
+      expect(find.text('Saved'), findsOneWidget);
+      expect(find.text('Hybrid'), findsOneWidget);
+      expect(find.byType(InternshipCardSkeleton), findsNWidgets(3));
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byType(InternshipCard), findsNothing);
+      expect(find.text('No saved internships yet'), findsNothing);
+      expect(
+        find.bySemanticsLabel('Loading saved internships'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+      expect(tester, meetsGuideline(androidTapTargetGuideline));
+
+      controller.add(page);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InternshipCardSkeleton), findsNothing);
+      expect(find.byType(InternshipCard), findsNWidgets(2));
+      expect(find.text('2 saved'), findsOneWidget);
     });
   }
 

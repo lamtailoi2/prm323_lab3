@@ -206,6 +206,8 @@ Destinations and order: **Home** (`home`) · **Search** (`search`) · **Saved** 
 
 *"Use card-shaped skeletons for lists, a labeled spinner for short waits. Never replace content with a blank screen."* Spinner: 20 dp indicator + label (`bodySmall`), e.g. `Loading internships`; the label is required in code. Skeleton: `surfaceVariant` blocks shaped like the Internship Card.
 
+`InternshipCardSkeleton` is used by Home (2 cards, `home_screen.dart`) and by Saved (3 cards plus the static filter shortcuts, `saved_screen.dart`), each wrapped in a `Semantics` label ("Loading internships" / "Loading saved internships").
+
 ### 2.10 Empty State: 3 specimens · Built (`StateView.empty`)
 
 *"A consistent 24 dp icon treatment, short explanation and one useful action. Keep tone professional, supportive and specific."*

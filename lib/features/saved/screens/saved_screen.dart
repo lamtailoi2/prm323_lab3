@@ -6,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../app/router.dart';
 import '../../../core/widgets/internship_card.dart';
 import '../../../core/widgets/main_tab_app_bar.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
@@ -33,6 +34,10 @@ class SavedScreen extends ConsumerStatefulWidget {
 
 class _SavedScreenState extends ConsumerState<SavedScreen> {
   _SavedFilter _filter = _SavedFilter.all;
+
+  /// Enough placeholders to fill the first screen at 360 dp without making
+  /// the loading state taller than the content it stands in for.
+  static const int _skeletonCount = 3;
 
   List<Internship> _filterInternships(List<Internship> internships) {
     final filtered = internships.where((internship) {
@@ -67,6 +72,68 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
     return filtered;
   }
 
+  /// The work-mode shortcuts above the list.
+  ///
+  /// They are static, so they stay visible and tappable while the first
+  /// snapshot is still loading; the selection applies to the list that follows.
+  Widget _filterChips() {
+    return SizedBox(
+      height: 60,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.screenHorizontal,
+        ),
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final filter in _SavedFilter.values)
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.s8),
+              child: ChoiceChip(
+                label: Text(filter.label),
+                selected: _filter == filter,
+                onSelected: (_) {
+                  setState(() => _filter = filter);
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// First snapshot: card-shaped skeletons (Figma "Loading"), so the list
+  /// keeps its shape instead of showing a spinner or a blank screen.
+  Widget _loadingBody() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _filterChips(),
+        Expanded(
+          child: Semantics(
+            container: true,
+            liveRegion: true,
+            label: 'Loading saved internships',
+            child: ExcludeSemantics(
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenHorizontal,
+                  0,
+                  AppSpacing.screenHorizontal,
+                  AppSpacing.s24,
+                ),
+                itemCount: _skeletonCount,
+                itemBuilder: (context, index) => const Padding(
+                  padding: EdgeInsets.only(bottom: AppSpacing.s12),
+                  child: InternshipCardSkeleton(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final savedAsync = ref.watch(savedInternshipsProvider);
@@ -78,8 +145,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
         onProfile: () => context.go(AppRoutes.profile),
       ),
       body: savedAsync.when(
-        loading: () =>
-            const StateView.loading(message: 'Loading saved internships...'),
+        loading: _loadingBody,
         error: (_, _) => StateView.error(
           message: 'We couldn’t load your saved internships. Check your connection and try again.',
           onRetry: () => ref.invalidate(savedInternshipsProvider),
@@ -100,26 +166,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                height: 60,
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    for (final filter in _SavedFilter.values)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(filter.label),
-                          selected: _filter == filter,
-                          onSelected: (_) {
-                            setState(() => _filter = filter);
-                          },
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+              _filterChips(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Row(

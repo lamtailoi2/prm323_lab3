@@ -168,6 +168,22 @@ Branch `feat/saved-internships`, uncommitted working tree. Environment: Windows 
 
 ---
 
+## Run 11: Saved loading state (2026-11-01)
+
+Branch `feat/saved-internships`, uncommitted working tree. Environment: Windows 11 (10.0.26200.9711), Flutter 3.47.8 / Dart 3.13.7 from `C:\Users\ADMIN\flutter`.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib\features\saved test\features\saved` | Completed; 5 files checked, 0 changed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test\features\saved` (focused run) | **23 passed**, including 2 new cases: the first snapshot shows 3 `InternshipCardSkeleton`s and the filter shortcuts at 360 and 412 dp, no spinner / empty state, a "Loading saved internships" semantics label, and the skeletons are replaced by the 2 real cards (with `2 saved`) once the stream emits |
+| 4 | `flutter test` | **154 tests, all passed** (+2 against the 152 in Run 10) |
+| 5 | Design check | Loading keeps the static work-mode shortcuts (they work while the list loads); the saved count is **not** shown as "0 saved" or faked, it appears with the data. Same `InternshipCardSkeleton` as Home, wrapped in one semantics label |
+| 6 | On device: first open of Saved with a cold stream | **Not run**: needs the developer's signed-in session (Run 10 row 6); the widget test holds the stream open with a `StreamController` and asserts the skeletons before the first snapshot |
+| 7 | ARTEMIS case for the Saved loading state | **Not run**: no ARTEMIS daemon on this machine (Run 7 row 5) |
+
+---
+
 ```markdown
 ## Run N: <PR / milestone> (<date>)
 
