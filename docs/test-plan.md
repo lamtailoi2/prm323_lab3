@@ -101,11 +101,20 @@ Every instruction states the start, the steps and what must be visible, and asks
 
 Fill from `e2e_test/artifacts/runs.jsonl`; link traces / replays stored in `evidence/artemis/`.
 
+**Attempt 2026-10-31 (not run):** the Android side is ready — `emulator-5554`
+(API 37) is connected and `com.group3.internly` is installed — but the ARTEMIS
+daemon at `127.0.0.1:8000` is not running, `uv` and a real Python are not
+installed, and there is no `google/artemis` checkout or model API key on this
+machine. No test was executed and no `runs.jsonl` entry was written. See
+[`../evidence/artemis/e2e-environment-20261031.md`](../evidence/artemis/e2e-environment-20261031.md).
+
 | Test ID | Runs | Passed | Pass rate | Avg time (s) | Trace IDs / evidence | Notes |
 |---|---|---|---|---|---|---|
-| TC-01 | | | | | | |
-| TC-16 | 0 | 0 | n/a | n/a | **Not run**: no Android device/emulator and no ARTEMIS daemon (`evidence/artemis/e2e-environment-20261022.md`) | Case added 2026-10-22; must pass 3/3 before marked Done |
-| TC-17 | 0 | 0 | n/a | n/a | **Not run**: no Android device/emulator and no ARTEMIS daemon on this machine | Case added 2026-10-28; must pass 3/3 before marked Done |
+| TC-01 | 0 | 0 | n/a | n/a | **Not run 2026-10-31**: no ARTEMIS daemon/toolchain (`evidence/artemis/e2e-environment-20261031.md`) | Ready case; must pass 3/3 before marked Done |
+| TC-02 | 0 | 0 | n/a | n/a | **Not run 2026-10-31**: same environment blocker | Ready case; must pass 3/3 before marked Done |
+| TC-14 | 0 | 0 | n/a | n/a | **Not run 2026-10-31**: same environment blocker | Ready case; must pass 3/3 before marked Done |
+| TC-16 | 0 | 0 | n/a | n/a | **Not run**: no Android device/emulator and no ARTEMIS daemon (`evidence/artemis/e2e-environment-20261022.md`); still not run 2026-10-31 (no ARTEMIS daemon/toolchain, `evidence/artemis/e2e-environment-20261031.md`) | Case added 2026-10-22; must pass 3/3 before marked Done |
+| TC-17 | 0 | 0 | n/a | n/a | **Not run**: no Android device/emulator and no ARTEMIS daemon on this machine; still not run 2026-10-31 (no ARTEMIS daemon/toolchain, `evidence/artemis/e2e-environment-20261031.md`) | Case added 2026-10-28; must pass 3/3 before marked Done |
 | … | | | | | | |
 
 **Flaky / failed / skipped tests:** a test that does not pass 3 of 3 is flaky. For each one, record the cause (app bug, timing, or ambiguous instruction) and the fix.

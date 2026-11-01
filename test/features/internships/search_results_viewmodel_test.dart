@@ -162,25 +162,28 @@ void main() {
     },
   );
 
-  test('filters by criteria with skills, location and calculates count', () async {
-    internships.results = sampleListings;
-    final container = createContainer();
-    final notifier = listen(container);
-    await settle();
+  test(
+    'filters by criteria with skills, location and calculates count',
+    () async {
+      internships.results = sampleListings;
+      final container = createContainer();
+      final notifier = listen(container);
+      await settle();
 
-    const criteria = SearchFilterCriteria(
-      skills: {'Dart'},
-      workModes: {WorkMode.remote},
-    );
-    expect(notifier.countMatching(criteria), 1);
+      const criteria = SearchFilterCriteria(
+        skills: {'Dart'},
+        workModes: {WorkMode.remote},
+      );
+      expect(notifier.countMatching(criteria), 1);
 
-    notifier.setCriteria(criteria);
-    final state = container.read(searchResultsViewModelProvider);
-    final data = (state.results as ViewData<List<Internship>>).data;
-    expect(data.length, 1);
-    expect(data.single.companyName, 'FPT Software');
-    expect(state.activeFilterCount, 2);
-  });
+      notifier.setCriteria(criteria);
+      final state = container.read(searchResultsViewModelProvider);
+      final data = (state.results as ViewData<List<Internship>>).data;
+      expect(data.length, 1);
+      expect(data.single.companyName, 'FPT Software');
+      expect(state.activeFilterCount, 2);
+    },
+  );
 
   test('clearing filters returns all listings', () async {
     internships.results = sampleListings;

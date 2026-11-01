@@ -21,7 +21,11 @@
       "Bash(./sdkmanager.bat --licenses)",
       "Bash(./sdkmanager.bat \"ndk;28.2.13676358\")",
       "Bash(./sdkmanager.bat --list)",
-      "Bash(./sdkmanager.bat \"ndk/28.2.13676358\")"
+      "Bash(./sdkmanager.bat \"ndk/28.2.13676358\")",
+      "Bash(sed -n '/## G-26/,/^## G-27/p' docs/records/handoff-gaps.md)"
+    ],
+    "additionalDirectories": [
+      "D:\\PRM\\prm323_lab3\\docs\\records"
     ]
   }
 }

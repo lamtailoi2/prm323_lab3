@@ -254,26 +254,70 @@ void main() {
 
     // Header and sections matching Figma
     final sheetFinder = find.byType(SearchResultsFilterSheet);
-    expect(find.descendant(of: sheetFinder, matching: find.text('Filters')), findsOneWidget);
-    expect(find.descendant(of: sheetFinder, matching: find.text('Work mode')), findsOneWidget);
-    expect(find.descendant(of: sheetFinder, matching: find.text('Single or multiple')), findsOneWidget);
-    expect(find.descendant(of: sheetFinder, matching: find.text('On-site')), findsOneWidget);
-    expect(find.descendant(of: sheetFinder, matching: find.text('Remote')), findsOneWidget);
-    expect(find.descendant(of: sheetFinder, matching: find.text('Hybrid')), findsOneWidget);
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('Filters')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('Work mode')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: sheetFinder,
+        matching: find.text('Single or multiple'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('On-site')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('Remote')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('Hybrid')),
+      findsOneWidget,
+    );
 
-    expect(find.descendant(of: sheetFinder, matching: find.text('Location')), findsOneWidget);
-    expect(find.descendant(of: sheetFinder, matching: find.text('Skills')), findsOneWidget);
-    expect(find.descendant(of: sheetFinder, matching: find.text('Job type')), findsOneWidget);
-    expect(find.descendant(of: sheetFinder, matching: find.text('Allowance range')), findsOneWidget);
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('Location')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('Skills')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('Job type')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('Allowance range')),
+      findsOneWidget,
+    );
 
-    expect(find.descendant(of: sheetFinder, matching: find.text('Flutter')), findsOneWidget);
-    expect(find.descendant(of: sheetFinder, matching: find.text('React')), findsOneWidget);
-    expect(find.descendant(of: sheetFinder, matching: find.text('NestJS')), findsOneWidget);
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('Flutter')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('React')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('NestJS')),
+      findsOneWidget,
+    );
 
     expect(find.text('Show 3 results →'), findsOneWidget);
 
     // Tap Remote chip in the sheet
-    await tester.tap(find.descendant(of: sheetFinder, matching: find.text('Remote')));
+    await tester.tap(
+      find.descendant(of: sheetFinder, matching: find.text('Remote')),
+    );
     await tester.pumpAndSettle();
 
     // 2 listings are remote

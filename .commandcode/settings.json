@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(dart:*)",
+      "Shell(flutter:*)",
+      "Shell(git:*)",
+      "Shell(if:*)",
+      "Shell(else:*)",
+      "Shell(uv:*)",
+      "Shell(adb:*)",
+      "powershell"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

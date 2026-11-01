@@ -266,23 +266,17 @@ class _SearchResultsFilterSheetState extends State<SearchResultsFilterSheet> {
                     children: [
                       _FilterSelectionChip(
                         label: 'On-site',
-                        selected: _criteria.workModes.contains(
-                          WorkMode.onSite,
-                        ),
+                        selected: _criteria.workModes.contains(WorkMode.onSite),
                         onSelected: (_) => _toggleWorkMode(WorkMode.onSite),
                       ),
                       _FilterSelectionChip(
                         label: 'Remote',
-                        selected: _criteria.workModes.contains(
-                          WorkMode.remote,
-                        ),
+                        selected: _criteria.workModes.contains(WorkMode.remote),
                         onSelected: (_) => _toggleWorkMode(WorkMode.remote),
                       ),
                       _FilterSelectionChip(
                         label: 'Hybrid',
-                        selected: _criteria.workModes.contains(
-                          WorkMode.hybrid,
-                        ),
+                        selected: _criteria.workModes.contains(WorkMode.hybrid),
                         onSelected: (_) => _toggleWorkMode(WorkMode.hybrid),
                       ),
                     ],
