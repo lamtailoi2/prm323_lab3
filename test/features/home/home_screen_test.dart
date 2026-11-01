@@ -15,6 +15,7 @@ import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
+import 'package:internly/services/saved_internship_service.dart';
 import 'package:internly/services/user_profile_service.dart';
 import 'package:internly/theme/app_theme.dart';
 
@@ -26,6 +27,7 @@ void main() {
   late FakeRemoteConfigService remoteConfig;
   late FakeAuthService auth;
   late FakeAnalyticsService analytics;
+  late FakeSavedInternshipService saved;
   late FakeUserProfileService profiles;
 
   setUp(() {
@@ -34,12 +36,14 @@ void main() {
     remoteConfig = FakeRemoteConfigService();
     auth = FakeAuthService(initialUser: testUser);
     analytics = FakeAnalyticsService();
+    saved = FakeSavedInternshipService();
   });
 
   tearDown(() async {
     await profiles.dispose();
     await internships.dispose();
     await auth.dispose();
+    await saved.dispose();
     remoteConfig.dispose();
   });
 
@@ -70,6 +74,7 @@ void main() {
           remoteConfigServiceProvider.overrideWithValue(remoteConfig),
           authServiceProvider.overrideWithValue(auth),
           analyticsServiceProvider.overrideWithValue(analytics),
+          savedInternshipServiceProvider.overrideWithValue(saved),
           currentUserIdProvider.overrideWithValue(testUser.uid),
           userProfileServiceProvider.overrideWithValue(profiles),
         ],
@@ -265,7 +270,25 @@ void main() {
     expect(find.text('Profile tab'), findsOneWidget);
   });
 
-  testWidgets('save action is visible and explains it is not ready', (
+  testWidgets('bookmark saves the listing and fills the icon', (tester) async {
+    internships.results = page;
+    await pumpHome(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Save').first);
+    await tester.pumpAndSettle();
+
+    expect(saved.saveCalls, 1);
+    expect(saved.savedKeys, [page.first.key]);
+    expect(find.byTooltip('Remove from saved'), findsOneWidget);
+    expect(analytics.events, contains('internship_save'));
+    expect(analytics.eventParameters.last, {
+      'internship_id': page.first.key,
+      'source': 'home',
+    });
+  });
+
+  testWidgets('tapping the filled bookmark unsaves the listing', (
     tester,
   ) async {
     internships.results = page;
@@ -273,8 +296,37 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Save').first);
-    await tester.pump();
-    expect(find.text('Saved internships are coming soon.'), findsOneWidget);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Remove from saved'));
+    await tester.pumpAndSettle();
+
+    expect(saved.removeCalls, 1);
+    expect(saved.savedKeys, isEmpty);
+    expect(find.byTooltip('Remove from saved'), findsNothing);
+  });
+
+  testWidgets('a failed save keeps the listing unsaved and explains why', (
+    tester,
+  ) async {
+    saved.error = const AppException(
+      AppErrorKind.network,
+      'We could not reach Internly. Check your connection and try again.',
+    );
+    internships.results = page;
+    await pumpHome(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Save').first);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'We could not reach Internly. Check your connection and try again.',
+      ),
+      findsOneWidget,
+    );
+    expect(saved.savedKeys, isEmpty);
+    expect(find.byTooltip('Remove from saved'), findsNothing);
   });
 
   testWidgets('touch targets are at least 48 dp', (tester) async {

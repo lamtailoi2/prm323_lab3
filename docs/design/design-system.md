@@ -49,7 +49,7 @@ The Lab 2 README mentions **four helper colors** (pressed, error container, disa
 | pressed | Reduced emphasis of the existing color (`AppTheme.pressedOpacity = 0.7`, **verify**) | Figma 05 Button: *"Pressed uses reduced emphasis, not a new color."* |
 | disabled container | `color/surface-variant` | Figma 05 disabled Button / Text Field specimens, AI log text-field spec |
 | error container | Not used: status badges use `surface-variant` | Figma 05 Application Status: *"Use surfaceVariant, never invented semantic tints."* |
-| inverse surface | Material default (`onSurface` = `#0F172A`), used by `SnackBar` | Open: G-07 |
+| inverse surface | `color/text/primary` `#0F172A` for the dark SnackBar surface, `surface` `#FFFFFF` for its content, `primary-container` `#DBEAFE` for its action label (`colorScheme.inverseSurface` / `onInverseSurface` / `inversePrimary`) | `AppTheme` (G-07, DC-21) |
 
 ### 1.2 Typography: Inter, 8 styles
 
@@ -125,7 +125,7 @@ Icons used by the components below: `home`, `search`, `bookmark`, `description` 
 
 ## 2. Components (Figma page 05)
 
-Page 05 shows **12 native component sets / 45 specimens**. The Lab 2 README lists 31 components; the other 19 are not on page 05 and are listed in §2.13.
+Page 05 shows **12 native component sets / 45 specimens**. The Lab 2 README lists 31 components; the other 19 are listed in §2.14 (the Snackbar spec is in §2.13).
 
 Status legend: **Themed** = done through `ThemeData`, no custom widget needed · **Built** = custom widget in `lib/` · **Planned** = to be built in the feature task named.
 
@@ -188,6 +188,8 @@ Optional parts, from the Edit Profile frame: `prefixIcon` (20 dp, `textSecondary
 
 Clean surface: no shadow and no bottom border. Figma overrides the 1 px border in the Stitch prompt.
 
+Bottom-navigation destinations render the same `.main` bar through `MainTabAppBar` (`core/widgets/main_tab_app_bar.dart`): title (= destination label) → notification bell → profile avatar. Only the title changes between tabs. The leading slot stays empty, so there is no brand mark and the title keeps the normal 16 dp text margin (DC-20).
+
 ### 2.7 Bottom Navigation: 5 specimens · Themed (`NavigationBarThemeData`) + `AppShell`
 
 *"Always the same five destinations, with icon + label. Width 360; Applications keeps its full name. Selected primary; unselected textSecondary."*
@@ -207,6 +209,8 @@ Destinations and order: **Home** (`home`) · **Search** (`search`) · **Saved** 
 ### 2.9 Loading: 2 specimens · Built (`StateView.loading`, `InternshipCardSkeleton`, `SkeletonBox`)
 
 *"Use card-shaped skeletons for lists, a labeled spinner for short waits. Never replace content with a blank screen."* Spinner: 20 dp indicator + label (`bodySmall`), e.g. `Loading internships`; the label is required in code. Skeleton: `surfaceVariant` blocks shaped like the Internship Card.
+
+`InternshipCardSkeleton` is used by Home (2 cards, `home_screen.dart`) and by Saved (3 cards plus the static filter shortcuts, `saved_screen.dart`), each wrapped in a `Semantics` label ("Loading internships" / "Loading saved internships").
 
 ### 2.10 Empty State: 3 specimens · Built (`StateView.empty`)
 
@@ -237,9 +241,22 @@ Destinations and order: **Home** (`home`) · **Search** (`search`) · **Saved** 
 
 Radius 8 (badge family). ⚠️ **Withdrawn** (Flow 3d) has no specimen (G-18). ⚠️ The Rejected color pair fails AA (§3).
 
-### 2.13 Components not on page 05
+### 2.13 Snackbar: 1 variant · Themed (`SnackBarThemeData`) + content built by the feature
 
-Listed in the Lab 2 README but missing from the page 05 screenshot. Their specs must be read from the Figma component library before each is built: Save Toggle, Skill Tag, Badge, Snackbar, Info Banner, Text Area, Upload Dropzone, Bottom Sheet Option Row, Job Summary Card, CV File Card, Upload Progress Card, Match Card, Map Preview Card, Progress Stepper, Meta Tile, Section Header, Bullet Item, Benefit Item, Review Row (G-16).
+*"Temporary feedback at the bottom of the screen. It hides after a few seconds; an action such as Undo or Retry sits on the right. Never the only place a result is shown."*
+
+| Property | Spec | Code |
+|---|---|---|
+| Surface | dark `color/text/primary` `#0F172A`, radius 12, floating, 16 dp inset | `SnackBarThemeData` |
+| Content | 20 dp icon + `type/body/small` in `onInverseSurface` (`#FFFFFF`), 16 × 12 dp padding | `SavedScreen._showRemoved` |
+| Action | `type/label/medium` in `primary-container` (`#DBEAFE`) on the dark surface, 48 dp target | `SnackBarAction` via `actionTextColor` |
+| Duration | 4 s even when an action is present (`persist: false`); an error with `Retry` stays until used or swiped away | `SnackBar.duration` |
+
+Reference: the Saved unsave Snackbar — `check_circle` + `Removed from Saved` + `Undo` (DC-21). Figma does not document this component yet (G-16).
+
+### 2.14 Components not on page 05
+
+Listed in the Lab 2 README but missing from the page 05 screenshot. Their specs must be read from the Figma component library before each is built: Save Toggle, Skill Tag, Badge, Info Banner, Text Area, Upload Dropzone, Bottom Sheet Option Row, Job Summary Card, CV File Card, Upload Progress Card, Match Card, Map Preview Card, Progress Stepper, Meta Tile, Section Header, Bullet Item, Benefit Item, Review Row (G-16).
 
 ---
 

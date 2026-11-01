@@ -82,7 +82,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 | Internship Card inner gaps, tag text style | 4/8 dp, `type/caption` | `InternshipCard`, `AppTag` |
 | Status badge padding | 8 × 4 dp | `StatusBadge` |
 | Dialog inner padding | 24 dp | `AppDialog` |
-| Helper colors: inverse surface (SnackBar) | Material default (`onSurface`) | `AppTheme` |
+| Helper colors: inverse surface (SnackBar) | `colorScheme.inverseSurface` = `color/text/primary` `#0F172A`, `onInverseSurface` = `surface` `#FFFFFF`, `inversePrimary` = `primary-container` `#DBEAFE` (2026-11-01) | `AppTheme` |
 | Shadow of plain `AlertDialog` / bottom sheet | Material elevation | use `AppDialog` for exact `elevation/2` |
 | Profile header avatar | 56 dp | `AppSizes.profileHeaderAvatar` (Profile screenshot) |
 | CV file / sheet header icon tile | 40 dp, `primaryContainer`, radius 12 | `AppSizes.fileTile`, `FileTileIcon` (Profile screenshots) |

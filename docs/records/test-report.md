@@ -219,7 +219,72 @@ Failures and follow-ups: the Apply flow screens (Application Form, CV Match Chec
 
 ---
 
-## Run template
+## Run 8: Save Toggle on Home (2026-10-28)
+
+Branch `feat/saved-internships`, commit `569be13` plus the Save Toggle working tree. Environment: Windows 11 (10.0.26200.9711), Flutter 3.47.8 / Dart 3.13.3, Android emulator `sdk gphone64 x86_64` (Android 17 / API 37, `-gpu swiftshader_indirect`), Firebase project `prm-lab3`.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Completed; 78 files checked, 0 changed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **131 tests, all passed** (125 before this change: +4 in `test/features/saved/saved_viewmodel_test.dart`, +2 net in `home_screen_test.dart`, where the "coming soon" case became save / unsave / failed-save) |
+| 4 | Save Toggle on the emulator (signed in, Home) | **Not run yet**: the app session (`flutter run`) is owned by the developer's terminal; the widget tests above cover the tap, the filled bookmark, `internship_save` and the failure message. Verify by hot restarting (`R`) and tapping a card bookmark, then checking `users/{uid}/savedInternships` and the Saved tab |
+| 5 | `firestore.rules` change | **None needed**: saved items live under `users/{uid}/savedInternships` (AGENTS.md rule 9) |
+| 6 | DebugView screenshot for `internship_save` | **Not run**: needs the on-device check in row 4 and the DebugView session; `evidence/analytics/` has no entry yet |
+| 7 | ARTEMIS case for saving | **Not run**: no ARTEMIS daemon on this machine (Run 7 row 5) |
+
+---
+
+## Run 9: Shared tab header for Saved Internships (2026-11-01)
+
+Branch `feat/saved-internships` (1 commit ahead of `origin`), uncommitted working tree. Environment: Windows 11 (10.0.26200.9711), Flutter / Dart from `C:\Users\ADMIN\flutter`, emulator `Pixel_9` (Android 17 / API 37, 1080x2424 @ 420 dpi = 411 dp, windowed), Firebase project `prm-lab3`.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Completed; 80 files checked, 1 changed (`test/core/widgets/components_test.dart`) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **140 tests, all passed** (+9: `test/features/saved/saved_screen_test.dart` at 360 / 412 dp, bell, avatar → Profile, empty state, 48 dp targets; +3 `MainTabAppBar` cases in `components_test.dart`) |
+| 4 | `flutter build apk --debug --dart-define-from-file=.env` | **Passed**: `✓ Built build\app\outputs\flutter-apk\app-debug.apk` (81.5 s) |
+| 5 | On device: `adb install -r` + Saved tab, 412 dp | **Passed**: `Saved` title at the 16 dp text margin, bell and avatar as on Home; screenshot `evidence/screens/saved-header-412-20261101.png` |
+| 6 | On device: `adb shell wm size 945x2120` (360 dp), Saved tab | **Passed**: same header, title not clipped; screenshot `evidence/screens/saved-header-360-20261101.png`. `wm size reset` restored 1080x2424 |
+| 7 | Follow-up: brand mark removed from the tab header (`MainTabAppBar`) | **Passed after re-run**: `dart format` 0 changed; `flutter analyze` `No issues found!`; `flutter test` **140 passed**; APK rebuilt, reinstalled, both widths re-captured (rows 5–6 hold the screenshots of this state). Title width measured with the bundled Inter font: `Saved Internships` = 211.2 dp vs 244 dp available at 360 dp |
+| 8 | Bottom navigation at 360 dp | **Finding, not fixed here**: the `Applications` label wraps onto two lines at 360 dp (it fits at 412 dp). Out of scope for this change; needs its own fix against `design-system.md` §2.7 (`Labels type/caption`) |
+| 9 | ARTEMIS case for the tab header | **Not run**: no ARTEMIS daemon on this machine (Run 7 row 5) |
+
+---
+
+## Run 10: Saved unsave with Undo (2026-11-01)
+
+Branch `feat/saved-internships`, uncommitted working tree. Environment: Windows 11 (10.0.26200.9711), Flutter 3.47.8 / Dart 3.13.7 from `C:\Users\ADMIN\flutter`.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Completed; 80 files checked, 2 changed (`saved_screen_test.dart`, `saved_viewmodel_test.dart`) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **152 tests, all passed** (+12 against the 140 in Run 9: 5 `SavedViewModel.remove` / `restore` cases, 6 Saved screen cases at 360 / 412 dp, 1 inverse-surface theme case) |
+| 4 | `flutter test test/features/saved test/theme` (focused run) | **34 passed**; the 6 new screen cases cover: unsave removes the card and shows `Removed from Saved` + `Undo` (360 / 412 dp), Undo restores and dismisses, the removal is final after the Snackbar times out, a failed unsave keeps the card with the service message + `Retry`, and a second unsave replaces the previous Snackbar |
+| 5 | Flutter 3.47 API check | **Finding**: `SnackBar` now defaults `persist` to `action != null`, so a SnackBar with Undo would stay on screen indefinitely. The Saved Snackbar sets `persist: false`; row 3's timeout test pumps 5 s and asserts it is gone |
+| 6 | On device: unsave + Undo in the Firebase project | **Not run**: the app session belongs to the developer's terminal and needs a signed-in Google account; the widget tests cover the tap, the Snackbar, the timeout, the error path and the Firestore stream through `FakeSavedInternshipService` |
+| 7 | DebugView screenshot for `internship_save(source=saved)` | **Not run**: needs the on-device check in row 6; `evidence/analytics/` has no entry for the Undo event yet |
+| 8 | ARTEMIS case for unsave + Undo | **Not run**: no ARTEMIS daemon on this machine (Run 7 row 5) |
+
+---
+
+## Run 11: Saved loading state (2026-11-01)
+
+Branch `feat/saved-internships`, uncommitted working tree. Environment: Windows 11 (10.0.26200.9711), Flutter 3.47.8 / Dart 3.13.7 from `C:\Users\ADMIN\flutter`.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib\features\saved test\features\saved` | Completed; 5 files checked, 0 changed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test\features\saved` (focused run) | **23 passed**, including 2 new cases: the first snapshot shows 3 `InternshipCardSkeleton`s and the filter shortcuts at 360 and 412 dp, no spinner / empty state, a "Loading saved internships" semantics label, and the skeletons are replaced by the 2 real cards (with `2 saved`) once the stream emits |
+| 4 | `flutter test` | **154 tests, all passed** (+2 against the 152 in Run 10) |
+| 5 | Design check | Loading keeps the static work-mode shortcuts (they work while the list loads); the saved count is **not** shown as "0 saved" or faked, it appears with the data. Same `InternshipCardSkeleton` as Home, wrapped in one semantics label |
+| 6 | On device: first open of Saved with a cold stream | **Not run**: needs the developer's signed-in session (Run 10 row 6); the widget test holds the stream open with a `StreamController` and asserts the skeletons before the first snapshot |
+| 7 | ARTEMIS case for the Saved loading state | **Not run**: no ARTEMIS daemon on this machine (Run 7 row 5) |
+
+---
 
 ```markdown
 ## Run N: <PR / milestone> (<date>)

@@ -16,6 +16,7 @@ import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/file_storage_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
+import 'package:internly/services/saved_internship_service.dart';
 import 'package:internly/services/user_profile_service.dart';
 
 const testUser = AppUser(
@@ -229,9 +230,10 @@ class FakeCrashlyticsService implements CrashlyticsService {
   void crashForTesting() {}
 }
 
-/// Records analytics calls instead of sending them.
+/// In-memory [AnalyticsService] that records calls instead of sending them.
 class FakeAnalyticsService implements AnalyticsService {
   final List<String> events = <String>[];
+  final List<Map<String, Object>?> eventParameters = <Map<String, Object>?>[];
   final List<String> screens = <String>[];
   final List<String?> userIds = <String?>[];
 
@@ -253,11 +255,78 @@ class FakeAnalyticsService implements AnalyticsService {
   @override
   Future<void> logEvent(String name, [Map<String, Object>? parameters]) async {
     events.add(name);
+    eventParameters.add(parameters);
     this.parameters[name] = parameters;
   }
 
   @override
   Future<void> setUserId(String? uid) async => userIds.add(uid);
+}
+
+/// In-memory [SavedInternshipService] that keeps the saved keys in a map and
+/// pushes every change to [watchSaved] listeners, as Firestore would.
+class FakeSavedInternshipService implements SavedInternshipService {
+  final Map<String, Internship> _saved = <String, Internship>{};
+  final StreamController<List<Internship>> _updates =
+      StreamController<List<Internship>>.broadcast();
+
+  AppException? error;
+  Completer<void>? gate;
+  int watchCalls = 0;
+  int saveCalls = 0;
+  int removeCalls = 0;
+
+  /// Keys currently saved, in insertion order.
+  List<String> get savedKeys => _saved.keys.toList(growable: false);
+
+  /// Pre-fills the saved list, as a previous session would have left it.
+  void seed(Iterable<Internship> internships) {
+    for (final internship in internships) {
+      _saved[internship.key] = internship;
+    }
+    _updates.add(_snapshot);
+  }
+
+  @override
+  Stream<List<Internship>> watchSaved() {
+    watchCalls++;
+    late final StreamController<List<Internship>> controller;
+    StreamSubscription<List<Internship>>? changes;
+    controller = StreamController<List<Internship>>(
+      onListen: () {
+        controller.add(_snapshot);
+        changes = _updates.stream.listen(controller.add);
+      },
+      onCancel: () async {
+        await changes?.cancel();
+        await controller.close();
+      },
+    );
+    return controller.stream;
+  }
+
+  @override
+  Future<void> save(Internship internship) async {
+    saveCalls++;
+    await gate?.future;
+    if (error case final failure?) throw failure;
+    _saved[internship.key] = internship;
+    _updates.add(_snapshot);
+  }
+
+  @override
+  Future<void> remove(String internshipKey) async {
+    removeCalls++;
+    await gate?.future;
+    if (error case final failure?) throw failure;
+    _saved.remove(internshipKey);
+    _updates.add(_snapshot);
+  }
+
+  List<Internship> get _snapshot =>
+      List<Internship>.unmodifiable(_saved.values);
+
+  Future<void> dispose() => _updates.close();
 }
 
 /// In-memory `users/{uid}` document. Writes merge into [profile] and are

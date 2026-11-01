@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/theme/app_colors.dart';
 import 'package:internly/theme/app_elevation.dart';
+import 'package:internly/theme/app_radii.dart';
 import 'package:internly/theme/app_theme.dart';
 
 void main() {
@@ -27,6 +28,22 @@ void main() {
       expect(status.success, const Color(0xFF15803D));
       expect(status.warning, const Color(0xFFB45309));
       expect(status.disabled, const Color(0xFF94A3B8));
+    });
+
+    test('inverse surface tokens style the dark SnackBar', () {
+      final scheme = theme.colorScheme;
+      expect(scheme.inverseSurface, AppColors.textPrimary);
+      expect(scheme.onInverseSurface, AppColors.surface);
+      expect(scheme.inversePrimary, AppColors.primaryContainer);
+
+      final snackBar = theme.snackBarTheme;
+      expect(snackBar.behavior, SnackBarBehavior.floating);
+      expect(snackBar.backgroundColor, AppColors.textPrimary);
+      expect(snackBar.actionTextColor, AppColors.primaryContainer);
+      expect(
+        snackBar.shape,
+        const RoundedRectangleBorder(borderRadius: AppRadii.mediumAll),
+      );
     });
   });
 
