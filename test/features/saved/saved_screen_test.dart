@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:internly/app/router.dart';
+import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/widgets/internship_card.dart';
 import 'package:internly/features/saved/screens/saved_screen.dart';
 import 'package:internly/models/internship.dart';
+import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/saved_internship_service.dart';
 import 'package:internly/theme/app_theme.dart';
@@ -17,10 +19,12 @@ import '../../helpers/pump.dart';
 void main() {
   late FakeSavedInternshipService saved;
   late FakeAuthService auth;
+  late FakeAnalyticsService analytics;
 
   setUp(() {
     saved = FakeSavedInternshipService();
     auth = FakeAuthService(initialUser: testUser);
+    analytics = FakeAnalyticsService();
   });
 
   tearDown(() async {
@@ -49,6 +53,7 @@ void main() {
         overrides: [
           savedInternshipServiceProvider.overrideWithValue(saved),
           authServiceProvider.overrideWithValue(auth),
+          analyticsServiceProvider.overrideWithValue(analytics),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light(),
@@ -134,5 +139,119 @@ void main() {
     await tester.pumpAndSettle();
 
     await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+  });
+
+  /// The filled bookmark of the card with [title], as the student taps it.
+  Finder bookmarkOf(String title) => find.descendant(
+    of: find.widgetWithText(InternshipCard, title),
+    matching: find.byTooltip('Remove from saved'),
+  );
+
+  Future<void> unsaveFirstCard(WidgetTester tester) async {
+    await tester.tap(bookmarkOf('Software Engineering Intern - Mobile'));
+    await tester.pumpAndSettle();
+  }
+
+  for (final width in checkWidths) {
+    testWidgets('unsave removes the card and offers Undo at $width dp', (
+      tester,
+    ) async {
+      saved.seed(page);
+      await pumpSaved(tester, width: width);
+      await tester.pumpAndSettle();
+
+      await unsaveFirstCard(tester);
+
+      expect(find.text('Software Engineering Intern - Mobile'), findsNothing);
+      expect(find.byType(InternshipCard), findsOneWidget);
+      expect(saved.savedKeys, [page.last.key]);
+
+      expect(find.text('Removed from Saved'), findsOneWidget);
+      expect(find.byIcon(Symbols.check_circle_rounded), findsOneWidget);
+      expect(find.widgetWithText(SnackBarAction, 'Undo'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('Undo puts the internship back and dismisses the Snackbar', (
+    tester,
+  ) async {
+    saved.seed(page);
+    await pumpSaved(tester);
+    await tester.pumpAndSettle();
+
+    await unsaveFirstCard(tester);
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Software Engineering Intern - Mobile'), findsOneWidget);
+    expect(saved.savedKeys, [page.last.key, page.first.key]);
+    expect(saved.saveCalls, 1);
+    expect(find.byType(SnackBar), findsNothing);
+  });
+
+  testWidgets('the removal is final when the Snackbar times out', (
+    tester,
+  ) async {
+    saved.seed(page);
+    await pumpSaved(tester);
+    await tester.pumpAndSettle();
+
+    await unsaveFirstCard(tester);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Removed from Saved'), findsNothing);
+    expect(find.text('Software Engineering Intern - Mobile'), findsNothing);
+    expect(saved.savedKeys, [page.last.key]);
+    expect(saved.saveCalls, 0);
+  });
+
+  testWidgets('a failed unsave keeps the card and explains why', (
+    tester,
+  ) async {
+    saved.seed(page);
+    saved.error = const AppException(
+      AppErrorKind.network,
+      'We could not reach Internly. Check your connection and try again.',
+    );
+    await pumpSaved(tester);
+    await tester.pumpAndSettle();
+
+    await unsaveFirstCard(tester);
+
+    expect(find.byType(InternshipCard), findsNWidgets(2));
+    expect(
+      find.text(
+        'We could not reach Internly. Check your connection and try again.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(SnackBarAction, 'Retry'), findsOneWidget);
+    expect(find.text('Removed from Saved'), findsNothing);
+  });
+
+  testWidgets('a second unsave replaces the Snackbar and Undo restores it', (
+    tester,
+  ) async {
+    saved.seed(page);
+    await pumpSaved(tester);
+    await tester.pumpAndSettle();
+
+    await unsaveFirstCard(tester);
+    await tester.tap(bookmarkOf('Frontend Developer Intern'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.text('Removed from Saved'), findsOneWidget);
+    expect(saved.savedKeys, isEmpty);
+
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+
+    // Only the second internship comes back; the first stays removed.
+    expect(find.text('Frontend Developer Intern'), findsOneWidget);
+    expect(find.text('Software Engineering Intern - Mobile'), findsNothing);
+    expect(saved.savedKeys, [page.last.key]);
   });
 }

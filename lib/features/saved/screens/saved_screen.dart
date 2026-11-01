@@ -9,8 +9,10 @@ import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
-import '../../../services/saved_internship_service.dart';
+import '../../../theme/app_sizes.dart';
+import '../../../theme/app_spacing.dart';
 import '../viewmodels/saved_providers.dart';
+import '../viewmodels/saved_viewmodel.dart';
 
 enum _SavedFilter {
   all('All IT'),
@@ -180,23 +182,98 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
     );
   }
 
+  /// Removes [internship] and offers Undo until the Snackbar hides (Flow 2e.1).
+  ///
+  /// The write runs through [savedViewModelProvider] (Views never call a
+  /// service), and the card leaves the list through `savedInternshipsProvider`
+  /// as soon as Firestore confirms the delete.
   Future<void> _removeSaved(Internship internship) async {
-    final service = ref.read(savedInternshipServiceProvider);
+    final viewModel = ref.read(savedViewModelProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
 
-    try {
-      await service.remove(internship.key);
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+    final result = await viewModel.remove(internship);
+    if (!mounted) return;
+
+    if (result.error case final error?) {
+      _showError(
+        messenger,
+        error.message,
+        onRetry: () => _removeSaved(internship),
+      );
+      return;
+    }
+    // Another saved write was still running: the tap is ignored, no message.
+    if (!result.done) return;
+
+    _showRemoved(messenger, internship);
+  }
+
+  /// Puts the internship back after Undo; the stream re-adds the card.
+  Future<void> _undoRemove(Internship internship) async {
+    final viewModel = ref.read(savedViewModelProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+
+    final result = await viewModel.restore(internship);
+    if (!mounted) return;
+
+    if (result.error case final error?) {
+      _showError(messenger, error.message);
+    }
+  }
+
+  void _showRemoved(ScaffoldMessengerState messenger, Internship internship) {
+    final colors = Theme.of(context).colorScheme;
+
+    // Replacing the current SnackBar keeps one Undo target when the student
+    // unsaves several internships in a row.
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
         SnackBar(
-          content: const Text('Could not remove this internship.'),
+          // Flutter keeps a SnackBar with an action on screen until it is
+          // used; Undo must only be offered while it is visible, so let it
+          // time out like every other SnackBar (Flow 2e.1).
+          persist: false,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s16,
+            vertical: AppSpacing.s12,
+          ),
+          content: Row(
+            children: [
+              ExcludeSemantics(
+                child: Icon(
+                  Symbols.check_circle_rounded,
+                  size: AppSizes.iconSmall,
+                  color: colors.onInverseSurface,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s12),
+              const Expanded(child: Text('Removed from Saved')),
+            ],
+          ),
           action: SnackBarAction(
-            label: 'Retry',
-            onPressed: () => _removeSaved(internship),
+            label: 'Undo',
+            onPressed: () => _undoRemove(internship),
           ),
         ),
       );
-    }
+  }
+
+  void _showError(
+    ScaffoldMessengerState messenger,
+    String message, {
+    VoidCallback? onRetry,
+  }) {
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: onRetry == null
+              ? null
+              : SnackBarAction(label: 'Retry', onPressed: onRetry),
+        ),
+      );
   }
 
   void _openSearch(BuildContext context) {

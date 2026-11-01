@@ -156,7 +156,7 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 |---|---|
 | Google Stitch | Lab 2 screen generation (design phase) |
 | Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements ([log](docs/records/implementation-ai-log.md)) |
-| OpenCode (`deepseek-v4.1-flash-free`) | Home UI, scheduled SerpAPI → Firestore sync, rules and docs for the Home slice; Saved list and the Home Save Toggle ([log](docs/records/implementation-ai-log.md)) |
+| OpenCode (`deepseek-v4.1-flash-free`) | Home UI, scheduled SerpAPI → Firestore sync, rules and docs for the Home slice; Saved list, the Home Save Toggle and unsave with Undo ([log](docs/records/implementation-ai-log.md)) |
 | Google ARTEMIS + Gemini (free tier) | End-to-end tests and the exploratory session |
 | AI code review tool | _to be added_ ([`code-review.md`](docs/code-review.md)) |
 

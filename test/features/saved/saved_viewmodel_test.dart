@@ -101,4 +101,96 @@ void main() {
     expect(saved.saveCalls, 1);
     expect(analytics.events, ['internship_save']);
   });
+
+  test('removes a saved listing for the Saved screen', () async {
+    saved.seed([internship]);
+    final viewModel = listen();
+    await settle();
+
+    final result = await viewModel.remove(internship);
+
+    expect(result.done, isTrue);
+    expect(result.error, isNull);
+    expect(saved.removeCalls, 1);
+    expect(saved.savedKeys, isEmpty);
+  });
+
+  test('restore saves the listing again with the saved event', () async {
+    saved.seed([internship]);
+    final viewModel = listen();
+    await settle();
+    await viewModel.remove(internship);
+
+    final result = await viewModel.restore(internship);
+
+    expect(result.done, isTrue);
+    expect(saved.saveCalls, 1);
+    expect(saved.savedKeys, [internship.key]);
+    expect(analytics.events, ['internship_save']);
+    expect(analytics.eventParameters.single, {
+      'internship_id': internship.key,
+      'source': 'saved',
+    });
+  });
+
+  test(
+    'a failed unsave returns the message but is not an error state',
+    () async {
+      saved.seed([internship]);
+      saved.error = const AppException(
+        AppErrorKind.network,
+        'We could not reach Internly. Check your connection and try again.',
+      );
+      final viewModel = listen();
+      await settle();
+
+      final result = await viewModel.remove(internship);
+
+      expect(result.done, isFalse);
+      expect(
+        result.error!.message,
+        'We could not reach Internly. Check your connection and try again.',
+      );
+      expect(saved.savedKeys, [internship.key]);
+      // The Saved screen shows the failure itself; a second error state would
+      // make HomeScreen's listener show the same SnackBar again.
+      expect(container.read(savedViewModelProvider), isA<AsyncData<void>>());
+    },
+  );
+
+  test('a failed undo returns the message', () async {
+    saved.seed([internship]);
+    final viewModel = listen();
+    await settle();
+    await viewModel.remove(internship);
+    saved.error = const AppException(
+      AppErrorKind.notFound,
+      'This internship is no longer available.',
+    );
+
+    final result = await viewModel.restore(internship);
+
+    expect(result.done, isFalse);
+    expect(result.error!.message, 'This internship is no longer available.');
+    expect(saved.savedKeys, isEmpty);
+  });
+
+  test('ignores a second unsave while the first write is running', () async {
+    final other = testInternship('2');
+    saved.seed([internship, other]);
+    saved.gate = Completer<void>();
+    final viewModel = listen();
+    await settle();
+
+    final first = viewModel.remove(internship);
+    final second = await viewModel.remove(other);
+
+    expect(second.done, isFalse);
+    expect(second.error, isNull);
+
+    saved.gate!.complete();
+    expect((await first).done, isTrue);
+    expect(saved.removeCalls, 1);
+    expect(saved.savedKeys, [other.key]);
+  });
 }

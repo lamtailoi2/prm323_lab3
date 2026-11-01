@@ -151,6 +151,23 @@ Branch `feat/saved-internships` (1 commit ahead of `origin`), uncommitted workin
 
 ---
 
+## Run 10: Saved unsave with Undo (2026-11-01)
+
+Branch `feat/saved-internships`, uncommitted working tree. Environment: Windows 11 (10.0.26200.9711), Flutter 3.47.8 / Dart 3.13.7 from `C:\Users\ADMIN\flutter`.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Completed; 80 files checked, 2 changed (`saved_screen_test.dart`, `saved_viewmodel_test.dart`) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **152 tests, all passed** (+12 against the 140 in Run 9: 5 `SavedViewModel.remove` / `restore` cases, 6 Saved screen cases at 360 / 412 dp, 1 inverse-surface theme case) |
+| 4 | `flutter test test/features/saved test/theme` (focused run) | **34 passed**; the 6 new screen cases cover: unsave removes the card and shows `Removed from Saved` + `Undo` (360 / 412 dp), Undo restores and dismisses, the removal is final after the Snackbar times out, a failed unsave keeps the card with the service message + `Retry`, and a second unsave replaces the previous Snackbar |
+| 5 | Flutter 3.47 API check | **Finding**: `SnackBar` now defaults `persist` to `action != null`, so a SnackBar with Undo would stay on screen indefinitely. The Saved Snackbar sets `persist: false`; row 3's timeout test pumps 5 s and asserts it is gone |
+| 6 | On device: unsave + Undo in the Firebase project | **Not run**: the app session belongs to the developer's terminal and needs a signed-in Google account; the widget tests cover the tap, the Snackbar, the timeout, the error path and the Firestore stream through `FakeSavedInternshipService` |
+| 7 | DebugView screenshot for `internship_save(source=saved)` | **Not run**: needs the on-device check in row 6; `evidence/analytics/` has no entry for the Undo event yet |
+| 8 | ARTEMIS case for unsave + Undo | **Not run**: no ARTEMIS daemon on this machine (Run 7 row 5) |
+
+---
+
 ```markdown
 ## Run N: <PR / milestone> (<date>)
 
