@@ -7,6 +7,7 @@ import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/internships/screens/search_screen.dart';
+import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/saved/screens/saved_screen.dart';
 import '../models/app_user.dart';
@@ -26,6 +27,7 @@ abstract final class AppRoutes {
   static const String saved = '/saved';
   static const String applications = '/applications';
   static const String profile = '/profile';
+  static const String editProfile = '/profile/edit';
 }
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
@@ -69,7 +71,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             'my_applications',
             const MyApplicationsScreen(),
           ),
-          _tab(AppRoutes.profile, 'profile', const ProfileScreen()),
+          _tab(
+            AppRoutes.profile,
+            'profile',
+            const ProfileScreen(),
+            routes: [
+              // A form: shown above the shell, without bottom navigation.
+              GoRoute(
+                path: 'edit',
+                name: 'edit_profile',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => const EditProfileScreen(),
+              ),
+            ],
+          ),
         ],
       ),
     ],
@@ -98,10 +113,20 @@ final routerProvider = Provider<GoRouter>((ref) {
   return router;
 });
 
-StatefulShellBranch _tab(String path, String name, Widget screen) {
+StatefulShellBranch _tab(
+  String path,
+  String name,
+  Widget screen, {
+  List<RouteBase> routes = const <RouteBase>[],
+}) {
   return StatefulShellBranch(
     routes: [
-      GoRoute(path: path, name: name, builder: (context, state) => screen),
+      GoRoute(
+        path: path,
+        name: name,
+        builder: (context, state) => screen,
+        routes: routes,
+      ),
     ],
   );
 }

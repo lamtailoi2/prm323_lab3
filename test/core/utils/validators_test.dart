@@ -24,6 +24,16 @@ void main() {
       expect(Validators.maxLength('a' * 501, 500, message: 'x'), 'x');
       expect(Validators.maxLength(null, 500, message: 'x'), isNull);
     });
+
+    test('phone', () {
+      for (final valid in ['0908123456', '+84 908 123 456', '090-812.3456']) {
+        expect(Validators.phone(valid, message: 'x'), isNull, reason: valid);
+      }
+      for (final invalid in ['', '12345', 'call me', '+84 908 abc 456']) {
+        expect(Validators.phone(invalid, message: 'x'), 'x', reason: invalid);
+      }
+      expect(Validators.phone('1' * 16, message: 'x'), 'x');
+    });
   });
 
   group('AnalyticsNames.isValidEventName', () {

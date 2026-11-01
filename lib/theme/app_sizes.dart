@@ -25,6 +25,22 @@ abstract final class AppSizes {
   static const double brandMark = 32;
   static const double profileAvatar = 32;
 
+  /// Avatar in the Profile header card (Profile screenshot, verify in
+  /// Figma: G-07).
+  static const double profileHeaderAvatar = 56;
+
+  /// Photo at the top of Edit profile (Edit Profile frame, verify in
+  /// Figma: G-07).
+  static const double editProfileAvatar = 80;
+
+  /// Height of the large skill / preference tag on Profile (design owner,
+  /// 2026-10-28).
+  static const double tagLarge = 44;
+
+  /// Icon tile of the CV file card and the sheet headers (Profile
+  /// screenshots; same size as the company logo, verify in Figma: G-07).
+  static const double fileTile = 40;
+
   /// Layout widths that every screen must be checked at.
   static const double baseWidth = 360;
   static const double responsiveCheckWidth = 412;

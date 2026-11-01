@@ -66,6 +66,35 @@ void main() {
     expect(internship.skills, isEmpty);
   });
 
+  test('salary falls back to the allowance stated in the description', () {
+    final internship = Internship.fromSerpApi(
+      job({
+        'detected_extensions': {'posted_at': '2 days ago'},
+        'description':
+            'Quyền lợi: Internship allowance: 10,000,000 VND/month. Lương '
+            'tháng 13.',
+      }),
+    );
+    expect(internship.salary, '10,000,000 VND / mo');
+  });
+
+  test('Google salary wins over the description', () {
+    final internship = Internship.fromSerpApi(
+      job({'description': 'Mức lương: Thỏa thuận'}),
+    );
+    expect(internship.salary, '8M–12M VND a month');
+  });
+
+  test('a vague description leaves the salary unknown', () {
+    final internship = Internship.fromSerpApi(
+      job({
+        'detected_extensions': {'posted_at': '2 days ago'},
+        'description': 'Competitive salary and attractive allowance.',
+      }),
+    );
+    expect(internship.salary, isNull);
+  });
+
   test('on-site wording is detected', () {
     final internship = Internship.fromSerpApi(
       job({

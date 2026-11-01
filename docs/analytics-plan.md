@@ -32,6 +32,9 @@ Status: **Implemented** (in code and tested) · **Planned** (owner implements wi
 | 13 | `application_delete` | Student deletes an application | `internship_id` (string), `status` (string) | Which applications do students give up on? | Flow 3 (main entity: delete) | Planned (G-08) |
 | 14 | `export_report` | PDF generated **and** uploaded | `report_type` (string), `item_count` (int), `file_size_kb` (int) | Which students export, and how many applications does a report hold? | Export and upload | Planned |
 | 15 | `notification_center_open` | Notification Center opens | `unread_count` (int) | Do students read the notifications they receive? | FCM | Planned |
+| 16 | `profile_update` | A Profile section is saved (Edit profile, Edit skills, Update preferences) | `section` (string: `details` / `skills` / `preferences`), `item_count` (int: filled detail fields, skills, or selected roles + work modes + location) | Which parts of the profile do students keep up to date, and how many skills do they declare before applying (CV Match Check input, G-24)? | Flow 2 alternative (`Edit profile`, 2d `Edit skills`) | Implemented (ViewModel tests; DebugView not checked yet) |
+| 17 | `cv_upload` | A CV is uploaded **and** saved as the default CV | `source` (string: `profile`; the Apply flow adds `apply_form`), `file_size_kb` (int) | How many students have a CV ready before they reach Apply (Flow 2a)? | Flow 2a (CV from Profile) | Implemented (ViewModel tests; DebugView not checked yet) |
+| 18 | `cv_validation_result` | The generic CV quality gate resolves (before Confirm Application) | `is_valid` (bool) | How often does a CV fail the usability gate, and do rejected CVs stop applications? | Flow 2 pre-submit (Validate CV) | Implemented (ViewModel tests; DebugView not checked yet) |
 
 Coverage required by Lab 3 §6 (≥ 7 events): sign-in (1), sign-out (2), main search / primary action (4, 8, 10), each detail screen (6, 11), export and upload (14).
 
@@ -40,7 +43,7 @@ Coverage required by Lab 3 §6 (≥ 7 events): sign-in (1), sign-out (2), main s
 | Funnel | Steps | Success criterion |
 |---|---|---|
 | Find (Flow 1) | `screen_view(home)` → `search` → `view_internship` | `search.elapsed_sec` < 30 |
-| Apply (Flow 2) | `view_internship` → `apply_start` → `cv_match_check` → `application_create` | `application_create.duration_sec` < 120 |
+| Apply (Flow 2) | `view_internship` → `apply_start` → `cv_match_check` → `cv_validation_result` → `application_create` | `application_create.duration_sec` < 120; `cv_validation_result.is_valid = false` identifies the blocking branch |
 | Save → apply (2e) | `internship_save` → `apply_start(source=saved)` → `application_create` | — |
 
 ## Adding an event

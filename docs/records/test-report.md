@@ -115,6 +115,108 @@ Branch: working tree on top of `main`. Environment: macOS (arm64), Flutter 3.47.
 | 5 | ARTEMIS TC-16 (`test_home_roles.py`) | **Not run**: `adb devices` is empty and `http://127.0.0.1:8000/health` refuses connection; evidence in `evidence/artemis/e2e-environment-20261022.md` |
 | 6 | `flutter build apk --debug` | **Not run**: Android toolchain still incomplete on this machine (Run 1 row 6) |
 
+## Run 8: Profile feature (2026-10-28)
+
+Branch `feat/profile-ui`, on top of `main` `2621e10`. Environment: macOS 26.5 (arm64), Flutter 3.47.3, Dart 3.13.3. Final state of the branch; the session's intermediate runs are summarised in the notes below the table.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib/features lib/services lib/models lib/core test` | 0 changed (`lib/app/bootstrap.dart` on `main` lacks a final newline and is left untouched in this PR) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **198 tests, all passed** (125 on `main`, +73). Covers `UserProfile` parsing (valid, missing optional, wrong types, malformed CV, `TargetRole` storage values, round trip), `formatShortDate` / `formatFileSize`, `Validators.phone`, `AppTextField` options and `AppTag` sizes; every Profile ViewModel (load, live update, error + Retry, sign-out scoping, validation, save, failure, repeated tap, picker years, location prefilled from the current city, CV 10 MB pre-check, progress, upload and picker failures, open CV); Profile, the three sheets, the Academic standing picker (graduation years scroll to the stored year) and Edit profile at 360 and 412 dp (sections, states, 44 dp tags and chips, 36 dp Quick select without a check, tap targets ≥ 48 dp, discard dialog); router (Sign out from Settings & support, `/profile/edit` without bottom navigation) |
+| 4 | `flutter test` × 3 consecutive runs | 186/186 each time at the first complete version; later runs green after every change |
+| 5 | `flutter build ios --simulator --debug` | **Passed**: `pod install` 17.4 s (adds `file_selector_ios`, `url_launcher_ios` to `ios/Podfile.lock`), Xcode build 288.0 s |
+| 6 | `flutter build apk --debug` | **Not run**: Android SDK not installed on this machine (Run 1 row 6) |
+| 7 | DebugView for `profile_update`, `cv_upload` | **Not run**: needs a device with Analytics debug mode |
+| 8 | ARTEMIS TC-17 (`test_profile_skills.py`), TC-14 (updated steps) | **Not run**: no Android device/emulator and no ARTEMIS daemon |
+
+Notes from the intermediate runs: two test failures were found and fixed during the session. (a) Outlined chips measured 46 dp instead of 44 dp, because Material adds the 1 dp outline to the height, so the padding now subtracts it. (b) A widget render at 360 dp cut `Year 3 · Graduating 2026`, so the academic field now wraps and has no dropdown chevron.
+
+## Run 9: Profile on the iOS simulator with Firebase (2026-10-28)
+
+iPhone 17 Pro simulator (iOS 26.5), `flutter run --dart-define-from-file=.env`, Firebase project `prm-lab3`, the student's own Google account. Screens were opened through the Dart VM service (`GoRouter.go`, `showProfileSheet`) because this machine cannot click in the Simulator; the student also used the app by hand.
+
+| # | Scenario | Result |
+|---|---|---|
+| 1 | Profile with no `users/{uid}` document | **Passed**: name, avatar and email from Google; hints for university, CV, skills and preferences |
+| 2 | Sheets and Edit profile after matching the frames | **Passed by eye**: Edit skills, Update preferences, Academic standing and Edit profile match their frames (DC-14, DC-16 list the differences); stored `targetRoles: [frontend]` reads as `Frontend Intern`. Evidence: `evidence/screens/profile-edit-skills-sheet-matched-20261028.png`, `…/profile-update-preferences-sheet-matched-20261028.png`, `…/profile-academic-standing-sheet-20261028.png` (cropped so no account data shows; Profile and Edit profile screenshots contain the account's name, email and phone and are not stored) |
+| 3 | Save Edit profile, skills and preferences by hand | **Passed (data)**: a server read (`GetOptions(source: Source.server)`) returned the saved values with `updatedAt`; no pending writes in the cache |
+| 4 | Preferences sheet after `Save preferences` | **Failed once (reported by the student)**: the button kept spinning although the data was already on the server. Not reproduced: two repeats with timing breadcrumbs acknowledged in **890 ms** and **742 ms** and closed the sheet |
+| 5 | Upload a real CV PDF; save the new Edit profile fields | **Not run** |
+
+Follow-up for row 4: the form waits for the server acknowledgement of the Firestore write, so a slow connection keeps the button spinning. `FirestoreUserProfileService` now leaves a Crashlytics breadcrumb per save (`profile: saving …` / `saved … in N ms`, no profile values). Proposed fix, pending a team decision: stop waiting after a timeout and say the change is saved on the phone and will sync.
+
+## Run 10: Home allowance from the description (2026-10-28)
+
+Branch `feat/home-allowance` on top of `dev` `2621e10` (numbered after the Profile PR's Runs 8–9). Same environment as Run 8.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib/core lib/models test` | 0 changed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **159 tests, all passed** (125 on `dev`, +34): `allowanceFromText` on 29 sentences copied from real listings plus two rules (an amount beats "negotiable"; `formatAllowance` keeps the result) (amounts, ranges, `triệu` / `tr` / `M` / `K` / `million`, currency stuck to the number, `Up to` / `From` / `About`, monthly or not, USD, negotiable, and the rejected cases: "Lương tháng 13", "13th-month salary", "100% salary", meal / lunch / home-office allowances, post-hire salary); `Internship.fromSerpApi` falls back to the description and keeps Google's salary when present |
+| 4 | Parser over the real pool (322 listings, via the Dart VM service on the simulator) | Before: 0 listings with pay. After: **73 amounts, 70 negotiable, 179 not disclosed**. A first pass found four misreadings (a "VND" suffix stuck to the number made the parser take the home-office allowance, a meal allowance, a missing `Up to` / `From`, and `7 -> 10 triệu` read as 10 M); all were fixed and added as tests, then every amount was checked against its listing text |
+| 5 | Home on the iPhone 17 Pro simulator | **Passed by eye**: cards show e.g. `From 5,000,000 VND / mo` and `3,000,000 VND / mo`, others `Not disclosed`. Evidence: `evidence/screens/home-allowance-recommended-20261028.png`, `evidence/screens/home-allowance-recent-20261028.png` |
+
+## Run 11: Recommended for you by preferred location (2026-10-28)
+
+Built on `feat/profile-ui` (PR #2), then added to PR #3: `feat/home-allowance` merged `dev` (with PR #2) and took these commits. Same environment as Run 8.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib/core lib/features test` | 0 changed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **208 tests, all passed** (198 on `feat/profile-ui`, +10): `foldText`; `matchesPreferredLocation` with the pool's real spellings (HCM, Hà Nội, Đà Nẵng, "Việt Nam" only, none, "All Vietnam", typed places, whole words); `HomeViewModel` keeps the preferred city in Recommended and every listing in Recently Posted, "All Vietnam" / no preference unfiltered, re-filters when the location changes without a new subscription, unfiltered when the profile fails to load. Home tests now override `currentUserIdProvider` and `UserProfileService` |
+| 4 | Real pool on the simulator (location = Ho Chi Minh City) | **Passed**: the 5 Recommended cards are all in Hồ Chí Minh; Recently Posted still shows 10 listings from every city. Pool spellings checked first: 99 "Việt Nam", 94 "Hà Nội", 89 HCM ("Thành phố Hồ Chí Minh, Hồ Chí Minh" / "Hồ Chí Minh"), 22 Đà Nẵng. Evidence: `evidence/screens/home-recommended-preferred-location-20261028.png` |
+| 5 | Combined branch after merging `dev` (PR #3: allowance + preferred location) | `dart format` 0 changed; `flutter analyze` **No issues found!**; `flutter test` **242 tests, all passed**. Merge conflicts were only in the shared docs (test report, AI log, Home row in traceability) and kept both sides |
+
+## Run 12: Recommended ordered by the profile (2026-10-28)
+
+Branch `feat/home-recommend-profile` on top of `dev` `175b999`. Same environment as Run 8.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib/core lib/features lib/models test` | 0 changed (`lib/app/bootstrap.dart` left as on `dev`) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **252 tests, all passed** (242 on `dev`, +10): `recommendationScore` (targeted role, Full-stack partial, shared skills case-insensitive and capped, empty profile), `TargetRole.jobRoles`, `jobRoleFor` keeps three real non-IT titles out of every role; `HomeViewModel` keeps the sync order without a profile, puts the best match first with ties in sync order, re-ranks when skills change without a new subscription, never removes listings by role, and shows a job synced under two keywords once |
+| 4 | Pool check before coding (322 listings) | IT 289; roles: Other IT 97, Full-stack 48, Data/AI 46, Backend 44, Tester 29, Frontend 16, Mobile 7, DevOps 2; work mode known for 1 of 289; 53 listings share ≥ 1 skill with the test profile; **171 duplicates** by title + company |
+| 5 | Simulator, profile Hanoi · Frontend Intern · Flutter, Dart, React Native, React, Vue | First run showed the same job three times and "Executive Assistant Intern" as Frontend (fixed: duplicates removed, non-IT words added). Final: five distinct Frontend listings in Hà Nội, the two sharing Vue / React first; Recently Posted 10. Evidence: `evidence/screens/home-recommended-profile-match-20261028.png` |
+
+---
+
+## Run 13: Login from the Login frame (2026-10-28)
+
+Branch `feat/auth-login-ui` on top of `dev` `175b999`. Same environment as Run 8; simulator iPhone 17 Pro (iOS 26.5, 402 dp wide).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | 1 file would change: `lib/app/bootstrap.dart` (already unformatted on `dev`, not touched here) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **250 tests, all passed** (242 on `dev`, +8 in `test/features/auth/login_screen_test.dart`): frame content at 360 and 412 dp (wordmark, headline, pitch, Google button with the "G", photo, legal line on one line, button ≥ 48 dp, `androidTapTargetGuideline`, `labeledTapTargetGuideline`); sign-in calls the service and logs `login:google`; loading shows a spinner instead of the "G", the `Continue with Google, loading` label and ignores a second tap; error message above the button; cancelled picker shown as info; `Terms` / `Privacy` show their coming-soon SnackBars without signing in; 2× text on a 360 × 640 screen scrolls instead of overflowing. The existing router test still signs in through `Continue with Google` |
+| 4 | Layout check before the tests (temporary golden renders at 360 × 800, 412 × 915, 360 × 640 with an error; deleted afterwards) | First render wrapped the legal line onto two lines at 360 dp; fixed by giving it the standard 16 dp padding (DC-18). Second render matched the frame at both widths |
+| 5 | Simulator, signed out (`flutter run --dart-define-from-file=.env`) | **Passed**: Login matches the frame (photo, scrim, wordmark, white Google button, one-line legal text), light status-bar icons. Evidence: `evidence/auth/auth-login-redesign-20261028.png`, `evidence/screens/login-frame-vs-app-20261028.png` (frame left, app right) |
+| 6 | Simulator taps (Google sign-in, cancelled picker, `Terms` / `Privacy`) | **Not run** on the simulator in this run (no tap automation available here); covered by the widget tests in row 3 and by ARTEMIS TC-01 / TC-14, whose labels did not change |
+| 7 | Combined branch after merging `dev` (PR #4: Recommended by profile) | `dart format` only `lib/app/bootstrap.dart` (as on `dev`); `flutter analyze` **No issues found!**; `flutter test` **260 tests, all passed** (252 on `dev`, +8). Merge conflicts were only in the shared docs (Home / Login rows in traceability, P-30 / P-31 in the AI log) and kept both sides |
+
+---
+
+## Run 14: CV validation via LLM (2026-11-01)
+
+Branch `feat/LLM-validation` on top of `main` `7888eb5`. Environment: Windows 11 · Flutter 3.47.8 stable · Dart 3.13.7 · Node v24.22.1 · npm 11.19.1 (the functions package declares Node 22; npm printed an `EBADENGINE` warning but built and tested normally).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `npm run build` (`functions/`) | **Passed**: `tsc` completed with no errors (new `validate-cv.ts` + `index.ts` wiring) |
+| 2 | `npm test` (`functions/`) | **18 tests, 18 passed** (7 existing `job-key` / `selection` / `serp` tests + 11 new `validate-cv` tests). Covers path ownership (unauthenticated, another user's `cvs/{uid}/`, traversal, empty path), defensive JSON parsing (plain, fenced, missing `reason`, wrong type, garbage), valid / invalid verdicts, the `< 50 character` short-circuit (Gemini not called), fail-open on unparseable model output, the 12,000-character prompt cap, a missing `GEMINI_API_KEY`, and download / extraction / Gemini failures becoming safe `HttpsError`s. All external effects are stubs: no Firebase project, Storage, Gemini or network call |
+| 3 | `dart format lib test` | Completed; the new and changed files were formatted. `lib/app/bootstrap.dart` was restored to its `dev` state (missing final newline), as in Runs 12–13 |
+| 4 | `flutter analyze` | **No issues found!** |
+| 5 | `flutter test` | **275 tests, all passed** (260 on `main`, +15): `cv_validation_service_test.dart` (4: verdict parsing incl. trimmed reason and malformed payloads; error-code mapping), `cv_validation_viewmodel_test.dart` (6: valid → `ViewData` + `cv_validation_result` with `is_valid: true`, rejected CV → `ViewData` with `is_valid: false`, loading until the callable resolves, repeated taps start one call, failed check → `ViewError` with no analytics event, signed-out student cannot start), `cv_validation_step_test.dart` (5: `Checking your CV…`, automatic continue on valid, invalid branch with `Update CV` + `Retry` and a working retry, failed-check message, no overflow and 48 dp tap targets at 360 and 412 dp) |
+| 6 | Deploy `validateCv` to a Firebase project and upload real + garbage PDFs | **Not run**: no Firebase CLI login / dev project credentials and no `GEMINI_API_KEY` value on this machine. Command to run by the owner: `firebase functions:secrets:set GEMINI_API_KEY`, then `firebase deploy --only functions:validateCv` |
+| 7 | DebugView screenshot for `cv_validation_result` | **Not run**: needs row 6. Evidence must be saved as `evidence/analytics/analytics-cv-validation-result-<yyyymmdd>.png` |
+| 8 | Real Gemini / PDF smoke test | **Not run**: deliberately stubbed in every test (no real Firebase project or network in tests, AGENTS.md testing rules) |
+
+Failures and follow-ups: the Apply flow screens (Application Form, CV Match Check, Review) are still separate work; `CvValidationStep` is built and tested but not yet embedded in a route (G-24). The Figma frame for the step is still open (DC-19). Manual device verification and evidence (rows 6–8) remain.
+
 ---
 
 ## Run 8: Save Toggle on Home (2026-10-28)

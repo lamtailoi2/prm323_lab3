@@ -1,6 +1,6 @@
 # Internly architecture
 
-Internly is a Flutter app (Android graded, iOS also builds) built with **MVVM**, **Riverpod 3** for state management and dependency injection, **go_router** for navigation, **SerpAPI (Google Jobs)** behind a scheduled Cloud Function, and **Firebase** for identity, the shared listing pool, user data, files, messaging, analytics, crash reporting and remote configuration. The function mirrors SerpAPI into Firestore every six hours; the app only reads Firestore. Written before feature work (Lab 3 §4 stage 2); every feature PR keeps it true to the code.
+Internly is a Flutter app (Android graded, iOS also builds) built with **MVVM**, **Riverpod 3** for state management and dependency injection, **go_router** for navigation, **SerpAPI (Google Jobs)** behind a scheduled Cloud Function, and **Firebase** for identity, the shared listing pool, user data, files, messaging, analytics, crash reporting and remote configuration. The function mirrors SerpAPI into Firestore every six hours; the app only reads Firestore. A second, callable function (`validateCv`) reads the student's own CV from Storage and asks **Gemini** (free tier, G-26) whether it is a usable CV, so no model key ships in the app. Written before feature work (Lab 3 §4 stage 2); every feature PR keeps it true to the code.
 
 ## 1. Layers
 
@@ -13,15 +13,20 @@ flowchart TB
     S["Services — lib/services (interfaces + implementations, injected with Riverpod)<br/>wrap Firestore and every Firebase SDK; return models; translate exceptions into AppException"]
     M["Models — lib/models, features/*/models<br/>plain Dart data classes"]
     CF["Cloud Function — functions/src<br/>scheduled sync every 6 hours"]
+    CVF["Callable function — functions/src/validate-cv.ts<br/>CV text extraction + Gemini quality gate"]
     API[("SerpAPI<br/>google_jobs")]
+    GEM[("Gemini API<br/>free tier (G-26)")]
     FB[("Firebase<br/>Auth · Firestore · Storage · FCM · Analytics · Crashlytics · Remote Config")]
 
     V -- "user events" --> VM
     VM -- "state changes" --> V
     VM -- "async calls" --> S
+    S -- "validateCv" --> CVF
     S --> FB
     CF --> API
     CF --> FB
+    CVF --> GEM
+    CVF --> FB
     VM -.-> M
     S -.-> M
     T["Theme — lib/theme (tokens → ThemeData)"] -.-> V
@@ -54,7 +59,7 @@ lib/
     widgets/                 widgets used by this feature only
 assets/fonts/                Inter (OFL)
 firebase/                    firestore.rules, storage.rules, firestore.indexes.json, remote-config-defaults.json
-functions/                   scheduled SerpAPI → Firestore sync (TypeScript, Node 22)
+functions/                   scheduled SerpAPI → Firestore sync + callable CV validation (TypeScript, Node 22)
 e2e_test/                    ARTEMIS pytest suite (conftest.py, pyproject.toml, test_*.py)
 test/                        Flutter unit, ViewModel, widget and routing tests (mirrors lib/)
 docs/                        design traceability, architecture, plans, logs, Lab 2 snapshot
@@ -89,19 +94,24 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 |---|---|---|---|
 | `LoginViewModel` | Login | `AuthService`, `AnalyticsService` | Done |
 | `SignOutViewModel` | Profile | `AuthService`, `AnalyticsService` | Done |
-| `HomeViewModel` | Home | `InternshipService`, `UserProfileService`, `RemoteConfigService`, `AnalyticsService` | Planned |
+| `HomeViewModel` | Home | `InternshipService`, `UserProfileService` (preferred location), `RemoteConfigService`, `AnalyticsService` | Done |
 | `SearchViewModel` | Search, Search Results | `InternshipService`, `AnalyticsService` | Planned |
 | `InternshipDetailViewModel` | Internship Detail | `InternshipService`, `SavedInternshipService`, `ApplicationService`, `AnalyticsService` | Planned |
 | `SavedViewModel` | Saved Internships | `SavedInternshipService`, `AnalyticsService` | Planned |
-| `ApplyViewModel` | Application Form, CV Match Check, Review, Success | `ApplicationService`, `UserProfileService`, `FileStorageService`, `RemoteConfigService`, `AnalyticsService`, `CrashlyticsService` | Planned |
+| `ApplyViewModel` | Application Form, CV Match Check, Review, Success | `ApplicationService`, `UserProfileService`, `FileStorageService`, `CvValidationService`, `RemoteConfigService`, `AnalyticsService`, `CrashlyticsService` | Planned |
+| `CvValidationViewModel` | Validate CV step (Apply, pre-submit) | `CvValidationService`, `AnalyticsService` | Done (service, ViewModel, step widget, tests; Apply screens not built) |
 | `MyApplicationsViewModel` | My Applications | `ApplicationService` | Planned |
 | `ApplicationDetailViewModel` | Application Detail | `ApplicationService`, `AnalyticsService` | Planned |
-| `ProfileViewModel` | Profile | `UserProfileService`, `FileStorageService` | Planned |
+| `ProfileViewModel` | Profile | `UserProfileService` (+ auth for email and photo) | Done |
+| `EditProfileViewModel` | Edit profile | `UserProfileService`, `AnalyticsService` | Done |
+| `EditSkillsViewModel`, `EditPreferencesViewModel` | Profile sheets | `UserProfileService`, `AnalyticsService` | Done |
+| `UpdateCvViewModel` | Update CV sheet | `DocumentPickerService`, `FileStorageService`, `UserProfileService`, `AnalyticsService` | Done |
+| `OpenCvViewModel` | Profile (View CV) | `ExternalLinkService` | Done |
 | `FirebaseDemoViewModel` | Firebase demo area | `RemoteConfigService`, `CrashlyticsService`, `NotificationService` | Planned |
 | `NotificationCenterViewModel` | Notification Center | `NotificationService`, `AnalyticsService` | Planned |
 | `ReportExportViewModel` | Report export | `ReportExportService`, `FileStorageService`, `ApplicationService`, `AnalyticsService` | Planned |
 
-Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `FileStorageService` (Cloud Storage for Firebase), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`.
+Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `UserProfileService` (Firestore `users/{uid}` listener + merge writes per section), `FileStorageService` (Cloud Storage for Firebase), `DocumentPickerService` (system file picker, `file_selector`), `ExternalLinkService` (opens a URL in another app, `url_launcher`), `CvValidationService` (callable `validateCv`), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`; Gemini is called only by the callable `validateCv` function.
 
 ## 4. Sequence: Home feed (shared Firestore pool)
 
@@ -149,6 +159,7 @@ The pool itself is filled by `syncInternshipsJob` every six hours (Plan → back
 | Internship listings | **Cloud Firestore** `internships/{jobKey}`, mirrored from SerpAPI `google_jobs` every 6 hours (read-only in the app) | Scheduled Cloud Function (Admin SDK) | Signed-in users read; client writes are denied. App reads through `InternshipService` only |
 | Profile, saved internships, applications, notifications, report metadata | **Cloud Firestore** under `users/{uid}/…` | The signed-in user | Owner only: `users/{uid}/**` (`firebase/firestore.rules`, final) |
 | CVs, generated PDF reports | **Cloud Storage for Firebase** `cvs/{uid}/…`, `reports/{uid}/…` (Blaze, US bucket, no-cost quota); metadata in Firestore `users/{uid}/…` | The signed-in user | `firebase/storage.rules`: owner only, PDF ≤ 10 MB; the service checks the same before uploading (G-12) |
+| CV text for the quality gate | Read server-side from `cvs/{uid}/…` by the callable `validateCv`, then sent to Gemini as plain text | Callable Cloud Function (Admin SDK) | Only the caller's own `cvs/${request.auth.uid}/…` path; the key is a Secret Manager secret (`GEMINI_API_KEY`), never in the app |
 | Feature switches, limits | **Remote Config** (defaults in `firebase/remote-config-defaults.json`) | App team | Read-only in the app; real-time updates |
 
 Rules for feature owners:
@@ -159,6 +170,19 @@ Rules for feature owners:
 4. Parse defensively with `FirestoreReader`; skip and log (Crashlytics non-fatal) malformed documents instead of failing a list.
 5. Read server timestamps in listeners with `ServerTimestampBehavior.estimate`.
 
+**Profile document `users/{uid}`** (`UserProfile`, `lib/models/user_profile.dart`; every field optional, the document exists only after the first save). Apply reads it for prefill, the CV from Profile and the skills used by CV Match Check.
+
+| Field | Type | Written by |
+|---|---|---|
+| `fullName`, `headline`, `university`, `major`, `phone`, `city`, `bio` (≤ 300) | string or null | Edit profile |
+| `yearOfStudy` (1–6), `graduationYear` | int or null | Edit profile (Academic standing picker) |
+| `skills` | string[] (values from `knownSkills`) | Edit skills sheet |
+| `preferences` | map: `targetRoles` (`software_engineer` / `mobile` / `frontend` / `backend` / `qa_tester`, the frame's roles), `workModes` (`hybrid` / `remote` / `on_site`), `location` (string or null) | Update preferences sheet |
+| `cv` | map: `fileName`, `url`, `storagePath`, `sizeBytes`, `uploadedAt` (only from a real `FileStorageService` upload) | Update CV sheet |
+| `updatedAt` | server timestamp | every write (merge per section) |
+
+Email and photo are never copied here; they come from the Google account. `city` (where the student lives) and `preferences.location` (where they want an internship) are both kept; Update preferences starts from `city` when its location is empty (G-30). Replacing the CV keeps the old file in Storage because submitted applications may still link to it.
+
 ## 7. Firebase and API integration points
 
 | Concern | Where | Failure handling |
@@ -166,17 +190,21 @@ Rules for feature owners:
 | Initialization | `app/bootstrap.dart` | Placeholder config → "Firebase is not configured" screen |
 | Auth (Google) | `services/auth_service.dart` | Cancelled picker → info message; network / config → error message |
 | SerpAPI sync | `functions/src/sync.ts` (scheduled) | Missing secret / quota / network → logged + `sync/state.lastError`; the app keeps serving the last good pool |
+| CV validation (Gemini) | `functions/src/validate-cv.ts` (callable) + `services/cv_validation_service.dart` | Wrong/other user's path → `permission-denied`; unreadable PDF or < 50 extracted characters → invalid result (no Gemini call); model output that is not JSON → fail open; download / Gemini failure → `HttpsError` with a safe message, mapped to `AppException` + Retry in the app |
 | Listings | `services/internship_service.dart` | permission denied / offline → `AppException` with Retry; malformed documents skipped and logged |
 | File storage | `services/file_storage_service.dart` | Signed out → permission denied; not a PDF / too large → invalid input; `unauthorized` / `quota-exceeded` / `retry-limit-exceeded` → message; progress reported |
 | Analytics | `services/analytics_service.dart` | Failures swallowed; names validated in debug |
 | Crashlytics | `services/crashlytics_service.dart` | Global handlers at bootstrap; user ID + `last_screen` key; `crashForTesting()` only from the demo area |
 | Remote Config | `services/remote_config_service.dart` | Defaults from JSON before `runApp`; fetch and real-time updates in the background |
-| Firestore, FCM, PDF generation | Added by their features | Each shows a visible message for offline, permission denied and cancel |
+| Profile | `services/user_profile_service.dart` | permission denied / offline → `AppException` (Retry on load, message in the form or sheet on save); malformed `cv` map ignored and logged |
+| File picking, external links | `services/document_picker_service.dart`, `services/external_link_service.dart` | Closed picker → no change; unreadable file or no app to open a link → message |
+| Firestore (other collections), FCM, PDF generation | Added by their features | Each shows a visible message for offline, permission denied and cancel |
 
 ## 8. Secrets and configuration
 
 - Firebase config files are app configuration and are committed (Lab 3 §9).
 - The SerpAPI key lives in **Secret Manager** as `SERPAPI_KEY` and is read only by the scheduled function. It is not part of the APK or the Flutter `.env` (G-25).
+- The Gemini key lives in **Secret Manager** as `GEMINI_API_KEY`, bound only to the `validateCv` function (least privilege). It is the same free-tier Google AI Studio key as ARTEMIS (G-26) but a separate secret binding. Set it with `firebase functions:secrets:set GEMINI_API_KEY`.
 - Never commit service-account JSON, keystores, `.p8` keys, model API keys or test-account credentials.
 
 ## 9. Testing

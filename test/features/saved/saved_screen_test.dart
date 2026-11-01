@@ -101,7 +101,7 @@ void main() {
       await pumpSaved(tester, width: width);
       await tester.pumpAndSettle();
 
-      // Same bar as Home: title, bell, avatar — no brand mark (DC-15).
+      // Same bar as Home: title, bell, avatar — no brand mark (DC-20).
       expect(find.text('Saved'), findsOneWidget);
       expect(find.byIcon(Symbols.school_rounded), findsNothing);
       expect(find.byTooltip('Notifications'), findsOneWidget);

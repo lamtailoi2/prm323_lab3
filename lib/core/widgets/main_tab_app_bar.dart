@@ -13,7 +13,7 @@ import 'app_top_bar.dart';
 /// destination label from the bottom navigation.
 ///
 /// There is no brand mark in the leading slot: the logo was dropped from the
-/// tab headers so the title starts at the normal 16 dp text margin (DC-15).
+  /// tab headers so the title starts at the normal 16 dp text margin (DC-20).
 ///
 /// The bell is the interim entry point to the Notification Center (G-04,
 /// G-13). That screen does not exist yet, so the bell says so instead of

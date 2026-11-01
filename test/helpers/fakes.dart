@@ -1,15 +1,23 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/utils/job_key.dart';
 import 'package:internly/models/app_user.dart';
+import 'package:internly/models/cv_validation_result.dart';
 import 'package:internly/models/internship.dart';
+import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
+import 'package:internly/services/cv_validation_service.dart';
+import 'package:internly/services/document_picker_service.dart';
+import 'package:internly/services/external_link_service.dart';
+import 'package:internly/services/file_storage_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
 import 'package:internly/services/saved_internship_service.dart';
+import 'package:internly/services/user_profile_service.dart';
 
 const testUser = AppUser(
   uid: 'uid-123',
@@ -240,10 +248,15 @@ class FakeAnalyticsService implements AnalyticsService {
   Future<void> logScreenView({required String screenName}) async =>
       screens.add(screenName);
 
+  /// Parameters of the last custom event with each name.
+  final Map<String, Map<String, Object>?> parameters =
+      <String, Map<String, Object>?>{};
+
   @override
   Future<void> logEvent(String name, [Map<String, Object>? parameters]) async {
     events.add(name);
     eventParameters.add(parameters);
+    this.parameters[name] = parameters;
   }
 
   @override
@@ -314,4 +327,167 @@ class FakeSavedInternshipService implements SavedInternshipService {
       List<Internship>.unmodifiable(_saved.values);
 
   Future<void> dispose() => _updates.close();
+}
+
+/// In-memory `users/{uid}` document. Writes merge into [profile] and are
+/// pushed to listeners, as a Firestore snapshot listener would.
+class FakeUserProfileService implements UserProfileService {
+  FakeUserProfileService({this.profile});
+
+  /// `null` models a profile that has never been saved.
+  UserProfile? profile;
+  AppException? loadError;
+  AppException? saveError;
+  Completer<void>? loadGate;
+  Completer<void>? saveGate;
+  int watchCalls = 0;
+  final List<String> writes = <String>[];
+
+  final StreamController<UserProfile?> _updates =
+      StreamController<UserProfile?>.broadcast();
+
+  @override
+  Stream<UserProfile?> watchProfile(String uid) async* {
+    watchCalls++;
+    await loadGate?.future;
+    final failure = loadError;
+    if (failure != null) throw failure;
+    yield profile;
+    yield* _updates.stream;
+  }
+
+  @override
+  Future<void> updateDetails(String uid, ProfileDetails details) =>
+      _write('details', (current) => _copy(current, details: details));
+
+  @override
+  Future<void> updateSkills(String uid, List<String> skills) =>
+      _write('skills', (current) => _copy(current, skills: skills));
+
+  @override
+  Future<void> updatePreferences(
+    String uid,
+    InternshipPreferences preferences,
+  ) => _write(
+    'preferences',
+    (current) => _copy(current, preferences: preferences),
+  );
+
+  @override
+  Future<void> updateCv(String uid, CvFile cv) =>
+      _write('cv', (current) => _copy(current, cv: cv));
+
+  Future<void> _write(
+    String section,
+    UserProfile Function(UserProfile current) change,
+  ) async {
+    await saveGate?.future;
+    final failure = saveError;
+    if (failure != null) throw failure;
+    writes.add(section);
+    profile = change(profile ?? const UserProfile());
+    _updates.add(profile);
+  }
+
+  /// A merge write of one section, as `SetOptions(merge: true)` does.
+  static UserProfile _copy(
+    UserProfile current, {
+    ProfileDetails? details,
+    List<String>? skills,
+    InternshipPreferences? preferences,
+    CvFile? cv,
+  }) => UserProfile(
+    details: details ?? current.details,
+    skills: skills ?? current.skills,
+    preferences: preferences ?? current.preferences,
+    cv: cv ?? current.cv,
+  );
+
+  Future<void> dispose() => _updates.close();
+}
+
+/// Minimal valid PDF bytes (`%PDF-` signature) of [length] bytes.
+Uint8List pdfBytes([int length = 2048]) {
+  final bytes = Uint8List(length);
+  bytes.setAll(0, '%PDF-'.codeUnits);
+  return bytes;
+}
+
+/// Returns [next] from the picker; `null` models a closed picker.
+class FakeDocumentPickerService implements DocumentPickerService {
+  PickedDocument? next;
+  AppException? error;
+  int calls = 0;
+
+  @override
+  Future<PickedDocument?> pickPdf() async {
+    calls++;
+    final failure = error;
+    if (failure != null) throw failure;
+    return next;
+  }
+}
+
+/// Records uploads and reports progress in two steps.
+class FakeFileStorageService implements FileStorageService {
+  AppException? error;
+  Completer<void>? gate;
+  final List<String> uploadedNames = <String>[];
+
+  @override
+  Future<UploadedFile> uploadPdf({
+    required StorageFolder folder,
+    required String fileName,
+    required Uint8List bytes,
+    void Function(double progress)? onProgress,
+  }) async {
+    onProgress?.call(0.5);
+    await gate?.future;
+    final failure = error;
+    if (failure != null) throw failure;
+    onProgress?.call(1);
+    uploadedNames.add(fileName);
+    return UploadedFile(
+      url: 'https://storage.example/${folder.path}/$fileName',
+      storagePath: '${folder.path}/uid-123/$fileName',
+      fileName: fileName,
+      sizeBytes: bytes.length,
+      uploadedAt: DateTime(2026, 10, 28),
+    );
+  }
+}
+
+/// Records CV validation calls instead of reaching Cloud Functions.
+class FakeCvValidationService implements CvValidationService {
+  CvValidationResult result = const CvValidationResult(isValid: true);
+  AppException? error;
+
+  /// Completes the next check only when the test calls `complete()`.
+  Completer<void>? gate;
+
+  int calls = 0;
+  final List<String> paths = <String>[];
+
+  @override
+  Future<CvValidationResult> validate(String storagePath) async {
+    calls++;
+    paths.add(storagePath);
+    await gate?.future;
+    final failure = error;
+    if (failure != null) throw failure;
+    return result;
+  }
+}
+
+/// Records opened links instead of launching them.
+class FakeExternalLinkService implements ExternalLinkService {
+  final List<Uri> opened = <Uri>[];
+  AppException? error;
+
+  @override
+  Future<void> open(Uri uri) async {
+    final failure = error;
+    if (failure != null) throw failure;
+    opened.add(uri);
+  }
 }

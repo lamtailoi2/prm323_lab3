@@ -2,13 +2,24 @@ import { initializeApp } from 'firebase-admin/app';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 import { defineSecret } from 'firebase-functions/params';
+import { onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 
 import { syncInternships } from './sync';
+import {
+  askGemini,
+  downloadPdfFromStorage,
+  extractPdfText,
+  handleValidateCv,
+} from './validate-cv';
 
 initializeApp();
 
 const serpApiKey = defineSecret('SERPAPI_KEY');
+
+// Separate secret binding scoped only to `validateCv` (least privilege); the
+// value comes from the same free-tier Gemini key as ARTEMIS (G-26).
+const geminiApiKey = defineSecret('GEMINI_API_KEY');
 
 /**
  * Fills the shared Firestore listing pool from SerpAPI every six hours.
@@ -45,4 +56,29 @@ export const syncInternshipsJob = onSchedule(
       throw error;
     }
   },
+);
+
+/**
+ * Generic CV quality gate for the Apply flow.
+ *
+ * The client sends only the Storage path of its own CV. The function reads it
+ * with the Admin SDK, extracts text and asks Gemini whether the file looks
+ * like a usable CV. The key never reaches the app.
+ */
+export const validateCv = onCall(
+  {
+    secrets: [geminiApiKey],
+    timeoutSeconds: 60,
+    memory: '256MiB',
+  },
+  (request) =>
+    handleValidateCv(
+      request,
+      {
+        downloadPdf: downloadPdfFromStorage,
+        extractText: extractPdfText,
+        askGemini,
+      },
+      geminiApiKey.value(),
+    ),
 );

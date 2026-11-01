@@ -49,7 +49,7 @@ The Lab 2 README mentions **four helper colors** (pressed, error container, disa
 | pressed | Reduced emphasis of the existing color (`AppTheme.pressedOpacity = 0.7`, **verify**) | Figma 05 Button: *"Pressed uses reduced emphasis, not a new color."* |
 | disabled container | `color/surface-variant` | Figma 05 disabled Button / Text Field specimens, AI log text-field spec |
 | error container | Not used: status badges use `surface-variant` | Figma 05 Application Status: *"Use surfaceVariant, never invented semantic tints."* |
-| inverse surface | `color/text/primary` `#0F172A` for the dark SnackBar surface, `surface` `#FFFFFF` for its content, `primary-container` `#DBEAFE` for its action label (`colorScheme.inverseSurface` / `onInverseSurface` / `inversePrimary`) | `AppTheme` (G-07, DC-16) |
+| inverse surface | `color/text/primary` `#0F172A` for the dark SnackBar surface, `surface` `#FFFFFF` for its content, `primary-container` `#DBEAFE` for its action label (`colorScheme.inverseSurface` / `onInverseSurface` / `inversePrimary`) | `AppTheme` (G-07, DC-21) |
 
 ### 1.2 Typography: Inter, 8 styles
 
@@ -118,6 +118,8 @@ Icons used by the components below: `home`, `search`, `bookmark`, `description` 
 | Body text | ≥ 14 sp | Typography tokens |
 | Text contrast | ≥ 4.5:1 (normal), ≥ 3:1 (large text, controls) | See §3 for computed results |
 | Meaning | Never color alone: every status has label + icon; selection has a check | Component specs below |
+| Profile tags | Skill / preference tags on Profile and the chips in the Profile sheets are 44 dp tall; Update preferences "Quick select" chips are 36 dp, without a check (design owner, 2026-10-28); card tags keep the compact size | `AppTag(size: AppTagSize.large)`, `SheetChip`, `AppSizes.tagLarge` |
+| Avatars and tiles | Home app-bar avatar 32 dp; Profile header avatar 56 dp; Edit profile photo 80 dp; CV file / sheet header icon tile 40 dp (all **verify**, G-07) | `AppSizes.profileAvatar`, `AppSizes.profileHeaderAvatar`, `AppSizes.editProfileAvatar`, `AppSizes.fileTile` |
 
 ---
 
@@ -155,6 +157,8 @@ Status legend: **Themed** = done through `ThemeData`, no custom widget needed ·
 
 The label sits **above** the field, so `AppTextField` renders it as a separate `Text`. Do not use `InputDecoration.labelText` (floating label). Validation belongs to the ViewModel: pass the message as `errorText` (helpers in `core/utils/validators.dart`).
 
+Optional parts, from the Edit Profile frame: `prefixIcon` (20 dp, `textSecondary`), `suffix` (e.g. clear or lock; the error icon replaces it while `errorText` is set), `isRequired` (label + ` *`, read as "required"), and `readOnly` + `onTap` for a field that opens a picker.
+
 ### 2.3 Search Field: 2 specimens · Built (`AppSearchField`)
 
 *"360 dp width. Long placeholder wraps without truncation; the input grows with it. Clear and filter actions have 48 × 48 dp targets."* Leading `search` icon; placeholder `Search internships, companies, or skills`; trailing `tune` filter action; `close` clear action appears when text is entered. Radius 12, white, 1 px border.
@@ -184,7 +188,7 @@ The label sits **above** the field, so `AppTextField` renders it as a separate `
 
 Clean surface: no shadow and no bottom border. Figma overrides the 1 px border in the Stitch prompt.
 
-Bottom-navigation destinations render the same `.main` bar through `MainTabAppBar` (`core/widgets/main_tab_app_bar.dart`): title (= destination label) → notification bell → profile avatar. Only the title changes between tabs. The leading slot stays empty, so there is no brand mark and the title keeps the normal 16 dp text margin (DC-15).
+Bottom-navigation destinations render the same `.main` bar through `MainTabAppBar` (`core/widgets/main_tab_app_bar.dart`): title (= destination label) → notification bell → profile avatar. Only the title changes between tabs. The leading slot stays empty, so there is no brand mark and the title keeps the normal 16 dp text margin (DC-20).
 
 ### 2.7 Bottom Navigation: 5 specimens · Themed (`NavigationBarThemeData`) + `AppShell`
 
@@ -248,7 +252,7 @@ Radius 8 (badge family). ⚠️ **Withdrawn** (Flow 3d) has no specimen (G-18). 
 | Action | `type/label/medium` in `primary-container` (`#DBEAFE`) on the dark surface, 48 dp target | `SnackBarAction` via `actionTextColor` |
 | Duration | 4 s even when an action is present (`persist: false`); an error with `Retry` stays until used or swiped away | `SnackBar.duration` |
 
-Reference: the Saved unsave Snackbar — `check_circle` + `Removed from Saved` + `Undo` (DC-16). Figma does not document this component yet (G-16).
+Reference: the Saved unsave Snackbar — `check_circle` + `Removed from Saved` + `Undo` (DC-21). Figma does not document this component yet (G-16).
 
 ### 2.14 Components not on page 05
 
