@@ -82,3 +82,7 @@ __pycache__/
 # Cloud Functions build output and dependencies
 functions/node_modules/
 functions/lib/
+
+# Firebase Functions emulator secrets (real keys; use Secret Manager when deployed)
+functions/.secret.local
+functions/.env.local

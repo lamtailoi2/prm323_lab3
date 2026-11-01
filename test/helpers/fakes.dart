@@ -4,11 +4,13 @@ import 'dart:typed_data';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/utils/job_key.dart';
 import 'package:internly/models/app_user.dart';
+import 'package:internly/models/cv_validation_result.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
+import 'package:internly/services/cv_validation_service.dart';
 import 'package:internly/services/document_picker_service.dart';
 import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/file_storage_service.dart';
@@ -383,6 +385,28 @@ class FakeFileStorageService implements FileStorageService {
       sizeBytes: bytes.length,
       uploadedAt: DateTime(2026, 10, 28),
     );
+  }
+}
+
+/// Records CV validation calls instead of reaching Cloud Functions.
+class FakeCvValidationService implements CvValidationService {
+  CvValidationResult result = const CvValidationResult(isValid: true);
+  AppException? error;
+
+  /// Completes the next check only when the test calls `complete()`.
+  Completer<void>? gate;
+
+  int calls = 0;
+  final List<String> paths = <String>[];
+
+  @override
+  Future<CvValidationResult> validate(String storagePath) async {
+    calls++;
+    paths.add(storagePath);
+    await gate?.future;
+    final failure = error;
+    if (failure != null) throw failure;
+    return result;
   }
 }
 
