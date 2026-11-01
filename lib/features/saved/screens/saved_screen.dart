@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../../core/widgets/app_top_bar.dart';
+import '../../../app/router.dart';
 import '../../../core/widgets/internship_card.dart';
+import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
+import '../../../services/auth_service.dart';
 import '../../../services/saved_internship_service.dart';
 import '../viewmodels/saved_providers.dart';
 
@@ -67,7 +70,11 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
     final savedAsync = ref.watch(savedInternshipsProvider);
 
     return Scaffold(
-      appBar: const AppTopBar.main(title: 'Saved Internships'),
+      appBar: MainTabAppBar(
+        title: 'Saved',
+        user: ref.watch(authStateChangesProvider).value,
+        onProfile: () => context.go(AppRoutes.profile),
+      ),
       body: savedAsync.when(
         loading: () =>
             const StateView.loading(message: 'Loading saved internships...'),

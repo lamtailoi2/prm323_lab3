@@ -17,7 +17,7 @@ Routes marked *planned* are the agreed proposal. An owner who changes one update
 | 2 | Search | `/search` | `SearchScreen` | — (query input, filter sheet) | Search | 🟡 placeholder |
 | 3 | Search Results | `/search/results` *(planned)* | `SearchResultsScreen` | Shared Firestore pool `/internships` (synced from SerpAPI) | Search | ⬜ |
 | 4 | Internship Detail | `/{tab}/internships/:jobKey` *(planned)* | `InternshipDetailScreen` | Firestore `/internships/{jobKey}` + `users/{uid}/savedInternships`, `…/applications` (saved / applied state) | Search | ⬜ ⚠️ DC-10 |
-| 5 | Saved Internships | `/saved` | `SavedScreen` | Firestore `users/{uid}/savedInternships` (real-time listener) | Saved | 🟡 placeholder |
+| 5 | Saved Internships | `/saved` | `SavedScreen` | Firestore `users/{uid}/savedInternships` (real-time listener) | Saved | ✅ UI (`MainTabAppBar`, work-mode filters, list, empty, error) · 🟡 open detail, unsave Undo and `ViewState` pending (DC-15) |
 | 6 | Application Form | `/apply/:jobKey` *(planned, root navigator: no bottom nav)* | `ApplicationFormScreen` | Firestore `users/{uid}` (prefill), Cloud Storage `cvs/{uid}/…` (`FileStorageService`) | Apply | ⬜ |
 | 7 | CV Match Check *(Lab 3)* | `/apply/:jobKey/match` *(planned)* | `CvMatchScreen` | Listing qualifications (`/internships/{jobKey}`) vs profile skills; Remote Config `cv_match_enabled` | Apply | ⬜ ⚠️ DC-09 |
 | 8 | Application Review | `/apply/:jobKey/review` *(planned)* | `ApplicationReviewScreen` | In-memory form state | Apply | ⬜ |
@@ -49,7 +49,7 @@ Routes marked *planned* are the agreed proposal. An owner who changes one update
 | Internship Card + Save Toggle | `InternshipCard` | `isSaved`, `onSaveToggle`, `badge` (Applied), pressed state, Semantics summary | ✅ |
 | Skill Tag | `AppTag` | — | ✅ |
 | Application Status / Badge | `StatusBadge` | `label`, `icon`, `color` (status mapping in the Applications feature) | ✅ ⚠️ DC-04 proposed |
-| App Bar | `AppTopBar` | `.main` / `.back`, `actions` | ✅ |
+| App Bar | `AppTopBar` (`core/widgets/app_top_bar.dart`); tab destinations compose it as `MainTabAppBar` (bell, avatar) | `.main` / `.back`, `actions` | ✅ |
 | Bottom Navigation | `AppShell` + `NavigationBarThemeData` | 5 fixed destinations | ✅ |
 | Dialog | `showAppDialog` / `AppDialog` | confirm / cancel / error via labels | ✅ |
 | Loading | `StateView.loading`, `InternshipCardSkeleton`, `SkeletonBox` | labeled spinner, card skeleton | ✅ |
@@ -81,6 +81,7 @@ Every difference between Figma and the app is listed here with its reason. Lab 3
 | DC-14 | 2026-10-28 | Home card (failed save) | The failure message from a save / unsave appears in a SnackBar at the bottom of the screen | **Lab 3 requirement**: every failed action needs a visible, plain-language message; the Home frames show no error component and Figma has no Snackbar spec (G-07) | Applied | ⬜ add Snackbar spec
 | DC-12 | 2026-10-22 | Home (search entry) | Hint shortened to `Search internships`; the shared field still uses the full placeholder elsewhere | Team decision: the full placeholder wrapped to two lines at 360 dp and made the Home search entry taller than the design (screen-spec allows a placeholder "such as") | Applied | ⬜ update Home frame hint |
 | DC-13 | 2026-10-22 | Home (Browse by Skill → Browse by Role) | The five fixed skill chips become role chips: Frontend, Backend, Full-stack, Mobile, Data/AI, Tester/QA, DevOps/Cloud, Other IT. Only roles present in the current pool are shown; non-IT listings are hidden. Skills remain as card tags. | **API/data limit**: Google Jobs has no category field, and the Lab 2 skill chips were sparse against real data (Flutter 1, NestJS 1, MongoDB 2, React 8, Python 8). The team chose an IT-only role taxonomy for discovery. | Applied | ⬜ add Home role chips frame |
+| DC-15 | 2026-11-01 | Saved Internships (app bar) | The header is the same bar as Home: title, notification bell, profile avatar, and **no brand mark** in the leading slot. The title is the bottom-navigation label (`Saved`). The screen keeps the name "Saved Internships" in docs and spec; `MainTabAppBar` is shared by both tabs | **Team decision**: tab headers must not differ, so a tab switch only changes the title, and the logo is removed from the bar so the title keeps the normal 16 dp text margin. The title uses the tab label because `Saved Internships` measures 211 dp at `type/heading/large` (Inter, 24 sp) and leaves only ~33 dp of slack at 360 dp, so it clips under larger system font scales | Applied | ⬜ update the Saved frame header |
 
 ## 5. Screen verification checklist
 

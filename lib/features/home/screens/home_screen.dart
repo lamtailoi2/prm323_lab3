@@ -11,16 +11,12 @@ import '../../../core/state/view_state.dart';
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/job_role.dart';
 import '../../../core/widgets/app_search_field.dart';
-import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/internship_card.dart';
+import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/state_view.dart';
-import '../../../models/app_user.dart';
 import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
-import '../../../theme/app_colors.dart';
-import '../../../theme/app_radii.dart';
-import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import '../../saved/viewmodels/saved_providers.dart';
 import '../../saved/viewmodels/saved_viewmodel.dart';
@@ -53,22 +49,10 @@ class HomeScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      appBar: AppTopBar.main(
+      appBar: MainTabAppBar(
         title: 'Home',
-        leading: const _BrandMark(),
-        leadingWidth: AppSizes.minTouchTarget,
-        actions: [
-          IconButton(
-            tooltip: 'Notifications',
-            icon: const Icon(Symbols.notifications_rounded),
-            onPressed: () =>
-                _showMessage(context, 'Notifications are coming soon.'),
-          ),
-          _ProfileAction(
-            user: user,
-            onPressed: () => context.go(AppRoutes.profile),
-          ),
-        ],
+        user: user,
+        onProfile: () => context.go(AppRoutes.profile),
       ),
       body: CustomScrollView(
         slivers: [
@@ -145,86 +129,6 @@ class HomeScreen extends ConsumerWidget {
         ),
       ],
     };
-  }
-
-  static void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
-  }
-}
-
-class _BrandMark extends StatelessWidget {
-  const _BrandMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: AppSpacing.screenHorizontal),
-      child: Semantics(
-        label: 'Internly',
-        image: true,
-        child: Center(
-          child: SizedBox.square(
-            dimension: AppSizes.brandMark,
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: AppRadii.mediumAll,
-              ),
-              child: const Icon(
-                Symbols.school_rounded,
-                size: AppSizes.iconSmall,
-                color: AppColors.onPrimary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileAction extends StatelessWidget {
-  const _ProfileAction({required this.user, required this.onPressed});
-
-  final AppUser? user;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final photoUrl = user?.photoUrl;
-    return IconButton(
-      tooltip: 'Profile',
-      onPressed: onPressed,
-      icon: ClipOval(
-        child: SizedBox.square(
-          dimension: AppSizes.profileAvatar,
-          child: ColoredBox(
-            color: AppColors.primaryContainer,
-            child: photoUrl == null
-                ? const _AvatarFallback()
-                : Image.network(
-                    photoUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const _AvatarFallback(),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AvatarFallback extends StatelessWidget {
-  const _AvatarFallback();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Icon(
-      Symbols.person_rounded,
-      size: AppSizes.iconSmall,
-      color: AppColors.primary,
-    );
   }
 }
 

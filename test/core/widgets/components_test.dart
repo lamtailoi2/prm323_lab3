@@ -5,13 +5,16 @@ import 'package:internly/core/widgets/app_search_field.dart';
 import 'package:internly/core/widgets/app_text_field.dart';
 import 'package:internly/core/widgets/app_top_bar.dart';
 import 'package:internly/core/widgets/internship_card.dart';
+import 'package:internly/core/widgets/main_tab_app_bar.dart';
 import 'package:internly/core/widgets/skeleton.dart';
 import 'package:internly/core/widgets/status_badge.dart';
+import 'package:internly/models/app_user.dart';
 import 'package:internly/theme/app_colors.dart';
 import 'package:internly/theme/app_theme.dart';
 import 'package:internly/theme/app_typography.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../helpers/fakes.dart';
 import '../../helpers/pump.dart';
 
 void main() {
@@ -225,6 +228,47 @@ void main() {
       await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
       expect(find.text('List'), findsOneWidget);
+    });
+  });
+
+  group('MainTabAppBar', () {
+    Future<void> pumpBar(
+      WidgetTester tester, {
+      double width = 360,
+      AppUser? user,
+    }) async {
+      setScreenSize(tester, width: width);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            appBar: MainTabAppBar(title: 'Saved', user: user, onProfile: () {}),
+          ),
+        ),
+      );
+    }
+
+    for (final width in checkWidths) {
+      testWidgets('every tab shows bell and avatar at $width dp', (
+        tester,
+      ) async {
+        await pumpBar(tester, width: width, user: testUser);
+
+        expect(find.text('Saved'), findsOneWidget);
+        // No brand mark in the leading slot (DC-15).
+        expect(find.byIcon(Symbols.school_rounded), findsNothing);
+        expect(find.byIcon(Symbols.notifications_rounded), findsOneWidget);
+        expect(find.byTooltip('Notifications'), findsOneWidget);
+        expect(find.byTooltip('Profile'), findsOneWidget);
+        // No photo, so the avatar falls back to the person glyph.
+        expect(find.byIcon(Symbols.person_rounded), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('touch targets are at least 48 dp', (tester) async {
+      await pumpBar(tester, user: testUser);
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     });
   });
 

@@ -33,7 +33,8 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final List<Widget>? actions;
 
-  /// Optional leading slot for the main variant, e.g. the Home brand mark.
+  /// Optional leading slot for the main variant (e.g. a brand mark); the tab
+  /// headers leave it empty and start at the normal text margin (DC-15).
   final Widget? leading;
   final double? leadingWidth;
 

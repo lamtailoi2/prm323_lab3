@@ -184,6 +184,8 @@ The label sits **above** the field, so `AppTextField` renders it as a separate `
 
 Clean surface: no shadow and no bottom border. Figma overrides the 1 px border in the Stitch prompt.
 
+Bottom-navigation destinations render the same `.main` bar through `MainTabAppBar` (`core/widgets/main_tab_app_bar.dart`): title (= destination label) → notification bell → profile avatar. Only the title changes between tabs. The leading slot stays empty, so there is no brand mark and the title keeps the normal 16 dp text margin (DC-15).
+
 ### 2.7 Bottom Navigation: 5 specimens · Themed (`NavigationBarThemeData`) + `AppShell`
 
 *"Always the same five destinations, with icon + label. Width 360; Applications keeps its full name. Selected primary; unselected textSecondary."*

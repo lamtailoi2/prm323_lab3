@@ -133,7 +133,23 @@ Branch `feat/saved-internships`, commit `569be13` plus the Save Toggle working t
 
 ---
 
-## Run template
+## Run 9: Shared tab header for Saved Internships (2026-11-01)
+
+Branch `feat/saved-internships` (1 commit ahead of `origin`), uncommitted working tree. Environment: Windows 11 (10.0.26200.9711), Flutter / Dart from `C:\Users\ADMIN\flutter`, emulator `Pixel_9` (Android 17 / API 37, 1080x2424 @ 420 dpi = 411 dp, windowed), Firebase project `prm-lab3`.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Completed; 80 files checked, 1 changed (`test/core/widgets/components_test.dart`) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **140 tests, all passed** (+9: `test/features/saved/saved_screen_test.dart` at 360 / 412 dp, bell, avatar → Profile, empty state, 48 dp targets; +3 `MainTabAppBar` cases in `components_test.dart`) |
+| 4 | `flutter build apk --debug --dart-define-from-file=.env` | **Passed**: `✓ Built build\app\outputs\flutter-apk\app-debug.apk` (81.5 s) |
+| 5 | On device: `adb install -r` + Saved tab, 412 dp | **Passed**: `Saved` title at the 16 dp text margin, bell and avatar as on Home; screenshot `evidence/screens/saved-header-412-20261101.png` |
+| 6 | On device: `adb shell wm size 945x2120` (360 dp), Saved tab | **Passed**: same header, title not clipped; screenshot `evidence/screens/saved-header-360-20261101.png`. `wm size reset` restored 1080x2424 |
+| 7 | Follow-up: brand mark removed from the tab header (`MainTabAppBar`) | **Passed after re-run**: `dart format` 0 changed; `flutter analyze` `No issues found!`; `flutter test` **140 passed**; APK rebuilt, reinstalled, both widths re-captured (rows 5–6 hold the screenshots of this state). Title width measured with the bundled Inter font: `Saved Internships` = 211.2 dp vs 244 dp available at 360 dp |
+| 8 | Bottom navigation at 360 dp | **Finding, not fixed here**: the `Applications` label wraps onto two lines at 360 dp (it fits at 412 dp). Out of scope for this change; needs its own fix against `design-system.md` §2.7 (`Labels type/caption`) |
+| 9 | ARTEMIS case for the tab header | **Not run**: no ARTEMIS daemon on this machine (Run 7 row 5) |
+
+---
 
 ```markdown
 ## Run N: <PR / milestone> (<date>)
