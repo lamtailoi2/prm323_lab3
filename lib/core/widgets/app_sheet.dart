@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../../core/errors/app_exception.dart';
-import '../../../core/widgets/app_button.dart';
-import '../../../theme/app_colors.dart';
-import '../../../theme/app_sizes.dart';
-import '../../../theme/app_spacing.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_sizes.dart';
+import '../../theme/app_spacing.dart';
+import '../errors/app_exception.dart';
+import 'app_button.dart';
 import 'cv_file_tile.dart';
 
-/// Opens a Profile bottom sheet above the bottom navigation, as in the Lab 2
-/// Edit Skills, Update Preferences and Update CV frames.
-Future<void> showProfileSheet(BuildContext context, WidgetBuilder builder) {
+/// Opens a bottom sheet above the bottom navigation, as in the Lab 2 Edit
+/// Skills, Update Preferences and Update CV frames (Profile) and the CV sheet
+/// of the Apply Form.
+Future<void> showAppSheet(BuildContext context, WidgetBuilder builder) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -20,11 +21,11 @@ Future<void> showProfileSheet(BuildContext context, WidgetBuilder builder) {
   );
 }
 
-/// Shared layout of the Profile sheets: header (icon, title, subtitle,
-/// close), scrolling content, and a sticky footer with one primary action
-/// and `Cancel`.
-class ProfileSheet extends StatelessWidget {
-  const ProfileSheet({
+/// Shared layout of the Profile and Apply Form sheets: header (icon, title,
+/// subtitle, close), scrolling content, and a sticky footer with one primary
+/// action and `Cancel`.
+class AppSheet extends StatelessWidget {
+  const AppSheet({
     super.key,
     required this.title,
     required this.subtitle,

@@ -8,6 +8,7 @@ import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_dialog.dart';
+import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/state_view.dart';
@@ -18,7 +19,6 @@ import '../../../theme/app_spacing.dart';
 import '../viewmodels/edit_profile_viewmodel.dart';
 import '../viewmodels/profile_viewmodel.dart';
 import '../widgets/academic_standing_sheet.dart';
-import '../widgets/profile_sheet.dart';
 
 /// Edit profile (`/profile/edit`, no bottom navigation), following the
 /// Edit Profile frame: photo, "Academic & personal details" and "Contact &
@@ -241,7 +241,7 @@ class _EditProfileFormState extends ConsumerState<_EditProfileForm> {
                   readOnly: true,
                   // Wraps instead of cutting "Graduating 2026" at 360 dp.
                   maxLines: null,
-                  onTap: () => showProfileSheet(
+                  onTap: () => showAppSheet(
                     context,
                     (_) => const AcademicStandingSheet(),
                   ),

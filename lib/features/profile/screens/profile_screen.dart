@@ -6,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../app/router.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
+import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../theme/app_spacing.dart';
@@ -16,7 +17,6 @@ import '../widgets/edit_preferences_sheet.dart';
 import '../widgets/edit_skills_sheet.dart';
 import '../widgets/profile_header_card.dart';
 import '../widgets/profile_sections.dart';
-import '../widgets/profile_sheet.dart';
 import '../widgets/update_cv_sheet.dart';
 
 /// Profile tab (Lab 2 `profile-final.png`, `docs/design/screen-spec.md`
@@ -63,7 +63,7 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: AppSpacing.section),
         CvSection(
           cv: data.profile.cv,
-          onUpload: () => showProfileSheet(
+          onUpload: () => showAppSheet(
             context,
             (_) => UpdateCvSheet(current: data.profile.cv),
           ),
@@ -76,14 +76,13 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: AppSpacing.section),
         SkillsSection(
           skills: data.profile.skills,
-          onEdit: () =>
-              showProfileSheet(context, (_) => const EditSkillsSheet()),
+          onEdit: () => showAppSheet(context, (_) => const EditSkillsSheet()),
         ),
         const SizedBox(height: AppSpacing.section),
         PreferencesSection(
           preferences: data.profile.preferences,
           onEdit: () =>
-              showProfileSheet(context, (_) => const EditPreferencesSheet()),
+              showAppSheet(context, (_) => const EditPreferencesSheet()),
         ),
       ],
     };

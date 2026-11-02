@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/utils/display_format.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_tag.dart';
+import '../../../core/widgets/cv_file_tile.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../models/user_profile.dart';
@@ -11,7 +12,6 @@ import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
-import 'cv_file_tile.dart';
 import 'profile_section.dart';
 
 /// "CV / Resume": the default CV with a view action and `Replace CV`, or

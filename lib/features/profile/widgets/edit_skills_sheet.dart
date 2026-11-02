@@ -4,13 +4,13 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/widgets/app_search_field.dart';
+import '../../../core/widgets/app_sheet.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import '../viewmodels/edit_skills_viewmodel.dart';
 import 'profile_section.dart';
-import 'profile_sheet.dart';
 
 /// Edit skills sheet (Lab 2 `profile-skills.png`): search, the selected
 /// skills with remove and `Clear all`, and suggested skills to toggle.
@@ -24,7 +24,7 @@ class EditSkillsSheet extends ConsumerWidget {
     final textTheme = Theme.of(context).textTheme;
     final selected = state.selected.toSet();
 
-    return ProfileSheet(
+    return AppSheet(
       icon: Symbols.code_rounded,
       title: 'Edit skills',
       subtitle: 'Select your technical proficiencies',
