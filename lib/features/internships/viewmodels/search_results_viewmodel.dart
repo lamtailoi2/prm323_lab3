@@ -5,7 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
+import '../../../core/utils/distinct_listings.dart';
 import '../../../models/internship.dart';
+import '../../../models/user_profile.dart';
+import '../../../services/analytics_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/internship_service.dart';
 import '../../../services/saved_service.dart';
@@ -75,6 +78,12 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
   List<Internship>? _rawList;
   bool _initialized = false;
 
+  /// Search term and filter-sheet source waiting for their results, so
+  /// `search` and `search_filter_apply` report the count the student sees
+  /// even when the pool arrives after navigation.
+  String? _pendingSearchTerm;
+  String? _pendingFilterSource;
+
   @override
   SearchResultsState build() {
     final internshipService = ref.watch(internshipServiceProvider);
@@ -110,6 +119,9 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
         );
 
     state = state.copyWith(query: query, criteria: initialCriteria);
+    if (query.trim().isNotEmpty) _pendingSearchTerm = query.trim();
+    // Criteria only arrive from the Search tab's filter sheet.
+    if (criteria != null) _pendingFilterSource = 'search';
     _filterAndEmit();
   }
 
@@ -117,6 +129,7 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
     final trimmed = query.trim();
     state = state.copyWith(query: trimmed);
     if (trimmed.isNotEmpty) {
+      _pendingSearchTerm = trimmed;
       unawaited(_recordSearch(trimmed));
     }
     _filterAndEmit();
@@ -129,6 +142,7 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
 
   void setCriteria(SearchFilterCriteria criteria) {
     state = state.copyWith(criteria: criteria);
+    _pendingFilterSource = 'search_results';
     _filterAndEmit();
   }
 
@@ -241,7 +255,7 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
 
   void _onInternshipsData(List<Internship> data) {
     if (!ref.mounted) return;
-    _rawList = data;
+    _rawList = distinctListings(data);
     _filterAndEmit();
   }
 
@@ -272,6 +286,7 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
     if (raw == null) return;
 
     final filtered = _applyFilters(raw, state.query, state.criteria);
+    _logPending(filtered.length);
     final sorted = [...filtered];
 
     switch (state.sortBy) {
@@ -302,6 +317,43 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
       state = state.copyWith(results: const ViewEmpty());
     } else {
       state = state.copyWith(results: ViewData(sorted));
+    }
+  }
+
+  void _logPending(int resultCount) {
+    final term = _pendingSearchTerm;
+    final filterSource = _pendingFilterSource;
+    if (term == null && filterSource == null) return;
+    _pendingSearchTerm = null;
+    _pendingFilterSource = null;
+    final analytics = ref.read(analyticsServiceProvider);
+    if (term != null) {
+      unawaited(
+        analytics.logEvent('search', {
+          'search_term': term.length <= 100 ? term : term.substring(0, 100),
+          'result_count': resultCount,
+          'source': 'search',
+        }),
+      );
+    }
+    if (filterSource != null) {
+      final criteria = state.criteria;
+      final modes = [
+        for (final mode in criteria.workModes)
+          InternshipPreferences.storageValue(mode),
+      ]..sort();
+      final location = criteria.location;
+      unawaited(
+        analytics.logEvent('search_filter_apply', {
+          'work_mode': modes.isEmpty ? 'any' : modes.join(','),
+          'location': location == null || location == 'Any location'
+              ? 'any'
+              : location,
+          'skill_count': criteria.skills.length,
+          'result_count': resultCount,
+          'source': filterSource,
+        }),
+      );
     }
   }
 

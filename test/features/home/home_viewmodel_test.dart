@@ -68,6 +68,7 @@ void main() {
     expect(read().feed, isA<ViewData<HomeFeed>>());
     expect(feed().recommended.single.jobId, 'job-1');
     expect(analytics.events, contains('search'));
+    expect(analytics.parameters['search']?['source'], 'home');
   });
 
   test('splits the pool by the two Remote Config limits', () async {

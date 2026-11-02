@@ -9,6 +9,7 @@ import 'package:internly/features/internships/models/search_filter_criteria.dart
 import 'package:internly/features/internships/screens/search_results_screen.dart';
 import 'package:internly/features/internships/widgets/search_results_filter_sheet.dart';
 import 'package:internly/models/internship.dart';
+import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/saved_service.dart';
@@ -22,11 +23,13 @@ void main() {
   late FakeInternshipService internships;
   late FakeSavedService saved;
   late FakeSearchHistoryService history;
+  late FakeAnalyticsService analytics;
 
   setUp(() {
     internships = FakeInternshipService();
     saved = FakeSavedService();
     history = FakeSearchHistoryService();
+    analytics = FakeAnalyticsService();
   });
 
   tearDown(() async {
@@ -49,6 +52,7 @@ void main() {
           internshipServiceProvider.overrideWithValue(internships),
           savedServiceProvider.overrideWithValue(saved),
           searchHistoryServiceProvider.overrideWithValue(history),
+          analyticsServiceProvider.overrideWithValue(analytics),
           currentUserIdProvider.overrideWithValue(testUser.uid),
         ],
         child: MaterialApp(

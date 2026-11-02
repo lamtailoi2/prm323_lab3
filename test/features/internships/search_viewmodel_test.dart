@@ -230,4 +230,30 @@ void main() {
       expect(viewModel.countMatching(remote, query: 'flutter'), 1);
     },
   );
+
+  test('the same job under several sync keywords counts once in trending '
+      'and in the filter preview', () async {
+    internships.results = [
+      testInternship(
+        '1',
+        title: 'Flutter Intern',
+        companyName: 'FPT Software',
+        searchRank: 0,
+        skills: ['Flutter'],
+      ),
+      testInternship(
+        '2',
+        title: 'Flutter Intern',
+        companyName: 'FPT Software',
+        searchRank: 3,
+        skills: ['Flutter'],
+      ),
+      testInternship('3', skills: ['Flutter']),
+    ];
+    final viewModel = listen();
+    await settle();
+
+    expect(trending().single, const SkillCount('Flutter', 2));
+    expect(viewModel.countMatching(const SearchFilterCriteria()), 2);
+  });
 }
