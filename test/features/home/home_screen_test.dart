@@ -9,6 +9,7 @@ import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/widgets/app_button.dart';
 import 'package:internly/core/widgets/internship_card.dart';
 import 'package:internly/core/widgets/skeleton.dart';
+import 'package:internly/features/applications/viewmodels/applied_providers.dart';
 import 'package:internly/features/home/screens/home_screen.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/services/analytics_service.dart';
@@ -29,6 +30,7 @@ void main() {
   late FakeAnalyticsService analytics;
   late FakeSavedInternshipService saved;
   late FakeUserProfileService profiles;
+  late Set<String> appliedKeys;
 
   setUp(() {
     profiles = FakeUserProfileService();
@@ -37,6 +39,7 @@ void main() {
     auth = FakeAuthService(initialUser: testUser);
     analytics = FakeAnalyticsService();
     saved = FakeSavedInternshipService();
+    appliedKeys = <String>{};
   });
 
   tearDown(() async {
@@ -77,6 +80,9 @@ void main() {
           savedInternshipServiceProvider.overrideWithValue(saved),
           currentUserIdProvider.overrideWithValue(testUser.uid),
           userProfileServiceProvider.overrideWithValue(profiles),
+          appliedInternshipKeysProvider.overrideWith(
+            (ref) => Stream.value(appliedKeys),
+          ),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light(),
@@ -334,5 +340,16 @@ void main() {
     await pumpHome(tester);
     await tester.pumpAndSettle();
     await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+  });
+
+  testWidgets('a listing tracked in My Applications shows Applied', (
+    tester,
+  ) async {
+    internships.results = page;
+    appliedKeys = {page.first.key};
+    await pumpHome(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Applied'), findsOneWidget);
   });
 }

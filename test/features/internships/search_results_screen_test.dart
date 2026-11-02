@@ -5,6 +5,7 @@ import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/widgets/app_button.dart';
 import 'package:internly/core/widgets/app_search_field.dart';
 import 'package:internly/core/widgets/internship_card.dart';
+import 'package:internly/features/applications/viewmodels/applied_providers.dart';
 import 'package:internly/features/internships/models/search_filter_criteria.dart';
 import 'package:internly/features/internships/screens/search_results_screen.dart';
 import 'package:internly/features/internships/widgets/search_results_filter_sheet.dart';
@@ -24,12 +25,14 @@ void main() {
   late FakeSavedService saved;
   late FakeSearchHistoryService history;
   late FakeAnalyticsService analytics;
+  late Set<String> appliedKeys;
 
   setUp(() {
     internships = FakeInternshipService();
     saved = FakeSavedService();
     history = FakeSearchHistoryService();
     analytics = FakeAnalyticsService();
+    appliedKeys = <String>{};
   });
 
   tearDown(() async {
@@ -53,6 +56,9 @@ void main() {
           savedServiceProvider.overrideWithValue(saved),
           searchHistoryServiceProvider.overrideWithValue(history),
           analyticsServiceProvider.overrideWithValue(analytics),
+          appliedInternshipKeysProvider.overrideWith(
+            (ref) => Stream.value(appliedKeys),
+          ),
           currentUserIdProvider.overrideWithValue(testUser.uid),
         ],
         child: MaterialApp(
@@ -358,5 +364,20 @@ void main() {
 
     // Bottom sheet dismissed, results filtered to 2
     expect(find.byType(InternshipCard), findsNWidgets(2));
+  });
+
+  testWidgets('a listing tracked in My Applications shows Applied', (
+    tester,
+  ) async {
+    internships.results = sampleListings;
+    appliedKeys = {sampleListings.first.key};
+    await pumpSearchResults(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Applied'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(RegExp(r'Flutter Developer Intern[\s\S]*Applied')),
+      findsOneWidget,
+    );
   });
 }

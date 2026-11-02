@@ -4,6 +4,7 @@ import '../core/utils/allowance.dart';
 import '../core/utils/firestore_reader.dart';
 import '../core/utils/job_key.dart';
 import '../core/utils/job_role.dart';
+import '../core/utils/listing_extensions.dart';
 import '../core/utils/listing_text.dart';
 import '../core/utils/posted_age.dart';
 import '../core/utils/skill_matcher.dart';
@@ -87,7 +88,11 @@ class Internship {
       salary:
           detected?.optionalString('salary')?.trim() ??
           allowanceFromText(description),
-      postedTextSource: detected?.optionalString('posted_at')?.trim(),
+      // The `hl=vi` sync gets no `detected_extensions`; the posted age and
+      // the schedule type are then only in the `extensions` chips.
+      postedTextSource:
+          detected?.optionalString('posted_at')?.trim() ??
+          postedTextFromExtensions(extensions),
       logoUrl: _httpsUrl(reader.optionalString('thumbnail')),
       skills: findSkills(
         [
@@ -100,7 +105,9 @@ class Internship {
       // Internship Detail is cleaned of Markdown.
       description: _plainOrNull(description),
       highlights: _highlights(json['job_highlights']),
-      scheduleType: detected?.optionalString('schedule_type')?.trim(),
+      scheduleType:
+          detected?.optionalString('schedule_type')?.trim() ??
+          scheduleTypeFromExtensions(extensions),
       // SerpAPI has sent both "LinkedIn" and "via LinkedIn" over time.
       via: via?.replaceFirst(RegExp('^via ', caseSensitive: false), ''),
     );

@@ -123,6 +123,24 @@ void main() {
     expect(internship.searchRank, 3);
   });
 
+  test(
+    'without detected_extensions (hl=vi) the chips give the type and age',
+    () {
+      final syncedAt = DateTime.utc(2026, 11, 2, 1);
+      final internship = Internship.fromFirestore('abc123', {
+        'raw': job({
+          'extensions': ['3 ngày trước', 'Toàn thời gian và Thực tập'],
+          'detected_extensions': null,
+        }),
+        'syncedAt': syncedAt,
+      });
+
+      expect(internship.scheduleType, 'Full-time and Internship');
+      expect(internship.postedTextSource, '3 ngày trước');
+      expect(internship.postedAt, syncedAt.subtract(const Duration(days: 3)));
+    },
+  );
+
   test('fromFirestore skips a document without raw job data', () {
     expect(
       () => Internship.fromFirestore('abc123', {'syncedAt': DateTime.now()}),

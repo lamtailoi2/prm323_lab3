@@ -8,6 +8,7 @@ import 'package:internly/app/router.dart';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/widgets/internship_card.dart';
 import 'package:internly/core/widgets/skeleton.dart';
+import 'package:internly/features/applications/viewmodels/applied_providers.dart';
 import 'package:internly/features/saved/screens/saved_screen.dart';
 import 'package:internly/features/saved/viewmodels/saved_providers.dart';
 import 'package:internly/models/internship.dart';
@@ -24,11 +25,13 @@ void main() {
   late FakeSavedInternshipService saved;
   late FakeAuthService auth;
   late FakeAnalyticsService analytics;
+  late Set<String> appliedKeys;
 
   setUp(() {
     saved = FakeSavedInternshipService();
     auth = FakeAuthService(initialUser: testUser);
     analytics = FakeAnalyticsService();
+    appliedKeys = <String>{};
   });
 
   tearDown(() async {
@@ -69,6 +72,9 @@ void main() {
             savedInternshipsProvider.overrideWith((ref) => savedStream),
           authServiceProvider.overrideWithValue(auth),
           analyticsServiceProvider.overrideWithValue(analytics),
+          appliedInternshipKeysProvider.overrideWith(
+            (ref) => Stream.value(appliedKeys),
+          ),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light(),
@@ -313,5 +319,16 @@ void main() {
     expect(find.text('Frontend Developer Intern'), findsOneWidget);
     expect(find.text('Software Engineering Intern - Mobile'), findsNothing);
     expect(saved.savedKeys, [page.last.key]);
+  });
+
+  testWidgets('a listing tracked in My Applications shows Applied', (
+    tester,
+  ) async {
+    saved.seed(page);
+    appliedKeys = {page.first.key};
+    await pumpSaved(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Applied'), findsOneWidget);
   });
 }

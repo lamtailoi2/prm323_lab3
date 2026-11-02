@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/utils/location_match.dart';
+import '../../../core/utils/text_fold.dart';
 import '../../../models/internship.dart';
 
 /// Filter criteria for internships search.
@@ -69,6 +70,13 @@ class SearchFilterCriteria {
         !matchesPreferredLocation(internship.location, location)) {
       return false;
     }
+    // Job type filter: Google's `schedule_type`, the "Job type" fact on
+    // Internship Detail. The sync asks Google in Vietnamese (`hl=vi`), so
+    // both spellings match; a listing that does not state its type is left
+    // out rather than guessed from the title.
+    if (jobType case final type? when type != 'Any job type') {
+      if (!_matchesJobType(internship.scheduleType, type)) return false;
+    }
     // Allowance range filter
     if (allowanceRange != null && allowanceRange != 'Any allowance') {
       if (allowanceRange == 'Paid only') {
@@ -97,6 +105,22 @@ class SearchFilterCriteria {
       }
     }
     return true;
+  }
+
+  /// Words of each Job type option, folded (`foldText`), in English and in
+  /// Vietnamese.
+  static const Map<String, List<String>> _jobTypeWords = {
+    'Internship': ['internship', 'intern', 'thuc tap'],
+    'Full-time': ['full time', 'toan thoi gian'],
+    'Part-time': ['part time', 'ban thoi gian'],
+  };
+
+  static bool _matchesJobType(String? scheduleType, String jobType) {
+    final words = _jobTypeWords[jobType];
+    if (words == null) return true;
+    if (scheduleType == null) return false;
+    final folded = foldText(scheduleType);
+    return words.any((word) => containsWords(folded, word));
   }
 
   SearchFilterCriteria copyWith({

@@ -7,6 +7,7 @@ import '../../theme/app_sizes.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_theme.dart';
 import 'app_tag.dart';
+import 'status_badge.dart';
 
 /// Internship Card component (Figma page 05 "Internship Card / 3 specimens").
 ///
@@ -28,6 +29,7 @@ class InternshipCard extends StatefulWidget {
     this.postedText,
     this.isSaved = false,
     this.badge,
+    this.isApplied = false,
     this.onTap,
     this.onSaveToggle,
     this.semanticsLabel,
@@ -36,6 +38,15 @@ class InternshipCard extends StatefulWidget {
   /// Shown instead of the allowance when the listing does not state one
   /// (G-17, DC-10).
   static const String allowanceNotDisclosed = 'Not disclosed';
+
+  /// Badge of a listing the student tracks in My Applications (Flow 2c:
+  /// "In Search Results the card shows an `Applied` badge"), with the check
+  /// icon so it does not rely on color alone.
+  static const Widget _appliedBadge = StatusBadge(
+    label: 'Applied',
+    icon: Symbols.check_circle_rounded,
+    color: AppColors.success,
+  );
 
   final String title;
   final String companyName;
@@ -57,8 +68,13 @@ class InternshipCard extends StatefulWidget {
   final String? postedText;
   final bool isSaved;
 
-  /// Optional badge such as "Applied" (Flow 2c).
+  /// Optional badge; [isApplied] shows the `Applied` one.
   final Widget? badge;
+
+  /// The student tracks this listing in My Applications (Flow 2c): shows the
+  /// `Applied` badge and says "Applied" in the card summary, which screen
+  /// readers and ARTEMIS read (the visible details are excluded).
+  final bool isApplied;
   final VoidCallback? onTap;
 
   /// Hides the save action when null.
@@ -149,6 +165,9 @@ class _InternshipCardState extends State<InternshipCard> {
   }
 
   List<Widget> _details(TextTheme textTheme) {
+    final badge =
+        widget.badge ??
+        (widget.isApplied ? InternshipCard._appliedBadge : null);
     return [
       Wrap(
         spacing: AppSpacing.s16,
@@ -170,7 +189,7 @@ class _InternshipCardState extends State<InternshipCard> {
       ],
       if (widget.allowanceText != null ||
           widget.postedText != null ||
-          widget.badge != null) ...[
+          badge != null) ...[
         const SizedBox(height: AppSpacing.s8),
         Row(
           children: [
@@ -188,7 +207,7 @@ class _InternshipCardState extends State<InternshipCard> {
             if (widget.postedText case final posted?) ...[
               Text(posted, style: textTheme.bodySmall),
             ],
-            if (widget.badge case final badge?) ...[
+            if (badge case final badge?) ...[
               const SizedBox(width: AppSpacing.s8),
               badge,
             ],
@@ -206,6 +225,7 @@ class _InternshipCardState extends State<InternshipCard> {
       ?widget.allowanceText,
       ?widget.postedText,
       if (widget.isSaved) 'Saved',
+      if (widget.isApplied) 'Applied',
     ].join('. ');
   }
 
