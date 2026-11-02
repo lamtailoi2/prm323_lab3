@@ -6,7 +6,8 @@ import '../../../services/analytics_service.dart';
 import '../../../services/saved_internship_service.dart';
 import 'saved_providers.dart';
 
-/// Outcome of [SavedViewModel.remove] and [SavedViewModel.restore].
+/// Outcome of [SavedViewModel.toggleAndReport], [SavedViewModel.remove] and
+/// [SavedViewModel.restore].
 ///
 /// `done = false, error = null` means the tap was ignored because another
 /// saved write was still running, so the screen shows nothing for it.
@@ -52,29 +53,14 @@ class SavedViewModel extends Notifier<AsyncValue<void>> {
   Future<void> toggle(Internship internship, {required String source}) async {
     // Ignore repeated taps while the previous write is still running.
     if (_writing) return;
-
-    final service = ref.read(savedInternshipServiceProvider);
-    final analytics = ref.read(analyticsServiceProvider);
-    final isSaved = _savedIds.contains(internship.key);
-
-    _writing = true;
     state = const AsyncLoading();
-    try {
-      if (isSaved) {
-        await service.remove(internship.key);
-      } else {
-        await service.save(internship);
-        await analytics.logEvent('internship_save', {
-          'internship_id': internship.key,
-          'source': source,
-        });
-      }
-      if (ref.mounted) state = const AsyncData(null);
-    } on AppException catch (error, stack) {
-      if (ref.mounted) state = AsyncError(error, stack);
-    } finally {
-      _writing = false;
-    }
+    // One write path for both callers (CR-06).
+    final result = await toggleAndReport(internship, source: source);
+    if (!ref.mounted) return;
+    state = switch (result.error) {
+      final error? => AsyncError(error, StackTrace.current),
+      null => const AsyncData(null),
+    };
   }
 
   /// Same as [toggle], but returns the outcome instead of storing it in
