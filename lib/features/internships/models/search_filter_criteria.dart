@@ -46,7 +46,7 @@ class SearchFilterCriteria {
   /// (title, company, skills, sync keyword or location). Shared by Search,
   /// which previews the match count, and Search Results.
   bool matches(Internship internship, {String query = ''}) {
-    final q = query.trim().toLowerCase();
+    final q = removeDiacritics(query.trim());
     // Work mode filter (multi-select)
     if (workModes.isNotEmpty) {
       if (internship.workMode == null ||
@@ -89,18 +89,22 @@ class SearchFilterCriteria {
         }
       }
     }
-    // Query filter
+    // Query filter, without Vietnamese accents (the `hl=vi` sync stores
+    // `Hà Nội`, `Thực tập sinh`) and also without spaces (`Hanoi`), but with
+    // symbols kept so `C#` is not `C` (CR-09).
     if (q.isNotEmpty) {
-      final inTitle = internship.title.toLowerCase().contains(q);
-      final inCompany = internship.companyName.toLowerCase().contains(q);
-      final inSkills = internship.skills.any(
-        (s) => s.toLowerCase().contains(q),
-      );
-      final inKeyword =
-          internship.searchKeyword?.toLowerCase().contains(q) ?? false;
-      final inLocation =
-          internship.location?.toLowerCase().contains(q) ?? false;
-      if (!inTitle && !inCompany && !inSkills && !inKeyword && !inLocation) {
+      final compact = q.replaceAll(' ', '');
+      bool has(String? text) {
+        if (text == null) return false;
+        final plain = removeDiacritics(text);
+        return plain.contains(q) || plain.replaceAll(' ', '').contains(compact);
+      }
+
+      if (!has(internship.title) &&
+          !has(internship.companyName) &&
+          !internship.skills.any(has) &&
+          !has(internship.searchKeyword) &&
+          !has(internship.location)) {
         return false;
       }
     }
