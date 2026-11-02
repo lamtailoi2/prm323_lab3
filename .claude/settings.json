@@ -12,7 +12,20 @@
       "Bash(flutter analyze *)",
       "Bash(timeout 90 flutter run --dart-define-from-file=.env -d emulator-5554)",
       "Bash(timeout 120 flutter build apk --debug --dart-define-from-file=.env)",
-      "Bash(flutter build *)"
+      "Bash(flutter build *)",
+      "Bash(dart format *)",
+      "Bash(flutter test *)",
+      "Read(//tmp/**)",
+      "Read(//c/Users/Lenovo/AppData/Local/Android/sdk/cmdline-tools/latest/bin/**)",
+      "Bash(yes)",
+      "Bash(./sdkmanager.bat --licenses)",
+      "Bash(./sdkmanager.bat \"ndk;28.2.13676358\")",
+      "Bash(./sdkmanager.bat --list)",
+      "Bash(./sdkmanager.bat \"ndk/28.2.13676358\")",
+      "Bash(sed -n '/## G-26/,/^## G-27/p' docs/records/handoff-gaps.md)"
+    ],
+    "additionalDirectories": [
+      "D:\\PRM\\prm323_lab3\\docs\\records"
     ]
   }
 }

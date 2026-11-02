@@ -64,7 +64,7 @@ Every instruction states the start, the steps and what must be visible, and asks
 | TC-01 | Sign-in | App installed, signed out (test signs out first if needed); Analytics debug mode | Tap `Continue with Google` → pick the test account in the native picker | `screen_title == "Home"`; nav labels `[Home, Search, Saved, Applications, Profile]`; Login button gone; **`login` event in Logcat** | Native | `test_auth.py` | Ready |
 | TC-02 | Navigation | Signed in | Tap Search, Saved, Applications, Profile, Home | For each tap: app bar title == tab and the tab is selected | Happy | `test_navigation.py` | Ready |
 | TC-03 | Flow 1 | Signed in | Home → search `Flutter intern` → Filters → `Remote` → Show results | `result_count > 0`; first card title not empty; every visible card shows `Remote` | Happy | `test_search.py` | Planned |
-| TC-04 | Flow 1a | Signed in | Search a keyword with no results (e.g. `zzqx intern`) | Empty state text `No results found` and a `Clear filters` button | Error | `test_search.py` | Planned |
+| TC-04 | Flow 1a | Signed in | Search a keyword with no results (e.g. `zzqx intern`) | Empty state title `No internships found` and a `Clear filters` button | Error | `test_search.py` | Planned |
 | TC-05 | Flow 1 → detail | Signed in | Search `Flutter intern` → open the first card | Detail title and company == the card's; `Apply now` visible; report the job title | Happy | `test_detail.py` | Planned |
 | TC-06 | Flow 2 + 2d | Signed in; profile complete with skills that do not cover every requirement | From a listing not applied to: Apply now → Continue → read CV Match Check → Continue to review → Submit | Match summary `N of M` with `N < M`; at least 1 suggestion; Success shows the same title and company | Happy | `test_apply.py` | Planned |
 | TC-07 | Flow 2c | Signed in; TC-06 listing already applied (test applies first if needed) | Open the same listing again | `You applied on …` visible; `Apply now` not visible; `View application` opens status `Submitted` | Alt | `test_apply.py` | Planned |
@@ -74,9 +74,10 @@ Every instruction states the start, the steps and what must be visible, and asks
 | TC-11 | Export and upload | Signed in; at least one application | Profile → Firebase demo → Export report → wait | Progress shown; success with file name `*.pdf` and a download URL; report listed with today's date | Happy | `test_export.py` | Planned |
 | TC-12 | Remote Config | Console values set to non-defaults before the run (e.g. `home_recommended_limit = 3`) | Profile → Firebase demo → read Remote Config values; open Home | Reported values == console values; Home shows exactly that many recommended cards | Happy | `test_profile.py` | Planned |
 | TC-13 | Notifications | Signed in; app in background; test message sent from the console | Open the notification from the shade | App opens the screen named in the message; Notification Center lists the message title | Native | `test_notifications.py` | Planned |
-| TC-14 | Sign-out | Signed in (test signs in first if needed) | Profile → Sign out → press Back | Login visible; bottom navigation not visible | Happy | `test_auth.py` | Ready |
+| TC-14 | Sign-out | Signed in (test signs in first if needed) | Profile → scroll to Settings & support → Sign out → press Back | Login visible; bottom navigation not visible | Happy | `test_auth.py` | Ready |
 | TC-15 | Permission | Fresh install on Android 13+ | First launch after sign-in | Notification permission dialog shown; after Allow, the Firebase demo area shows permission granted | Native | `test_notifications.py` | Planned |
 | TC-16 | Home role discovery | Signed in; at least one Frontend listing in the pool | Home → read `Browse by Role` / `All roles` → tap `Frontend` → tap `All roles` | `selected_role == "Frontend"` with a check mark; at least one recommended title; `after_all_roles_screen_title == "Search"` | Happy | `test_home_roles.py` | Ready (not run) |
+| TC-17 | Profile upkeep (Flow 2 alt., 2d `Edit skills`) | Signed in; `Docker` not yet in the profile skills (test removes it first if needed) | Profile → `Add skill` → search `dock` → tap `Docker` → `Save changes` | Sheet closed; `Technical skills` lists `Docker`; reported skills include `Docker` | Alt | `test_profile_skills.py` | Ready (not run) |
 
 ### Coverage (Lab 3 §7)
 
@@ -87,6 +88,7 @@ Every instruction states the start, the steps and what must be visible, and asks
 | Main search / primary action | TC-03, TC-06 |
 | Each top-level tab | TC-02 |
 | Home role discovery | TC-16 |
+| Profile (edit skills, Flow 2d target) | TC-17 |
 | Each kind of detail screen | Internship Detail TC-05 · Application Detail TC-09 |
 | Export and upload | TC-11 |
 | Remote Config values on screen | TC-12 |
@@ -99,10 +101,20 @@ Every instruction states the start, the steps and what must be visible, and asks
 
 Fill from `e2e_test/artifacts/runs.jsonl`; link traces / replays stored in `evidence/artemis/`.
 
+**Attempt 2026-10-31 (not run):** the Android side is ready — `emulator-5554`
+(API 37) is connected and `com.group3.internly` is installed — but the ARTEMIS
+daemon at `127.0.0.1:8000` is not running, `uv` and a real Python are not
+installed, and there is no `google/artemis` checkout or model API key on this
+machine. No test was executed and no `runs.jsonl` entry was written. See
+[`../evidence/artemis/e2e-environment-20261031.md`](../evidence/artemis/e2e-environment-20261031.md).
+
 | Test ID | Runs | Passed | Pass rate | Avg time (s) | Trace IDs / evidence | Notes |
 |---|---|---|---|---|---|---|
-| TC-01 | | | | | | |
-| TC-16 | 0 | 0 | n/a | n/a | **Not run**: no Android device/emulator and no ARTEMIS daemon (`evidence/artemis/e2e-environment-20261022.md`) | Case added 2026-10-22; must pass 3/3 before marked Done |
+| TC-01 | 0 | 0 | n/a | n/a | **Not run 2026-10-31**: no ARTEMIS daemon/toolchain (`evidence/artemis/e2e-environment-20261031.md`) | Ready case; must pass 3/3 before marked Done |
+| TC-02 | 0 | 0 | n/a | n/a | **Not run 2026-10-31**: same environment blocker | Ready case; must pass 3/3 before marked Done |
+| TC-14 | 0 | 0 | n/a | n/a | **Not run 2026-10-31**: same environment blocker | Ready case; must pass 3/3 before marked Done |
+| TC-16 | 0 | 0 | n/a | n/a | **Not run**: no Android device/emulator and no ARTEMIS daemon (`evidence/artemis/e2e-environment-20261022.md`); still not run 2026-10-31 (no ARTEMIS daemon/toolchain, `evidence/artemis/e2e-environment-20261031.md`) | Case added 2026-10-22; must pass 3/3 before marked Done |
+| TC-17 | 0 | 0 | n/a | n/a | **Not run**: no Android device/emulator and no ARTEMIS daemon on this machine; still not run 2026-10-31 (no ARTEMIS daemon/toolchain, `evidence/artemis/e2e-environment-20261031.md`) | Case added 2026-10-28; must pass 3/3 before marked Done |
 | … | | | | | | |
 
 **Flaky / failed / skipped tests:** a test that does not pass 3 of 3 is flaky. For each one, record the cause (app bug, timing, or ambiguous instruction) and the fix.

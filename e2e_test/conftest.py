@@ -37,7 +37,8 @@ SIGNED_IN = (
 )
 SIGNED_OUT = (
     "Open the Internly app. If the bottom navigation bar is visible, tap "
-    "'Profile', then tap 'Sign out' and wait for the Login screen."
+    "'Profile', scroll down to 'Settings & support', tap 'Sign out' and wait "
+    "for the Login screen."
 )
 
 

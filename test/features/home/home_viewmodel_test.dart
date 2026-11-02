@@ -6,9 +6,12 @@ import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/state/view_state.dart';
 import 'package:internly/core/utils/job_role.dart';
 import 'package:internly/features/home/viewmodels/home_viewmodel.dart';
+import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
+import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
+import 'package:internly/services/user_profile_service.dart';
 
 import '../../helpers/fakes.dart';
 
@@ -16,23 +19,29 @@ void main() {
   late FakeInternshipService internships;
   late FakeRemoteConfigService remoteConfig;
   late FakeAnalyticsService analytics;
+  late FakeUserProfileService profiles;
   late ProviderContainer container;
 
   setUp(() {
     internships = FakeInternshipService();
     remoteConfig = FakeRemoteConfigService();
     analytics = FakeAnalyticsService();
+    profiles = FakeUserProfileService();
     container = ProviderContainer.test(
       overrides: [
         internshipServiceProvider.overrideWithValue(internships),
         remoteConfigServiceProvider.overrideWithValue(remoteConfig),
         analyticsServiceProvider.overrideWithValue(analytics),
+        // Signed in before Home opens, as the router guarantees.
+        currentUserIdProvider.overrideWithValue(testUser.uid),
+        userProfileServiceProvider.overrideWithValue(profiles),
       ],
     );
   });
 
   tearDown(() async {
     await internships.dispose();
+    await profiles.dispose();
     remoteConfig.dispose();
   });
 
@@ -59,6 +68,7 @@ void main() {
     expect(read().feed, isA<ViewData<HomeFeed>>());
     expect(feed().recommended.single.jobId, 'job-1');
     expect(analytics.events, contains('search'));
+    expect(analytics.parameters['search']?['source'], 'home');
   });
 
   test('splits the pool by the two Remote Config limits', () async {
@@ -190,5 +200,176 @@ void main() {
     await settle();
     expect(feed().recommended.map((i) => i.jobId), ['job-1', 'job-2']);
     expect(internships.watchCalls, 1);
+  });
+
+  group('preferred location (Profile › Update preferences)', () {
+    final pool = [
+      testInternship('1', location: 'Thành phố Hồ Chí Minh, Hồ Chí Minh'),
+      testInternship('2', location: 'Hà Nội'),
+      testInternship('3', location: 'Việt Nam'),
+      testInternship('4', location: 'Hồ Chí Minh'),
+    ];
+
+    UserProfile living(String location) =>
+        UserProfile(preferences: InternshipPreferences(location: location));
+
+    test(
+      'Recommended keeps the preferred city; Recently Posted keeps all',
+      () async {
+        profiles.profile = living('Ho Chi Minh City');
+        internships.results = pool;
+        listen();
+        await settle();
+
+        expect(feed().recommended.map((i) => i.jobId), ['job-1', 'job-4']);
+        expect(
+          feed().recent.map((i) => i.jobId),
+          containsAll(['job-2', 'job-3']),
+        );
+      },
+    );
+
+    test('no preference or "All Vietnam" recommends every location', () async {
+      internships.results = pool;
+      listen();
+      await settle();
+      expect(feed().recommended, hasLength(4));
+
+      await profiles.updatePreferences(
+        testUser.uid,
+        const InternshipPreferences(location: 'All Vietnam'),
+      );
+      await settle();
+      expect(feed().recommended, hasLength(4));
+    });
+
+    test(
+      'changing the location re-filters without a new subscription',
+      () async {
+        profiles.profile = living('Ho Chi Minh City');
+        internships.results = pool;
+        listen();
+        await settle();
+
+        await profiles.updatePreferences(
+          testUser.uid,
+          const InternshipPreferences(location: 'Hanoi'),
+        );
+        await settle();
+        expect(feed().recommended.map((i) => i.jobId), ['job-2']);
+        expect(internships.watchCalls, 1);
+      },
+    );
+
+    test('a profile that cannot load leaves Recommended unfiltered', () async {
+      profiles.loadError = const AppException(
+        AppErrorKind.network,
+        'We could not load your profile. Check your connection and try again.',
+      );
+      internships.results = pool;
+      listen();
+      await settle();
+      expect(feed().recommended, hasLength(4));
+    });
+  });
+
+  group('profile match (target roles, then skills)', () {
+    // Sync order 1..5; titles decide the listing role.
+    final pool = [
+      testInternship('1', title: 'Tester Intern', searchRank: 0),
+      testInternship(
+        '2',
+        title: 'Fullstack Intern',
+        searchRank: 1,
+        skills: const ['React'],
+      ),
+      testInternship('3', title: 'Frontend Developer Intern', searchRank: 2),
+      testInternship(
+        '4',
+        title: 'Frontend Developer Intern',
+        searchRank: 3,
+        skills: const ['React', 'Vue'],
+      ),
+      testInternship('5', title: 'Backend Intern', searchRank: 4),
+    ];
+
+    List<String> recommendedIds() =>
+        feed().recommended.map((i) => i.jobId).toList();
+
+    test('without a profile the sync order is kept', () async {
+      internships.results = pool;
+      listen();
+      await settle();
+      expect(recommendedIds(), ['job-1', 'job-2', 'job-3', 'job-4', 'job-5']);
+    });
+
+    test('best match first; equal scores keep the sync order', () async {
+      profiles.profile = const UserProfile(
+        skills: ['React', 'Vue'],
+        preferences: InternshipPreferences(targetRoles: [TargetRole.frontend]),
+      );
+      internships.results = pool;
+      listen();
+      await settle();
+
+      // 4: frontend + 2 skills (5) · 2: full-stack + React (3) and
+      // 3: frontend (3), sync order · 1 and 5: no match (0), sync order.
+      expect(recommendedIds(), ['job-4', 'job-2', 'job-3', 'job-1', 'job-5']);
+    });
+
+    test(
+      'editing skills in Profile re-ranks without a new subscription',
+      () async {
+        profiles.profile = const UserProfile(
+          skills: ['React', 'Vue'],
+          preferences: InternshipPreferences(
+            targetRoles: [TargetRole.frontend],
+          ),
+        );
+        internships.results = pool;
+        listen();
+        await settle();
+
+        await profiles.updateSkills(testUser.uid, ['Vue']);
+        await settle();
+        expect(recommendedIds(), ['job-4', 'job-3', 'job-2', 'job-1', 'job-5']);
+        expect(internships.watchCalls, 1);
+      },
+    );
+
+    test('matching reorders but never removes listings', () async {
+      profiles.profile = const UserProfile(
+        preferences: InternshipPreferences(targetRoles: [TargetRole.mobile]),
+      );
+      internships.results = pool;
+      listen();
+      await settle();
+      expect(feed().recommended, hasLength(5));
+    });
+  });
+
+  test('the same job under several sync keywords is shown once', () async {
+    internships.results = [
+      testInternship(
+        'a',
+        title: 'Thực Tập Sinh Lập Trình (Backend + Frontend Web)',
+        companyName: 'Công ty Cổ phần ABC',
+        searchRank: 3,
+      ),
+      testInternship(
+        'b',
+        title: 'Thực tập sinh lập trình (Backend + Frontend Web)',
+        companyName: 'CÔNG TY CỔ PHẦN ABC',
+        searchRank: 1,
+      ),
+      testInternship('c', title: 'Frontend Developer Intern', searchRank: 2),
+    ];
+    listen();
+    await settle();
+
+    // The copy with the best sync rank (b) is kept; nothing is repeated in
+    // Recently Posted either.
+    expect(feed().recommended.map((i) => i.jobId), ['job-b', 'job-c']);
+    expect(feed().recent, isEmpty);
   });
 }

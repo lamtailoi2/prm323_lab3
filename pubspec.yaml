@@ -8,6 +8,8 @@ environment:
 
 dependencies:
   cloud_firestore: 7.0.0
+  cloud_functions: ^7.0.0
+  file_selector: 1.1.0
   firebase_analytics: 13.0.0
   firebase_auth: 7.0.0
   firebase_core: 5.0.0
@@ -20,6 +22,7 @@ dependencies:
   go_router: 18.1.1
   google_sign_in: 7.2.0
   material_symbols_icons: 4.2960.0
+  url_launcher: 6.3.3
 
 dev_dependencies:
   flutter_test:
@@ -37,8 +40,10 @@ flutter:
     enable-swift-package-manager: false
 
   # Single source of the Remote Config in-app defaults (Lab 3 §9).
+  # Login photo and Google's "G" mark (1x–4x): see handoff-gaps G-03.
   assets:
     - firebase/remote-config-defaults.json
+    - assets/images/
 
   # Inter 4.1 (SIL Open Font License, see assets/fonts/inter/OFL.txt).
   # Weights match the Lab 2 typography tokens: 400, 500, 600, 700.

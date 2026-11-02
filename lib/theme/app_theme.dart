@@ -40,6 +40,13 @@ abstract final class AppTheme {
       outline: AppColors.border,
       outlineVariant: AppColors.border,
       shadow: AppColors.textPrimary,
+      // The handoff documents an "inverse surface" helper without a value
+      // (G-07). It maps to textPrimary for the dark SnackBar surface
+      // (docs/design/design-system.md §1.1); the action label keeps the
+      // brand tint through primaryContainer.
+      inverseSurface: AppColors.textPrimary,
+      onInverseSurface: AppColors.surface,
+      inversePrimary: AppColors.primaryContainer,
     );
 
     OutlineInputBorder inputBorder(Color color, {double width = 1}) {
@@ -192,6 +199,9 @@ abstract final class AppTheme {
       ),
       snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.textPrimary,
+        actionTextColor: AppColors.primaryContainer,
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.mediumAll),
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.border,

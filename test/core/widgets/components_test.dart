@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/widgets/app_dialog.dart';
 import 'package:internly/core/widgets/app_search_field.dart';
+import 'package:internly/core/widgets/app_tag.dart';
 import 'package:internly/core/widgets/app_text_field.dart';
 import 'package:internly/core/widgets/app_top_bar.dart';
 import 'package:internly/core/widgets/internship_card.dart';
+import 'package:internly/core/widgets/main_tab_app_bar.dart';
 import 'package:internly/core/widgets/skeleton.dart';
 import 'package:internly/core/widgets/status_badge.dart';
+import 'package:internly/models/app_user.dart';
 import 'package:internly/theme/app_colors.dart';
 import 'package:internly/theme/app_theme.dart';
 import 'package:internly/theme/app_typography.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../helpers/fakes.dart';
 import '../../helpers/pump.dart';
 
 void main() {
@@ -57,6 +62,93 @@ void main() {
         greaterThanOrEqualTo(48),
       );
     });
+
+    testWidgets('required marker is read as "required"', (tester) async {
+      await pumpThemed(
+        tester,
+        const AppTextField(label: 'Full name', isRequired: true),
+      );
+      final label = tester.widget<Text>(find.byType(Text).first);
+      expect(
+        label.textSpan?.toPlainText(includeSemanticsLabels: false),
+        'Full name *',
+      );
+      expect(find.text('Full name, required'), findsOneWidget);
+    });
+
+    testWidgets('prefix icon and suffix; the error icon replaces the suffix', (
+      tester,
+    ) async {
+      const lock = Icon(Symbols.lock_rounded);
+      await pumpThemed(
+        tester,
+        const AppTextField(
+          label: 'Phone number',
+          prefixIcon: Symbols.call_rounded,
+          suffix: lock,
+        ),
+      );
+      expect(find.byIcon(Symbols.call_rounded), findsOneWidget);
+      expect(find.byIcon(Symbols.lock_rounded), findsOneWidget);
+
+      await pumpThemed(
+        tester,
+        const AppTextField(
+          label: 'Phone number',
+          prefixIcon: Symbols.call_rounded,
+          suffix: lock,
+          errorText: 'Enter a valid phone number, e.g. 0908 123 456.',
+        ),
+      );
+      expect(find.byIcon(Symbols.lock_rounded), findsNothing);
+      expect(find.byIcon(Symbols.error_rounded), findsOneWidget);
+    });
+
+    testWidgets('read-only field opens a picker on tap', (tester) async {
+      var taps = 0;
+      await pumpThemed(
+        tester,
+        AppTextField(
+          label: 'Academic standing & graduation',
+          readOnly: true,
+          onTap: () => taps++,
+        ),
+      );
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      expect(taps, 1);
+      expect(tester.widget<TextField>(find.byType(TextField)).readOnly, isTrue);
+    });
+  });
+
+  group('AppTag', () {
+    testWidgets('compact tag hugs its label (Internship Card)', (tester) async {
+      await pumpThemed(
+        tester,
+        const Align(
+          alignment: Alignment.topLeft,
+          child: AppTag(label: 'Flutter'),
+        ),
+      );
+      // 12 sp caption (16 line height) + 4 dp padding above and below.
+      expect(tester.getSize(find.byType(AppTag)).height, 24);
+    });
+
+    testWidgets('large tag is 44 dp tall with the label centred', (
+      tester,
+    ) async {
+      await pumpThemed(
+        tester,
+        const Align(
+          alignment: Alignment.topLeft,
+          child: AppTag(label: 'Flutter', size: AppTagSize.large),
+        ),
+      );
+      final tag = tester.getRect(find.byType(AppTag));
+      final label = tester.getRect(find.text('Flutter'));
+      expect(tag.height, 44);
+      expect(label.center.dy, closeTo(tag.center.dy, 0.5));
+    });
   });
 
   group('AppSearchField', () {
@@ -82,10 +174,38 @@ void main() {
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     });
 
-    testWidgets('long placeholder wraps without overflow at 360 dp', (
+    for (final width in checkWidths) {
+      testWidgets('default placeholder stays on one line at $width dp', (
+        tester,
+      ) async {
+        await pumpThemed(
+          tester,
+          AppSearchField(onFilterPressed: () {}),
+          width: width,
+        );
+        final hint = tester.renderObject<RenderParagraph>(
+          find.text('Search role, company, skill'),
+        );
+        expect(hint.maxLines, 1);
+        expect(hint.didExceedMaxLines, isFalse);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('wrapHint lets a long placeholder wrap without overflow', (
       tester,
     ) async {
-      await pumpThemed(tester, AppSearchField(onFilterPressed: () {}));
+      await pumpThemed(
+        tester,
+        const AppSearchField(
+          hintText: 'Search skills (e.g. Flutter, SQL, Python)',
+          wrapHint: true,
+        ),
+      );
+      final hint = tester.renderObject<RenderParagraph>(
+        find.text('Search skills (e.g. Flutter, SQL, Python)'),
+      );
+      expect(hint.maxLines, 2);
       expect(tester.takeException(), isNull);
     });
   });
@@ -93,6 +213,8 @@ void main() {
   group('InternshipCard', () {
     Widget card({
       bool saved = false,
+      bool applied = false,
+      String allowance = 'Allowance text',
       VoidCallback? onSave,
       VoidCallback? onTap,
     }) {
@@ -102,9 +224,10 @@ void main() {
         location: 'District 1, Ho Chi Minh City',
         workMode: 'Hybrid',
         tags: const ['Flutter', 'Dart', 'Firebase', 'REST API'],
-        allowanceText: 'Allowance text',
+        allowanceText: allowance,
         postedText: 'Posted 2 days ago',
         isSaved: saved,
+        isApplied: applied,
         onSaveToggle: onSave,
         onTap: onTap,
       );
@@ -120,6 +243,30 @@ void main() {
         expect(find.text('Hybrid'), findsOneWidget);
         expect(find.text('Posted 2 days ago'), findsOneWidget);
       });
+    }
+
+    for (final width in checkWidths) {
+      testWidgets(
+        'Applied badge fits next to a long allowance at $width dp (CR-14)',
+        (tester) async {
+          final handle = tester.ensureSemantics();
+          await pumpThemed(
+            tester,
+            card(
+              applied: true,
+              allowance: 'About 5,000,000–7,000,000 VND / mo',
+              onSave: () {},
+              onTap: () {},
+            ),
+            width: width,
+          );
+          expect(tester.takeException(), isNull);
+          expect(find.text('Applied'), findsOneWidget);
+          expect(find.bySemanticsLabel(RegExp(r'Applied$')), findsOneWidget);
+          await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+          handle.dispose();
+        },
+      );
     }
 
     testWidgets('card exposes one summary label for ARTEMIS', (tester) async {
@@ -225,6 +372,47 @@ void main() {
       await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
       expect(find.text('List'), findsOneWidget);
+    });
+  });
+
+  group('MainTabAppBar', () {
+    Future<void> pumpBar(
+      WidgetTester tester, {
+      double width = 360,
+      AppUser? user,
+    }) async {
+      setScreenSize(tester, width: width);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            appBar: MainTabAppBar(title: 'Saved', user: user, onProfile: () {}),
+          ),
+        ),
+      );
+    }
+
+    for (final width in checkWidths) {
+      testWidgets('every tab shows bell and avatar at $width dp', (
+        tester,
+      ) async {
+        await pumpBar(tester, width: width, user: testUser);
+
+        expect(find.text('Saved'), findsOneWidget);
+        // No brand mark in the leading slot (DC-20).
+        expect(find.byIcon(Symbols.school_rounded), findsNothing);
+        expect(find.byIcon(Symbols.notifications_rounded), findsOneWidget);
+        expect(find.byTooltip('Notifications'), findsOneWidget);
+        expect(find.byTooltip('Profile'), findsOneWidget);
+        // No photo, so the avatar falls back to the person glyph.
+        expect(find.byIcon(Symbols.person_rounded), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('touch targets are at least 48 dp', (tester) async {
+      await pumpBar(tester, user: testUser);
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     });
   });
 

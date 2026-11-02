@@ -6,14 +6,18 @@ import '../../theme/app_colors.dart';
 /// Search Field component (Figma page 05 "Search Field / 2 specimens").
 ///
 /// Leading search icon, optional trailing filter action, and a clear action
-/// that appears once text is entered. A long placeholder wraps instead of
-/// being truncated; clear and filter keep 48 × 48 dp targets.
+/// that appears once text is entered; clear and filter keep 48 × 48 dp
+/// targets.
+///
+/// The field stays on one line and the default placeholder fits at 360 dp,
+/// instead of the Figma placeholder wrapping to two lines (DC-25).
 class AppSearchField extends StatefulWidget {
   const AppSearchField({
     super.key,
     this.controller,
     this.focusNode,
-    this.hintText = 'Search internships, companies, or skills',
+    this.hintText = 'Search role, company, skill',
+    this.wrapHint = false,
     this.autofocus = false,
     this.readOnly = false,
     this.onTap,
@@ -21,11 +25,17 @@ class AppSearchField extends StatefulWidget {
     this.onSubmitted,
     this.onCleared,
     this.onFilterPressed,
+    this.filterCount,
   });
 
   final TextEditingController? controller;
   final FocusNode? focusNode;
   final String hintText;
+
+  /// Lets a long placeholder wrap to two lines and the input grow, as the
+  /// Figma Search Field spec does; used where the hint is longer than one
+  /// line (Profile › Edit skills, DC-16).
+  final bool wrapHint;
   final bool autofocus;
 
   /// Use with [onTap] when the field is only an entry point (e.g. on Home).
@@ -37,6 +47,7 @@ class AppSearchField extends StatefulWidget {
 
   /// Shows the trailing filter action when non-null.
   final VoidCallback? onFilterPressed;
+  final int? filterCount;
 
   @override
   State<AppSearchField> createState() => _AppSearchFieldState();
@@ -76,7 +87,14 @@ class _AppSearchFieldState extends State<AppSearchField> {
             ),
           if (widget.onFilterPressed != null)
             IconButton(
-              icon: const Icon(Symbols.tune_rounded),
+              icon: (widget.filterCount != null && widget.filterCount! > 0)
+                  ? Badge.count(
+                      count: widget.filterCount!,
+                      backgroundColor: AppColors.primary,
+                      textColor: AppColors.onPrimary,
+                      child: const Icon(Symbols.tune_rounded),
+                    )
+                  : const Icon(Symbols.tune_rounded),
               tooltip: 'Filters',
               color: AppColors.textSecondary,
               onPressed: widget.onFilterPressed,
@@ -94,10 +112,12 @@ class _AppSearchFieldState extends State<AppSearchField> {
           keyboardType: TextInputType.text,
           textInputAction: TextInputAction.search,
           minLines: 1,
-          maxLines: null,
+          maxLines: widget.wrapHint ? null : 1,
           decoration: InputDecoration(
             hintText: widget.hintText,
-            hintMaxLines: 2,
+            // One line ends with an ellipsis if a larger font scale still
+            // makes the hint too long.
+            hintMaxLines: widget.wrapHint ? 2 : 1,
             prefixIcon: const Icon(
               Symbols.search_rounded,
               color: AppColors.textSecondary,

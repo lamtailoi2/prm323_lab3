@@ -1,24 +1,27 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../app/router.dart';
+import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/allowance.dart';
+import '../../../core/utils/distinct_listings.dart';
 import '../../../core/utils/job_role.dart';
 import '../../../core/widgets/app_search_field.dart';
-import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/internship_card.dart';
+import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/state_view.dart';
-import '../../../models/app_user.dart';
 import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
-import '../../../theme/app_colors.dart';
-import '../../../theme/app_radii.dart';
-import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
+import '../../applications/viewmodels/applied_providers.dart';
+import '../../saved/viewmodels/saved_providers.dart';
+import '../../saved/viewmodels/saved_viewmodel.dart';
 import '../viewmodels/home_viewmodel.dart';
 import '../widgets/home_section_header.dart';
 import '../widgets/role_shortcuts.dart';
@@ -37,23 +40,21 @@ class HomeScreen extends ConsumerWidget {
     final state = ref.watch(homeViewModelProvider);
     final viewModel = ref.read(homeViewModelProvider.notifier);
     final user = ref.watch(authStateChangesProvider).value;
+
+    // A failed save / unsave keeps the list as it is and explains why.
+    ref.listen<AsyncValue<void>>(savedViewModelProvider, (previous, next) {
+      final error = next.error;
+      if (error is AppException) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    });
+
     return Scaffold(
-      appBar: AppTopBar.main(
+      appBar: MainTabAppBar(
         title: 'Home',
-        leading: const _BrandMark(),
-        leadingWidth: AppSizes.minTouchTarget,
-        actions: [
-          IconButton(
-            tooltip: 'Notifications',
-            icon: const Icon(Symbols.notifications_rounded),
-            onPressed: () =>
-                _showMessage(context, 'Notifications are coming soon.'),
-          ),
-          _ProfileAction(
-            user: user,
-            onPressed: () => context.go(AppRoutes.profile),
-          ),
-        ],
+        user: user,
+        onProfile: () => context.go(AppRoutes.profile),
       ),
       body: CustomScrollView(
         slivers: [
@@ -126,92 +127,10 @@ class HomeScreen extends ConsumerWidget {
           child: _FeedLists(
             feed: data,
             onOpenSearch: () => context.go(AppRoutes.search),
-            onSave: () =>
-                _showMessage(context, 'Saved internships are coming soon.'),
           ),
         ),
       ],
     };
-  }
-
-  static void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
-  }
-}
-
-class _BrandMark extends StatelessWidget {
-  const _BrandMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: AppSpacing.screenHorizontal),
-      child: Semantics(
-        label: 'Internly',
-        image: true,
-        child: Center(
-          child: SizedBox.square(
-            dimension: AppSizes.brandMark,
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: AppRadii.mediumAll,
-              ),
-              child: const Icon(
-                Symbols.school_rounded,
-                size: AppSizes.iconSmall,
-                color: AppColors.onPrimary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileAction extends StatelessWidget {
-  const _ProfileAction({required this.user, required this.onPressed});
-
-  final AppUser? user;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final photoUrl = user?.photoUrl;
-    return IconButton(
-      tooltip: 'Profile',
-      onPressed: onPressed,
-      icon: ClipOval(
-        child: SizedBox.square(
-          dimension: AppSizes.profileAvatar,
-          child: ColoredBox(
-            color: AppColors.primaryContainer,
-            child: photoUrl == null
-                ? const _AvatarFallback()
-                : Image.network(
-                    photoUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const _AvatarFallback(),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AvatarFallback extends StatelessWidget {
-  const _AvatarFallback();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Icon(
-      Symbols.person_rounded,
-      size: AppSizes.iconSmall,
-      color: AppColors.primary,
-    );
   }
 }
 
@@ -277,30 +196,28 @@ class _HomeHeader extends StatelessWidget {
   }
 }
 
-class _FeedLists extends StatelessWidget {
-  const _FeedLists({
-    required this.feed,
-    required this.onOpenSearch,
-    required this.onSave,
-  });
+class _FeedLists extends ConsumerWidget {
+  const _FeedLists({required this.feed, required this.onOpenSearch});
 
   final HomeFeed feed;
   final VoidCallback onOpenSearch;
-  final VoidCallback onSave;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final savedIds = ref.watch(savedInternshipIdsProvider);
+    final appliedJobs =
+        ref.watch(appliedJobsProvider).asData?.value ?? const <String>{};
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (feed.recommended.isNotEmpty) ...[
           _sectionHeader('Recommended for you'),
-          _cards(feed.recommended),
+          _cards(context, ref, feed.recommended, savedIds, appliedJobs),
         ],
         if (feed.recent.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.section),
           _sectionHeader('Recently Posted'),
-          _cards(feed.recent),
+          _cards(context, ref, feed.recent, savedIds, appliedJobs),
         ],
         const SizedBox(height: AppSpacing.section),
       ],
@@ -323,7 +240,13 @@ class _FeedLists extends StatelessWidget {
     );
   }
 
-  Widget _cards(List<Internship> internships) {
+  Widget _cards(
+    BuildContext context,
+    WidgetRef ref,
+    List<Internship> internships,
+    Set<String> savedIds,
+    Set<String> appliedJobs,
+  ) {
     return Column(
       children: [
         for (final internship in internships)
@@ -343,7 +266,18 @@ class _FeedLists extends StatelessWidget {
               tags: internship.skills,
               allowanceText: formatAllowance(internship.salary),
               postedText: internship.postedText,
-              onSaveToggle: onSave,
+              isSaved: savedIds.contains(internship.key),
+              isApplied: appliedJobs.contains(
+                jobIdentity(internship.title, internship.companyName),
+              ),
+              onTap: () => context.go(
+                AppRoutes.internshipDetail(AppRoutes.home, internship.key),
+              ),
+              onSaveToggle: () => unawaited(
+                ref
+                    .read(savedViewModelProvider.notifier)
+                    .toggle(internship, source: 'home'),
+              ),
             ),
           ),
       ],

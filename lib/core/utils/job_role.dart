@@ -1,3 +1,5 @@
+import 'text_fold.dart';
+
 /// IT job families used by Home's "Browse by Role" filter.
 ///
 /// Google Jobs has no category field, so the role is inferred from the title
@@ -28,8 +30,8 @@ JobRole? jobRoleFor({
   String? searchKeyword,
   Iterable<String> skills = const <String>[],
 }) {
-  final titleText = _fold(title);
-  final keywordText = _fold(searchKeyword ?? '');
+  final titleText = foldText(title);
+  final keywordText = foldText(searchKeyword ?? '');
 
   if (_hasAny(titleText, _nonIt)) return null;
 
@@ -59,8 +61,12 @@ const List<String> _nonIt = <String>[
   'human resources',
   'tuyen dung',
   'sales',
+  'sale',
   'kinh doanh',
   'marketing',
+  'mkt',
+  'executive assistant',
+  'non tech',
   'cskh',
   'customer service',
   'customer care',
@@ -173,19 +179,4 @@ bool _hasAny(String text, List<String> terms) {
     final pattern = RegExp('(?<![a-z0-9])${RegExp.escape(term)}(?![a-z0-9])');
     return pattern.hasMatch(text);
   });
-}
-
-String _fold(String value) {
-  return value
-      .toLowerCase()
-      .replaceAll(RegExp(r'[\u0300-\u036f]'), '')
-      .replaceAll(RegExp('[àáạảãâầấậẩẫăằắặẳẵ]'), 'a')
-      .replaceAll(RegExp('[èéẹẻẽêềếệểễ]'), 'e')
-      .replaceAll(RegExp('[ìíịỉĩ]'), 'i')
-      .replaceAll(RegExp('[òóọỏõôồốộổỗơờớợởỡ]'), 'o')
-      .replaceAll(RegExp('[ùúụủũưừứựửữ]'), 'u')
-      .replaceAll(RegExp('[ỳýỵỷỹ]'), 'y')
-      .replaceAll('đ', 'd')
-      .replaceAll(RegExp('[^a-z0-9]+'), ' ')
-      .trim();
 }

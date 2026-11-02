@@ -6,11 +6,17 @@ import 'package:internly/app/app_shell.dart';
 import 'package:internly/app/router.dart';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/models/app_user.dart';
+import 'package:internly/models/internship.dart';
 import 'package:internly/services/analytics_service.dart';
+import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
+import 'package:internly/services/saved_internship_service.dart';
+import 'package:internly/services/saved_service.dart';
+import 'package:internly/services/search_history_service.dart';
+import 'package:internly/services/user_profile_service.dart';
 
 import '../helpers/fakes.dart';
 import '../helpers/pump.dart';
@@ -79,16 +85,28 @@ void main() {
       WidgetTester tester, {
       AppUser? user,
       double width = 360,
+      FakeInternshipService? listings,
+      List<Internship> savedListings = const <Internship>[],
     }) async {
       setScreenSize(tester, width: width);
       final auth = FakeAuthService(initialUser: user);
       analytics = FakeAnalyticsService();
       crashlytics = FakeCrashlyticsService();
-      final internships = FakeInternshipService();
+      final internships = listings ?? FakeInternshipService();
+      final saved = FakeSavedInternshipService()..seed(savedListings);
+      addTearDown(saved.dispose);
+      final savedIds = FakeSavedService();
+      addTearDown(savedIds.dispose);
       final remoteConfig = FakeRemoteConfigService();
+      final searchHistory = FakeSearchHistoryService();
+      final profiles = FakeUserProfileService();
+      final applications = FakeApplicationService();
       addTearDown(auth.dispose);
+      addTearDown(profiles.dispose);
       addTearDown(internships.dispose);
       addTearDown(remoteConfig.dispose);
+      addTearDown(applications.dispose);
+      addTearDown(searchHistory.dispose);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -97,6 +115,11 @@ void main() {
             crashlyticsServiceProvider.overrideWithValue(crashlytics),
             internshipServiceProvider.overrideWithValue(internships),
             remoteConfigServiceProvider.overrideWithValue(remoteConfig),
+            searchHistoryServiceProvider.overrideWithValue(searchHistory),
+            userProfileServiceProvider.overrideWithValue(profiles),
+            applicationServiceProvider.overrideWithValue(applications),
+            savedInternshipServiceProvider.overrideWithValue(saved),
+            savedServiceProvider.overrideWithValue(savedIds),
           ],
           child: const InternlyApp(),
         ),
@@ -116,6 +139,122 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Find your next internship'), findsOneWidget);
       expect(analytics.events, contains('login:google'));
+    });
+
+    testWidgets('a Home card opens Internship Detail above the shell', (
+      tester,
+    ) async {
+      final listing = testInternship(
+        '1',
+        title: 'Flutter Developer Intern',
+        skills: const ['Flutter', 'Dart'],
+      );
+      final listings = FakeInternshipService()
+        ..results = [listing]
+        ..byKey[listing.key] = listing;
+      await pumpApp(tester, user: testUser, listings: listings);
+
+      await tester.tap(find.text('Flutter Developer Intern').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Internship details'), findsOneWidget);
+      expect(find.text('Apply now'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(analytics.screens, contains('home_internship_detail'));
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.text('Internship details'), findsNothing);
+    });
+
+    testWidgets(
+      'a Search Results card opens Detail; Back keeps the same results',
+      (tester) async {
+        final listing = testInternship('1', title: 'Flutter Developer Intern');
+        final listings = FakeInternshipService()
+          ..results = [listing]
+          ..byKey[listing.key] = listing;
+        await pumpApp(tester, user: testUser, listings: listings);
+
+        await tester.tap(
+          find.descendant(
+            of: find.byType(NavigationBar),
+            matching: find.text('Search'),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'Flutter');
+        await tester.tap(find.text('Find Internships'));
+        await tester.pumpAndSettle();
+        expect(find.text('1 internship found'), findsOneWidget);
+
+        await tester.tap(find.text('Flutter Developer Intern'));
+        await tester.pumpAndSettle();
+        expect(find.text('Internship details'), findsOneWidget);
+        expect(find.byType(NavigationBar), findsNothing);
+        expect(analytics.screens, contains('search_internship_detail'));
+
+        await tester.tap(find.byTooltip('Back'));
+        await tester.pumpAndSettle();
+        expect(find.text('1 internship found'), findsOneWidget);
+        expect(find.widgetWithText(TextField, 'Flutter'), findsOneWidget);
+      },
+    );
+
+    testWidgets('a Saved card opens Detail; Back returns to Saved', (
+      tester,
+    ) async {
+      final listing = testInternship('1', title: 'Flutter Developer Intern');
+      final listings = FakeInternshipService()..byKey[listing.key] = listing;
+      await pumpApp(
+        tester,
+        user: testUser,
+        listings: listings,
+        savedListings: [listing],
+      );
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Saved'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Developer Intern'));
+      await tester.pumpAndSettle();
+      expect(find.text('Internship details'), findsOneWidget);
+      expect(analytics.screens, contains('saved_internship_detail'));
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.text('1 saved'), findsOneWidget);
+    });
+
+    testWidgets('Apply now opens the Apply Form; Back returns to the Detail', (
+      tester,
+    ) async {
+      final listing = testInternship('1', title: 'Flutter Developer Intern');
+      final listings = FakeInternshipService()
+        ..results = [listing]
+        ..byKey[listing.key] = listing;
+      await pumpApp(tester, user: testUser, listings: listings);
+
+      await tester.tap(find.text('Flutter Developer Intern').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apply now'));
+      await tester.pumpAndSettle();
+      expect(find.text('Apply Form'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(analytics.screens, contains('home_apply_form'));
+      expect(analytics.parameters['apply_start'], {
+        'internship_id': listing.key,
+        'source': 'home',
+      });
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('Internship details'), findsOneWidget);
     });
 
     for (final width in checkWidths) {
@@ -146,11 +285,11 @@ void main() {
 
       await tester.tap(find.text('Search'));
       await tester.pumpAndSettle();
-      expect(find.text('Search is not built yet'), findsOneWidget);
+      expect(find.text('Work mode'), findsOneWidget);
 
       await tester.tap(find.text('Applications'));
       await tester.pumpAndSettle();
-      expect(find.text('My Applications is not built yet'), findsOneWidget);
+      expect(find.text('You have not applied yet'), findsOneWidget);
       expect(analytics.screens, ['home', 'search', 'my_applications']);
       // Crashlytics custom key follows the current screen.
       expect(crashlytics.customKeys['last_screen'], 'my_applications');
@@ -173,10 +312,38 @@ void main() {
       await tester.tap(find.text('Profile'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Sign out'));
+      // Sign out is the last row of "Settings & support".
+      final signOut = find.text('Sign out');
+      await tester.scrollUntilVisible(
+        signOut,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(signOut);
+      await tester.pumpAndSettle();
+      await tester.tap(signOut);
       await tester.pumpAndSettle();
       expect(find.text('Continue with Google'), findsOneWidget);
       expect(analytics.events, contains('logout'));
+    });
+
+    testWidgets('Edit profile opens without the bottom navigation', (
+      tester,
+    ) async {
+      await pumpApp(tester, user: testUser);
+      await tester.tap(find.text('Profile'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit profile'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Full name, required'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(analytics.screens, ['home', 'profile', 'edit_profile']);
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.text('Full name, required'), findsNothing);
     });
   });
 }
