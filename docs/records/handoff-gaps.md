@@ -33,7 +33,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-21 | App ID / bundle ID and repository naming not confirmed | Team | Resolved (keep `prm323_lab3`, user decision) |
 | G-22 | Keyword search strategy (Firestore has no full-text search) | Search owner | Resolved (SerpAPI query) |
 | G-23 | "Recommended for you" logic not specified | Home owner | Resolved (preferred location, then target roles and skills, then sync rank + recency) |
-| G-24 | CV Match Check (new Apply step): matching rules, data source, Figma frame | Apply owner + design owner | Open |
+| G-24 | CV Match Check (new Apply step): matching rules, data source, Figma frame | Apply owner + design owner | Open (separate generic CV gate built 2026-11-01) |
 | G-25 | Consequences of using SerpAPI (Google Jobs) as the data source | Search + Apply owners | Resolved (shared Firestore mirror) |
 | G-26 | Zero-cost constraint: every service and tool must run at $0 | Team | Resolved (plan below) |
 | G-27 | No Lab 2 frame for Edit profile (target of the Profile primary action) | Profile owner | Resolved (Edit Profile frame received 2026-10-28, DC-14) |
@@ -82,7 +82,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 | Internship Card inner gaps, tag text style | 4/8 dp, `type/caption` | `InternshipCard`, `AppTag` |
 | Status badge padding | 8 × 4 dp | `StatusBadge` |
 | Dialog inner padding | 24 dp | `AppDialog` |
-| Helper colors: inverse surface (SnackBar) | Material default (`onSurface`) | `AppTheme` |
+| Helper colors: inverse surface (SnackBar) | `colorScheme.inverseSurface` = `color/text/primary` `#0F172A`, `onInverseSurface` = `surface` `#FFFFFF`, `inversePrimary` = `primary-container` `#DBEAFE` (2026-11-01) | `AppTheme` |
 | Shadow of plain `AlertDialog` / bottom sheet | Material elevation | use `AppDialog` for exact `elevation/2` |
 | Profile header avatar | 56 dp | `AppSizes.profileHeaderAvatar` (Profile screenshot) |
 | CV file / sheet header icon tile | 40 dp, `primaryContainer`, radius 12 | `AppSizes.fileTile`, `FileTileIcon` (Profile screenshots) |
@@ -176,11 +176,12 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 ### G-24: CV Match Check
 - **Found (2026-10-21):** the team restructured the flows to Search → Apply → Track (DC-08) and added a CV Match Check step to Apply (DC-09): show which requirements the CV / profile does not match and suggest improvements. Lab 2 has no screen for it; the closest existing parts are the "Your match" card in Internship Detail (AI log) and the "Match Card" component in Figma.
 - **Decided so far:** the step sits between Application Form and Application Review; it never blocks applying (`Continue to review` always available); suggestions are honest (never ask the student to claim skills they lack); status per requirement uses label + icon (see `user-flow.md` Flow 2d and `screen-spec.md` › CV Match Check).
+- **Update (2026-11-01):** a **separate generic CV quality gate** is built for the pre-submit step: "is this PDF a usable CV?" It sits before Confirm Application and **can** block (`CV Invalid → Update CV → Retry`), unlike this match check. The callable `validateCv` (`functions/src/validate-cv.ts`) reads `cvs/{uid}/…` server-side, extracts text with `pdf-parse` and asks Gemini with a fixed, non-job-specific rubric; `GEMINI_API_KEY` is a Secret Manager secret bound only to that function (free tier, G-26). The app calls it through `CvValidationService`; the step widget is `CvValidationStep` and the state is `CvValidationViewModel` (`is_valid` → `cv_validation_result` analytics event). This resolves item 3's backend requirement for the **generic** check only; job-matching suggestions remain open.
 - **Open:**
   1. **Matching rules.** Baseline proposal: compare the internship's `skills` and "Must have" items with the profile / form skills, case-insensitively, with a small synonym list (e.g. "REST" ↔ "REST API"). "Nice to have" items are informational only.
-  2. **CV content.** Whether to read text from the CV PDF (on-device extraction) or rely on declared skills only. Reading the PDF adds a dependency and accuracy limits.
-  3. **AI-generated suggestions.** If an LLM is used, it must run behind a backend you control: no API keys in the app (AGENTS.md rule 8), and the user must be told that CV text leaves the device.
-  4. **Design.** Figma frame for the screen (states: checking, all matched, gaps, failed), built from existing components (Match Card, Skill Tag, Bullet Item, Info Banner).
+  2. **CV content.** The generic gate now reads CV text server-side; whether the job-matching check also reads the PDF or relies on declared skills is still undecided. Reading the PDF adds accuracy limits and sends CV text to Gemini (the step must tell the user).
+  3. **AI-generated suggestions.** Generic validation now runs behind a backend with no API key in the app (done). Any LLM used for job-matching suggestions must use the same pattern, and the user must be told that CV text leaves the device.
+  4. **Design.** Figma frame for the screen (states: checking, all matched, gaps, failed), built from existing components (Match Card, Skill Tag, Bullet Item, Info Banner). The generic gate's step widget follows the shared Loading / Error / Button components and is recorded as DC-19 until a frame exists.
 
 ### G-25: SerpAPI (Google Jobs) as the data source
 - **Decision (user, 2026-10-21):** internship listings come from SerpAPI's `google_jobs` engine. Lab 3 requires real data and no mocks.

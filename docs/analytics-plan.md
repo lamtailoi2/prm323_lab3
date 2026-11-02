@@ -23,7 +23,7 @@ Status: **Implemented** (in code and tested) · **Planned** (owner implements wi
 | 4 | `search` | Home feed loads or a role filter changes | `search_term` (string: `IT` or a role label, ≤ 100), `result_count` (int), `elapsed_sec` (int, Home opened → results) | Which roles are browsed, which return nothing, and do students reach results in < 30 s? | Flow 1 | Implemented (Home) |
 | 5 | `search_filter_apply` | Filter sheet "Show results" | `work_mode` (string), `location` (string, city), `skill_count` (int), `result_count` (int) | Which filters do students use, and which narrow results to zero? | Flow 1 | Planned |
 | 6 | `view_internship` | Internship Detail opens | `internship_id` (string), `internship_title` (string), `company_name` (string), `source` (string: `home` / `search` / `saved`) | Which internships are opened most after a search? | Flow 1 end / Flow 2 start | Planned |
-| 7 | `internship_save` | Save succeeds | `internship_id` (string), `source` (string) | Which saved internships later turn into applications? | Flow 2e | Planned |
+| 7 | `internship_save` | Save succeeds (first save or `Undo` on Saved) | `internship_id` (string), `source` (string: `home` / `saved`) | Which saved internships later turn into applications? | Flow 2e | Implemented (Home, Saved Undo) |
 | 8 | `apply_start` | `Apply now` tapped | `internship_id` (string), `source` (string: `detail` / `saved`) | How many detail views lead to starting an application? | Flow 2 | Planned |
 | 9 | `cv_match_check` | CV Match Check finishes | `internship_id` (string), `result` (string: `all_matched` / `gaps` / `failed`), `matched_count` (int), `missing_count` (int) | How often do CVs miss requirements, and do gaps stop students from submitting? | Flow 2d | Planned |
 | 10 | `application_create` | Application submitted | `internship_id` (string), `cv_source` (string: `profile` / `uploaded`), `duration_sec` (int, `apply_start` → submit) | How many started applications are submitted, and in under 2 minutes? | Flow 2 end | Planned |
@@ -34,6 +34,7 @@ Status: **Implemented** (in code and tested) · **Planned** (owner implements wi
 | 15 | `notification_center_open` | Notification Center opens | `unread_count` (int) | Do students read the notifications they receive? | FCM | Planned |
 | 16 | `profile_update` | A Profile section is saved (Edit profile, Edit skills, Update preferences) | `section` (string: `details` / `skills` / `preferences`), `item_count` (int: filled detail fields, skills, or selected roles + work modes + location) | Which parts of the profile do students keep up to date, and how many skills do they declare before applying (CV Match Check input, G-24)? | Flow 2 alternative (`Edit profile`, 2d `Edit skills`) | Implemented (ViewModel tests; DebugView not checked yet) |
 | 17 | `cv_upload` | A CV is uploaded **and** saved as the default CV | `source` (string: `profile`; the Apply flow adds `apply_form`), `file_size_kb` (int) | How many students have a CV ready before they reach Apply (Flow 2a)? | Flow 2a (CV from Profile) | Implemented (ViewModel tests; DebugView not checked yet) |
+| 18 | `cv_validation_result` | The generic CV quality gate resolves (before Confirm Application) | `is_valid` (bool) | How often does a CV fail the usability gate, and do rejected CVs stop applications? | Flow 2 pre-submit (Validate CV) | Implemented (ViewModel tests; DebugView not checked yet) |
 
 Coverage required by Lab 3 §6 (≥ 7 events): sign-in (1), sign-out (2), main search / primary action (4, 8, 10), each detail screen (6, 11), export and upload (14).
 
@@ -42,7 +43,7 @@ Coverage required by Lab 3 §6 (≥ 7 events): sign-in (1), sign-out (2), main s
 | Funnel | Steps | Success criterion |
 |---|---|---|
 | Find (Flow 1) | `screen_view(home)` → `search` → `view_internship` | `search.elapsed_sec` < 30 |
-| Apply (Flow 2) | `view_internship` → `apply_start` → `cv_match_check` → `application_create` | `application_create.duration_sec` < 120 |
+| Apply (Flow 2) | `view_internship` → `apply_start` → `cv_match_check` → `cv_validation_result` → `application_create` | `application_create.duration_sec` < 120; `cv_validation_result.is_valid = false` identifies the blocking branch |
 | Save → apply (2e) | `internship_save` → `apply_start(source=saved)` → `application_create` | — |
 
 ## Adding an event

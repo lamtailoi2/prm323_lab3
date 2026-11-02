@@ -5,11 +5,13 @@ import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/utils/job_key.dart';
 import 'package:internly/features/internships/models/search_history_entry.dart';
 import 'package:internly/models/app_user.dart';
+import 'package:internly/models/cv_validation_result.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
+import 'package:internly/services/cv_validation_service.dart';
 import 'package:internly/services/document_picker_service.dart';
 import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/file_storage_service.dart';
@@ -292,6 +294,7 @@ class FakeSearchHistoryService implements SearchHistoryService {
 /// Records analytics calls instead of sending them.
 class FakeAnalyticsService implements AnalyticsService {
   final List<String> events = <String>[];
+  final List<Map<String, Object>?> eventParameters = <Map<String, Object>?>[];
   final List<String> screens = <String>[];
   final List<String?> userIds = <String?>[];
 
@@ -313,6 +316,7 @@ class FakeAnalyticsService implements AnalyticsService {
   @override
   Future<void> logEvent(String name, [Map<String, Object>? parameters]) async {
     events.add(name);
+    eventParameters.add(parameters);
     this.parameters[name] = parameters;
   }
 
@@ -320,38 +324,68 @@ class FakeAnalyticsService implements AnalyticsService {
   Future<void> setUserId(String? uid) async => userIds.add(uid);
 }
 
-/// In-memory [SavedService] for tests.
-class FakeSavedService implements SavedService {
-  final Map<String, Set<String>> savedByUid = <String, Set<String>>{};
+/// In-memory [SavedInternshipService] that keeps the saved keys in a map and
+/// pushes every change to [watchSaved] listeners, as Firestore would.
+class FakeSavedInternshipService implements SavedInternshipService {
+  final Map<String, Internship> _saved = <String, Internship>{};
+  final StreamController<List<Internship>> _updates =
+      StreamController<List<Internship>>.broadcast();
+
   AppException? error;
-  final StreamController<List<String>> _updates =
-      StreamController<List<String>>.broadcast();
+  Completer<void>? gate;
+  int watchCalls = 0;
+  int saveCalls = 0;
+  int removeCalls = 0;
 
-  @override
-  Stream<List<String>> watchSavedIds(String uid) async* {
-    final failure = error;
-    if (failure != null) throw failure;
-    yield (savedByUid[uid] ?? const <String>{}).toList(growable: false);
-    yield* _updates.stream;
+  /// Keys currently saved, in insertion order.
+  List<String> get savedKeys => _saved.keys.toList(growable: false);
+
+  /// Pre-fills the saved list, as a previous session would have left it.
+  void seed(Iterable<Internship> internships) {
+    for (final internship in internships) {
+      _saved[internship.key] = internship;
+    }
+    _updates.add(_snapshot);
   }
 
   @override
-  Future<void> save(String uid, String internshipId) async {
-    final failure = error;
-    if (failure != null) throw failure;
-    final set = savedByUid.putIfAbsent(uid, () => <String>{});
-    set.add(internshipId);
-    _updates.add(set.toList(growable: false));
+  Stream<List<Internship>> watchSaved() {
+    watchCalls++;
+    late final StreamController<List<Internship>> controller;
+    StreamSubscription<List<Internship>>? changes;
+    controller = StreamController<List<Internship>>(
+      onListen: () {
+        controller.add(_snapshot);
+        changes = _updates.stream.listen(controller.add);
+      },
+      onCancel: () async {
+        await changes?.cancel();
+        await controller.close();
+      },
+    );
+    return controller.stream;
   }
 
   @override
-  Future<void> unsave(String uid, String internshipId) async {
-    final failure = error;
-    if (failure != null) throw failure;
-    final set = savedByUid.putIfAbsent(uid, () => <String>{});
-    set.remove(internshipId);
-    _updates.add(set.toList(growable: false));
+  Future<void> save(Internship internship) async {
+    saveCalls++;
+    await gate?.future;
+    if (error case final failure?) throw failure;
+    _saved[internship.key] = internship;
+    _updates.add(_snapshot);
   }
+
+  @override
+  Future<void> remove(String internshipKey) async {
+    removeCalls++;
+    await gate?.future;
+    if (error case final failure?) throw failure;
+    _saved.remove(internshipKey);
+    _updates.add(_snapshot);
+  }
+
+  List<Internship> get _snapshot =>
+      List<Internship>.unmodifiable(_saved.values);
 
   Future<void> dispose() => _updates.close();
 }
@@ -481,6 +515,28 @@ class FakeFileStorageService implements FileStorageService {
       sizeBytes: bytes.length,
       uploadedAt: DateTime(2026, 10, 28),
     );
+  }
+}
+
+/// Records CV validation calls instead of reaching Cloud Functions.
+class FakeCvValidationService implements CvValidationService {
+  CvValidationResult result = const CvValidationResult(isValid: true);
+  AppException? error;
+
+  /// Completes the next check only when the test calls `complete()`.
+  Completer<void>? gate;
+
+  int calls = 0;
+  final List<String> paths = <String>[];
+
+  @override
+  Future<CvValidationResult> validate(String storagePath) async {
+    calls++;
+    paths.add(storagePath);
+    await gate?.future;
+    final failure = error;
+    if (failure != null) throw failure;
+    return result;
   }
 }
 
