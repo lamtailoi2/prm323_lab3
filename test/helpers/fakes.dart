@@ -6,8 +6,10 @@ import 'package:internly/core/utils/job_key.dart';
 import 'package:internly/models/app_user.dart';
 import 'package:internly/models/cv_validation_result.dart';
 import 'package:internly/models/internship.dart';
+import 'package:internly/models/internship_application.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
+import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/cv_validation_service.dart';
@@ -87,6 +89,64 @@ class FakeInternshipService implements InternshipService {
 
   /// Pushes a listener error.
   void fail(AppException failure) {
+    error = failure;
+    _updates.addError(failure);
+  }
+
+  Future<void> dispose() => _updates.close();
+}
+
+/// A tracked application with stable IDs for tests: `job-<id>` and its key.
+InternshipApplication testApplication(
+  String id, {
+  String? title,
+  String? companyName,
+  DateTime? appliedAt,
+  ApplicationStatus status = ApplicationStatus.submitted,
+  DateTime? nextStepAt,
+}) {
+  return InternshipApplication(
+    jobKey: jobKeyFor('job-$id'),
+    title: title ?? 'Position $id',
+    companyName: companyName ?? 'Company $id',
+    appliedAt: appliedAt ?? DateTime(2026, 10, 1),
+    status: status,
+    nextStepAt: nextStepAt,
+  );
+}
+
+/// In-memory [ApplicationService] backed by a broadcast stream. Tests set
+/// [results] before listening, or call [emit] to model a Firestore update.
+class FakeApplicationService implements ApplicationService {
+  List<InternshipApplication> results = const <InternshipApplication>[];
+
+  /// Thrown by the next subscription; usually an [AppException], but any
+  /// error exercises the ViewModel's fallback.
+  Object? error;
+  Completer<void>? gate;
+  int watchCalls = 0;
+
+  final StreamController<List<InternshipApplication>> _updates =
+      StreamController<List<InternshipApplication>>.broadcast();
+
+  @override
+  Stream<List<InternshipApplication>> watchApplications() async* {
+    watchCalls++;
+    await gate?.future;
+    final failure = error;
+    if (failure != null) throw failure;
+    yield results;
+    yield* _updates.stream;
+  }
+
+  /// Pushes a new snapshot, as Firestore would.
+  void emit(List<InternshipApplication> next) {
+    results = next;
+    _updates.add(next);
+  }
+
+  /// Pushes a listener error.
+  void fail(Object failure) {
     error = failure;
     _updates.addError(failure);
   }

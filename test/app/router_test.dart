@@ -7,6 +7,7 @@ import 'package:internly/app/router.dart';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/models/app_user.dart';
 import 'package:internly/services/analytics_service.dart';
+import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/internship_service.dart';
@@ -88,10 +89,12 @@ void main() {
       final internships = FakeInternshipService();
       final remoteConfig = FakeRemoteConfigService();
       final profiles = FakeUserProfileService();
+      final applications = FakeApplicationService();
       addTearDown(auth.dispose);
       addTearDown(profiles.dispose);
       addTearDown(internships.dispose);
       addTearDown(remoteConfig.dispose);
+      addTearDown(applications.dispose);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -101,6 +104,7 @@ void main() {
             internshipServiceProvider.overrideWithValue(internships),
             remoteConfigServiceProvider.overrideWithValue(remoteConfig),
             userProfileServiceProvider.overrideWithValue(profiles),
+            applicationServiceProvider.overrideWithValue(applications),
           ],
           child: const InternlyApp(),
         ),
@@ -154,7 +158,7 @@ void main() {
 
       await tester.tap(find.text('Applications'));
       await tester.pumpAndSettle();
-      expect(find.text('My Applications is not built yet'), findsOneWidget);
+      expect(find.text('You have not applied yet'), findsOneWidget);
       expect(analytics.screens, ['home', 'search', 'my_applications']);
       // Crashlytics custom key follows the current screen.
       expect(crashlytics.customKeys['last_screen'], 'my_applications');
