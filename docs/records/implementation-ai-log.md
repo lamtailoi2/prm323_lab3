@@ -383,6 +383,22 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-45: Work mode from the listing text (the Work mode filter returned none)
+- **Request:** "kiểm tra giúp tôi phần work mode, chỗ đó hiện tôi filter luôn không có kết quả nào cả" — selecting On-site / Remote / Hybrid in the Filter sheet always ended in an empty list.
+- **Output:** **Cause:** `Internship.fromSerpApi` read the work mode only from `title` and `extensions`; the `hl=vi` sync has no `detected_extensions` and the Vietnamese chips carry only the schedule and posted age, so `workMode` stayed `null` for 288 of 289 IT listings (recorded in `recommendation.dart` and Run 12) and the filter excluded every one of them. Detection now also reads the location, description and highlight items, but only for explicit wording (`remote work`, `work from home`, `làm việc từ xa`, `làm việc tại nhà`, `hybrid working`, `on-site`, `làm việc tại văn phòng`); a listing that states both office and home counts as hybrid, and a bare "hybrid" in a description is not used because it usually means a hybrid mobile app. Files: `lib/models/internship.dart`, `test/models/internship_test.dart`, `test/features/internships/search_filter_criteria_test.dart`; docs: G-25 #9, Run 21.
+- **Verification:** `dart format lib test` → 1 file changed; `flutter analyze` → `No issues found!`; `flutter test` → **533 passed** (+8: 5 model tests for title/chips/location, explicit Vietnamese and English wording, both arrangements → hybrid, the "hybrid app" / "remote server" false positives, no wording → `null`; 3 filter tests for selected modes, unknown left out, no mode keeps all). On device not run.
+- **Decision:** Accepted. Reading the description follows the accepted allowance fallback (P-28/G-17); a listing that does not state its arrangement stays `null` and is left out instead of being guessed (rule 7).
+
+---
+
+### P-46: Filter skills from the pool, not a fixed list
+- **Request:** "à chỗ skill ở filter, chỗ đó đang fix cứng là vậy hay dựa vào phân tích CV mà có" → "thay thế giúp tôi".
+- **Output:** the Filter sheet had a fixed `_suggestedSkills` list (Flutter, React, NestJS, Java, UI/UX, Data) that was not tied to the CV, the profile or the pool. Added `suggestedFilterSkills` (`lib/core/utils/skill_suggestions.dart`): it counts the skills the current listings actually mention, most common first, ties in `knownSkills` order (the vocabulary `findSkills` tags listings with) and then alphabetically, capped at the sheet's 6-chip row. `SearchViewModel` and `SearchResultsViewModel` expose it from the raw pool (duplicates merged first, CR-08), both screens pass it to `SearchResultsFilterSheet`, and the Skills section hides until the first snapshot instead of showing chips that cannot match. A skill already selected stays visible even if the pool no longer mentions it, so it can still be removed. CV validation was not used: `validateCv` returns validation results, not a skill list.
+- **Verification:** `dart format lib test` → 0 changed (1 earlier); `flutter analyze` → `No issues found!`; `flutter test` → **538 passed** (+5: `skill_suggestions_test.dart` order, vocabulary tie, alphabetical tie, empty pool, 6-chip cap; the sheet test now asserts the pool's Flutter / Dart / Node.js chips, that fixed `React` is gone, and that tapping Flutter narrows the count). On device not run.
+- **Decision:** Accepted. The pool is the honest source for a filter over listings; Profile skills are not used yet because a skill absent from the pool would be a chip that always yields zero results.
+
+---
+
 ## Entry template
 
 ```markdown

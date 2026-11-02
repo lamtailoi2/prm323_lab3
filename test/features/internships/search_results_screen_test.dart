@@ -332,17 +332,22 @@ void main() {
       findsOneWidget,
     );
 
+    // Skills come from the current pool, not a fixed list.
     expect(
       find.descendant(of: sheetFinder, matching: find.text('Flutter')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: sheetFinder, matching: find.text('React')),
+      find.descendant(of: sheetFinder, matching: find.text('Dart')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: sheetFinder, matching: find.text('NestJS')),
+      find.descendant(of: sheetFinder, matching: find.text('Node.js')),
       findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheetFinder, matching: find.text('React')),
+      findsNothing,
     );
 
     expect(find.text('Show 3 results →'), findsOneWidget);
@@ -356,6 +361,14 @@ void main() {
     // 2 listings are remote
     expect(find.text('Show 2 results →'), findsOneWidget);
     expect(find.text('1 active'), findsOneWidget);
+
+    // A skill chip narrows the same list: 2 listings mention Flutter.
+    await tester.tap(
+      find.descendant(of: sheetFinder, matching: find.text('Flutter')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Show 2 results →'), findsOneWidget);
+    expect(find.text('2 active'), findsOneWidget);
 
     // Apply
     await tester.tap(find.text('Show 2 results →'));

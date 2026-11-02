@@ -8,6 +8,7 @@ import '../core/utils/listing_extensions.dart';
 import '../core/utils/listing_text.dart';
 import '../core/utils/posted_age.dart';
 import '../core/utils/skill_matcher.dart';
+import '../core/utils/text_fold.dart';
 
 /// Work arrangement, as far as a Google Jobs listing reveals it. An unknown
 /// mode stays `null` and is hidden instead of guessed (DC-10).
@@ -70,6 +71,8 @@ class Internship {
     final extensions = reader.stringList('extensions');
     final detected = reader.optionalMap('detected_extensions');
     final description = reader.optionalString('description') ?? '';
+    final location = reader.optionalString('location')?.trim();
+    final highlights = _highlightItems(json['job_highlights']);
     final via = reader.optionalString('via')?.trim();
 
     return Internship(
@@ -77,11 +80,15 @@ class Internship {
       key: jobKeyFor(jobId),
       title: title,
       companyName: reader.requireString('company_name').trim(),
-      location: reader.optionalString('location')?.trim(),
+      location: location,
       workMode: _workMode(
         workFromHome:
             detected?.boolOr('work_from_home', fallback: false) ?? false,
-        texts: [title, ...extensions],
+        title: title,
+        extensions: extensions,
+        location: location,
+        description: description,
+        highlights: highlights,
       ),
       // Google Jobs never fills `salary` for Vietnamese listings; the pay is
       // only stated in the description (G-17).
@@ -228,21 +235,87 @@ class Internship {
     return parsePostedAge(postedTextSource);
   }
 
+  /// Work-arrangement wording that is safe to read from the description,
+  /// where a bare "hybrid" often means a hybrid mobile app (Flutter, React
+  /// Native) rather than a hybrid workplace.
+  static const List<String> _hybridPhrases = [
+    'hybrid work',
+    'hybrid working',
+    'hybrid model',
+    'hybrid mode',
+    'hybrid arrangement',
+    'work hybrid',
+    'working hybrid',
+    'lam viec hybrid',
+    'mo hinh hybrid',
+  ];
+
+  static const List<String> _remotePhrases = [
+    'fully remote',
+    '100 remote',
+    'remote work',
+    'remote working',
+    'remote job',
+    'remote position',
+    'remote role',
+    'remote friendly',
+    'work from home',
+    'wfh',
+    'lam viec remote',
+    'lam viec tu xa',
+    'lam viec tai nha',
+  ];
+
+  static const List<String> _onSitePhrases = [
+    'on site',
+    'at the office',
+    'at office',
+    'lam viec tai van phong',
+    'lam viec truc tiep tai van phong',
+  ];
+
+  /// Vietnamese Google Jobs results carry no `detected_extensions` and their
+  /// chips only hold the schedule and posted age, so most listings never
+  /// state their work mode. The title, chips and location are checked first;
+  /// the description and highlights are read only for explicit wording
+  /// (G-25 #9), never for a bare "remote"/"hybrid".
   static WorkMode? _workMode({
     required bool workFromHome,
-    required List<String> texts,
+    required String title,
+    required List<String> extensions,
+    required String? location,
+    required String description,
+    required Iterable<String> highlights,
   }) {
     if (workFromHome) return WorkMode.remote;
-    final combined = texts.join('\n').toLowerCase();
-    if (combined.contains('hybrid')) return WorkMode.hybrid;
-    if (RegExp(
-      r'on[-\s]?site|at (the )?office|tại văn phòng',
-      caseSensitive: false,
-    ).hasMatch(combined)) {
+
+    final structured = foldText([title, ...extensions, ?location].join('\n'));
+    if (containsWords(structured, 'hybrid')) return WorkMode.hybrid;
+    if (containsWords(structured, 'remote') ||
+        containsWords(structured, 'tu xa') ||
+        containsWords(structured, 'tai nha')) {
+      return WorkMode.remote;
+    }
+    if (containsWords(structured, 'on site') ||
+        containsWords(structured, 'onsite') ||
+        containsWords(structured, 'at the office') ||
+        containsWords(structured, 'tai van phong')) {
       return WorkMode.onSite;
     }
+
+    final text = foldText([description, ...highlights].join('\n'));
+    if (_containsAny(text, _hybridPhrases)) return WorkMode.hybrid;
+    final remote = _containsAny(text, _remotePhrases);
+    final onSite = _containsAny(text, _onSitePhrases);
+    // A listing that offers both arrangements is a hybrid one.
+    if (remote && onSite) return WorkMode.hybrid;
+    if (remote) return WorkMode.remote;
+    if (onSite) return WorkMode.onSite;
     return null;
   }
+
+  static bool _containsAny(String text, List<String> phrases) =>
+      phrases.any((phrase) => containsWords(text, phrase));
 
   static String? _httpsUrl(String? value) {
     final uri = value == null ? null : Uri.tryParse(value);
