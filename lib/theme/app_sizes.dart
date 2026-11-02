@@ -21,6 +21,9 @@ abstract final class AppSizes {
   /// Figma: G-07).
   static const double companyLogo = 40;
 
+  /// Company logo in the Internship Detail header (Figma 202:243, 48 × 48).
+  static const double companyLogoLarge = 48;
+
   /// Home app-bar brand mark and the profile avatar (Home screenshot).
   static const double brandMark = 32;
   static const double profileAvatar = 32;
