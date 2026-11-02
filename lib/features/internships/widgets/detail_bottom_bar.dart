@@ -70,6 +70,10 @@ class _SaveToggle extends StatelessWidget {
     return Semantics(
       button: true,
       label: isSaved ? 'Saved. Remove from saved' : 'Save internship',
+      // excludeSemantics also drops the InkWell's tap action, so the node
+      // gives it back; otherwise TalkBack and ARTEMIS cannot press Save
+      // (CR-02).
+      onTap: onPressed,
       excludeSemantics: true,
       child: Material(
         color: AppColors.surfaceVariant,
