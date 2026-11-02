@@ -348,6 +348,23 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-41: Apply Form (Flow 1 pre-submit)
+- **Request:** "làm UI nào trong flow 1 chưa làm" — the Flow 1 part after `Apply now`: Check CV → Upload / Select CV → Pre-submit Complete, with CV upload failed → Retry. Answers to the design questions: only the CV part of the Lab 2 Application Form; a CV uploaded here is for this internship only (Profile unchanged); `Continue to review` says the review step is coming soon until Flow 4 exists.
+- **Output:** `ApplyFormViewModel` (listing via `watchByKey` + saved copy, Profile CV, upload through `DocumentPickerService` / `FileStorageService` with progress, Retry, `Use CV from Profile`, Preview, `continueToReview()`; `apply_start` and `cv_upload` `source=apply_form`), `ApplyFormScreen` and `apply_form_parts.dart` (step header, summary card, banner, CV section states, bottom bar, skeleton); routes `/{tab}/internships/:jobKey/apply` (`{tab}_apply_form`); Detail `Apply now` pushes it; `CvFileTile` moved to `core/widgets` (Profile imports updated); `DetailSectionCard.isRequired`. `FileStorageService` caps upload retries at 30 s (`maxUploadRetryTime`, found on device). Docs: design-traceability row 6, Detail and Flow 1 rows, components, DC-24 (6), DC-26; analytics-plan rows 8 and 17; `test-report.md` Run 18.
+- **Verification:** `flutter analyze` → `No issues found!`; `flutter test` → **475 passed**; Figma frames read with the Figma MCP (`Application Form`, `Form · Empty`, `Form · CV uploading`, `Form · CV upload failed`, `Form · Validation error`, `Replace CV sheet`); on device: `test-report.md` Run 18 rows 3–4. The device check found that an offline upload never failed (Firebase Storage retries for 10 minutes), so `FileStorageService` now caps upload retries at 30 s (`maxUploadRetryTime`); the failure + `Retry` then appeared after 36 s.
+- **Decision:** Modified from the Lab 2 frames as recorded in DC-26 (team decision for the CV-only step, platform limits for PDF ≤ 10 MB / no Cancel / system picker). Hand-off to Flow 4 (`jobKey`, CV `storagePath`, `cv_source`) waits for Hảo's route.
+
+---
+
+### P-42: Apply Form summary facts, skill match line, Profile CV sheet
+- **Request:** "phần upload CV chỉ có tên công ty thôi thì UI hơi trống" → accepted suggestions: location fallback + allowance / job type on the summary card and a skill match line with `Edit skills`; then "phần upload CV hay replace CV ở phần profile và Apply đồng bộ UI với nhau, sửa phần ở Apply giống profile" (screenshot of Profile › Update CV).
+- **Output:** `ApplySummaryCard` (location fallback, `_SummaryFact` allowance / job type), `ApplySkillMatchLine` + `ApplyFormState.skillMatch` (`skillMatchFor`, Remote Config `cv_match_enabled`); `ProfileSheet` / `showProfileSheet` moved to `core/widgets/app_sheet.dart` as `AppSheet` / `showAppSheet` (Profile sheets updated); the Update CV layout extracted to `core/widgets/cv_upload_sheet.dart` (`CvUploadSheet`), used by Profile `UpdateCvSheet` and the new `ApplyCvSheet`; `ApplyFormViewModel` now selects a file (`chooseCv`, `removeSelected`) and uploads on the primary action (`uploadSelected`), and `closeCvSheet` drops an unsent file or error. Docs: DC-26 items (1), (4)–(6), components row, Run 18 rows 6–8.
+- **Verification:** `flutter analyze` → `No issues found!`; `flutter test` → **483 passed** (Profile tests unchanged); on device: Run 18 row 7.
+- **Follow-up request:** "Info Banner đẩy lên trên phần skill và phần skill bấm vào view more thì có thể xem được" → the banner now sits under the summary card (`ApplyFormScreen._banner`, which also removes an empty gap when no banner applies), and `ApplySkillMatchLine` is stateful with `Show all skills` / `Show fewer` (named like Detail's `Show all N benefits` / `Show fewer`) listing every missing and matched skill (`Skills: …` when Profile has none). Verified: 483 tests passed; device Run 18 row 9.
+- **Decision:** Accepted. The Profile sheet's look and copy did not change; only its code moved. Tip copy kept as in Figma (not changed without a decision).
+
+---
+
 ## Entry template
 
 ```markdown

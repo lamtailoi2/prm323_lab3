@@ -284,6 +284,25 @@ Branch `fix/search-analytics` from `origin/dev` `a2d9b85`. Environment: macOS 26
 
 ---
 
+## Run 18: Apply Form, Flow 1 pre-submit (2026-11-02)
+
+Branch `feat/apply-pre-submit` from `origin/dev` `9ab527c`. Environment: macOS 26.7.1 (arm64) · Flutter 3.47.6 / Dart 3.13.5.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `flutter analyze` | **No issues found!** |
+| 2 | `flutter test` | **475 tests, all passed** (+24): `apply_form_viewmodel_test.dart` (13: `apply_start` once with `internship_id` and the Detail tab; listing + Profile CV selected; unavailable listing; load error + Retry; Continue without a CV flags it; Continue hands over the CV; upload progress then a CV for this internship only, Profile not written, `cv_upload` `source=apply_form`; failed upload keeps the file and Retry sends it again; file over 10 MB rejected without Retry; closed picker; `Use CV from Profile`; taps ignored while uploading; Preview opens the URL or returns the failure); `apply_form_screen_test.dart` (10: CV from Profile and no-CV states at 360 / 412 dp, uploading disables `Continue to review`, failure with `Retry` / `Use CV from Profile`, `Edit profile` opens Profile, unavailable, load error, 48 dp tap targets); router (Detail → `Apply now` → `home_apply_form` with `apply_start`, Back → Detail); Detail `Apply now` opens the Apply Form instead of the coming-soon message |
+| 3 | On device (Pixel_API_36, 412 dp; signed-in account without a Profile CV; test file `Sample_CV.pdf`, 609 B, no personal data) | **Passed**: Home card → Detail → `Apply now` → Apply Form (`home_apply_form`, logcat `apply_start` `source=home`); tip banner; `Continue to review` without a CV → red upload area + `Add a CV to continue…`; `Upload CV` → Android picker (phone storage + Drive) → `Uploading… 0%` with `Continue to review` disabled → `Uploaded for this internship`, logcat `cv_upload` `source=apply_form`; `Continue to review` → `Your CV is ready. The review step is coming soon.`; 360 dp (`wm size 945x2100`) fits; Back → Detail. Evidence: `evidence/screens/apply-form-states-20261102.png`, `apply-form-continue-360-20261102.png`, `evidence/analytics/analytics-apply-logcat-20261102.txt` |
+| 4 | On device, offline (`svc wifi/data disable`) → `Replace` → same file | **Bug found and fixed**: the bar stayed at `Uploading… 0%` because Firebase Storage retries uploads for 10 minutes by default (logcat `ExponenentialBackoff: network unavailable, sleeping`). `FileStorageService` now sets `setMaxUploadRetryTime(30 s)` (also used by Profile). After the fix: `CV could not be uploaded` + `We could not upload the file. Check your connection and try again.` + `Retry` after **36 s**; network back → `Retry` → `Uploaded for this internship`, second `cv_upload` |
+| 5 | After the fix | `flutter analyze` **No issues found!**; `flutter test` **475 passed** |
+| 6 | Summary facts, skill match line and the shared CV sheet (P-42) | `flutter analyze` **No issues found!**; `flutter test` **483 passed** (+8): summary location fallback + `Allowance: …` / `Job type: …`, skill match line with `Missing: … +N more` / `Add skills`, `cv_match_enabled` off hides it; Choose file selects without uploading, `Remove`, upload from the sheet (progress, `For this internship` CV, Profile not written), failure shown in the sheet and `Cancel` drops it, an upload still running after `Cancel` finishes on the form, failure after closing → form `Retry` / `Use CV from Profile`; Profile tests unchanged (55 passed) after `ProfileSheet` → `AppSheet` and `UpdateCvSheet` → `CvUploadSheet` |
+| 7 | On device (412 dp; the account now has a Profile CV, uploaded by the user from Profile) | **Passed**: Apply Form shows `Techcombank · Việt Nam`, `Negotiable` / `Not disclosed`, `You have 3 of 11 required skills` · `Missing: SQL, REST API, Java +5 more`, the Profile banner and `From your Profile`; `Replace` opens the same sheet as Profile (`Update CV`, `Use a different CV for this internship`, `Current active CV` · `From your Profile`, `Choose file`, `Update CV`, `Cancel`); picking the test PDF → `Selected for update` + `Remove` → `Update CV` → sheet closes → `Uploaded for this internship`, logcat `cv_upload` `source=apply_form`. Evidence: `evidence/screens/apply-form-cv-sheet-20261102.png` |
+| 8 | Banner above the skill line, `Show all skills` / `Show fewer` | `flutter analyze` **No issues found!**; `flutter test` **483 passed** (screen tests: banner above `You have 2 of 6 required skills`; `Show all skills` → `Missing: Java, Kotlin, Swift, SQL` + `You have: Flutter, Dart`; `Show fewer` collapses; without Profile skills → `Skills: Flutter, Dart`) |
+| 9 | On device (412 and 360 dp) | **Passed** for the order (banner → skill line → CV) and the `Show all skills` / `Edit skills` buttons at both widths: `evidence/screens/apply-form-banner-skills-20261102.png`. The expanded state was not captured on device (the emulator was in use at the time); it is covered by the widget test |
+| 10 | Not checked | DebugView screenshots for `apply_start` / `cv_upload` (logcat only) |
+
+---
+
 ## Run template
 
 ```markdown
