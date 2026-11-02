@@ -205,6 +205,11 @@ void main() {
       );
       expect(find.text('Uploaded for this internship'), findsOneWidget);
       expect(continueButton(tester).onPressed, isNotNull);
+      // No Profile tip once a CV is uploaded for this internship (CR-20).
+      expect(
+        find.textContaining('Tip: complete your Profile once'),
+        findsNothing,
+      );
     },
   );
 
@@ -271,12 +276,46 @@ void main() {
       expect(find.text('CV could not be uploaded'), findsOneWidget);
       expect(find.text('Retry'), findsOneWidget);
 
+      // Continue does not quietly use the Profile CV instead (CR-15).
+      await tester.tap(find.text('Continue to review'));
+      await tester.pump();
+      expect(
+        find.text('Retry the upload or choose another CV first.'),
+        findsOneWidget,
+      );
+
       await tester.tap(find.text('Use CV from Profile'));
       await tester.pumpAndSettle();
       expect(find.text('CV could not be uploaded'), findsNothing);
       expect(find.text('From your Profile'), findsOneWidget);
     },
   );
+
+  testWidgets('a profile load error shows Retry instead of the tip (CR-18)', (
+    tester,
+  ) async {
+    profiles.loadError = const AppException(
+      AppErrorKind.network,
+      'We could not load your Profile CV. Try again.',
+    );
+    await pumpForm(tester);
+
+    expect(
+      find.text('We could not load your Profile CV. Try again.'),
+      findsOneWidget,
+    );
+    expect(find.text('Retry'), findsOneWidget);
+    expect(find.text('Upload CV'), findsOneWidget);
+    expect(
+      find.textContaining('Tip: complete your Profile once'),
+      findsNothing,
+    );
+
+    profiles.loadError = null;
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(find.text('From your Profile'), findsOneWidget);
+  });
 
   testWidgets('Edit profile opens the Profile tab', (tester) async {
     await pumpForm(tester);
@@ -362,9 +401,16 @@ void main() {
       expect(find.text('Missing: Java, Kotlin, Swift +1 more'), findsOneWidget);
       expect(find.text('You have: Flutter, Dart'), findsNothing);
 
+      // The Edit skills sheet opens over the form, so nothing on it is
+      // lost (CR-16).
       await tester.tap(find.text('Edit skills'));
       await tester.pumpAndSettle();
-      expect(find.text('Profile tab'), findsOneWidget);
+      expect(find.text('Select your technical proficiencies'), findsOneWidget);
+      expect(find.text('Profile tab'), findsNothing);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Techcombank · Việt Nam'), findsOneWidget);
     });
   }
 
