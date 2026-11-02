@@ -284,7 +284,9 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
   /// Complete), or `null` when there is none yet and the CV section must say
   /// so.
   ApplyCv? continueToReview() {
-    if (state.isUploading) return null;
+    // A failed upload is resolved first (`Retry` or `Use CV from Profile`),
+    // so the Profile CV is never sent in place of the chosen file (CR-15).
+    if (state.isUploading || state.uploadError != null) return null;
     final cv = state.cv;
     if (cv == null) state = state.copyWith(missingCv: true);
     return cv;

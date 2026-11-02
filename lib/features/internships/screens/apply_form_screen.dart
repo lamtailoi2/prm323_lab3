@@ -129,6 +129,11 @@ class ApplyFormScreen extends ConsumerWidget {
                     context,
                     'Your CV is ready. The review step is coming soon.',
                   );
+                } else if (state.uploadError != null) {
+                  _showMessage(
+                    context,
+                    'Retry the upload or choose another CV first.',
+                  );
                 }
               },
             )
