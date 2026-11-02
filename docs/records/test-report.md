@@ -200,91 +200,27 @@ Branch `feat/auth-login-ui` on top of `dev` `175b999`. Same environment as Run 8
 
 ---
 
-## Run 14: CV validation via LLM (2026-11-01)
+## Run 9: Search Results UI & Real Firebase Data (2026-10-28)
 
-Branch `feat/LLM-validation` on top of `main` `7888eb5`. Environment: Windows 11 · Flutter 3.47.8 stable · Dart 3.13.7 · Node v24.22.1 · npm 11.19.1 (the functions package declares Node 22; npm printed an `EBADENGINE` warning but built and tested normally).
-
-| # | Command / scenario | Result |
-|---|---|---|
-| 1 | `npm run build` (`functions/`) | **Passed**: `tsc` completed with no errors (new `validate-cv.ts` + `index.ts` wiring) |
-| 2 | `npm test` (`functions/`) | **18 tests, 18 passed** (7 existing `job-key` / `selection` / `serp` tests + 11 new `validate-cv` tests). Covers path ownership (unauthenticated, another user's `cvs/{uid}/`, traversal, empty path), defensive JSON parsing (plain, fenced, missing `reason`, wrong type, garbage), valid / invalid verdicts, the `< 50 character` short-circuit (Gemini not called), fail-open on unparseable model output, the 12,000-character prompt cap, a missing `GEMINI_API_KEY`, and download / extraction / Gemini failures becoming safe `HttpsError`s. All external effects are stubs: no Firebase project, Storage, Gemini or network call |
-| 3 | `dart format lib test` | Completed; the new and changed files were formatted. `lib/app/bootstrap.dart` was restored to its `dev` state (missing final newline), as in Runs 12–13 |
-| 4 | `flutter analyze` | **No issues found!** |
-| 5 | `flutter test` | **275 tests, all passed** (260 on `main`, +15): `cv_validation_service_test.dart` (4: verdict parsing incl. trimmed reason and malformed payloads; error-code mapping), `cv_validation_viewmodel_test.dart` (6: valid → `ViewData` + `cv_validation_result` with `is_valid: true`, rejected CV → `ViewData` with `is_valid: false`, loading until the callable resolves, repeated taps start one call, failed check → `ViewError` with no analytics event, signed-out student cannot start), `cv_validation_step_test.dart` (5: `Checking your CV…`, automatic continue on valid, invalid branch with `Update CV` + `Retry` and a working retry, failed-check message, no overflow and 48 dp tap targets at 360 and 412 dp) |
-| 6 | Deploy `validateCv` to a Firebase project and upload real + garbage PDFs | **Not run**: no Firebase CLI login / dev project credentials and no `GEMINI_API_KEY` value on this machine. Command to run by the owner: `firebase functions:secrets:set GEMINI_API_KEY`, then `firebase deploy --only functions:validateCv` |
-| 7 | DebugView screenshot for `cv_validation_result` | **Not run**: needs row 6. Evidence must be saved as `evidence/analytics/analytics-cv-validation-result-<yyyymmdd>.png` |
-| 8 | Real Gemini / PDF smoke test | **Not run**: deliberately stubbed in every test (no real Firebase project or network in tests, AGENTS.md testing rules) |
-
-Failures and follow-ups: the Apply flow screens (Application Form, CV Match Check, Review) are still separate work; `CvValidationStep` is built and tested but not yet embedded in a route (G-24). The Figma frame for the step is still open (DC-19). Manual device verification and evidence (rows 6–8) remain.
-
----
-
-## Run 8: Save Toggle on Home (2026-10-28)
-
-Branch `feat/saved-internships`, commit `569be13` plus the Save Toggle working tree. Environment: Windows 11 (10.0.26200.9711), Flutter 3.47.8 / Dart 3.13.3, Android emulator `sdk gphone64 x86_64` (Android 17 / API 37, `-gpu swiftshader_indirect`), Firebase project `prm-lab3`.
+Branch: `feat/search-results`. Environment: Windows 11 (win32) · Flutter 3.47.8 stable · Dart 3.13.3.
 
 | # | Command / scenario | Result |
 |---|---|---|
-| 1 | `dart format lib test` | Completed; 78 files checked, 0 changed |
-| 2 | `flutter analyze` | **No issues found!** |
-| 3 | `flutter test` | **131 tests, all passed** (125 before this change: +4 in `test/features/saved/saved_viewmodel_test.dart`, +2 net in `home_screen_test.dart`, where the "coming soon" case became save / unsave / failed-save) |
-| 4 | Save Toggle on the emulator (signed in, Home) | **Not run yet**: the app session (`flutter run`) is owned by the developer's terminal; the widget tests above cover the tap, the filled bookmark, `internship_save` and the failure message. Verify by hot restarting (`R`) and tapping a card bookmark, then checking `users/{uid}/savedInternships` and the Saved tab |
-| 5 | `firestore.rules` change | **None needed**: saved items live under `users/{uid}/savedInternships` (AGENTS.md rule 9) |
-| 6 | DebugView screenshot for `internship_save` | **Not run**: needs the on-device check in row 4 and the DebugView session; `evidence/analytics/` has no entry yet |
-| 7 | ARTEMIS case for saving | **Not run**: no ARTEMIS daemon on this machine (Run 7 row 5) |
+| 1 | `dart format lib test` | Completed; **86 files checked, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** (ran in 1.6 s) |
+| 3 | `flutter test` | **170 tests, all passed** (+19 from Run 8: SearchResultsViewModel 11 tests + SearchResultsScreen 8 tests) |
+| 4 | `flutter build apk --debug` | **Not run**: Android toolchain still missing cmdline-tools on this machine (Run 1 row 6) |
+
+### What the +17 tests cover
+
+| File | Focus |
+|---|---|
+| `test/features/internships/search_results_viewmodel_test.dart` | SearchResultsViewModel: live Firestore pool querying, query filtering across titles and skills, work arrangement filtering, combined filters, clearing filters, sorting (most recent / best match), empty and error states with retry, save/unsave toggle |
+| `test/features/internships/search_results_screen_test.dart` | SearchResultsScreen at 360 and 412 dp: search bar with filter count badge, active filter chips (`✓ Remote ✕`, `✓ Flutter ✕`, `Clear filters`), dynamic result count header with green indicator, sort options, `InternshipCard` display with real data, footer notice, removing chips, clearing filters, bookmark toggle, touch targets ≥ 48 dp |
 
 ---
 
-## Run 9: Shared tab header for Saved Internships (2026-11-01)
-
-Branch `feat/saved-internships` (1 commit ahead of `origin`), uncommitted working tree. Environment: Windows 11 (10.0.26200.9711), Flutter / Dart from `C:\Users\ADMIN\flutter`, emulator `Pixel_9` (Android 17 / API 37, 1080x2424 @ 420 dpi = 411 dp, windowed), Firebase project `prm-lab3`.
-
-| # | Command / scenario | Result |
-|---|---|---|
-| 1 | `dart format lib test` | Completed; 80 files checked, 1 changed (`test/core/widgets/components_test.dart`) |
-| 2 | `flutter analyze` | **No issues found!** |
-| 3 | `flutter test` | **140 tests, all passed** (+9: `test/features/saved/saved_screen_test.dart` at 360 / 412 dp, bell, avatar → Profile, empty state, 48 dp targets; +3 `MainTabAppBar` cases in `components_test.dart`) |
-| 4 | `flutter build apk --debug --dart-define-from-file=.env` | **Passed**: `✓ Built build\app\outputs\flutter-apk\app-debug.apk` (81.5 s) |
-| 5 | On device: `adb install -r` + Saved tab, 412 dp | **Passed**: `Saved` title at the 16 dp text margin, bell and avatar as on Home; screenshot `evidence/screens/saved-header-412-20261101.png` |
-| 6 | On device: `adb shell wm size 945x2120` (360 dp), Saved tab | **Passed**: same header, title not clipped; screenshot `evidence/screens/saved-header-360-20261101.png`. `wm size reset` restored 1080x2424 |
-| 7 | Follow-up: brand mark removed from the tab header (`MainTabAppBar`) | **Passed after re-run**: `dart format` 0 changed; `flutter analyze` `No issues found!`; `flutter test` **140 passed**; APK rebuilt, reinstalled, both widths re-captured (rows 5–6 hold the screenshots of this state). Title width measured with the bundled Inter font: `Saved Internships` = 211.2 dp vs 244 dp available at 360 dp |
-| 8 | Bottom navigation at 360 dp | **Finding, not fixed here**: the `Applications` label wraps onto two lines at 360 dp (it fits at 412 dp). Out of scope for this change; needs its own fix against `design-system.md` §2.7 (`Labels type/caption`) |
-| 9 | ARTEMIS case for the tab header | **Not run**: no ARTEMIS daemon on this machine (Run 7 row 5) |
-
----
-
-## Run 10: Saved unsave with Undo (2026-11-01)
-
-Branch `feat/saved-internships`, uncommitted working tree. Environment: Windows 11 (10.0.26200.9711), Flutter 3.47.8 / Dart 3.13.7 from `C:\Users\ADMIN\flutter`.
-
-| # | Command / scenario | Result |
-|---|---|---|
-| 1 | `dart format lib test` | Completed; 80 files checked, 2 changed (`saved_screen_test.dart`, `saved_viewmodel_test.dart`) |
-| 2 | `flutter analyze` | **No issues found!** |
-| 3 | `flutter test` | **152 tests, all passed** (+12 against the 140 in Run 9: 5 `SavedViewModel.remove` / `restore` cases, 6 Saved screen cases at 360 / 412 dp, 1 inverse-surface theme case) |
-| 4 | `flutter test test/features/saved test/theme` (focused run) | **34 passed**; the 6 new screen cases cover: unsave removes the card and shows `Removed from Saved` + `Undo` (360 / 412 dp), Undo restores and dismisses, the removal is final after the Snackbar times out, a failed unsave keeps the card with the service message + `Retry`, and a second unsave replaces the previous Snackbar |
-| 5 | Flutter 3.47 API check | **Finding**: `SnackBar` now defaults `persist` to `action != null`, so a SnackBar with Undo would stay on screen indefinitely. The Saved Snackbar sets `persist: false`; row 3's timeout test pumps 5 s and asserts it is gone |
-| 6 | On device: unsave + Undo in the Firebase project | **Not run**: the app session belongs to the developer's terminal and needs a signed-in Google account; the widget tests cover the tap, the Snackbar, the timeout, the error path and the Firestore stream through `FakeSavedInternshipService` |
-| 7 | DebugView screenshot for `internship_save(source=saved)` | **Not run**: needs the on-device check in row 6; `evidence/analytics/` has no entry for the Undo event yet |
-| 8 | ARTEMIS case for unsave + Undo | **Not run**: no ARTEMIS daemon on this machine (Run 7 row 5) |
-
----
-
-## Run 11: Saved loading state (2026-11-01)
-
-Branch `feat/saved-internships`, uncommitted working tree. Environment: Windows 11 (10.0.26200.9711), Flutter 3.47.8 / Dart 3.13.7 from `C:\Users\ADMIN\flutter`.
-
-| # | Command / scenario | Result |
-|---|---|---|
-| 1 | `dart format lib\features\saved test\features\saved` | Completed; 5 files checked, 0 changed |
-| 2 | `flutter analyze` | **No issues found!** |
-| 3 | `flutter test test\features\saved` (focused run) | **23 passed**, including 2 new cases: the first snapshot shows 3 `InternshipCardSkeleton`s and the filter shortcuts at 360 and 412 dp, no spinner / empty state, a "Loading saved internships" semantics label, and the skeletons are replaced by the 2 real cards (with `2 saved`) once the stream emits |
-| 4 | `flutter test` | **154 tests, all passed** (+2 against the 152 in Run 10) |
-| 5 | Design check | Loading keeps the static work-mode shortcuts (they work while the list loads); the saved count is **not** shown as "0 saved" or faked, it appears with the data. Same `InternshipCardSkeleton` as Home, wrapped in one semantics label |
-| 6 | On device: first open of Saved with a cold stream | **Not run**: needs the developer's signed-in session (Run 10 row 6); the widget test holds the stream open with a `StreamController` and asserts the skeletons before the first snapshot |
-| 7 | ARTEMIS case for the Saved loading state | **Not run**: no ARTEMIS daemon on this machine (Run 7 row 5) |
-
----
+## Run template
 
 ```markdown
 ## Run N: <PR / milestone> (<date>)

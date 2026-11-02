@@ -21,6 +21,7 @@ class AppSearchField extends StatefulWidget {
     this.onSubmitted,
     this.onCleared,
     this.onFilterPressed,
+    this.filterCount,
   });
 
   final TextEditingController? controller;
@@ -37,6 +38,7 @@ class AppSearchField extends StatefulWidget {
 
   /// Shows the trailing filter action when non-null.
   final VoidCallback? onFilterPressed;
+  final int? filterCount;
 
   @override
   State<AppSearchField> createState() => _AppSearchFieldState();
@@ -76,7 +78,14 @@ class _AppSearchFieldState extends State<AppSearchField> {
             ),
           if (widget.onFilterPressed != null)
             IconButton(
-              icon: const Icon(Symbols.tune_rounded),
+              icon: (widget.filterCount != null && widget.filterCount! > 0)
+                  ? Badge.count(
+                      count: widget.filterCount!,
+                      backgroundColor: AppColors.primary,
+                      textColor: AppColors.onPrimary,
+                      child: const Icon(Symbols.tune_rounded),
+                    )
+                  : const Icon(Symbols.tune_rounded),
               tooltip: 'Filters',
               color: AppColors.textSecondary,
               onPressed: widget.onFilterPressed,
