@@ -316,6 +316,14 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-38: Plain-text listing descriptions
+- **Request:** "fix luôn phần này": some descriptions showed raw Markdown such as `## Job Purpose` on Internship Detail.
+- **Output:** `core/utils/listing_text.dart`: `plainListingText` (drops heading `#`s and bold markers, turns `-` / `*` / `+` list markers into `• `, removes horizontal rules, collapses blank-line runs) and `plainListingItem` for `job_highlights` items. `Internship.fromSerpApi` stores the cleaned description and items; skills and allowance are still read from the raw text, and the Firestore document is unchanged. Tests: 6 helper cases (incl. `C++`, `C#` and `#hashtag` left alone), 1 model case.
+- **Verification:** `flutter analyze` → `No issues found!`; `flutter test` → **433 passed**; checked on the emulator (`test-report.md` Run 15 row 11).
+- **Decision:** Accepted; plain text instead of a Markdown renderer, so no new dependency (AGENTS.md rule 10).
+
+---
+
 ## Entry template
 
 ```markdown

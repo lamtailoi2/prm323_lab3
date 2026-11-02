@@ -4,6 +4,7 @@ import '../core/utils/allowance.dart';
 import '../core/utils/firestore_reader.dart';
 import '../core/utils/job_key.dart';
 import '../core/utils/job_role.dart';
+import '../core/utils/listing_text.dart';
 import '../core/utils/posted_age.dart';
 import '../core/utils/skill_matcher.dart';
 
@@ -95,7 +96,9 @@ class Internship {
           description,
         ].join('\n'),
       ),
-      description: description.trim().isEmpty ? null : description.trim(),
+      // Skills and allowance above read the raw text; only the copy shown on
+      // Internship Detail is cleaned of Markdown.
+      description: _plainOrNull(description),
       highlights: _highlights(json['job_highlights']),
       scheduleType: detected?.optionalString('schedule_type')?.trim(),
       // SerpAPI has sent both "LinkedIn" and "via LinkedIn" over time.
@@ -241,6 +244,11 @@ class Internship {
         : null;
   }
 
+  static String? _plainOrNull(String text) {
+    final plain = plainListingText(text);
+    return plain.isEmpty ? null : plain;
+  }
+
   /// Sections of `job_highlights` with a title and at least one item;
   /// malformed sections are skipped instead of failing the listing.
   static List<JobHighlight> _highlights(Object? highlights) {
@@ -253,7 +261,7 @@ class Internship {
       if (title is! String || title.trim().isEmpty || items is! List) continue;
       final texts = [
         for (final item in items.whereType<String>())
-          if (item.trim().isNotEmpty) item.trim(),
+          if (plainListingItem(item) case final text when text.isNotEmpty) text,
       ];
       if (texts.isEmpty) continue;
       results.add(

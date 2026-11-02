@@ -191,6 +191,23 @@ void main() {
     expect(internship.via, 'LinkedIn');
   });
 
+  test('detail text is shown without Markdown markers', () {
+    final internship = Internship.fromSerpApi(
+      job({
+        'description': '## Job Purpose\n\n\n- Build **Flutter** apps',
+        'job_highlights': [
+          {
+            'title': 'Qualifications',
+            'items': ['- **Dart** basics', '  '],
+          },
+        ],
+      }),
+    );
+    expect(internship.description, 'Job Purpose\n\n• Build Flutter apps');
+    expect(internship.highlightItems('qualification'), ['Dart basics']);
+    expect(internship.skills, containsAll(['Flutter', 'Dart']));
+  });
+
   test('ignores a non-https logo', () {
     final internship = Internship.fromSerpApi(
       job({'thumbnail': 'http://example.com/logo.png'}),
