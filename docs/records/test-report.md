@@ -254,6 +254,21 @@ Branch `feat/internship-detail` (from `origin/dev` at `7f7a1dd`, fast-forwarded 
 
 ---
 
+## Run 16: Search Field on one line (2026-11-02)
+
+Branch `fix/search-field-one-line` from `origin/dev` `3c2c313`. Environment: macOS 26.7.1 (arm64) · Flutter 3.47.6 / Dart 3.13.5.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | Hint width measured inside `AppSearchField` with the filter action (temporary widget test, deleted) | Hint area **224 dp** at 360 dp, **276 dp** at 412 dp; `Search internships, companies, or skills` = 319.5 dp (wraps at both), `Search role, company, skill` = 215.9 dp (fits both) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **385 tests, all passed**; the old "long placeholder wraps" case is replaced by "default placeholder stays on one line" at 360 / 412 dp (`maxLines == 1`, not exceeded) and a `wrapHint` case (two lines, no overflow) |
+| 4 | On device (Pixel_API_36, 412 dp and 360 dp via `wm size 945x2100`) | **Passed**: `Search role, company, skill` on one line at both widths — `evidence/screens/search-field-one-line-20261102.png` (before / after). Seen, not changed here: the `Applications` bottom-navigation label still wraps at 360 dp |
+| 5 | Filter sheet from Search, location matching, single drag handle (P-39) | `flutter analyze` **No issues found!**; `flutter test` **391 passed** (Search: filter icon opens the sheet, `Show 3 → 1 results`, starts from the selected work mode and query and records the query; Search Results applies `initialCriteria`; `SearchViewModel.countMatching`; `search_filter_criteria_test.dart` for Vietnamese / English city spellings) |
+| 6 | On device (Pixel_API_36, 412 dp) | **Passed**: Search filter icon → Filter sheet (one handle) `Show 195 results`; Skills `Flutter` → `Show 4 results` → Search Results with the `Flutter` chip; Location `Ho Chi Minh City` 50, `Da Nang` 6, `Ha Noi` 42 (before the fix these matched only English spellings) → results all in `Hà Nội`. Evidence: `evidence/screens/search-filter-sheet-20261102.png`, `search-filter-location-20261102.png`. Seen, not changed: Search Results shows the same job twice when it was synced under two keywords (Home de-duplicates, Search Results does not); `search_filter_apply` (analytics row 5) is still not logged |
+
+---
+
 ## Run template
 
 ```markdown

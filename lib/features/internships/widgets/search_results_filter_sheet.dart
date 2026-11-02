@@ -172,18 +172,8 @@ class _SearchResultsFilterSheetState extends State<SearchResultsFilterSheet> {
     return SafeArea(
       child: Column(
         children: [
-          // Drag handle
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.s8),
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: const BoxDecoration(
-                color: AppColors.border,
-                borderRadius: AppRadii.fullAll,
-              ),
-            ),
-          ),
+          // No handle here: BottomSheetThemeData.showDragHandle already draws
+          // one, as on the Profile sheets.
           // Header row
           Padding(
             padding: const EdgeInsets.fromLTRB(
