@@ -100,7 +100,7 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `SavedViewModel` | Saved Internships | `SavedInternshipService`, `AnalyticsService` | Planned |
 | `ApplyViewModel` | Application Form, CV Match Check, Review, Success | `ApplicationService`, `UserProfileService`, `FileStorageService`, `CvValidationService`, `RemoteConfigService`, `AnalyticsService`, `CrashlyticsService` | Planned |
 | `CvValidationViewModel` | Validate CV step (Apply, pre-submit) | `CvValidationService`, `AnalyticsService` | Done (service, ViewModel, step widget, tests; Apply screens not built) |
-| `MyApplicationsViewModel` | My Applications | `ApplicationService` | Planned |
+| `MyApplicationsViewModel` | My Applications | `ApplicationService` | Done (list, status filter, retry; no writes, no detail) |
 | `ApplicationDetailViewModel` | Application Detail | `ApplicationService`, `AnalyticsService` | Planned |
 | `ProfileViewModel` | Profile | `UserProfileService` (+ auth for email and photo) | Done |
 | `EditProfileViewModel` | Edit profile | `UserProfileService`, `AnalyticsService` | Done |
@@ -111,7 +111,7 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `NotificationCenterViewModel` | Notification Center | `NotificationService`, `AnalyticsService` | Planned |
 | `ReportExportViewModel` | Report export | `ReportExportService`, `FileStorageService`, `ApplicationService`, `AnalyticsService` | Planned |
 
-Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `UserProfileService` (Firestore `users/{uid}` listener + merge writes per section), `FileStorageService` (Cloud Storage for Firebase), `DocumentPickerService` (system file picker, `file_selector`), `ExternalLinkService` (opens a URL in another app, `url_launcher`), `CvValidationService` (callable `validateCv`), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`; Gemini is called only by the callable `validateCv` function.
+Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `ApplicationService` (Firestore `users/{uid}/applications` listener, read-only), `UserProfileService` (Firestore `users/{uid}` listener + merge writes per section), `FileStorageService` (Cloud Storage for Firebase), `DocumentPickerService` (system file picker, `file_selector`), `ExternalLinkService` (opens a URL in another app, `url_launcher`), `CvValidationService` (callable `validateCv`), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`; Gemini is called only by the callable `validateCv` function.
 
 ## 4. Sequence: Home feed (shared Firestore pool)
 
@@ -183,6 +183,17 @@ Rules for feature owners:
 
 Email and photo are never copied here; they come from the Google account. `city` (where the student lives) and `preferences.location` (where they want an internship) are both kept; Update preferences starts from `city` when its location is empty (G-30). Replacing the CV keeps the old file in Storage because submitted applications may still link to it.
 
+**Application document `users/{uid}/applications/{jobKey}`** (`InternshipApplication`, `lib/models/internship_application.dart`). The document ID is the listing key, so one student can have at most one application per listing. The Apply flow owns the writes; My Applications only reads them today.
+
+| Field | Type | Written by |
+|---|---|---|
+| `title`, `companyName` | string (required) | Apply flow (snapshot of the listing, which expires from the pool, G-25) |
+| `appliedAt` | timestamp (required) | Apply flow |
+| `status` | `submitted` / `under_review` / `interview` / `accepted` / `rejected` (required, `ApplicationStatus`) | Apply flow; later the student's own status update |
+| `nextStepAt` | timestamp or null (optional) | Interview slot or the employer's reply deadline, when the student records one |
+
+A stored status outside that list (for example `withdrawn`) is malformed: the document is skipped and logged, because only the five page-05 statuses have a badge (G-18, DC-22). My Applications sorts by `appliedAt` descending and derives the count line and the status chips from the documents it received, so no index beyond the default is needed.
+
 ## 7. Firebase and API integration points
 
 | Concern | Where | Failure handling |
@@ -192,6 +203,7 @@ Email and photo are never copied here; they come from the Google account. `city`
 | SerpAPI sync | `functions/src/sync.ts` (scheduled) | Missing secret / quota / network → logged + `sync/state.lastError`; the app keeps serving the last good pool |
 | CV validation (Gemini) | `functions/src/validate-cv.ts` (callable) + `services/cv_validation_service.dart` | Wrong/other user's path → `permission-denied`; unreadable PDF or < 50 extracted characters → invalid result (no Gemini call); model output that is not JSON → fail open; download / Gemini failure → `HttpsError` with a safe message, mapped to `AppException` + Retry in the app |
 | Listings | `services/internship_service.dart` | permission denied / offline → `AppException` with Retry; malformed documents skipped and logged |
+| Applications | `services/application_service.dart` | permission denied / offline → `AppException` with Retry on My Applications; malformed documents (missing fields, unknown status) skipped and logged |
 | File storage | `services/file_storage_service.dart` | Signed out → permission denied; not a PDF / too large → invalid input; `unauthorized` / `quota-exceeded` / `retry-limit-exceeded` → message; progress reported |
 | Analytics | `services/analytics_service.dart` | Failures swallowed; names validated in debug |
 | Crashlytics | `services/crashlytics_service.dart` | Global handlers at bootstrap; user ID + `last_screen` key; `crashForTesting()` only from the demo area |

@@ -22,4 +22,45 @@ void main() {
       expect(formatFileSize(12 * 1024 * 1024), '12 MB');
     });
   });
+
+  group('application dates', () {
+    test('applied date is day and month, as on the card', () {
+      expect(formatDayMonth(DateTime(2026, 10, 1)), '1 Oct');
+      expect(formatDayMonth(DateTime(2026, 9, 24)), '24 Sep');
+    });
+
+    test('an interview slot reads as month, day and 12-hour time', () {
+      expect(formatMonthDayTime(DateTime(2026, 10, 24, 14)), 'Oct 24, 2:00 PM');
+      expect(
+        formatMonthDayTime(DateTime(2026, 10, 24, 9, 5)),
+        'Oct 24, 9:05 AM',
+      );
+      // Midnight and noon are 12 AM / 12 PM, never 0 AM / 0 PM.
+      expect(formatMonthDayTime(DateTime(2026, 10, 24)), 'Oct 24, 12:00 AM');
+      expect(
+        formatMonthDayTime(DateTime(2026, 10, 24, 12)),
+        'Oct 24, 12:00 PM',
+      );
+    });
+
+    test('a reply deadline within the week is relative', () {
+      final now = DateTime(2026, 10, 13);
+      expect(
+        formatReplyBy(DateTime(2026, 10, 18), now: now),
+        'Reply within 5 days',
+      );
+      expect(
+        formatReplyBy(DateTime(2026, 10, 14), now: now),
+        'Reply within 1 day',
+      );
+      expect(
+        formatReplyBy(DateTime(2026, 10, 20), now: now),
+        'Reply by 20 Oct',
+      );
+      expect(
+        formatReplyBy(DateTime(2026, 10, 10), now: now),
+        'Reply by 10 Oct',
+      );
+    });
+  });
 }

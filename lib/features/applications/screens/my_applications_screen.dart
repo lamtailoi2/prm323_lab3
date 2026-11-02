@@ -1,22 +1,218 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../../core/widgets/app_top_bar.dart';
+import '../../../app/router.dart';
+import '../../../core/state/view_state.dart';
+import '../../../core/widgets/main_tab_app_bar.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/state_view.dart';
+import '../../../models/internship_application.dart';
+import '../../../services/auth_service.dart';
+import '../../../theme/app_sizes.dart';
+import '../../../theme/app_spacing.dart';
+import '../viewmodels/my_applications_viewmodel.dart';
+import '../widgets/application_card.dart';
 
-/// Placeholder for the Applications tab. The feature owner replaces it following
-/// docs/design/screen-spec.md (My Applications).
-class MyApplicationsScreen extends StatelessWidget {
+/// My Applications tab (`docs/design/screen-spec.md` › My Applications,
+/// Figma `my-applications-final.png`).
+///
+/// Tracks the applications the Apply flow records under
+/// `users/{uid}/applications`: position, company, submitted date and status.
+/// The header is the shared [MainTabAppBar], so Home, Saved and Applications
+/// differ only in the title.
+class MyApplicationsScreen extends ConsumerWidget {
   const MyApplicationsScreen({super.key});
+
+  /// Enough placeholders to fill the first screen at 360 dp.
+  static const int _skeletonCount = 3;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(myApplicationsViewModelProvider);
+    final viewModel = ref.read(myApplicationsViewModelProvider.notifier);
+    final user = ref.watch(authStateChangesProvider).value;
+
+    return Scaffold(
+      appBar: MainTabAppBar(
+        title: 'Applications',
+        user: user,
+        onProfile: () => context.go(AppRoutes.profile),
+      ),
+      body: switch (state.applications) {
+        ViewLoading<MyApplicationsFeed>() => const _LoadingBody(),
+        ViewEmpty<MyApplicationsFeed>() => StateView.empty(
+          icon: Symbols.description_rounded,
+          title: 'You have not applied yet',
+          message:
+              'Find an internship that fits your skills and start your first '
+              'application.',
+          actionLabel: 'Find internships',
+          onAction: () => context.go(AppRoutes.search),
+        ),
+        ViewError<MyApplicationsFeed>(:final error) => StateView.error(
+          message: error.message,
+          onRetry: viewModel.retry,
+        ),
+        ViewData<MyApplicationsFeed>(:final data) => _ApplicationsBody(
+          feed: data,
+          selected: state.selectedStatus,
+          onSelectStatus: viewModel.selectStatus,
+          onOpen: () => _openApplicationDetail(context),
+        ),
+      },
+    );
+  }
+
+  /// Application Detail is not built yet (design-traceability.md §1 row 11).
+  /// An honest message is better than a dead tap or a fake screen.
+  void _openApplicationDetail(BuildContext context) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        const SnackBar(content: Text('Application details are coming soon.')),
+      );
+  }
+}
+
+/// Card-shaped skeletons (Figma "Loading"), so the list keeps its shape
+/// instead of showing a spinner or a blank screen (design-system.md §2.9).
+class _LoadingBody extends StatelessWidget {
+  const _LoadingBody();
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: AppTopBar.main(title: 'Applications'),
-      body: StateView.empty(
-        icon: Symbols.construction_rounded,
-        title: 'My Applications is not built yet',
-        message: 'See screen-spec.md › My Applications.',
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: 'Loading applications',
+      child: ExcludeSemantics(
+        child: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenHorizontal,
+            AppSpacing.s16,
+            AppSpacing.screenHorizontal,
+            AppSpacing.s24,
+          ),
+          itemCount: MyApplicationsScreen._skeletonCount,
+          itemBuilder: (context, index) => const Padding(
+            padding: EdgeInsets.only(bottom: AppSpacing.s12),
+            child: InternshipCardSkeleton(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ApplicationsBody extends StatelessWidget {
+  const _ApplicationsBody({
+    required this.feed,
+    required this.selected,
+    required this.onSelectStatus,
+    required this.onOpen,
+  });
+
+  final MyApplicationsFeed feed;
+  final ApplicationStatus? selected;
+  final ValueChanged<ApplicationStatus?> onSelectStatus;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final total = feed.total;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenHorizontal,
+            AppSpacing.s16,
+            AppSpacing.screenHorizontal,
+            AppSpacing.s8,
+          ),
+          child: Text(
+            total == 1 ? '1 application' : '$total applications',
+            style: textTheme.bodyMedium,
+          ),
+        ),
+        _statusFilters(),
+        const SizedBox(height: AppSpacing.s8),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenHorizontal,
+              0,
+              AppSpacing.screenHorizontal,
+              AppSpacing.s24,
+            ),
+            itemCount: feed.visible.length,
+            itemBuilder: (context, index) {
+              final application = feed.visible[index];
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.s12),
+                child: ApplicationCard(
+                  application: application,
+                  onTap: onOpen,
+                  onPrimaryAction: onOpen,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Status shortcuts above the list: `All` plus one chip per status that
+  /// actually occurs, each with its count (Figma shows the same pattern).
+  ///
+  /// Labels use the status labels (`Under review`, `Accepted`) instead of the
+  /// frame's shortened `Review` / `Offered`, so a chip matches the badge it
+  /// filters (DC-22).
+  Widget _statusFilters() {
+    return SizedBox(
+      // Chip plus the padding that keeps the 48 dp tap target (Saved uses
+      // the same row).
+      height: AppSizes.minTouchTarget + AppSpacing.s12,
+      // A plain row instead of a lazy list: there are at most six chips, and
+      // every chip must exist for tests and screen readers even when it is
+      // scrolled out of view.
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.screenHorizontal,
+        ),
+        child: Row(
+          children: [
+            _chip(
+              'All (${feed.total})',
+              selected == null,
+              () => onSelectStatus(null),
+            ),
+            for (final entry in feed.counts.entries)
+              _chip(
+                '${entry.key.label} (${entry.value})',
+                selected == entry.key,
+                () => onSelectStatus(entry.key),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(String label, bool isSelected, VoidCallback onSelected) {
+    return Padding(
+      padding: const EdgeInsets.only(right: AppSpacing.s8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (_) => onSelected(),
       ),
     );
   }
