@@ -10,6 +10,7 @@ import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/internship_service.dart';
 import '../../../services/search_history_service.dart';
+import '../models/search_filter_criteria.dart';
 import '../models/search_history_entry.dart';
 
 /// How many trending skills the Search screen shows, matching the Figma
@@ -63,6 +64,10 @@ class SearchViewModel extends Notifier<SearchState> {
   StreamSubscription<List<Internship>>? _internshipsSubscription;
   StreamSubscription<List<SearchHistoryEntry>>? _historySubscription;
 
+  /// The shared pool already streamed for "Trending skills", reused so the
+  /// filter sheet can preview its match count without another listener.
+  List<Internship> _pool = const <Internship>[];
+
   @override
   SearchState build() {
     final internships = ref.watch(internshipServiceProvider);
@@ -88,6 +93,14 @@ class SearchViewModel extends Notifier<SearchState> {
       trending: state.trending,
       recentSearches: state.recentSearches,
     );
+  }
+
+  /// How many listings in the pool match [criteria] and [query], for the
+  /// filter sheet's `Show N results` button.
+  int countMatching(SearchFilterCriteria criteria, {String query = ''}) {
+    return _pool
+        .where((internship) => criteria.matches(internship, query: query))
+        .length;
   }
 
   /// Records [term] in this student's search history. Called when the
@@ -144,6 +157,7 @@ class SearchViewModel extends Notifier<SearchState> {
     _internshipsSubscription = service.watchActive().listen(
       (internships) {
         if (!ref.mounted) return;
+        _pool = internships;
         state = SearchState(
           workMode: state.workMode,
           trending: ViewState.fromData(

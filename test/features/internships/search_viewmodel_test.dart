@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/state/view_state.dart';
+import 'package:internly/features/internships/models/search_filter_criteria.dart';
 import 'package:internly/features/internships/models/search_history_entry.dart';
 import 'package:internly/features/internships/viewmodels/search_viewmodel.dart';
 import 'package:internly/models/internship.dart';
@@ -211,4 +212,22 @@ void main() {
     await settle();
     expect(read().recentSearches, isA<ViewEmpty<List<SearchHistoryEntry>>>());
   });
+
+  test(
+    'countMatching previews the filter sheet on the streamed pool',
+    () async {
+      internships.results = [
+        testInternship('1', title: 'Flutter Intern', workMode: WorkMode.remote),
+        testInternship('2', title: 'Java Intern', workMode: WorkMode.remote),
+        testInternship('3', title: 'Flutter Dev', workMode: WorkMode.onSite),
+      ];
+      final viewModel = listen();
+      await settle();
+
+      const remote = SearchFilterCriteria(workModes: {WorkMode.remote});
+      expect(viewModel.countMatching(const SearchFilterCriteria()), 3);
+      expect(viewModel.countMatching(remote), 2);
+      expect(viewModel.countMatching(remote, query: 'flutter'), 1);
+    },
+  );
 }

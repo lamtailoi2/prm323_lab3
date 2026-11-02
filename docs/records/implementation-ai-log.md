@@ -306,6 +306,14 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-39: Filters from the Search tab, location matching, one drag handle
+- **Request:** "tui handle phần search và filter á" (Flow 1 includes Search Jobs → Filter & Sort): the Search tab filter icon said "More filters are coming soon."; then "kiểm tra lại phần filter location" and "UI bị thừa" (two drag handles on the Filter sheet).
+- **Output:** the filter predicate moved from `SearchResultsViewModel._applyFilters` to `SearchFilterCriteria.matches` (shared); `SearchViewModel.countMatching` previews the sheet from the pool it already streams; the Search filter icon opens `SearchResultsFilterSheet` seeded with the selected work mode, and `Show N results` goes to `/search/results` with the criteria as `extra` (`SearchResultsScreen.initialCriteria`). Location used a plain `contains` of the English option in Google's Vietnamese text, so `Ha Noi` / `Da Nang` matched almost nothing; it now uses `matchesPreferredLocation` (accent folding + aliases, as Home). The sheet's own drag handle was removed because `BottomSheetThemeData.showDragHandle` already draws one.
+- **Verification:** `flutter analyze` → `No issues found!`; `flutter test` → **391 passed**; on device: `test-report.md` Run 16 rows 5–6.
+- **Decision:** Accepted. Left for a follow-up: duplicate listings in Search Results and the `search_filter_apply` event.
+
+---
+
 ## Entry template
 
 ```markdown

@@ -262,71 +262,8 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
     String query,
     SearchFilterCriteria criteria,
   ) {
-    final q = query.trim().toLowerCase();
-
     return raw
-        .where((internship) {
-          // Work mode filter (multi-select)
-          if (criteria.workModes.isNotEmpty) {
-            if (internship.workMode == null ||
-                !criteria.workModes.contains(internship.workMode)) {
-              return false;
-            }
-          }
-          // Skills filter (multi-select)
-          if (criteria.skills.isNotEmpty) {
-            final matchesSkill = criteria.skills.any(
-              (filterSkill) => internship.skills.any(
-                (s) => s.toLowerCase() == filterSkill.toLowerCase(),
-              ),
-            );
-            if (!matchesSkill) return false;
-          }
-          // Location filter
-          if (criteria.location != null &&
-              criteria.location != 'Any location' &&
-              criteria.location!.isNotEmpty) {
-            final inLoc =
-                internship.location?.toLowerCase().contains(
-                  criteria.location!.toLowerCase(),
-                ) ??
-                false;
-            if (!inLoc) return false;
-          }
-          // Allowance range filter
-          if (criteria.allowanceRange != null &&
-              criteria.allowanceRange != 'Any allowance') {
-            if (criteria.allowanceRange == 'Paid only') {
-              final salary = internship.salary?.toLowerCase();
-              if (salary == null ||
-                  salary.isEmpty ||
-                  salary.contains('unpaid') ||
-                  salary.contains('không lương')) {
-                return false;
-              }
-            }
-          }
-          // Query filter
-          if (q.isNotEmpty) {
-            final inTitle = internship.title.toLowerCase().contains(q);
-            final inCompany = internship.companyName.toLowerCase().contains(q);
-            final inSkills = internship.skills.any(
-              (s) => s.toLowerCase().contains(q),
-            );
-            final inKeyword =
-                internship.searchKeyword?.toLowerCase().contains(q) ?? false;
-            final inLocation =
-                internship.location?.toLowerCase().contains(q) ?? false;
-            if (!inTitle &&
-                !inCompany &&
-                !inSkills &&
-                !inKeyword &&
-                !inLocation) {
-              return false;
-            }
-          }
-          return true;
-        })
+        .where((internship) => criteria.matches(internship, query: query))
         .toList(growable: false);
   }
 

@@ -6,6 +6,7 @@ import '../features/applications/screens/my_applications_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/home/screens/home_screen.dart';
+import '../features/internships/models/search_filter_criteria.dart';
 import '../features/internships/screens/search_results_screen.dart';
 import '../features/internships/screens/search_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
@@ -85,9 +86,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                                 .where((m) => m.name == modeStr)
                                 .firstOrNull
                           : null;
+                      final criteria = state.extra;
                       return SearchResultsScreen(
                         initialQuery: query,
                         initialWorkMode: workMode,
+                        // Set by the Search tab's filter sheet.
+                        initialCriteria: criteria is SearchFilterCriteria
+                            ? criteria
+                            : null,
                       );
                     },
                   ),

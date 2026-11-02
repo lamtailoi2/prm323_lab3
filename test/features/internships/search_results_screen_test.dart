@@ -5,6 +5,7 @@ import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/widgets/app_button.dart';
 import 'package:internly/core/widgets/app_search_field.dart';
 import 'package:internly/core/widgets/internship_card.dart';
+import 'package:internly/features/internships/models/search_filter_criteria.dart';
 import 'package:internly/features/internships/screens/search_results_screen.dart';
 import 'package:internly/features/internships/widgets/search_results_filter_sheet.dart';
 import 'package:internly/models/internship.dart';
@@ -39,6 +40,7 @@ void main() {
     double width = 360,
     String initialQuery = '',
     WorkMode? initialWorkMode,
+    SearchFilterCriteria? initialCriteria,
   }) async {
     setScreenSize(tester, width: width);
     await tester.pumpWidget(
@@ -54,6 +56,7 @@ void main() {
           home: SearchResultsScreen(
             initialQuery: initialQuery,
             initialWorkMode: initialWorkMode,
+            initialCriteria: initialCriteria,
           ),
         ),
       ),
@@ -150,6 +153,27 @@ void main() {
       },
     );
   }
+
+  testWidgets('filters chosen on the Search tab are applied on arrival', (
+    tester,
+  ) async {
+    internships.results = sampleListings;
+    await pumpSearchResults(
+      tester,
+      initialCriteria: const SearchFilterCriteria(workModes: {WorkMode.remote}),
+    );
+    await tester.pumpAndSettle();
+
+    final cards = tester.widgetList<InternshipCard>(
+      find.byType(InternshipCard),
+    );
+    expect(cards, isNotEmpty);
+    final remoteTitles = {
+      for (final listing in sampleListings)
+        if (listing.workMode == WorkMode.remote) listing.title,
+    };
+    expect(cards.every((card) => remoteTitles.contains(card.title)), isTrue);
+  });
 
   testWidgets('removing a filter chip updates the result list', (tester) async {
     internships.results = sampleListings;

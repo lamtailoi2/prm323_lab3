@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../app/router.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/posted_age.dart';
 import '../../../core/widgets/app_button.dart';
@@ -15,15 +16,16 @@ import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
+import '../models/search_filter_criteria.dart';
 import '../models/search_history_entry.dart';
 import '../viewmodels/search_viewmodel.dart';
+import '../widgets/search_results_filter_sheet.dart';
 import '../widgets/search_section_header.dart';
 
 /// Search tab (Figma Search, `docs/design/screen-spec.md` §Search).
 ///
-/// Search Results (`docs/design-traceability.md` #3) is not built yet, so
-/// submitting a search or picking a trending skill shows an honest
-/// "coming soon" message instead of faking results (DC-11 pattern).
+/// Submitting, a trending skill, a recent search or the filter sheet opens
+/// Search Results (Flow 1: Search Jobs → Filter & Sort → Job Listing).
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
@@ -61,8 +63,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               AppSearchField(
                 controller: _controller,
                 onSubmitted: (value) => _submit(context, viewModel, value),
-                onFilterPressed: () =>
-                    _showMessage(context, 'More filters are coming soon.'),
+                onFilterPressed: () => _openFilters(context, viewModel),
               ),
               const SizedBox(height: AppSpacing.section),
               SearchSectionHeader(
@@ -117,10 +118,36 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
   }
 
-  static void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message)));
+  /// Opens the same filter sheet as Search Results, seeded with the selected
+  /// work mode; `Show N results` goes to Search Results with those filters.
+  Future<void> _openFilters(
+    BuildContext context,
+    SearchViewModel viewModel,
+  ) async {
+    final mode = ref.read(searchViewModelProvider).workMode;
+    SearchFilterCriteria? applied;
+    await SearchResultsFilterSheet.show(
+      context: context,
+      currentCriteria: SearchFilterCriteria(
+        workModes: mode == null ? const {} : {mode},
+      ),
+      matchingCountCalculator: (criteria) =>
+          viewModel.countMatching(criteria, query: _controller.text),
+      onApply: (criteria) => applied = criteria,
+    );
+    final criteria = applied;
+    // Navigate only once the sheet has closed, so its route is gone.
+    if (criteria == null || !context.mounted) return;
+    final term = _controller.text.trim();
+    if (term.isNotEmpty) await viewModel.recordSearch(term);
+    if (!context.mounted) return;
+    context.go(
+      Uri(
+        path: AppRoutes.searchResults,
+        queryParameters: {if (term.isNotEmpty) 'q': term},
+      ).toString(),
+      extra: criteria,
+    );
   }
 
   List<Widget> _trendingSection(

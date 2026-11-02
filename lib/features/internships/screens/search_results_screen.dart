@@ -18,6 +18,7 @@ import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
+import '../models/search_filter_criteria.dart';
 import '../viewmodels/search_results_viewmodel.dart';
 import '../widgets/search_results_filter_sheet.dart';
 
@@ -29,10 +30,15 @@ class SearchResultsScreen extends ConsumerStatefulWidget {
     super.key,
     this.initialQuery = '',
     this.initialWorkMode,
+    this.initialCriteria,
   });
 
   final String initialQuery;
   final WorkMode? initialWorkMode;
+
+  /// Filters chosen in the Search tab's filter sheet; wins over
+  /// [initialWorkMode].
+  final SearchFilterCriteria? initialCriteria;
 
   @override
   ConsumerState<SearchResultsScreen> createState() =>
@@ -49,7 +55,11 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(searchResultsViewModelProvider.notifier)
-          .init(query: widget.initialQuery, workMode: widget.initialWorkMode);
+          .init(
+            query: widget.initialQuery,
+            workMode: widget.initialWorkMode,
+            criteria: widget.initialCriteria,
+          );
     });
   }
 
