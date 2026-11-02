@@ -141,6 +141,40 @@ String? _describe(RegExpMatch match, String window) {
   return '$qualifier$range${usd ? '' : ' VND'}$period';
 }
 
+/// Whether an allowance text says the pay is negotiable (`Negotiable`,
+/// `Thỏa thuận`), for the Filter sheet's `Negotiable` option (CR-12).
+bool isNegotiableAllowance(String? text) =>
+    text != null && _negotiable.hasMatch(text);
+
+/// The highest VND amount an allowance text states (`About 5,000,000–7,000,000
+/// VND / mo` → 7,000,000; `8M–12M VND a month` → 12,000,000), or `null` when
+/// it states none or only a USD amount. For the Filter sheet's `Above 5M
+/// VND/mo` option (CR-12).
+int? highestVndAmount(String? text) {
+  if (text == null) return null;
+  int? highest;
+  for (final match in _money.allMatches(text)) {
+    final usd = [
+      match.namedGroup('cur1'),
+      match.namedGroup('cur2'),
+    ].any((currency) => currency != null && !_isVnd(currency));
+    if (usd) continue;
+    final secondUnit = match.namedGroup('u2');
+    final amounts = [
+      _amount(match.namedGroup('a')!, match.namedGroup('u1') ?? secondUnit),
+      if (match.namedGroup('b') case final second?) _amount(second, secondUnit),
+    ];
+    for (final amount in amounts) {
+      if (amount != null &&
+          _plausible(amount, false) &&
+          (highest == null || amount > highest)) {
+        highest = amount;
+      }
+    }
+  }
+  return highest;
+}
+
 bool _isVnd(String currency) =>
     const {'vnd', 'vnđ', 'đồng'}.contains(currency.toLowerCase());
 

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/utils/allowance.dart';
 import '../../../core/utils/location_match.dart';
 import '../../../core/utils/text_fold.dart';
 import '../../../models/internship.dart';
@@ -77,9 +78,10 @@ class SearchFilterCriteria {
     if (jobType case final type? when type != 'Any job type') {
       if (!_matchesJobType(internship.scheduleType, type)) return false;
     }
-    // Allowance range filter
-    if (allowanceRange != null && allowanceRange != 'Any allowance') {
-      if (allowanceRange == 'Paid only') {
+    // Allowance range filter: every option the sheet offers filters, not
+    // only `Paid only` (CR-12).
+    switch (allowanceRange) {
+      case 'Paid only':
         final salary = internship.salary?.toLowerCase();
         if (salary == null ||
             salary.isEmpty ||
@@ -87,7 +89,12 @@ class SearchFilterCriteria {
             salary.contains('không lương')) {
           return false;
         }
-      }
+      case 'Above 5M VND/mo':
+        if ((highestVndAmount(internship.salary) ?? 0) < 5000000) {
+          return false;
+        }
+      case 'Negotiable':
+        if (!isNegotiableAllowance(internship.salary)) return false;
     }
     // Query filter, without Vietnamese accents (the `hl=vi` sync stores
     // `Hà Nội`, `Thực tập sinh`) and also without spaces (`Hanoi`), but with
