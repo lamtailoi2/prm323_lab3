@@ -255,7 +255,7 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
 
   void _onInternshipsData(List<Internship> data) {
     if (!ref.mounted) return;
-    _rawList = distinctListings(data);
+    _rawList = data;
     _filterAndEmit();
   }
 
@@ -276,9 +276,12 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
     String query,
     SearchFilterCriteria criteria,
   ) {
-    return raw
-        .where((internship) => criteria.matches(internship, query: query))
-        .toList(growable: false);
+    // Copies of one job carry different sync keywords, so they are merged
+    // after filtering; merging first could drop the copy that matched
+    // (CR-08).
+    return distinctListings(
+      raw.where((internship) => criteria.matches(internship, query: query)),
+    );
   }
 
   void _filterAndEmit() {
