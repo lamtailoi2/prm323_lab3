@@ -274,6 +274,30 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-21: Search Results UI and Real Firebase Data Integration
+- **Request:** implement Search Results screen matching the Figma/Lab 2 design without hardcoding, reading real listings from Firebase Firestore, supporting query, work mode filter chips, result count, sorting (most recent / best match), bookmarking/saving, and state handling.
+- **Output:**
+  - Built `SearchResultsScreen` (`lib/features/internships/screens/search_results_screen.dart`) with top bar actions, `AppSearchField` with filter badge, active filter chips (`✓ Remote ✕`, `✓ Flutter ✕`, `Clear filters`), dynamic result count header with green indicator, sort options popup, `InternshipCard` list, footer matching Figma, and ViewState handling (loading skeletons, empty state with clear filters, error with retry).
+  - Built `SearchResultsViewModel` (`lib/features/internships/viewmodels/search_results_viewmodel.dart`) using Riverpod `Notifier` to query Firestore `InternshipService.watchActive()`, filter dynamically by search query (title, company, skills, keywords) and work arrangement, sort results, manage saved state, and record to `SearchHistoryService`.
+  - Added `SearchResultsFilterSheet` (`lib/features/internships/widgets/search_results_filter_sheet.dart`) for interactive work arrangement selection.
+  - Implemented `SavedService` (`lib/services/saved_service.dart`) under `users/{uid}/savedInternships` following rule 9.
+  - Updated `AppSearchField` to display `filterCount` badge.
+  - Wired `/search/results` in `router.dart` and connected search submit/trending skill/recent search navigation in `SearchScreen`.
+  - Added `SearchFilterCriteria` (`lib/features/internships/models/search_filter_criteria.dart`) and full `SearchResultsFilterSheet` with work mode multi-select, location dropdown, skill chips, job type dropdown, allowance range dropdown, live matching count (`Show X results →`), and clear filters.
+  - Added unit tests in `search_results_viewmodel_test.dart` and widget tests in `search_results_screen_test.dart` (360 and 412 dp).
+- **Verification:** `dart format lib test` formatted cleanly; `flutter analyze` passed with 0 issues; `flutter test` passed all 170 tests (+19 tests).
+- **Decision:** Accepted.
+
+---
+
+### P-33: Saved empty state opens Search
+- **Request:** "trang saved nếu k saved bấm vào nút search phải navigate sang search screen" (on the Saved tab with nothing saved, the search button must open the Search screen).
+- **Output:** the `Search internships` action of the Saved empty state called `_openSearch`, which only showed a "Search internships is coming soon." SnackBar; it now calls `context.go(AppRoutes.search)`, as the Home empty state does, and `_openSearch` was deleted. New widget test: tap `Search internships` on the empty list, expect the Search route and no empty state. While verifying, `dev` did not compile its tests: the merge `b025509` (dev → feat/search-ui) kept the `saved_service.dart` import in `test/helpers/fakes.dart` but dropped the `saved_internship_service.dart` import and the `FakeSavedService` class that the Search tests use; both were restored exactly as on `b025509^1`. Docs: traceability row 5, `test-report.md` Run 14.
+- **Verification:** `flutter analyze` → `No issues found!`; `flutter test` → **351 passed**. On-device check **not run**.
+- **Decision:** Accepted. The two parallel saved services (`SavedService` used by Search Results, `SavedInternshipService` used by Home and Saved) write the same `users/{uid}/savedInternships` collection; merging them is left to the Search owner and not done here.
+
+---
+
 ## Entry template
 
 ```markdown
