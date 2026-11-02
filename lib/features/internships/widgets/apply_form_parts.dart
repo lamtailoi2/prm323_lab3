@@ -408,6 +408,7 @@ class ApplyCvSection extends StatelessWidget {
     required this.onRetry,
     required this.onUseProfileCv,
     required this.onPreview,
+    required this.onRetryProfile,
   });
 
   final ApplyFormState state;
@@ -415,6 +416,7 @@ class ApplyCvSection extends StatelessWidget {
   final VoidCallback onRetry;
   final VoidCallback onUseProfileCv;
   final VoidCallback onPreview;
+  final VoidCallback onRetryProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -451,6 +453,13 @@ class ApplyCvSection extends StatelessWidget {
     }
     if (state.cv case final cv?) {
       return _SelectedCv(cv: cv, onPreview: onPreview, onReplace: onChoose);
+    }
+    if (state.profileError case final error?) {
+      return _ProfileFailed(
+        message: error.message,
+        onRetry: onRetryProfile,
+        onUpload: onChoose,
+      );
     }
     return _CvDropzone(showError: state.missingCv, onUpload: onChoose);
   }
@@ -662,6 +671,80 @@ class _UploadFailed extends StatelessWidget {
                     variant: AppButtonVariant.text,
                     onPressed: onUseProfileCv,
                   ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The Profile CV could not be loaded (CR-18): the reason, `Retry`, and
+/// `Upload CV` so the student is not stuck.
+class _ProfileFailed extends StatelessWidget {
+  const _ProfileFailed({
+    required this.message,
+    required this.onRetry,
+    required this.onUpload,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+  final VoidCallback onUpload;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.s16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadii.mediumAll,
+          border: Border.all(color: AppColors.error),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Symbols.error_rounded,
+                  size: AppSizes.iconSmall,
+                  color: AppColors.error,
+                ),
+                const SizedBox(width: AppSpacing.s8),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.s12),
+            Wrap(
+              spacing: AppSpacing.s8,
+              runSpacing: AppSpacing.s8,
+              children: [
+                AppButton(
+                  label: 'Retry',
+                  icon: Symbols.refresh_rounded,
+                  variant: AppButtonVariant.secondary,
+                  onPressed: onRetry,
+                ),
+                AppButton(
+                  label: 'Upload CV',
+                  icon: Symbols.attach_file_rounded,
+                  variant: AppButtonVariant.text,
+                  onPressed: onUpload,
+                ),
               ],
             ),
           ],

@@ -109,6 +109,7 @@ class ApplyFormScreen extends ConsumerWidget {
                     onRetry: () => unawaited(viewModel.uploadSelected()),
                     onUseProfileCv: viewModel.useProfileCv,
                     onPreview: () => unawaited(_preview(context, viewModel)),
+                    onRetryProfile: viewModel.retryProfile,
                   ),
                 ],
               ),
@@ -146,6 +147,7 @@ class ApplyFormScreen extends ConsumerWidget {
   /// a CV was uploaded for this internship.
   static Widget? _banner(BuildContext context, ApplyFormState state) {
     if (!state.profileLoaded ||
+        state.profileError != null ||
         state.isUploading ||
         state.uploadError != null) {
       return null;
