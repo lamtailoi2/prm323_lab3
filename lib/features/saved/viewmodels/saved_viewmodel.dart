@@ -77,6 +77,40 @@ class SavedViewModel extends Notifier<AsyncValue<void>> {
     }
   }
 
+  /// Same as [toggle], but returns the outcome instead of storing it in
+  /// [state], for screens that show their own SnackBar (Internship Detail).
+  ///
+  /// `HomeScreen` stays mounted under a pushed detail route and listens to
+  /// [state], so a failure stored there would show a second SnackBar.
+  Future<SavedWriteResult> toggleAndReport(
+    Internship internship, {
+    required String source,
+  }) async {
+    if (_writing) return (done: false, error: null);
+
+    final service = ref.read(savedInternshipServiceProvider);
+    final analytics = ref.read(analyticsServiceProvider);
+    final isSaved = _savedIds.contains(internship.key);
+
+    _writing = true;
+    try {
+      if (isSaved) {
+        await service.remove(internship.key);
+      } else {
+        await service.save(internship);
+        await analytics.logEvent('internship_save', {
+          'internship_id': internship.key,
+          'source': source,
+        });
+      }
+      return (done: true, error: null);
+    } on AppException catch (error) {
+      return (done: false, error: error);
+    } finally {
+      _writing = false;
+    }
+  }
+
   /// Removes [internship] from the saved list (Flow 2e.1, unsave with Undo).
   ///
   /// The failure is returned instead of stored in [state]: the Saved screen

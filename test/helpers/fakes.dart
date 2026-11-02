@@ -44,6 +44,10 @@ Internship testInternship(
   int? searchRank,
   String? searchKeyword,
   List<String> skills = const <String>[],
+  String? description,
+  List<JobHighlight> highlights = const <JobHighlight>[],
+  String? scheduleType,
+  String? via,
 }) {
   final jobId = 'job-$id';
   return Internship(
@@ -60,6 +64,10 @@ Internship testInternship(
     searchRank: searchRank,
     searchKeyword: searchKeyword,
     skills: skills,
+    description: description,
+    highlights: highlights,
+    scheduleType: scheduleType,
+    via: via,
   );
 }
 
@@ -96,7 +104,32 @@ class FakeInternshipService implements InternshipService {
     _updates.addError(failure);
   }
 
-  Future<void> dispose() => _updates.close();
+  /// `/internships/{key}` documents for [watchByKey]; a missing key models a
+  /// listing the sync function deleted.
+  final Map<String, Internship> byKey = <String, Internship>{};
+  AppException? byKeyError;
+  Completer<void>? byKeyGate;
+  int watchByKeyCalls = 0;
+  final StreamController<Internship?> _byKeyUpdates =
+      StreamController<Internship?>.broadcast();
+
+  @override
+  Stream<Internship?> watchByKey(String key) async* {
+    watchByKeyCalls++;
+    await byKeyGate?.future;
+    final failure = byKeyError;
+    if (failure != null) throw failure;
+    yield byKey[key];
+    yield* _byKeyUpdates.stream;
+  }
+
+  /// Pushes a new snapshot of one listing (`null` = deleted).
+  void emitOne(Internship? next) => _byKeyUpdates.add(next);
+
+  Future<void> dispose() async {
+    await _updates.close();
+    await _byKeyUpdates.close();
+  }
 }
 
 /// A tracked application with stable IDs for tests: `job-<id>` and its key.

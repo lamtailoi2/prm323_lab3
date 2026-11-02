@@ -7,6 +7,7 @@ import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/internships/models/search_filter_criteria.dart';
+import '../features/internships/screens/internship_detail_screen.dart';
 import '../features/internships/screens/search_results_screen.dart';
 import '../features/internships/screens/search_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
@@ -32,6 +33,11 @@ abstract final class AppRoutes {
   static const String applications = '/applications';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
+
+  /// Internship Detail opened from the [tab] it belongs to, e.g.
+  /// `/home/internships/<key>`, so Back returns to that tab.
+  static String internshipDetail(String tab, String internshipKey) =>
+      '$tab/internships/$internshipKey';
 }
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
@@ -67,7 +73,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
         branches: [
-          _tab(AppRoutes.home, 'home', const HomeScreen()),
+          _tab(
+            AppRoutes.home,
+            'home',
+            const HomeScreen(),
+            routes: [_internshipDetail('home')],
+          ),
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -97,11 +108,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                       );
                     },
                   ),
+                  _internshipDetail('search'),
                 ],
               ),
             ],
           ),
-          _tab(AppRoutes.saved, 'saved', const SavedScreen()),
+          _tab(
+            AppRoutes.saved,
+            'saved',
+            const SavedScreen(),
+            routes: [_internshipDetail('saved')],
+          ),
           _tab(
             AppRoutes.applications,
             'my_applications',
@@ -164,6 +181,21 @@ StatefulShellBranch _tab(
         routes: routes,
       ),
     ],
+  );
+}
+
+/// Internship Detail under the [source] tab. Shown above the shell like the
+/// Figma frame (bottom action bar, no bottom navigation); route names must be
+/// unique, so each tab gets its own (`home_internship_detail`, …).
+GoRoute _internshipDetail(String source) {
+  return GoRoute(
+    path: 'internships/:jobKey',
+    name: '${source}_internship_detail',
+    parentNavigatorKey: rootNavigatorKey,
+    builder: (context, state) => InternshipDetailScreen(
+      internshipKey: state.pathParameters['jobKey']!,
+      source: source,
+    ),
   );
 }
 

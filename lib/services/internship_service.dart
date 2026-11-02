@@ -16,6 +16,10 @@ abstract interface class InternshipService {
   /// Emits active listings whenever the shared collection changes. Documents
   /// with `expiresAt <= now` are excluded by the query.
   Stream<List<Internship>> watchActive();
+
+  /// Emits the listing `/internships/{key}` whenever it changes, or `null`
+  /// when the sync function has deleted it (expired listings, G-25 #5).
+  Stream<Internship?> watchByKey(String key);
 }
 
 final internshipServiceProvider = Provider<InternshipService>(
@@ -49,6 +53,43 @@ class FirestoreInternshipService implements InternshipService {
         'We could not load internships. Try again in a moment.',
         cause: error,
       );
+    }
+  }
+
+  @override
+  Stream<Internship?> watchByKey(String key) async* {
+    final document = _firestore.collection('internships').doc(key);
+
+    try {
+      await for (final snapshot in document.snapshots()) {
+        yield _parseOne(snapshot);
+      }
+    } on FirebaseException catch (error) {
+      throw _toAppException(error);
+    } on Exception catch (error) {
+      throw AppException(
+        AppErrorKind.unknown,
+        'We could not load internships. Try again in a moment.',
+        cause: error,
+      );
+    }
+  }
+
+  Internship? _parseOne(DocumentSnapshot<Map<String, Object?>> snapshot) {
+    final data = snapshot.data();
+    if (!snapshot.exists || data == null) return null;
+    try {
+      return Internship.fromFirestore(snapshot.id, data);
+    } on FormatException catch (error, stack) {
+      // A malformed listing is shown as unavailable, like a deleted one.
+      unawaited(
+        _crashlytics.recordError(
+          error,
+          stack,
+          reason: 'Malformed internship document on Internship Detail',
+        ),
+      );
+      return null;
     }
   }
 

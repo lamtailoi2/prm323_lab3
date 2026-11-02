@@ -174,6 +174,7 @@ App (DC-25): one line by default with the placeholder `Search role, company, ski
 *"Reuse this same card on Home, Search Results and Saved. 328 dp content at 360 dp; radius16, padding16, title18, metadata14, save target48."*
 
 - Content order: company logo (40 dp, `AppSizes.companyLogo`, neutral fallback) + job title (`title`, max 2 lines) + save action (top right) → company (`bodySmall`) → location + work mode with icons (`bodySmall`) → skill tags (`surfaceVariant`, radius 8) → allowance (emphasised) → posted date (`caption`).
+- Internship Detail header logo: 48 dp (`AppSizes.companyLogoLarge`, Figma 202:243), initials on `primaryContainer` as fallback; the company section reuses the 40 dp size.
 - States: Default · Pressed (reduced emphasis) · Saved (`bookmark` filled, `primary`).
 - Card surface comes from `CardThemeData`: white, 1 px `border`, radius 16, elevation 0.
 - The widget takes display-ready strings (no data model), plus an optional `badge` slot for `Applied` (Flow 2c). Inner gaps (4/8 dp) and the tag text style are **verify**.

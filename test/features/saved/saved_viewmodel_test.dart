@@ -102,6 +102,78 @@ void main() {
     expect(analytics.events, ['internship_save']);
   });
 
+  group('toggleAndReport (Internship Detail)', () {
+    test('saves with the detail source and keeps state clean', () async {
+      final viewModel = listen();
+
+      final result = await viewModel.toggleAndReport(
+        internship,
+        source: 'detail',
+      );
+
+      expect(result.done, isTrue);
+      expect(result.error, isNull);
+      expect(saved.savedKeys, [internship.key]);
+      expect(container.read(savedViewModelProvider), isA<AsyncData<void>>());
+      expect(analytics.eventParameters.single, {
+        'internship_id': internship.key,
+        'source': 'detail',
+      });
+    });
+
+    test('removes a saved listing without logging a save', () async {
+      saved.seed([internship]);
+      final viewModel = listen();
+      await settle();
+
+      final result = await viewModel.toggleAndReport(
+        internship,
+        source: 'detail',
+      );
+
+      expect(result.done, isTrue);
+      expect(saved.savedKeys, isEmpty);
+      expect(analytics.events, isEmpty);
+    });
+
+    test(
+      'returns a failure instead of storing it, so Home stays quiet',
+      () async {
+        saved.error = const AppException(
+          AppErrorKind.network,
+          'We could not reach Internly. Check your connection and try again.',
+        );
+        final viewModel = listen();
+
+        final result = await viewModel.toggleAndReport(
+          internship,
+          source: 'detail',
+        );
+
+        expect(result.done, isFalse);
+        expect(result.error?.kind, AppErrorKind.network);
+        expect(container.read(savedViewModelProvider), isA<AsyncData<void>>());
+      },
+    );
+
+    test('ignores a tap while another write is running', () async {
+      saved.gate = Completer<void>();
+      final viewModel = listen();
+
+      final first = viewModel.toggleAndReport(internship, source: 'detail');
+      final second = await viewModel.toggleAndReport(
+        internship,
+        source: 'detail',
+      );
+      saved.gate!.complete();
+      await first;
+
+      expect(second.done, isFalse);
+      expect(second.error, isNull);
+      expect(saved.saveCalls, 1);
+    });
+  });
+
   test('removes a saved listing for the Saved screen', () async {
     saved.seed([internship]);
     final viewModel = listen();
