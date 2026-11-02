@@ -11,6 +11,7 @@ import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../theme/app_spacing.dart';
+import '../../profile/widgets/edit_skills_sheet.dart';
 import '../viewmodels/apply_form_viewmodel.dart';
 import '../widgets/apply_cv_sheet.dart';
 import '../widgets/apply_form_parts.dart';
@@ -91,8 +92,13 @@ class ApplyFormScreen extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.s16),
                     ApplySkillMatchLine(
                       match: match,
-                      // Skills are edited on Profile (Edit skills sheet).
-                      onEditSkills: () => context.go(AppRoutes.profile),
+                      // The Profile Edit skills sheet opens over the form:
+                      // going to the Profile tab would drop the form and a
+                      // CV uploaded or uploading for this internship
+                      // (CR-16). The match updates from the profile stream.
+                      onEditSkills: () => unawaited(
+                        showAppSheet(context, (_) => const EditSkillsSheet()),
+                      ),
                     ),
                   ],
                   const SizedBox(height: AppSpacing.s16),
