@@ -89,7 +89,13 @@ class InternshipDetailViewModel extends Notifier<ViewState<InternshipDetail>> {
         for (final internship in next.asData?.value ?? const <Internship>[])
           internship.key: internship,
       };
-      if (_resolved && _listing == null) _emit();
+      if (!_resolved || _listing != null) return;
+      // Unsaving an expired listing removes its only copy; keep showing it
+      // rather than "no longer available" (CR-03).
+      final unsavedWhileShown =
+          state is ViewData<InternshipDetail> &&
+          !_savedCopies.containsKey(args.internshipKey);
+      if (!unsavedWhileShown) _emit();
     }, fireImmediately: true);
 
     final updates = remoteConfig.onUpdated.listen((_) {
