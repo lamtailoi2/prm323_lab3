@@ -19,6 +19,16 @@ enum WorkMode {
   final String label;
 }
 
+/// One `job_highlights` section of a Google Jobs listing, e.g.
+/// "Qualifications" with its bullet items.
+@immutable
+class JobHighlight {
+  const JobHighlight({required this.title, required this.items});
+
+  final String title;
+  final List<String> items;
+}
+
 /// An internship listing mirrored from SerpAPI Google Jobs into Firestore by
 /// the sync function (G-25).
 ///
@@ -39,6 +49,10 @@ class Internship {
     this.postedAt,
     this.logoUrl,
     this.skills = const <String>[],
+    this.description,
+    this.highlights = const <JobHighlight>[],
+    this.scheduleType,
+    this.via,
     this.syncedAt,
     this.searchKeyword,
     this.searchRank,
@@ -54,6 +68,7 @@ class Internship {
     final extensions = reader.stringList('extensions');
     final detected = reader.optionalMap('detected_extensions');
     final description = reader.optionalString('description') ?? '';
+    final via = reader.optionalString('via')?.trim();
 
     return Internship(
       jobId: jobId,
@@ -80,6 +95,11 @@ class Internship {
           description,
         ].join('\n'),
       ),
+      description: description.trim().isEmpty ? null : description.trim(),
+      highlights: _highlights(json['job_highlights']),
+      scheduleType: detected?.optionalString('schedule_type')?.trim(),
+      // SerpAPI has sent both "LinkedIn" and "via LinkedIn" over time.
+      via: via?.replaceFirst(RegExp('^via ', caseSensitive: false), ''),
     );
   }
 
@@ -110,6 +130,10 @@ class Internship {
       postedAt: postedAt,
       logoUrl: parsed.logoUrl,
       skills: parsed.skills,
+      description: parsed.description,
+      highlights: parsed.highlights,
+      scheduleType: parsed.scheduleType,
+      via: parsed.via,
       syncedAt: syncedAt,
       searchKeyword: reader.optionalString('searchKeyword'),
       searchRank: reader.optionalInt('searchRank'),
@@ -149,6 +173,30 @@ class Internship {
 
   /// Known skills the listing mentions, title first ([findSkills]).
   final List<String> skills;
+
+  /// Full listing text as Google shows it; `null` when the listing has none.
+  final String? description;
+
+  /// `job_highlights` sections ("Qualifications", "Responsibilities",
+  /// "Benefits"…); empty for most Vietnamese listings, which put everything
+  /// in [description].
+  final List<JobHighlight> highlights;
+
+  /// Google's job type, e.g. "Internship" or "Full-time".
+  final String? scheduleType;
+
+  /// The site Google Jobs found the listing on, e.g. "LinkedIn".
+  final String? via;
+
+  /// Items of the first highlight whose title contains [titleWord]
+  /// (case-insensitive); empty when there is none.
+  List<String> highlightItems(String titleWord) {
+    final word = titleWord.toLowerCase();
+    for (final highlight in highlights) {
+      if (highlight.title.toLowerCase().contains(word)) return highlight.items;
+    }
+    return const <String>[];
+  }
 
   /// IT job family inferred from the title/keyword ([jobRoleFor]); `null`
   /// for non-IT listings, which Home hides.
@@ -191,6 +239,31 @@ class Internship {
     return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty
         ? value
         : null;
+  }
+
+  /// Sections of `job_highlights` with a title and at least one item;
+  /// malformed sections are skipped instead of failing the listing.
+  static List<JobHighlight> _highlights(Object? highlights) {
+    if (highlights is! List) return const <JobHighlight>[];
+    final results = <JobHighlight>[];
+    for (final section in highlights) {
+      if (section is! Map) continue;
+      final title = section['title'];
+      final items = section['items'];
+      if (title is! String || title.trim().isEmpty || items is! List) continue;
+      final texts = [
+        for (final item in items.whereType<String>())
+          if (item.trim().isNotEmpty) item.trim(),
+      ];
+      if (texts.isEmpty) continue;
+      results.add(
+        JobHighlight(
+          title: title.trim(),
+          items: List<String>.unmodifiable(texts),
+        ),
+      );
+    }
+    return List<JobHighlight>.unmodifiable(results);
   }
 
   /// Items of `job_highlights` (e.g. "Qualifications"), which list the
