@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
+import '../../../core/utils/distinct_listings.dart';
 import '../../../core/utils/skill_matcher.dart';
 import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
@@ -66,6 +67,7 @@ class SearchViewModel extends Notifier<SearchState> {
 
   /// The shared pool already streamed for "Trending skills", reused so the
   /// filter sheet can preview its match count without another listener.
+  /// One listing per job, as Search Results shows them.
   List<Internship> _pool = const <Internship>[];
 
   @override
@@ -157,11 +159,11 @@ class SearchViewModel extends Notifier<SearchState> {
     _internshipsSubscription = service.watchActive().listen(
       (internships) {
         if (!ref.mounted) return;
-        _pool = internships;
+        _pool = distinctListings(internships);
         state = SearchState(
           workMode: state.workMode,
           trending: ViewState.fromData(
-            _topSkills(internships),
+            _topSkills(_pool),
             isEmpty: internships.isEmpty,
           ),
           recentSearches: state.recentSearches,

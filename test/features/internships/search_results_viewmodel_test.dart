@@ -5,6 +5,7 @@ import 'package:internly/core/state/view_state.dart';
 import 'package:internly/features/internships/models/search_filter_criteria.dart';
 import 'package:internly/features/internships/viewmodels/search_results_viewmodel.dart';
 import 'package:internly/models/internship.dart';
+import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/saved_service.dart';
@@ -16,11 +17,13 @@ void main() {
   late FakeInternshipService internships;
   late FakeSavedService saved;
   late FakeSearchHistoryService history;
+  late FakeAnalyticsService analytics;
 
   setUp(() {
     internships = FakeInternshipService();
     saved = FakeSavedService();
     history = FakeSearchHistoryService();
+    analytics = FakeAnalyticsService();
   });
 
   tearDown(() async {
@@ -35,6 +38,7 @@ void main() {
         internshipServiceProvider.overrideWithValue(internships),
         savedServiceProvider.overrideWithValue(saved),
         searchHistoryServiceProvider.overrideWithValue(history),
+        analyticsServiceProvider.overrideWithValue(analytics),
         currentUserIdProvider.overrideWithValue(uid ?? testUser.uid),
       ],
     );
@@ -280,5 +284,137 @@ void main() {
     await notifier.toggleSave(key);
     state = container.read(searchResultsViewModelProvider);
     expect(state.savedIds, isNot(contains(key)));
+  });
+
+  test('the same job under several sync keywords is listed once', () async {
+    internships.results = [
+      ...sampleListings,
+      testInternship(
+        '4',
+        title: 'Flutter Developer Intern',
+        companyName: 'FPT Software',
+        workMode: WorkMode.remote,
+        searchRank: 5,
+        skills: const ['Flutter', 'Dart'],
+      ),
+    ];
+    final container = createContainer();
+    final notifier = listen(container);
+    await settle();
+
+    final data =
+        (container.read(searchResultsViewModelProvider).results
+                as ViewData<List<Internship>>)
+            .data;
+    expect(data.length, 3);
+    // The copy with the better sync rank is kept.
+    expect(data.map((e) => e.jobId), isNot(contains('job-4')));
+    expect(
+      notifier.countMatching(const SearchFilterCriteria(skills: {'Dart'})),
+      1,
+    );
+  });
+
+  group('analytics', () {
+    test('a submitted search logs search with its result count', () async {
+      internships.results = sampleListings;
+      final container = createContainer();
+      final notifier = listen(container);
+      await settle();
+
+      notifier.setQuery('  Flutter ');
+
+      expect(analytics.events, ['search']);
+      expect(analytics.parameters['search'], {
+        'search_term': 'Flutter',
+        'result_count': 2,
+        'source': 'search',
+      });
+    });
+
+    test(
+      'a search opened before the pool arrives logs once, with the count',
+      () async {
+        internships.results = sampleListings;
+        final container = createContainer();
+        final notifier = listen(container);
+
+        notifier.init(query: 'Node');
+        expect(analytics.events, isEmpty);
+
+        await settle();
+        expect(analytics.events, ['search']);
+        expect(analytics.parameters['search']?['result_count'], 1);
+
+        // A new snapshot is not a new search.
+        internships.emit(sampleListings.take(2).toList());
+        await settle();
+        expect(analytics.events, ['search']);
+      },
+    );
+
+    test('a blank search, sorting and removing chips log nothing', () async {
+      internships.results = sampleListings;
+      final container = createContainer();
+      final notifier = listen(container);
+      notifier.init(workMode: WorkMode.remote);
+      await settle();
+
+      notifier
+        ..setQuery('   ')
+        ..setSortBy(SearchSortBy.bestMatch)
+        ..removeWorkMode(WorkMode.remote)
+        ..clearFilters();
+
+      expect(analytics.events, isEmpty);
+    });
+
+    test(
+      'Show results on the Search Results sheet logs search_filter_apply',
+      () async {
+        internships.results = sampleListings;
+        final container = createContainer();
+        final notifier = listen(container);
+        await settle();
+
+        notifier.setCriteria(
+          const SearchFilterCriteria(
+            workModes: {WorkMode.remote, WorkMode.onSite},
+            skills: {'Flutter', 'Dart'},
+            location: 'Ho Chi Minh City',
+          ),
+        );
+
+        expect(analytics.events, ['search_filter_apply']);
+        expect(analytics.parameters['search_filter_apply'], {
+          'work_mode': 'on_site,remote',
+          'location': 'Ho Chi Minh City',
+          'skill_count': 2,
+          'result_count': 2,
+          'source': 'search_results',
+        });
+      },
+    );
+
+    test('filters applied on the Search tab log with source search', () async {
+      internships.results = sampleListings;
+      final container = createContainer();
+      final notifier = listen(container);
+
+      notifier.init(
+        query: 'Flutter',
+        criteria: const SearchFilterCriteria(location: 'Any location'),
+      );
+      await settle();
+
+      expect(analytics.events, ['search', 'search_filter_apply']);
+      expect(analytics.parameters['search_filter_apply'], {
+        'work_mode': 'any',
+        'location': 'any',
+        'skill_count': 0,
+        'result_count': 2,
+        'source': 'search',
+      });
+    });
   });
 }

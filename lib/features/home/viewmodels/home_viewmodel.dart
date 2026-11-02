@@ -6,10 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
+import '../../../core/utils/distinct_listings.dart';
 import '../../../core/utils/job_role.dart';
 import '../../../core/utils/location_match.dart';
 import '../../../core/utils/recommendation.dart';
-import '../../../core/utils/text_fold.dart';
 import '../../../models/internship.dart';
 import '../../../models/user_profile.dart';
 import '../../../services/analytics_service.dart';
@@ -168,7 +168,7 @@ class HomeViewModel extends Notifier<HomeState> {
 
   void _showResults() {
     final selected = state.selectedRole;
-    final itJobs = _distinct(
+    final itJobs = distinctListings(
       _results.where((internship) => internship.role != null),
     );
     final available = <JobRole>[
@@ -220,7 +220,7 @@ class HomeViewModel extends Notifier<HomeState> {
             .toList()
           ..sort((a, b) {
             final byScore = scores[b.key]!.compareTo(scores[a.key]!);
-            return byScore != 0 ? byScore : _byRecommendation(a, b);
+            return byScore != 0 ? byScore : compareBySyncRank(a, b);
           });
     final recommended = ranked.take(recommendedLimit).toList(growable: false);
     final recommendedKeys = {
@@ -230,7 +230,7 @@ class HomeViewModel extends Notifier<HomeState> {
         filtered
             .where((internship) => !recommendedKeys.contains(internship.key))
             .toList()
-          ..sort(_byNewest);
+          ..sort(compareByNewest);
 
     final feed = HomeFeed(
       recommended: List.unmodifiable(recommended),
@@ -251,38 +251,8 @@ class HomeViewModel extends Notifier<HomeState> {
         'search_term': role?.label ?? 'IT',
         'result_count': resultCount,
         'elapsed_sec': DateTime.now().difference(_openedAt).inSeconds,
+        'source': 'home',
       }),
     );
-  }
-
-  /// One listing per job. The same job appears under several sync keywords
-  /// with a different Google `job_id` each time (171 of 322 listings on
-  /// 2026-10-28), so the copy with the best sync rank is kept.
-  static List<Internship> _distinct(Iterable<Internship> listings) {
-    final best = <String, Internship>{};
-    for (final internship in [...listings]..sort(_byRecommendation)) {
-      best.putIfAbsent(
-        '${foldText(internship.title)}|${foldText(internship.companyName)}',
-        () => internship,
-      );
-    }
-    return List.unmodifiable(best.values);
-  }
-
-  static int _byRecommendation(Internship a, Internship b) {
-    const unknownRank = 1 << 30;
-    final rank = (a.searchRank ?? unknownRank).compareTo(
-      b.searchRank ?? unknownRank,
-    );
-    return rank != 0 ? rank : _byNewest(a, b);
-  }
-
-  static int _byNewest(Internship a, Internship b) {
-    final first = a.postedAt;
-    final second = b.postedAt;
-    if (first == null && second == null) return 0;
-    if (first == null) return 1;
-    if (second == null) return -1;
-    return second.compareTo(first);
   }
 }
