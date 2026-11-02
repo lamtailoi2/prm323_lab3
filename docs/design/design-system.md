@@ -163,6 +163,8 @@ Optional parts, from the Edit Profile frame: `prefixIcon` (20 dp, `textSecondary
 
 *"360 dp width. Long placeholder wraps without truncation; the input grows with it. Clear and filter actions have 48 × 48 dp targets."* Leading `search` icon; placeholder `Search internships, companies, or skills`; trailing `tune` filter action; `close` clear action appears when text is entered. Radius 12, white, 1 px border.
 
+App (DC-25): one line by default with the placeholder `Search role, company, skill`, which fits the 224 dp hint area at 360 dp; `wrapHint: true` restores the wrapping specimen (used by Profile › Edit skills).
+
 ### 2.4 Filter Chip: 2 specimens · Themed (`ChipThemeData`)
 
 *"Use for work mode, skills, location or application status. Selection includes a check; both states retain a 48 dp touch target."* Unselected: `surfaceVariant` / `textSecondary`. Selected: `primaryContainer` / `primary` + check. Radius 12. Use Flutter `FilterChip` directly. ⚠️ The selected label contrast fails AA (§3).

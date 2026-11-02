@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/widgets/app_dialog.dart';
 import 'package:internly/core/widgets/app_search_field.dart';
@@ -173,10 +174,38 @@ void main() {
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     });
 
-    testWidgets('long placeholder wraps without overflow at 360 dp', (
+    for (final width in checkWidths) {
+      testWidgets('default placeholder stays on one line at $width dp', (
+        tester,
+      ) async {
+        await pumpThemed(
+          tester,
+          AppSearchField(onFilterPressed: () {}),
+          width: width,
+        );
+        final hint = tester.renderObject<RenderParagraph>(
+          find.text('Search role, company, skill'),
+        );
+        expect(hint.maxLines, 1);
+        expect(hint.didExceedMaxLines, isFalse);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('wrapHint lets a long placeholder wrap without overflow', (
       tester,
     ) async {
-      await pumpThemed(tester, AppSearchField(onFilterPressed: () {}));
+      await pumpThemed(
+        tester,
+        const AppSearchField(
+          hintText: 'Search skills (e.g. Flutter, SQL, Python)',
+          wrapHint: true,
+        ),
+      );
+      final hint = tester.renderObject<RenderParagraph>(
+        find.text('Search skills (e.g. Flutter, SQL, Python)'),
+      );
+      expect(hint.maxLines, 2);
       expect(tester.takeException(), isNull);
     });
   });

@@ -234,6 +234,19 @@ Branch `fix/saved-empty-search` on top of `dev` `55ad128`. Environment: macOS 26
 
 ---
 
+## Run 16: Search Field on one line (2026-11-02)
+
+Branch `fix/search-field-one-line` from `origin/dev` `3c2c313`. Environment: macOS 26.7.1 (arm64) · Flutter 3.47.6 / Dart 3.13.5.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | Hint width measured inside `AppSearchField` with the filter action (temporary widget test, deleted) | Hint area **224 dp** at 360 dp, **276 dp** at 412 dp; `Search internships, companies, or skills` = 319.5 dp (wraps at both), `Search role, company, skill` = 215.9 dp (fits both) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **385 tests, all passed**; the old "long placeholder wraps" case is replaced by "default placeholder stays on one line" at 360 / 412 dp (`maxLines == 1`, not exceeded) and a `wrapHint` case (two lines, no overflow) |
+| 4 | On device (Pixel_API_36, 412 dp and 360 dp via `wm size 945x2100`) | **Passed**: `Search role, company, skill` on one line at both widths — `evidence/screens/search-field-one-line-20261102.png` (before / after). Seen, not changed here: the `Applications` bottom-navigation label still wraps at 360 dp |
+
+---
+
 ## Run template
 
 ```markdown

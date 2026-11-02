@@ -43,6 +43,8 @@ class EditSkillsSheet extends ConsumerWidget {
       children: [
         AppSearchField(
           hintText: 'Search skills (e.g. Flutter, SQL, Python)',
+          // Keeps the two-line hint recorded in DC-16.
+          wrapHint: true,
           onChanged: viewModel.search,
         ),
         const SizedBox(height: AppSpacing.s16),

@@ -298,6 +298,14 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-37: Search Field on one line
+- **Request:** screenshot of the Search field with its placeholder on two lines; "fix lại nào cho thành 1 dòng thôi" (make it one line).
+- **Output:** `AppSearchField` defaults to one line (`maxLines: 1`, `hintMaxLines: 1`) with the placeholder `Search role, company, skill`; new `wrapHint` keeps the previous two-line behavior, used by Profile › Edit skills (DC-16). Tests and docs: `components_test.dart`, DC-25, `design-system.md` §2.3, `test-report.md` Run 16.
+- **Verification:** placeholder widths measured in the real field (Run 16 row 1); `flutter analyze` → `No issues found!`; `flutter test` → **385 passed**.
+- **Decision:** Modified: the first candidate (`Search roles, companies, skills`) was measured against a 360 dp field instead of a 360 dp screen and still wrapped; the widget test caught it and the shorter copy was chosen. Figma still shows the wrapping specimen (DC-25 to update).
+
+---
+
 ## Entry template
 
 ```markdown
