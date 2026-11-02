@@ -256,4 +256,34 @@ void main() {
     expect(trending().single, const SkillCount('Flutter', 2));
     expect(viewModel.countMatching(const SearchFilterCriteria()), 2);
   });
+
+  test(
+    'the filter preview counts a job found through any of its copies (CR-08)',
+    () async {
+      internships.results = [
+        testInternship(
+          'a',
+          title: 'Java Intern',
+          companyName: 'FPT Software',
+          searchRank: 0,
+          searchKeyword: 'IT internship Vietnam',
+        ),
+        testInternship(
+          'b',
+          title: 'Java Intern',
+          companyName: 'FPT Software',
+          searchRank: 3,
+          searchKeyword: 'thực tập backend',
+        ),
+      ];
+      final viewModel = listen();
+      await settle();
+
+      expect(
+        viewModel.countMatching(const SearchFilterCriteria(), query: 'backend'),
+        1,
+      );
+      expect(viewModel.countMatching(const SearchFilterCriteria()), 1);
+    },
+  );
 }

@@ -334,6 +334,9 @@ class FakeSearchHistoryService implements SearchHistoryService {
   AppException? error;
   int nextId = 0;
 
+  /// Holds [record] open, as an offline Firestore write never completes.
+  Completer<void>? recordGate;
+
   final StreamController<List<SearchHistoryEntry>> _updates =
       StreamController<List<SearchHistoryEntry>>.broadcast();
 
@@ -355,6 +358,7 @@ class FakeSearchHistoryService implements SearchHistoryService {
 
   @override
   Future<void> record(String uid, String term) async {
+    if (recordGate case final gate?) await gate.future;
     final trimmed = term.trim();
     if (trimmed.isEmpty) return;
     final entries = entriesByUid.putIfAbsent(uid, () => <SearchHistoryEntry>[])

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:internly/app/router.dart';
 import 'package:internly/core/errors/app_exception.dart';
+import 'package:internly/core/utils/distinct_listings.dart';
 import 'package:internly/core/widgets/app_button.dart';
 import 'package:internly/core/widgets/internship_card.dart';
 import 'package:internly/core/widgets/skeleton.dart';
@@ -80,9 +81,7 @@ void main() {
           savedInternshipServiceProvider.overrideWithValue(saved),
           currentUserIdProvider.overrideWithValue(testUser.uid),
           userProfileServiceProvider.overrideWithValue(profiles),
-          appliedInternshipKeysProvider.overrideWith(
-            (ref) => Stream.value(appliedKeys),
-          ),
+          appliedJobsProvider.overrideWith((ref) => Stream.value(appliedKeys)),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light(),
@@ -346,7 +345,7 @@ void main() {
     tester,
   ) async {
     internships.results = page;
-    appliedKeys = {page.first.key};
+    appliedKeys = {jobIdentity(page.first.title, page.first.companyName)};
     await pumpHome(tester);
     await tester.pumpAndSettle();
 

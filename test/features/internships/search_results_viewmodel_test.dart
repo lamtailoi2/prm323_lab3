@@ -315,6 +315,39 @@ void main() {
     );
   });
 
+  test(
+    'a job found only through a lower-ranked copy is kept (CR-08)',
+    () async {
+      internships.results = [
+        testInternship(
+          'a',
+          title: 'Java Intern',
+          companyName: 'FPT Software',
+          searchRank: 0,
+          searchKeyword: 'IT internship Vietnam',
+        ),
+        testInternship(
+          'b',
+          title: 'Java Intern',
+          companyName: 'FPT Software',
+          searchRank: 3,
+          searchKeyword: 'thực tập backend',
+        ),
+      ];
+      final container = createContainer();
+      final notifier = listen(container);
+      await settle();
+
+      notifier.setQuery('backend');
+      final data =
+          (container.read(searchResultsViewModelProvider).results
+                  as ViewData<List<Internship>>)
+              .data;
+      expect(data.map((e) => e.jobId), ['job-b']);
+      expect(notifier.countMatching(const SearchFilterCriteria()), 1);
+    },
+  );
+
   group('analytics', () {
     test('a submitted search logs search with its result count', () async {
       internships.results = sampleListings;
@@ -390,11 +423,37 @@ void main() {
           'work_mode': 'on_site,remote',
           'location': 'Ho Chi Minh City',
           'skill_count': 2,
+          'job_type': 'any',
+          'allowance': 'any',
           'result_count': 2,
           'source': 'search_results',
         });
       },
     );
+
+    test('a Job type or allowance filter is logged (CR-13)', () async {
+      internships.results = sampleListings;
+      final container = createContainer();
+      final notifier = listen(container);
+      await settle();
+
+      notifier.setCriteria(
+        const SearchFilterCriteria(
+          jobType: 'Internship',
+          allowanceRange: 'Negotiable',
+        ),
+      );
+
+      expect(
+        analytics.parameters['search_filter_apply']?['job_type'],
+        'Internship',
+      );
+      expect(
+        analytics.parameters['search_filter_apply']?['allowance'],
+        'Negotiable',
+      );
+      expect(analytics.parameters['search_filter_apply']?['result_count'], 0);
+    });
 
     test('filters applied on the Search tab log with source search', () async {
       internships.results = sampleListings;
@@ -412,6 +471,8 @@ void main() {
         'work_mode': 'any',
         'location': 'any',
         'skill_count': 0,
+        'job_type': 'any',
+        'allowance': 'any',
         'result_count': 2,
         'source': 'search',
       });

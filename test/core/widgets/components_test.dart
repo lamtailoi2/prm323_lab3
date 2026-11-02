@@ -213,6 +213,8 @@ void main() {
   group('InternshipCard', () {
     Widget card({
       bool saved = false,
+      bool applied = false,
+      String allowance = 'Allowance text',
       VoidCallback? onSave,
       VoidCallback? onTap,
     }) {
@@ -222,9 +224,10 @@ void main() {
         location: 'District 1, Ho Chi Minh City',
         workMode: 'Hybrid',
         tags: const ['Flutter', 'Dart', 'Firebase', 'REST API'],
-        allowanceText: 'Allowance text',
+        allowanceText: allowance,
         postedText: 'Posted 2 days ago',
         isSaved: saved,
+        isApplied: applied,
         onSaveToggle: onSave,
         onTap: onTap,
       );
@@ -240,6 +243,30 @@ void main() {
         expect(find.text('Hybrid'), findsOneWidget);
         expect(find.text('Posted 2 days ago'), findsOneWidget);
       });
+    }
+
+    for (final width in checkWidths) {
+      testWidgets(
+        'Applied badge fits next to a long allowance at $width dp (CR-14)',
+        (tester) async {
+          final handle = tester.ensureSemantics();
+          await pumpThemed(
+            tester,
+            card(
+              applied: true,
+              allowance: 'About 5,000,000–7,000,000 VND / mo',
+              onSave: () {},
+              onTap: () {},
+            ),
+            width: width,
+          );
+          expect(tester.takeException(), isNull);
+          expect(find.text('Applied'), findsOneWidget);
+          expect(find.bySemanticsLabel(RegExp(r'Applied$')), findsOneWidget);
+          await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+          handle.dispose();
+        },
+      );
     }
 
     testWidgets('card exposes one summary label for ARTEMIS', (tester) async {

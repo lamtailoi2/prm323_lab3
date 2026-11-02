@@ -62,4 +62,50 @@ void main() {
       expect(matches('Full-time', null), isTrue);
     });
   });
+
+  group('query', () {
+    bool matches(String query, {String? title, String? location}) =>
+        const SearchFilterCriteria().matches(
+          testInternship('1', title: title, location: location),
+          query: query,
+        );
+
+    test('matches without Vietnamese accents (CR-09)', () {
+      expect(matches('thuc tap', title: 'Thực tập sinh Flutter'), isTrue);
+      expect(matches('ha noi', location: 'Hà Nội'), isTrue);
+      expect(matches('Hanoi', location: 'Hà Nội'), isTrue);
+      expect(matches('Thực tập', title: 'Thuc tap sinh Backend'), isTrue);
+    });
+
+    test('keeps symbols, so C# does not match every C', () {
+      expect(matches('c#', title: 'C# .NET Intern'), isTrue);
+      expect(matches('c#', title: 'Crypto Intern'), isFalse);
+      expect(matches('c++', title: 'C Developer'), isFalse);
+    });
+  });
+
+  group('allowance filter (CR-12)', () {
+    bool matches(String? salary, String option) =>
+        SearchFilterCriteria(allowanceRange: option)
+            .matches(testInternship('1', salary: salary));
+
+    test('Above 5M VND/mo keeps listings that state at least 5,000,000', () {
+      expect(
+        matches('About 5,000,000–7,000,000 VND / mo', 'Above 5M VND/mo'),
+        isTrue,
+      );
+      expect(matches('8M–12M VND a month', 'Above 5M VND/mo'), isTrue);
+      expect(matches('3,000,000 VND / mo', 'Above 5M VND/mo'), isFalse);
+      expect(matches('Negotiable', 'Above 5M VND/mo'), isFalse);
+      expect(matches(null, 'Above 5M VND/mo'), isFalse);
+      expect(matches(r'$500 / mo', 'Above 5M VND/mo'), isFalse);
+    });
+
+    test('Negotiable keeps only negotiable pay', () {
+      expect(matches('Negotiable', 'Negotiable'), isTrue);
+      expect(matches('Thỏa thuận', 'Negotiable'), isTrue);
+      expect(matches('5,000,000 VND / mo', 'Negotiable'), isFalse);
+      expect(matches(null, 'Negotiable'), isFalse);
+    });
+  });
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -129,6 +131,20 @@ void main() {
   testWidgets('submitting the search field navigates to results', (
     tester,
   ) async {
+    await pumpSearch(tester);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Backend intern');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Results: Backend intern'), findsOneWidget);
+  });
+
+  testWidgets('an unfinished history write does not block the search (CR-10)', (
+    tester,
+  ) async {
+    history.recordGate = Completer<void>();
     await pumpSearch(tester);
     await tester.pumpAndSettle();
 
