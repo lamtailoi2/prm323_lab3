@@ -9,6 +9,7 @@ import '../../../app/router.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/allowance.dart';
+import '../../../core/utils/distinct_listings.dart';
 import '../../../core/utils/job_role.dart';
 import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/internship_card.dart';
@@ -204,20 +205,19 @@ class _FeedLists extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final savedIds = ref.watch(savedInternshipIdsProvider);
-    final appliedKeys =
-        ref.watch(appliedInternshipKeysProvider).asData?.value ??
-        const <String>{};
+    final appliedJobs =
+        ref.watch(appliedJobsProvider).asData?.value ?? const <String>{};
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (feed.recommended.isNotEmpty) ...[
           _sectionHeader('Recommended for you'),
-          _cards(context, ref, feed.recommended, savedIds, appliedKeys),
+          _cards(context, ref, feed.recommended, savedIds, appliedJobs),
         ],
         if (feed.recent.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.section),
           _sectionHeader('Recently Posted'),
-          _cards(context, ref, feed.recent, savedIds, appliedKeys),
+          _cards(context, ref, feed.recent, savedIds, appliedJobs),
         ],
         const SizedBox(height: AppSpacing.section),
       ],
@@ -245,7 +245,7 @@ class _FeedLists extends ConsumerWidget {
     WidgetRef ref,
     List<Internship> internships,
     Set<String> savedIds,
-    Set<String> appliedKeys,
+    Set<String> appliedJobs,
   ) {
     return Column(
       children: [
@@ -267,7 +267,9 @@ class _FeedLists extends ConsumerWidget {
               allowanceText: formatAllowance(internship.salary),
               postedText: internship.postedText,
               isSaved: savedIds.contains(internship.key),
-              isApplied: appliedKeys.contains(internship.key),
+              isApplied: appliedJobs.contains(
+                jobIdentity(internship.title, internship.companyName),
+              ),
               onTap: () => context.go(
                 AppRoutes.internshipDetail(AppRoutes.home, internship.key),
               ),

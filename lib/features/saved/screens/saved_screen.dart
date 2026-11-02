@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../app/router.dart';
+import '../../../core/utils/distinct_listings.dart';
 import '../../../core/widgets/internship_card.dart';
 import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/skeleton.dart';
@@ -138,9 +139,8 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
   @override
   Widget build(BuildContext context) {
     final savedAsync = ref.watch(savedInternshipsProvider);
-    final appliedKeys =
-        ref.watch(appliedInternshipKeysProvider).asData?.value ??
-        const <String>{};
+    final appliedJobs =
+        ref.watch(appliedJobsProvider).asData?.value ?? const <String>{};
 
     return Scaffold(
       appBar: MainTabAppBar(
@@ -221,7 +221,12 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                               InternshipCard.allowanceNotDisclosed,
                           postedText: internship.postedText,
                           isSaved: true,
-                          isApplied: appliedKeys.contains(internship.key),
+                          isApplied: appliedJobs.contains(
+                            jobIdentity(
+                              internship.title,
+                              internship.companyName,
+                            ),
+                          ),
                           onTap: () => context.go(
                             AppRoutes.internshipDetail(
                               AppRoutes.saved,

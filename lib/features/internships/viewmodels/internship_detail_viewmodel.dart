@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
+import '../../../core/utils/distinct_listings.dart';
 import '../../../core/utils/skill_match.dart';
 import '../../../models/internship.dart';
 import '../../../models/internship_application.dart';
@@ -66,7 +67,7 @@ class InternshipDetailViewModel extends Notifier<ViewState<InternshipDetail>> {
   /// `null` until the profile loads (or when it fails): the card waits
   /// instead of showing "0 of N" for a student who does have skills.
   List<String>? _profileSkills;
-  InternshipApplication? _application;
+  List<InternshipApplication> _applications = const [];
   bool _viewLogged = false;
 
   @override
@@ -81,7 +82,7 @@ class InternshipDetailViewModel extends Notifier<ViewState<InternshipDetail>> {
     _resolved = false;
     _listing = null;
     _profileSkills = null;
-    _application = null;
+    _applications = const [];
     _viewLogged = false;
 
     ref.listen(savedInternshipsProvider, (previous, next) {
@@ -161,12 +162,22 @@ class InternshipDetailViewModel extends Notifier<ViewState<InternshipDetail>> {
 
   void _onApplications(List<InternshipApplication> applications) {
     if (!ref.mounted) return;
-    final mine = applications
-        .where((application) => application.jobKey == args.internshipKey)
-        .firstOrNull;
-    if (identical(mine, _application)) return;
-    _application = mine;
+    _applications = applications;
     if (state is ViewData<InternshipDetail>) _emit();
+  }
+
+  /// The application for this job: the same key, or another synced copy of
+  /// the same job (CR-07), so `Apply now` is not offered twice.
+  InternshipApplication? _applicationFor(Internship internship) {
+    final identity = jobIdentity(internship.title, internship.companyName);
+    return _applications
+        .where(
+          (application) =>
+              application.jobKey == args.internshipKey ||
+              jobIdentity(application.title, application.companyName) ==
+                  identity,
+        )
+        .firstOrNull;
   }
 
   void _onError(Object error, StackTrace stack) {
@@ -199,7 +210,7 @@ class InternshipDetailViewModel extends Notifier<ViewState<InternshipDetail>> {
       InternshipDetail(
         internship: internship,
         skillMatch: match,
-        application: _application,
+        application: _applicationFor(internship),
       ),
     );
     _logView(internship);

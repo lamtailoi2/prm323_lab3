@@ -9,12 +9,18 @@ List<Internship> distinctListings(Iterable<Internship> listings) {
   final best = <String, Internship>{};
   for (final internship in [...listings]..sort(compareBySyncRank)) {
     best.putIfAbsent(
-      '${foldText(internship.title)}|${foldText(internship.companyName)}',
+      jobIdentity(internship.title, internship.companyName),
       () => internship,
     );
   }
   return List.unmodifiable(best.values);
 }
+
+/// One job across its synced copies: folded title and company. Lists keep
+/// one copy per identity, so anything tied to a job (the `Applied` badge)
+/// compares identities, not the key of one copy (CR-07).
+String jobIdentity(String title, String companyName) =>
+    '${foldText(title)}|${foldText(companyName)}';
 
 /// Best sync rank first (the order Google Jobs returned for the keyword),
 /// then newest; listings without a rank go last.

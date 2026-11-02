@@ -6,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../app/router.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/allowance.dart';
+import '../../../core/utils/distinct_listings.dart';
 import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/internship_card.dart';
@@ -95,9 +96,8 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
     final state = ref.watch(searchResultsViewModelProvider);
     final viewModel = ref.read(searchResultsViewModelProvider.notifier);
     final user = ref.watch(authStateChangesProvider).value;
-    final appliedKeys =
-        ref.watch(appliedInternshipKeysProvider).asData?.value ??
-        const <String>{};
+    final appliedJobs =
+        ref.watch(appliedJobsProvider).asData?.value ?? const <String>{};
 
     return Scaffold(
       appBar: AppTopBar.main(
@@ -180,7 +180,7 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
                   query: state.query,
                   sortBy: state.sortBy,
                   savedIds: state.savedIds,
-                  appliedKeys: appliedKeys,
+                  appliedJobs: appliedJobs,
                   onSortChanged: viewModel.setSortBy,
                   onSaveToggle: viewModel.toggleSave,
                 ),
@@ -326,7 +326,7 @@ class _ResultsListView extends StatelessWidget {
     required this.query,
     required this.sortBy,
     required this.savedIds,
-    required this.appliedKeys,
+    required this.appliedJobs,
     required this.onSortChanged,
     required this.onSaveToggle,
   });
@@ -336,8 +336,9 @@ class _ResultsListView extends StatelessWidget {
   final SearchSortBy sortBy;
   final Set<String> savedIds;
 
-  /// Listings tracked in My Applications, shown with the `Applied` badge.
-  final Set<String> appliedKeys;
+  /// Jobs ([jobIdentity]) tracked in My Applications, shown with the
+  /// `Applied` badge.
+  final Set<String> appliedJobs;
   final ValueChanged<SearchSortBy> onSortChanged;
   final ValueChanged<String> onSaveToggle;
 
@@ -448,7 +449,9 @@ class _ResultsListView extends StatelessWidget {
             allowanceText: formatAllowance(internship.salary),
             postedText: internship.postedText,
             isSaved: savedIds.contains(internship.key),
-            isApplied: appliedKeys.contains(internship.key),
+            isApplied: appliedJobs.contains(
+              jobIdentity(internship.title, internship.companyName),
+            ),
             onSaveToggle: () => onSaveToggle(internship.key),
             // push keeps this results page (query, filters, scroll) under
             // the detail, so Back returns to the same results.
