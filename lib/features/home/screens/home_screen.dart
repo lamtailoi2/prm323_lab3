@@ -208,12 +208,12 @@ class _FeedLists extends ConsumerWidget {
       children: [
         if (feed.recommended.isNotEmpty) ...[
           _sectionHeader('Recommended for you'),
-          _cards(ref, feed.recommended, savedIds),
+          _cards(context, ref, feed.recommended, savedIds),
         ],
         if (feed.recent.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.section),
           _sectionHeader('Recently Posted'),
-          _cards(ref, feed.recent, savedIds),
+          _cards(context, ref, feed.recent, savedIds),
         ],
         const SizedBox(height: AppSpacing.section),
       ],
@@ -237,6 +237,7 @@ class _FeedLists extends ConsumerWidget {
   }
 
   Widget _cards(
+    BuildContext context,
     WidgetRef ref,
     List<Internship> internships,
     Set<String> savedIds,
@@ -261,6 +262,9 @@ class _FeedLists extends ConsumerWidget {
               allowanceText: formatAllowance(internship.salary),
               postedText: internship.postedText,
               isSaved: savedIds.contains(internship.key),
+              onTap: () => context.go(
+                AppRoutes.internshipDetail(AppRoutes.home, internship.key),
+              ),
               onSaveToggle: () => unawaited(
                 ref
                     .read(savedViewModelProvider.notifier)

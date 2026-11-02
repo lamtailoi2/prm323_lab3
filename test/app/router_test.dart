@@ -12,6 +12,7 @@ import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
+import 'package:internly/services/saved_internship_service.dart';
 import 'package:internly/services/search_history_service.dart';
 import 'package:internly/services/user_profile_service.dart';
 
@@ -82,12 +83,15 @@ void main() {
       WidgetTester tester, {
       AppUser? user,
       double width = 360,
+      FakeInternshipService? listings,
     }) async {
       setScreenSize(tester, width: width);
       final auth = FakeAuthService(initialUser: user);
       analytics = FakeAnalyticsService();
       crashlytics = FakeCrashlyticsService();
-      final internships = FakeInternshipService();
+      final internships = listings ?? FakeInternshipService();
+      final saved = FakeSavedInternshipService();
+      addTearDown(saved.dispose);
       final remoteConfig = FakeRemoteConfigService();
       final searchHistory = FakeSearchHistoryService();
       final profiles = FakeUserProfileService();
@@ -109,6 +113,7 @@ void main() {
             searchHistoryServiceProvider.overrideWithValue(searchHistory),
             userProfileServiceProvider.overrideWithValue(profiles),
             applicationServiceProvider.overrideWithValue(applications),
+            savedInternshipServiceProvider.overrideWithValue(saved),
           ],
           child: const InternlyApp(),
         ),
@@ -128,6 +133,32 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Find your next internship'), findsOneWidget);
       expect(analytics.events, contains('login:google'));
+    });
+
+    testWidgets('a Home card opens Internship Detail above the shell', (
+      tester,
+    ) async {
+      final listing = testInternship(
+        '1',
+        title: 'Flutter Developer Intern',
+        skills: const ['Flutter', 'Dart'],
+      );
+      final listings = FakeInternshipService()
+        ..results = [listing]
+        ..byKey[listing.key] = listing;
+      await pumpApp(tester, user: testUser, listings: listings);
+
+      await tester.tap(find.text('Flutter Developer Intern').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Internship details'), findsOneWidget);
+      expect(find.text('Apply now'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(analytics.screens, contains('home_internship_detail'));
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.text('Internship details'), findsNothing);
     });
 
     for (final width in checkWidths) {

@@ -217,6 +217,12 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                               InternshipCard.allowanceNotDisclosed,
                           postedText: internship.postedText,
                           isSaved: true,
+                          onTap: () => context.go(
+                            AppRoutes.internshipDetail(
+                              AppRoutes.saved,
+                              internship.key,
+                            ),
+                          ),
                           onSaveToggle: () => _removeSaved(internship),
                         ),
                       );

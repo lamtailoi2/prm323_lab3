@@ -234,6 +234,26 @@ Branch `fix/saved-empty-search` on top of `dev` `55ad128`. Environment: macOS 26
 
 ---
 
+## Run 15: Internship Detail (2026-11-02)
+
+Branch `feat/internship-detail` (from `origin/dev` at `7f7a1dd`, fast-forwarded to `3c2c313` after Search and My Applications landed), uncommitted working tree. Environment: macOS 26.7.1 (arm64, MacBook Air M1 8 GB) · Flutter 3.47.6 / Dart 3.13.5 · JDK 21 · Android SDK 36 (command-line tools) · emulator `Pixel_API_36` (Android 16, Google Play image).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Completed; 129 files, last run 1 changed (test formatting) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **339 tests, all passed**; after the no-skills card fix (P-35) **342 passed**. New: `skill_match_test.dart` (4), `internship_test.dart` detail fields (3), `internship_detail_viewmodel_test.dart` (11: loading → data + match, `view_internship` once with its parameters, unavailable, saved-copy fallback, deleted while open, error + retry, retry ignored while loading, `cv_match_enabled` live, Profile skill changes, no known skill, profile load error), `internship_detail_screen_test.dart` (12 at 360 / 412 dp incl. `androidTapTargetGuideline`, `Not disclosed`, skeleton, unavailable + Back, error + Retry, Save → `Saved to your list` → `View saved`, failed save + Retry, `Apply now` message, Show more / Show all, card hidden by Remote Config, bell), `saved_viewmodel_test.dart` `toggleAndReport` (4), `router_test.dart` Home card → Detail above the shell → Back (1) |
+| 4 | `flutter build apk --debug --dart-define-from-file=.env` | **✓ Built** in 216 s; `apksigner` signer SHA-1 `ced3b710…2ef0` = the SHA-1 registered for `com.group3.internly` in Firebase `prm-lab3` |
+| 5 | Install + launch on `Pixel_API_36` | **Passed**: the app starts on Login and `Continue with Google` opens Google's account chooser (Firebase + team key work). The `.env` had two `DEBUG_KEYSTORE_BASE64` lines; the first was not a keystore with password `android` and is now commented out so Gradle uses the matching key |
+| 6 | On device: Home card → Internship Detail, scroll | **Passed** after the developer signed in on the emulator (screen recording 2026-11-02 12:30): Home card opens Detail with real Firestore data; the stretch seen at the top / bottom edge is Android 12+ stretch overscroll (same on Home and Profile), not a layout bug. The recording showed `0% skill match` / `Low match` for a profile without skills, fixed in P-35 |
+| 7 | DebugView: `view_internship`, `internship_save(source=detail)` | **`view_internship` passed** (2026-11-02 16:38–16:41): 4 events with `internship_id`, `internship_title`, `company_name` and `source` = `home` / `saved` / `search` — `evidence/analytics/analytics-view-internship-source-20261102.png`, `…-company-20261102.png`. `internship_save(source=detail)` fired (Save → `Saved to your list`) but its DebugView row could not be captured: the Top events list does not scroll in the small browser window; to redo on a larger screen |
+| 8 | ARTEMIS TC-05 (Flow 1 → detail) | **Not run**: no ARTEMIS daemon on this machine yet |
+| 9 | After updating to `dev` `3c2c313` (Search Results, My Applications) + Search Results card → Detail + Applied state | `flutter analyze` **No issues found!**; `flutter test` **426 tests, all passed** (+3 ViewModel and +2 screen cases for the Applied state at 360 / 412 dp) |
+| 10 | On device (Pixel_API_36, 412 dp and 360 dp via `wm size 945x2100`, then `wm size reset`) | **Passed**: Home card → Detail; Save → `Saved to your list` → `View saved` → Saved tab → Detail shows `Saved` → unsave → Saved list empty again; Search `intern` (120 results) → card → Detail (Techcombank logo from the network) → Back keeps the query and the 120 results; no overflow at 360 dp. Screenshots: `evidence/screens/internship-detail-frame-vs-app-20261102.png`, `…-save-20261102.png`, `…-from-search-20261102.png`, `…-360-20261102.png`. Applied banner **not run** (no application documents exist yet). Finding: some descriptions show raw Markdown (`## Job Purpose`) from Google Jobs; to clean up in a follow-up |
+| 11 | Markdown cleanup (`core/utils/listing_text.dart`, P-38) | `flutter analyze` **No issues found!**; `flutter test` **433 passed** (+6 `listing_text_test.dart`, +1 model case). On device: the Techcombank listing now reads `Job Purpose` and `• Thực tập sinh (TTS) …` instead of `## Job Purpose` / `- …`; with a Profile skill the card shows `14% skill match` / `Low match` and a checked `TypeScript` tag |
+
+---
+
 ## Run template
 
 ```markdown

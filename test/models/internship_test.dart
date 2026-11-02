@@ -130,6 +130,84 @@ void main() {
     );
   });
 
+  test('parses the detail fields: description, highlights, type, via', () {
+    final internship = Internship.fromSerpApi(
+      job({
+        'via': 'via LinkedIn',
+        'job_highlights': [
+          {
+            'title': 'Qualifications',
+            'items': ['Knowledge of Flutter', '  ', 'Git basics'],
+          },
+          {
+            'title': 'Benefits',
+            'items': ['Monthly allowance'],
+          },
+          {'title': 'Empty', 'items': <String>[]},
+          {
+            'items': ['No title'],
+          },
+          'not a map',
+        ],
+      }),
+    );
+
+    expect(internship.description, 'You will work with Firebase.');
+    expect(internship.scheduleType, 'Full-time');
+    expect(internship.via, 'LinkedIn');
+    expect(internship.highlights.map((h) => h.title), [
+      'Qualifications',
+      'Benefits',
+    ]);
+    expect(internship.highlightItems('qualification'), [
+      'Knowledge of Flutter',
+      'Git basics',
+    ]);
+    expect(internship.highlightItems('BENEFIT'), ['Monthly allowance']);
+    expect(internship.highlightItems('responsibilit'), isEmpty);
+  });
+
+  test('detail fields are optional', () {
+    final internship = Internship.fromSerpApi({
+      'job_id': 'id',
+      'title': 'Backend Intern',
+      'company_name': 'KMS Technology',
+      'description': '   ',
+      'via': 'TopCV',
+    });
+    expect(internship.description, isNull);
+    expect(internship.highlights, isEmpty);
+    expect(internship.scheduleType, isNull);
+    expect(internship.via, 'TopCV');
+  });
+
+  test('fromFirestore keeps the detail fields of the raw job', () {
+    final internship = Internship.fromFirestore('abc123', {
+      'raw': job({'via': 'LinkedIn'}),
+    });
+    expect(internship.description, 'You will work with Firebase.');
+    expect(internship.highlightItems('qualification'), hasLength(2));
+    expect(internship.scheduleType, 'Full-time');
+    expect(internship.via, 'LinkedIn');
+  });
+
+  test('detail text is shown without Markdown markers', () {
+    final internship = Internship.fromSerpApi(
+      job({
+        'description': '## Job Purpose\n\n\n- Build **Flutter** apps',
+        'job_highlights': [
+          {
+            'title': 'Qualifications',
+            'items': ['- **Dart** basics', '  '],
+          },
+        ],
+      }),
+    );
+    expect(internship.description, 'Job Purpose\n\n• Build Flutter apps');
+    expect(internship.highlightItems('qualification'), ['Dart basics']);
+    expect(internship.skills, containsAll(['Flutter', 'Dart']));
+  });
+
   test('ignores a non-https logo', () {
     final internship = Internship.fromSerpApi(
       job({'thumbnail': 'http://example.com/logo.png'}),

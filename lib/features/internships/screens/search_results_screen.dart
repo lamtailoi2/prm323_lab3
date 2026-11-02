@@ -430,13 +430,11 @@ class _ResultsListView extends StatelessWidget {
             postedText: internship.postedText,
             isSaved: savedIds.contains(internship.key),
             onSaveToggle: () => onSaveToggle(internship.key),
-            onTap: () {
-              ScaffoldMessenger.of(context)
-                ..clearSnackBars()
-                ..showSnackBar(
-                  SnackBar(content: Text('Selected ${internship.title}')),
-                );
-            },
+            // push keeps this results page (query, filters, scroll) under
+            // the detail, so Back returns to the same results.
+            onTap: () => context.push(
+              AppRoutes.internshipDetail(AppRoutes.search, internship.key),
+            ),
           ),
           const SizedBox(height: AppSpacing.betweenCards),
         ],
