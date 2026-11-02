@@ -1,0 +1,5 @@
+# adb logcat (FA-SVC verbose), Pixel_API_36, branch fix/search-analytics, 2026-11-02
+# 1. Search Results: typed "Intern" and submitted
+11-02 17:49:01.509  7626 17547 V FA-SVC  : Logging event: origin=app,name=search,params=Bundle[{source=search, search_term=Intern, ga_event_origin(_o)=app, ga_screen_class(_sc)=search_results, ga_screen_id(_si)=-8102350324159634419, ga_screen(_sn)=search_results, result_count=53}]
+# 2. Filter sheet on Search Results: On-site + Java -> Show 0 results
+11-02 17:49:25.841  7626 17547 V FA-SVC  : Logging event: origin=app,name=search_filter_apply,params=Bundle[{skill_count=1, source=search_results, ga_event_origin(_o)=app, ga_screen_class(_sc)=search_results, ga_screen_id(_si)=-8102350324159634419, ga_screen(_sn)=search_results, result_count=0, work_mode=on_site, location=any}]
