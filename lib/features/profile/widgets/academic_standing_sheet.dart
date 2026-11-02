@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/widgets/app_sheet.dart';
 import '../../../theme/app_spacing.dart';
 import '../viewmodels/edit_profile_viewmodel.dart';
-import 'profile_sheet.dart';
 
 /// Picker behind the "Academic standing & graduation" field of Edit profile.
 /// The frame shows only the field ("Year 3 · Graduating 2026"), so the
@@ -45,7 +45,7 @@ class _AcademicStandingSheetState extends ConsumerState<AcademicStandingSheet> {
       ?state.graduationYear,
     }.toList()..sort();
 
-    return ProfileSheet(
+    return AppSheet(
       icon: Symbols.event_rounded,
       title: 'Academic standing',
       subtitle: 'Choose your year of study and expected graduation',

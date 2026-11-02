@@ -97,6 +97,13 @@ void main() {
                 internshipKey: state.pathParameters['jobKey']!,
                 source: 'home',
               ),
+              routes: [
+                GoRoute(
+                  path: 'apply',
+                  builder: (context, state) =>
+                      Text('Apply form ${state.pathParameters['jobKey']}'),
+                ),
+              ],
             ),
           ],
         ),
@@ -352,15 +359,21 @@ void main() {
     expect(find.text('Saved'), findsOneWidget);
   });
 
-  testWidgets('Apply now says honestly that applying is not built yet', (
+  testWidgets('Apply now opens the Apply Form above the Detail', (
     tester,
   ) async {
     internships.byKey[listing.key] = listing;
     await pumpDetail(tester);
 
     await tester.tap(find.text('Apply now'));
-    await tester.pump();
-    expect(find.text('Applying in Internly is coming soon.'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Apply form ${listing.key}'), findsOneWidget);
+
+    // Pushed, so Back returns to the same Detail.
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator).last);
+    navigator.pop();
+    await tester.pumpAndSettle();
+    expect(find.text('Flutter Developer Intern'), findsWidgets);
   });
 
   testWidgets('Show more and Show all expand their sections', (tester) async {

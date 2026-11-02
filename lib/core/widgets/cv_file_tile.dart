@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../../theme/app_colors.dart';
-import '../../../theme/app_radii.dart';
-import '../../../theme/app_sizes.dart';
-import '../../../theme/app_spacing.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_radii.dart';
+import '../../theme/app_sizes.dart';
+import '../../theme/app_spacing.dart';
 
 /// A PDF file row: icon tile, file name, metadata line and an optional
 /// badge and trailing action.
 ///
-/// Feature-local version of the Lab 2 "CV File Card"; its Figma spec is not
-/// available yet (G-16), so it stays out of `core/widgets` until Apply
-/// needs the same card.
+/// Lab 2 "CV File Card", shared by Profile and the Apply Form (CV / Resume
+/// section); its Figma component spec is still missing (G-16).
 class CvFileTile extends StatelessWidget {
   const CvFileTile({
     super.key,

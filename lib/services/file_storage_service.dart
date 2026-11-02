@@ -61,6 +61,11 @@ final fileStorageServiceProvider = Provider<FileStorageService>(
 /// Maximum upload size; `firebase/storage.rules` enforces the same limit.
 const int maxUploadBytes = 10 * 1024 * 1024;
 
+/// How long an upload keeps retrying before it fails with
+/// `retry-limit-exceeded` (Firebase default: 10 minutes), so an offline
+/// student sees the error and `Retry` instead of a bar stuck at 0 %.
+const Duration maxUploadRetryTime = Duration(seconds: 30);
+
 /// Cloud Storage for Firebase (Blaze plan, no-cost quota; handoff-gaps G-12).
 ///
 /// Access is enforced twice: `firebase/storage.rules` on the server (owner
@@ -102,6 +107,7 @@ class FirebaseStorageService implements FileStorageService {
       randomId: _randomHex(16),
     );
 
+    _storage.setMaxUploadRetryTime(maxUploadRetryTime);
     final reference = _storage.ref(path);
     final task = reference.putData(
       bytes,

@@ -161,6 +161,32 @@ void main() {
       expect(find.text('Internship details'), findsNothing);
     });
 
+    testWidgets('Apply now opens the Apply Form; Back returns to the Detail', (
+      tester,
+    ) async {
+      final listing = testInternship('1', title: 'Flutter Developer Intern');
+      final listings = FakeInternshipService()
+        ..results = [listing]
+        ..byKey[listing.key] = listing;
+      await pumpApp(tester, user: testUser, listings: listings);
+
+      await tester.tap(find.text('Flutter Developer Intern').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apply now'));
+      await tester.pumpAndSettle();
+      expect(find.text('Apply Form'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(analytics.screens, contains('home_apply_form'));
+      expect(analytics.parameters['apply_start'], {
+        'internship_id': listing.key,
+        'source': 'home',
+      });
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('Internship details'), findsOneWidget);
+    });
+
     for (final width in checkWidths) {
       testWidgets('signed in: five tabs with icon + label at $width dp', (
         tester,

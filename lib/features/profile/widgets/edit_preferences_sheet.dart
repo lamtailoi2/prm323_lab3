@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/errors/app_exception.dart';
+import '../../../core/widgets/app_sheet.dart';
 import '../../../models/user_profile.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import '../viewmodels/edit_preferences_viewmodel.dart';
-import 'profile_sheet.dart';
 
 /// Update preferences sheet (Lab 2 `profile-preferences.png`): target roles
 /// and work modes (multi-select chips with a check and outline) and a
@@ -43,7 +43,7 @@ class _EditPreferencesSheetState extends ConsumerState<EditPreferencesSheet> {
     final viewModel = ref.read(editPreferencesViewModelProvider.notifier);
     final typedLocation = state.location.trim().toLowerCase();
 
-    return ProfileSheet(
+    return AppSheet(
       title: 'Update preferences',
       subtitle: 'Customize roles, work mode, and location for tailored matches',
       primaryLabel: 'Save preferences',

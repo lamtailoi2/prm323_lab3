@@ -105,11 +105,9 @@ class InternshipDetailScreen extends ConsumerWidget {
               // Application Detail is not built yet, so the student lands on
               // the My Applications list that holds this application (DC-24).
               ? () => context.go(AppRoutes.applications)
-              // The Apply pre-submit screen is the next Flow 1 slice; until
-              // it exists the button says so instead of faking a step.
-              : () => _showMessage(
-                  context,
-                  'Applying in Internly is coming soon.',
+              // Flow 1 pre-submit; push keeps this Detail underneath.
+              : () => context.push(
+                  AppRoutes.applyForm('/$source', data.internship.key),
                 ),
         ),
         _ => null,
