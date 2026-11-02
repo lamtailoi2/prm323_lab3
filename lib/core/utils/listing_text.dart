@@ -5,8 +5,9 @@
 library;
 
 // The text after the hashes is optional, so an empty `##` line is dropped;
-// `#hashtag` (no space) is not a heading.
-final RegExp _heading = RegExp(r'^\s{0,3}#{1,6}(?:\s+(.*?))?\s*#*\s*$');
+// `#hashtag` (no space) is not a heading. Closing hashes need a space before
+// them, as in CommonMark, so `## Skills: C#` keeps `C#` (CR-04).
+final RegExp _heading = RegExp(r'^\s{0,3}#{1,6}(?:\s+(.*?))?(?:\s+#+)?\s*$');
 final RegExp _bullet = RegExp(r'^\s*[-*+•]\s+(.*)$');
 final RegExp _rule = RegExp(r'^\s*([-*_])(\s*\1){2,}\s*$');
 final RegExp _emphasis = RegExp(r'\*\*|__');

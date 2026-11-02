@@ -122,6 +122,39 @@ void main() {
     expect(data().internship.key, listing.key);
   });
 
+  test(
+    'an application to another synced copy of the job counts (CR-07)',
+    () async {
+      internships.byKey[listing.key] = listing;
+      applications.results = [
+        InternshipApplication(
+          jobKey: 'other-copy-key',
+          title: listing.title,
+          companyName: listing.companyName,
+          appliedAt: DateTime(2026, 11, 1),
+          status: ApplicationStatus.submitted,
+        ),
+      ];
+      listen();
+      await settle();
+      await settle();
+
+      expect(data().application?.jobKey, 'other-copy-key');
+    },
+  );
+
+  test('unsaving an expired listing keeps it on screen', () async {
+    saved.seed([listing]);
+    listen();
+    await settle();
+    await settle();
+    expect(data().internship.key, listing.key);
+
+    await saved.remove(listing.key);
+    await settle();
+    expect(read(), isA<ViewData<InternshipDetail>>());
+  });
+
   test('a listing deleted while open becomes empty', () async {
     internships.byKey[listing.key] = listing;
     listen();

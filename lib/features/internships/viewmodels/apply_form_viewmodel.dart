@@ -50,6 +50,7 @@ class ApplyFormState {
     this.uploadError,
     this.missingCv = false,
     this.skillMatch,
+    this.profileError,
   });
 
   final ViewState<Internship> internship;
@@ -81,6 +82,10 @@ class ApplyFormState {
   /// listing, or the profile not loaded).
   final SkillMatch? skillMatch;
 
+  /// The profile (and so its CV) could not be loaded; the CV section says
+  /// so with `Retry` instead of looking like "no CV yet" (CR-18).
+  final AppException? profileError;
+
   bool get isUploading => progress != null;
 
   ApplyCv? get cv {
@@ -106,6 +111,7 @@ class ApplyFormState {
     Object? uploadError = _keep,
     bool? missingCv,
     Object? skillMatch = _keep,
+    Object? profileError = _keep,
   }) {
     return ApplyFormState(
       internship: internship ?? this.internship,
@@ -129,6 +135,9 @@ class ApplyFormState {
       skillMatch: identical(skillMatch, _keep)
           ? this.skillMatch
           : skillMatch as SkillMatch?,
+      profileError: identical(profileError, _keep)
+          ? this.profileError
+          : profileError as AppException?,
     );
   }
 }
@@ -144,6 +153,7 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
   final ApplyFormArgs args;
 
   StreamSubscription<Internship?>? _subscription;
+  StreamSubscription<UserProfile?>? _profileSubscription;
 
   /// `false` until the first snapshot of the listing arrives.
   bool _resolved = false;
@@ -177,21 +187,9 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
       if (_resolved && _listing == null) _emitListing();
     }, fireImmediately: true);
 
-    final profile = uid == null
-        ? null
-        : profiles
-              .watchProfile(uid)
-              .listen(
-                _onProfile,
-                // Without the profile the student can still upload a CV.
-                onError: (Object _, StackTrace _) {
-                  if (ref.mounted) {
-                    state = state.copyWith(profileLoaded: true);
-                  }
-                },
-              );
+    _subscribeProfile(profiles, uid);
     ref.onDispose(() {
-      unawaited(profile?.cancel());
+      unawaited(_profileSubscription?.cancel());
       unawaited(_subscription?.cancel());
     });
 
@@ -207,6 +205,41 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
     _resolved = false;
     state = state.copyWith(internship: const ViewLoading());
     _subscribe(service);
+  }
+
+  /// `Retry` after the profile failed to load.
+  void retryProfile() {
+    if (state.profileError == null) return;
+    state = state.copyWith(profileLoaded: false, profileError: null);
+    _subscribeProfile(
+      ref.read(userProfileServiceProvider),
+      ref.read(currentUserIdProvider),
+    );
+  }
+
+  void _subscribeProfile(UserProfileService profiles, String? uid) {
+    unawaited(_profileSubscription?.cancel());
+    if (uid == null) return;
+    _profileSubscription = profiles
+        .watchProfile(uid)
+        .listen(
+          _onProfile,
+          // The student can still upload a CV; the section shows the error
+          // with Retry (CR-18).
+          onError: (Object error, StackTrace _) {
+            if (!ref.mounted) return;
+            state = state.copyWith(
+              profileLoaded: true,
+              profileError: error is AppException
+                  ? error
+                  : AppException(
+                      AppErrorKind.unknown,
+                      'We could not load your Profile CV. Try again.',
+                      cause: error,
+                    ),
+            );
+          },
+        );
   }
 
   /// `Choose file` in the CV sheet: picks a PDF to upload for this
@@ -284,7 +317,9 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
   /// Complete), or `null` when there is none yet and the CV section must say
   /// so.
   ApplyCv? continueToReview() {
-    if (state.isUploading) return null;
+    // A failed upload is resolved first (`Retry` or `Use CV from Profile`),
+    // so the Profile CV is never sent in place of the chosen file (CR-15).
+    if (state.isUploading || state.uploadError != null) return null;
     final cv = state.cv;
     if (cv == null) state = state.copyWith(missingCv: true);
     return cv;
@@ -386,6 +421,7 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
     _profileSkills = profile?.skills ?? const <String>[];
     state = state.copyWith(
       profileLoaded: true,
+      profileError: null,
       profileCv: profile?.cv,
       missingCv: profile?.cv == null && state.missingCv,
       skillMatch: _matchFor(switch (state.internship) {

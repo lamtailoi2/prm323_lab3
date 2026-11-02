@@ -11,6 +11,7 @@ import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../theme/app_spacing.dart';
+import '../../profile/widgets/edit_skills_sheet.dart';
 import '../viewmodels/apply_form_viewmodel.dart';
 import '../widgets/apply_cv_sheet.dart';
 import '../widgets/apply_form_parts.dart';
@@ -91,8 +92,13 @@ class ApplyFormScreen extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.s16),
                     ApplySkillMatchLine(
                       match: match,
-                      // Skills are edited on Profile (Edit skills sheet).
-                      onEditSkills: () => context.go(AppRoutes.profile),
+                      // The Profile Edit skills sheet opens over the form:
+                      // going to the Profile tab would drop the form and a
+                      // CV uploaded or uploading for this internship
+                      // (CR-16). The match updates from the profile stream.
+                      onEditSkills: () => unawaited(
+                        showAppSheet(context, (_) => const EditSkillsSheet()),
+                      ),
                     ),
                   ],
                   const SizedBox(height: AppSpacing.s16),
@@ -103,6 +109,7 @@ class ApplyFormScreen extends ConsumerWidget {
                     onRetry: () => unawaited(viewModel.uploadSelected()),
                     onUseProfileCv: viewModel.useProfileCv,
                     onPreview: () => unawaited(_preview(context, viewModel)),
+                    onRetryProfile: viewModel.retryProfile,
                   ),
                 ],
               ),
@@ -123,6 +130,11 @@ class ApplyFormScreen extends ConsumerWidget {
                     context,
                     'Your CV is ready. The review step is coming soon.',
                   );
+                } else if (state.uploadError != null) {
+                  _showMessage(
+                    context,
+                    'Retry the upload or choose another CV first.',
+                  );
                 }
               },
             )
@@ -135,6 +147,7 @@ class ApplyFormScreen extends ConsumerWidget {
   /// a CV was uploaded for this internship.
   static Widget? _banner(BuildContext context, ApplyFormState state) {
     if (!state.profileLoaded ||
+        state.profileError != null ||
         state.isUploading ||
         state.uploadError != null) {
       return null;
@@ -143,7 +156,8 @@ class ApplyFormScreen extends ConsumerWidget {
     if (state.cv?.source == CvSource.profile) {
       return ApplyInfoBanner.fromProfile(onAction: openProfile);
     }
-    if (state.profileCv == null) {
+    // A CV uploaded for this internship needs no tip (CR-20).
+    if (state.profileCv == null && state.uploadedCv == null) {
       return ApplyInfoBanner.tip(onAction: openProfile);
     }
     return null;

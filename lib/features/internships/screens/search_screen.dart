@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -101,7 +103,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     if (trimmed.isEmpty && mode == null) return;
     if (trimmed.isNotEmpty) {
       _controller.text = trimmed;
-      await viewModel.recordSearch(trimmed);
+      // Recorded in the background: an offline Firestore write only
+      // completes once the server confirms it, and the search must not wait
+      // for it (CR-10).
+      unawaited(viewModel.recordSearch(trimmed));
     }
     if (!context.mounted) return;
     final uri = Uri(
@@ -139,8 +144,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     // Navigate only once the sheet has closed, so its route is gone.
     if (criteria == null || !context.mounted) return;
     final term = _controller.text.trim();
-    if (term.isNotEmpty) await viewModel.recordSearch(term);
-    if (!context.mounted) return;
+    if (term.isNotEmpty) unawaited(viewModel.recordSearch(term));
     context.go(
       Uri(
         path: AppRoutes.searchResults,

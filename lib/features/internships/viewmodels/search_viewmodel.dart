@@ -67,7 +67,7 @@ class SearchViewModel extends Notifier<SearchState> {
 
   /// The shared pool already streamed for "Trending skills", reused so the
   /// filter sheet can preview its match count without another listener.
-  /// One listing per job, as Search Results shows them.
+  /// Every copy is kept; jobs are merged after filtering (CR-08).
   List<Internship> _pool = const <Internship>[];
 
   @override
@@ -100,9 +100,10 @@ class SearchViewModel extends Notifier<SearchState> {
   /// How many listings in the pool match [criteria] and [query], for the
   /// filter sheet's `Show N results` button.
   int countMatching(SearchFilterCriteria criteria, {String query = ''}) {
-    return _pool
-        .where((internship) => criteria.matches(internship, query: query))
-        .length;
+    // Merged after filtering, as on Search Results (CR-08).
+    return distinctListings(
+      _pool.where((internship) => criteria.matches(internship, query: query)),
+    ).length;
   }
 
   /// Records [term] in this student's search history. Called when the
@@ -159,11 +160,11 @@ class SearchViewModel extends Notifier<SearchState> {
     _internshipsSubscription = service.watchActive().listen(
       (internships) {
         if (!ref.mounted) return;
-        _pool = distinctListings(internships);
+        _pool = internships;
         state = SearchState(
           workMode: state.workMode,
           trending: ViewState.fromData(
-            _topSkills(_pool),
+            _topSkills(distinctListings(internships)),
             isEmpty: internships.isEmpty,
           ),
           recentSearches: state.recentSearches,

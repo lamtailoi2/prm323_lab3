@@ -19,6 +19,17 @@ import 'package:internly/services/user_profile_service.dart';
 
 import '../../helpers/fakes.dart';
 
+/// A signed-in uid the test can change, as signing in with another account
+/// does, so ViewModels that watch `currentUserIdProvider` rebuild.
+class _Uid extends Notifier<String?> {
+  @override
+  String? build() => testUser.uid;
+
+  void set(String? uid) => state = uid;
+}
+
+final _uidProvider = NotifierProvider<_Uid, String?>(_Uid.new);
+
 void main() {
   late FakeInternshipService internships;
   late FakeUserProfileService profiles;
@@ -64,7 +75,7 @@ void main() {
         fileStorageServiceProvider.overrideWithValue(storage),
         externalLinkServiceProvider.overrideWithValue(links),
         remoteConfigServiceProvider.overrideWithValue(remoteConfig),
-        currentUserIdProvider.overrideWithValue(testUser.uid),
+        currentUserIdProvider.overrideWith((ref) => ref.watch(_uidProvider)),
       ],
     );
   });
@@ -88,7 +99,8 @@ void main() {
   test('logs apply_start once with the listing and the Detail tab', () async {
     listen();
     await settle();
-    container.invalidate(currentUserIdProvider);
+    // Another account rebuilds the ViewModel (CR-19).
+    container.read(_uidProvider.notifier).set('other-uid');
     await settle();
 
     expect(analytics.events.where((e) => e == 'apply_start'), hasLength(1));
@@ -97,6 +109,36 @@ void main() {
       'source': 'search',
     });
   });
+
+  test(
+    'another account drops the CV uploaded for this internship (CR-19)',
+    () async {
+      picker.next = picked;
+      final viewModel = listen();
+      await settle();
+      await viewModel.chooseCv();
+      await viewModel.uploadSelected();
+      expect(read().cv?.source, CvSource.uploaded);
+
+      container.read(_uidProvider.notifier).set('other-uid');
+      await settle();
+      expect(read().uploadedCv, isNull);
+      expect(read().pending, isNull);
+    },
+  );
+
+  test(
+    'a listing that left the pool opens from its saved copy (CR-19)',
+    () async {
+      internships.byKey.clear();
+      saved.seed([listing]);
+      listen();
+      await settle();
+      await settle();
+
+      expect((read().internship as ViewData<Internship>).data.key, listing.key);
+    },
+  );
 
   test('loads the listing and selects the Profile CV', () async {
     listen();
@@ -146,6 +188,29 @@ void main() {
       expect(read().cv, isNull);
       expect(viewModel.continueToReview(), isNull);
       expect(read().missingCv, isTrue);
+    },
+  );
+
+  test(
+    'a profile load error is shown with Retry, not as "no CV" (CR-18)',
+    () async {
+      profiles.loadError = const AppException(
+        AppErrorKind.network,
+        'We could not reach Internly.',
+      );
+      final viewModel = listen();
+      await settle();
+
+      expect(read().profileLoaded, isTrue);
+      expect(read().profileError?.kind, AppErrorKind.network);
+      expect(read().cv, isNull);
+
+      profiles.loadError = null;
+      viewModel.retryProfile();
+      expect(read().profileLoaded, isFalse);
+      await settle();
+      expect(read().profileError, isNull);
+      expect(read().cv?.file, profileCv);
     },
   );
 
@@ -290,6 +355,22 @@ void main() {
     storage.gate!.complete();
     await upload;
     expect(read().cv?.source, CvSource.uploaded);
+  });
+
+  test('Continue does not fall back to the Profile CV after a failed upload '
+      '(CR-15)', () async {
+    picker.next = picked;
+    storage.error = const AppException(AppErrorKind.network, 'Offline.');
+    final viewModel = listen();
+    await settle();
+    await viewModel.chooseCv();
+    await viewModel.uploadSelected();
+
+    expect(viewModel.continueToReview(), isNull);
+    expect(read().missingCv, isFalse);
+
+    viewModel.useProfileCv();
+    expect(viewModel.continueToReview()?.source, CvSource.profile);
   });
 
   test('Use CV from Profile drops a failed upload', () async {

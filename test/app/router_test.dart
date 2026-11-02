@@ -6,6 +6,7 @@ import 'package:internly/app/app_shell.dart';
 import 'package:internly/app/router.dart';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/models/app_user.dart';
+import 'package:internly/models/internship.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
@@ -13,6 +14,7 @@ import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
 import 'package:internly/services/saved_internship_service.dart';
+import 'package:internly/services/saved_service.dart';
 import 'package:internly/services/search_history_service.dart';
 import 'package:internly/services/user_profile_service.dart';
 
@@ -84,14 +86,17 @@ void main() {
       AppUser? user,
       double width = 360,
       FakeInternshipService? listings,
+      List<Internship> savedListings = const <Internship>[],
     }) async {
       setScreenSize(tester, width: width);
       final auth = FakeAuthService(initialUser: user);
       analytics = FakeAnalyticsService();
       crashlytics = FakeCrashlyticsService();
       final internships = listings ?? FakeInternshipService();
-      final saved = FakeSavedInternshipService();
+      final saved = FakeSavedInternshipService()..seed(savedListings);
       addTearDown(saved.dispose);
+      final savedIds = FakeSavedService();
+      addTearDown(savedIds.dispose);
       final remoteConfig = FakeRemoteConfigService();
       final searchHistory = FakeSearchHistoryService();
       final profiles = FakeUserProfileService();
@@ -114,6 +119,7 @@ void main() {
             userProfileServiceProvider.overrideWithValue(profiles),
             applicationServiceProvider.overrideWithValue(applications),
             savedInternshipServiceProvider.overrideWithValue(saved),
+            savedServiceProvider.overrideWithValue(savedIds),
           ],
           child: const InternlyApp(),
         ),
@@ -159,6 +165,70 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(find.text('Internship details'), findsNothing);
+    });
+
+    testWidgets(
+      'a Search Results card opens Detail; Back keeps the same results',
+      (tester) async {
+        final listing = testInternship('1', title: 'Flutter Developer Intern');
+        final listings = FakeInternshipService()
+          ..results = [listing]
+          ..byKey[listing.key] = listing;
+        await pumpApp(tester, user: testUser, listings: listings);
+
+        await tester.tap(
+          find.descendant(
+            of: find.byType(NavigationBar),
+            matching: find.text('Search'),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'Flutter');
+        await tester.tap(find.text('Find Internships'));
+        await tester.pumpAndSettle();
+        expect(find.text('1 internship found'), findsOneWidget);
+
+        await tester.tap(find.text('Flutter Developer Intern'));
+        await tester.pumpAndSettle();
+        expect(find.text('Internship details'), findsOneWidget);
+        expect(find.byType(NavigationBar), findsNothing);
+        expect(analytics.screens, contains('search_internship_detail'));
+
+        await tester.tap(find.byTooltip('Back'));
+        await tester.pumpAndSettle();
+        expect(find.text('1 internship found'), findsOneWidget);
+        expect(find.widgetWithText(TextField, 'Flutter'), findsOneWidget);
+      },
+    );
+
+    testWidgets('a Saved card opens Detail; Back returns to Saved', (
+      tester,
+    ) async {
+      final listing = testInternship('1', title: 'Flutter Developer Intern');
+      final listings = FakeInternshipService()..byKey[listing.key] = listing;
+      await pumpApp(
+        tester,
+        user: testUser,
+        listings: listings,
+        savedListings: [listing],
+      );
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Saved'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Developer Intern'));
+      await tester.pumpAndSettle();
+      expect(find.text('Internship details'), findsOneWidget);
+      expect(analytics.screens, contains('saved_internship_detail'));
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.text('1 saved'), findsOneWidget);
     });
 
     testWidgets('Apply now opens the Apply Form; Back returns to the Detail', (

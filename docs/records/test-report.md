@@ -319,6 +319,19 @@ Branch `fix/job-type-applied-badge` from `origin/dev` `fe286dc`. Environment: ma
 
 ---
 
+## Run 20: Fixes from the AI code review R1 (2026-11-02)
+
+Branch `fix/code-review-r1` from `origin/dev` `4d2aeda`. Environment: macOS 26.7.1 (arm64) · Flutter 3.47.6 / Dart 3.13.5. Findings and decisions: `docs/code-review.md` (CR-01 – CR-20).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | Each accepted bug first reproduced by a test that fails on `dev` | CR-01 (`Bad state: Using "ref" … unmounted`), CR-02 (no semantics tap action), CR-03, CR-04 (`Skills: C`), CR-07, CR-08 (0 instead of 1 result), CR-09, CR-10 (navigation never happens), CR-12, CR-15, CR-20 failed before their fix and pass after it |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **525 tests, all passed** (+24 from 501) |
+| 4 | On device | **Not run** for these fixes |
+
+---
+
 ## Run template
 
 ```markdown

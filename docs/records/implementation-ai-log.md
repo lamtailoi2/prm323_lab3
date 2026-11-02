@@ -375,6 +375,14 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-44: AI code review R1 of PRs #11–#15 and fixes
+- **Request:** "ok làm mục 1" — run the Lab 3 §8 AI code review on Hoàng Anh's PRs and record it.
+- **Output:** three Claude Code review subagents (fresh context, only the PR diff and AGENTS.md) reviewed PR #11, PR #14, and PRs #12/#13/#15; raw outputs saved in `evidence/code-review/`. 20 findings (CR-01 – CR-20): 13 accepted, 5 modified, 2 rejected, each with a reason in `docs/code-review.md`. 18 fix commits `fix(CR-xx)` / `test(CR-xx)` on `fix/code-review-r1` (Detail SnackBar actions and Save semantics, expired listing after unsave, C# headings, Saved write path, Applied by job identity, merge after filter, unaccented query, background history write, allowance options, filter analytics, Apply Form Continue after a failed upload, Edit skills over the form, Profile load error, Profile tip). Docs: G-32, analytics row 5, DC-26 (8), Run 20.
+- **Verification:** every accepted bug was first reproduced by a failing test (Run 20 row 1); `flutter analyze` → `No issues found!`; `flutter test` → **525 passed**.
+- **Decision:** Modified where the suggestion broke something else (CR-09 `foldText` would make `C#` match every `C`) or touched another owner's data (CR-07 Saved part); CR-11 and CR-17 rejected with reasons and recorded in G-32. R2 not needed: no blocker or major left open.
+
+---
+
 ## Entry template
 
 ```markdown

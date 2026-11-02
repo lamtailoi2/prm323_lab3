@@ -128,15 +128,21 @@ class InternshipDetailScreen extends ConsumerWidget {
     if (!context.mounted) return;
 
     final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+    // The SnackBar lives on the root messenger and can outlive this Detail
+    // (CR-01): its actions must not use a closed screen's context or ref.
+    final router = GoRouter.of(context);
     if (result.error case final error?) {
       messenger.showSnackBar(
         SnackBar(
           content: Text(error.message),
           action: SnackBarAction(
             label: 'Retry',
-            onPressed: () => unawaited(
-              _toggleSave(context, ref, internship, wasSaved: wasSaved),
-            ),
+            onPressed: () {
+              if (!context.mounted) return;
+              unawaited(
+                _toggleSave(context, ref, internship, wasSaved: wasSaved),
+              );
+            },
           ),
         ),
       );
@@ -149,7 +155,7 @@ class InternshipDetailScreen extends ConsumerWidget {
           persist: false,
           action: SnackBarAction(
             label: 'View saved',
-            onPressed: () => context.go(AppRoutes.saved),
+            onPressed: () => router.go(AppRoutes.saved),
           ),
         ),
       );

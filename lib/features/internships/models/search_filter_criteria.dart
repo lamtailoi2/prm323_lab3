@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/utils/allowance.dart';
 import '../../../core/utils/location_match.dart';
 import '../../../core/utils/text_fold.dart';
 import '../../../models/internship.dart';
@@ -46,7 +47,7 @@ class SearchFilterCriteria {
   /// (title, company, skills, sync keyword or location). Shared by Search,
   /// which previews the match count, and Search Results.
   bool matches(Internship internship, {String query = ''}) {
-    final q = query.trim().toLowerCase();
+    final q = removeDiacritics(query.trim());
     // Work mode filter (multi-select)
     if (workModes.isNotEmpty) {
       if (internship.workMode == null ||
@@ -77,9 +78,10 @@ class SearchFilterCriteria {
     if (jobType case final type? when type != 'Any job type') {
       if (!_matchesJobType(internship.scheduleType, type)) return false;
     }
-    // Allowance range filter
-    if (allowanceRange != null && allowanceRange != 'Any allowance') {
-      if (allowanceRange == 'Paid only') {
+    // Allowance range filter: every option the sheet offers filters, not
+    // only `Paid only` (CR-12).
+    switch (allowanceRange) {
+      case 'Paid only':
         final salary = internship.salary?.toLowerCase();
         if (salary == null ||
             salary.isEmpty ||
@@ -87,20 +89,29 @@ class SearchFilterCriteria {
             salary.contains('không lương')) {
           return false;
         }
-      }
+      case 'Above 5M VND/mo':
+        if ((highestVndAmount(internship.salary) ?? 0) < 5000000) {
+          return false;
+        }
+      case 'Negotiable':
+        if (!isNegotiableAllowance(internship.salary)) return false;
     }
-    // Query filter
+    // Query filter, without Vietnamese accents (the `hl=vi` sync stores
+    // `Hà Nội`, `Thực tập sinh`) and also without spaces (`Hanoi`), but with
+    // symbols kept so `C#` is not `C` (CR-09).
     if (q.isNotEmpty) {
-      final inTitle = internship.title.toLowerCase().contains(q);
-      final inCompany = internship.companyName.toLowerCase().contains(q);
-      final inSkills = internship.skills.any(
-        (s) => s.toLowerCase().contains(q),
-      );
-      final inKeyword =
-          internship.searchKeyword?.toLowerCase().contains(q) ?? false;
-      final inLocation =
-          internship.location?.toLowerCase().contains(q) ?? false;
-      if (!inTitle && !inCompany && !inSkills && !inKeyword && !inLocation) {
+      final compact = q.replaceAll(' ', '');
+      bool has(String? text) {
+        if (text == null) return false;
+        final plain = removeDiacritics(text);
+        return plain.contains(q) || plain.replaceAll(' ', '').contains(compact);
+      }
+
+      if (!has(internship.title) &&
+          !has(internship.companyName) &&
+          !internship.skills.any(has) &&
+          !has(internship.searchKeyword) &&
+          !has(internship.location)) {
         return false;
       }
     }

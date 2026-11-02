@@ -255,7 +255,7 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
 
   void _onInternshipsData(List<Internship> data) {
     if (!ref.mounted) return;
-    _rawList = distinctListings(data);
+    _rawList = data;
     _filterAndEmit();
   }
 
@@ -276,9 +276,12 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
     String query,
     SearchFilterCriteria criteria,
   ) {
-    return raw
-        .where((internship) => criteria.matches(internship, query: query))
-        .toList(growable: false);
+    // Copies of one job carry different sync keywords, so they are merged
+    // after filtering; merging first could drop the copy that matched
+    // (CR-08).
+    return distinctListings(
+      raw.where((internship) => criteria.matches(internship, query: query)),
+    );
   }
 
   void _filterAndEmit() {
@@ -343,6 +346,8 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
           InternshipPreferences.storageValue(mode),
       ]..sort();
       final location = criteria.location;
+      final jobType = criteria.jobType;
+      final allowance = criteria.allowanceRange;
       unawaited(
         analytics.logEvent('search_filter_apply', {
           'work_mode': modes.isEmpty ? 'any' : modes.join(','),
@@ -350,6 +355,14 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
               ? 'any'
               : location,
           'skill_count': criteria.skills.length,
+          // Every option that filters is logged, so a Job type or allowance
+          // that narrows results to zero can be told apart (CR-13).
+          'job_type': jobType == null || jobType == 'Any job type'
+              ? 'any'
+              : jobType,
+          'allowance': allowance == null || allowance == 'Any allowance'
+              ? 'any'
+              : allowance,
           'result_count': resultCount,
           'source': filterSource,
         }),

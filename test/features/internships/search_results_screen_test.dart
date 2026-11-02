@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/errors/app_exception.dart';
+import 'package:internly/core/utils/distinct_listings.dart';
 import 'package:internly/core/widgets/app_button.dart';
 import 'package:internly/core/widgets/app_search_field.dart';
 import 'package:internly/core/widgets/internship_card.dart';
@@ -56,9 +57,7 @@ void main() {
           savedServiceProvider.overrideWithValue(saved),
           searchHistoryServiceProvider.overrideWithValue(history),
           analyticsServiceProvider.overrideWithValue(analytics),
-          appliedInternshipKeysProvider.overrideWith(
-            (ref) => Stream.value(appliedKeys),
-          ),
+          appliedJobsProvider.overrideWith((ref) => Stream.value(appliedKeys)),
           currentUserIdProvider.overrideWithValue(testUser.uid),
         ],
         child: MaterialApp(
@@ -370,7 +369,9 @@ void main() {
     tester,
   ) async {
     internships.results = sampleListings;
-    appliedKeys = {sampleListings.first.key};
+    appliedKeys = {
+      jobIdentity(sampleListings.first.title, sampleListings.first.companyName),
+    };
     await pumpSearchResults(tester);
     await tester.pumpAndSettle();
 
