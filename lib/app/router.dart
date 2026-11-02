@@ -7,6 +7,7 @@ import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/internships/models/search_filter_criteria.dart';
+import '../features/internships/screens/apply_form_screen.dart';
 import '../features/internships/screens/internship_detail_screen.dart';
 import '../features/internships/screens/search_results_screen.dart';
 import '../features/internships/screens/search_screen.dart';
@@ -38,6 +39,11 @@ abstract final class AppRoutes {
   /// `/home/internships/<key>`, so Back returns to that tab.
   static String internshipDetail(String tab, String internshipKey) =>
       '$tab/internships/$internshipKey';
+
+  /// Apply Form above that Detail, e.g. `/home/internships/<key>/apply`, so
+  /// Back (and Cancel in the next step) returns to the Detail.
+  static String applyForm(String tab, String internshipKey) =>
+      '${internshipDetail(tab, internshipKey)}/apply';
 }
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
@@ -196,6 +202,17 @@ GoRoute _internshipDetail(String source) {
       internshipKey: state.pathParameters['jobKey']!,
       source: source,
     ),
+    routes: [
+      GoRoute(
+        path: 'apply',
+        name: '${source}_apply_form',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => ApplyFormScreen(
+          internshipKey: state.pathParameters['jobKey']!,
+          source: source,
+        ),
+      ),
+    ],
   );
 }
 

@@ -8,7 +8,8 @@ import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 
 /// White bordered section of Internship Detail ("About the role",
-/// "Requirements", …) with the Figma Section Header on top.
+/// "Requirements", …) and the Apply Form ("CV / Resume") with the Figma
+/// Section Header on top.
 class DetailSectionCard extends StatelessWidget {
   const DetailSectionCard({
     super.key,
@@ -16,11 +17,15 @@ class DetailSectionCard extends StatelessWidget {
     required this.title,
     required this.children,
     this.spacing = AppSpacing.s12,
+    this.isRequired = false,
   });
 
   final IconData icon;
   final String title;
   final List<Widget> children;
+
+  /// Adds the red ` *` of the Apply Form, read as "required".
+  final bool isRequired;
 
   /// Gap between the header and each child (Figma: 8 for "About the role",
   /// 12 for the other sections).
@@ -50,7 +55,22 @@ class DetailSectionCard extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
                 const SizedBox(width: AppSpacing.s8),
-                Expanded(child: Text(title, style: textTheme.titleMedium)),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      text: title,
+                      children: [
+                        if (isRequired)
+                          const TextSpan(
+                            text: ' *',
+                            semanticsLabel: ', required',
+                            style: TextStyle(color: AppColors.error),
+                          ),
+                      ],
+                    ),
+                    style: textTheme.titleMedium,
+                  ),
+                ),
               ],
             ),
           ),
