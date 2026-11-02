@@ -220,6 +220,20 @@ Branch: `feat/search-results`. Environment: Windows 11 (win32) · Flutter 3.47.8
 
 ---
 
+## Run 14: Saved empty state opens Search (2026-11-02)
+
+Branch `fix/saved-empty-search` on top of `dev` `55ad128`. Environment: macOS 26.5.1 · Flutter 3.47.3 stable · Dart 3.13.3.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `flutter analyze` / `flutter test` on `dev` `55ad128`, before any change | **8 errors, 3 warnings**; `test/features/saved`, `test/features/home` and `test/features/internships` fail to compile: the merge `b025509` dropped the `saved_internship_service.dart` import and the `FakeSavedService` class from `test/helpers/fakes.dart` |
+| 2 | `dart format lib test` | 1 file changed: `lib/core/widgets/main_tab_app_bar.dart`, already unformatted on `dev` and reverted (not part of this change) |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **351 tests, all passed**, including the new `empty state Search internships opens Search (Flow 2e.2)` case in `test/features/saved/saved_screen_test.dart` |
+| 5 | Device check of the empty Saved tab → Search | **Not run** (no signed-in device session in this run); covered by the widget test in row 4 |
+
+---
+
 ## Run template
 
 ```markdown

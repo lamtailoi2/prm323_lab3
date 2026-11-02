@@ -290,6 +290,14 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-33: Saved empty state opens Search
+- **Request:** "trang saved nếu k saved bấm vào nút search phải navigate sang search screen" (on the Saved tab with nothing saved, the search button must open the Search screen).
+- **Output:** the `Search internships` action of the Saved empty state called `_openSearch`, which only showed a "Search internships is coming soon." SnackBar; it now calls `context.go(AppRoutes.search)`, as the Home empty state does, and `_openSearch` was deleted. New widget test: tap `Search internships` on the empty list, expect the Search route and no empty state. While verifying, `dev` did not compile its tests: the merge `b025509` (dev → feat/search-ui) kept the `saved_service.dart` import in `test/helpers/fakes.dart` but dropped the `saved_internship_service.dart` import and the `FakeSavedService` class that the Search tests use; both were restored exactly as on `b025509^1`. Docs: traceability row 5, `test-report.md` Run 14.
+- **Verification:** `flutter analyze` → `No issues found!`; `flutter test` → **351 passed**. On-device check **not run**.
+- **Decision:** Accepted. The two parallel saved services (`SavedService` used by Search Results, `SavedInternshipService` used by Home and Saved) write the same `users/{uid}/savedInternships` collection; merging them is left to the Search owner and not done here.
+
+---
+
 ## Entry template
 
 ```markdown

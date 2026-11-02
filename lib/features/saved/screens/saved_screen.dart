@@ -157,7 +157,8 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
               title: 'No saved internships yet',
               message: 'Save opportunities to compare them and apply when you are ready.',
               actionLabel: 'Search internships',
-              onAction: () => _openSearch(context),
+              // Flow 2e.2: an empty list sends the student to Search.
+              onAction: () => context.go(AppRoutes.search),
             );
           }
 
@@ -321,12 +322,5 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
               : SnackBarAction(label: 'Retry', onPressed: onRetry),
         ),
       );
-  }
-
-  void _openSearch(BuildContext context) {
-    // Replace with the project's named Search route if it differs.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Search internships is coming soon.')),
-    );
   }
 }
