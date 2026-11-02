@@ -303,6 +303,22 @@ Branch `feat/apply-pre-submit` from `origin/dev` `9ab527c`. Environment: macOS 2
 
 ---
 
+## Run 19: Job type filter and Applied badge (2026-11-02)
+
+Branch `fix/job-type-applied-badge` from `origin/dev` `fe286dc`. Environment: macOS 26.7.1 (arm64) · Flutter 3.47.6 / Dart 3.13.5.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `flutter analyze` | **No issues found!** |
+| 2 | `flutter test` | **490 tests, all passed** (+7): `search_filter_criteria_test.dart` job type (English and Vietnamese schedule types, combined value, another type, missing type left out, `Any job type`); `Applied` badge on Search Results (card text and Semantics summary), Home and Saved with `appliedInternshipKeysProvider` overridden |
+| 3 | On device, first try (Pixel_API_36, `-gpu swiftshader_indirect` after two emulator crashes) | **Failed**: Search › Filters, 83 listings; `Internship`, `Full-time` and `Part-time` each → `Show 0 results` |
+| 4 | Firestore console, 28 `/internships` documents (read only) | **Cause found**: no document has `detected_extensions`; `raw.extensions` holds `Toàn thời gian`, `Thực tập`, `Bán thời gian`, `Toàn thời gian và Thực tập` and, in 15 of 28, the posted age (`3 ngày trước`). Fixed in the parser (G-25 #8) |
+| 5 | After the parser fix | `flutter analyze` **No issues found!**; `flutter test` **500 passed** (+10: `listing_extensions_test.dart` schedule chips in Vietnamese / English / mixed with age and pay, posted chip, Vietnamese `parsePostedAge`, `formatPostedAgeLong`; model test without `detected_extensions`; Detail `Posted 3 days ago`) |
+| 7 | `Saved to your list` SnackBar (Detail) stayed on screen (user report with screenshot) | **Bug fixed**: a SnackBar with an action persists by default in this Flutter version; Detail now sets `persist: false` (design-system: 4 s even with an action; the save-failure SnackBar with `Retry` still stays). New Detail test: hidden after 5 s; it fails without the fix. `flutter test` **501 passed** |
+| 6 | On device after the fix | **Passed** for `Internship` → `Show 38 results` of 83, and cards now show a posted age (`… ago`). Evidence: `evidence/screens/search-job-type-filter-20261102.png` (before / after). Not counted on device: `Full-time` / `Part-time` (the emulator was in use), Detail `Posted …` and the `Applied` badge (no application documents until Flow 4 writes them) |
+
+---
+
 ## Run template
 
 ```markdown

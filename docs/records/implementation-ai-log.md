@@ -365,6 +365,16 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-43: Job type filter and Applied badge
+- **Request:** Flow 1 audit → "Sửa cả hai": the Job type option of the Filter sheet was counted as a criterion but never applied, and the Flow 2c `Applied` badge was not shown on cards.
+- **Output:** `SearchFilterCriteria.matches` checks `Internship.scheduleType` against folded English and Vietnamese words per option (listings without a type are left out); `appliedInternshipKeysProvider` (`features/applications/viewmodels/applied_providers.dart`) maps `ApplicationService.watchApplications()` to job keys; `InternshipCard.isApplied` draws the `Applied` `StatusBadge` and adds "Applied" to the card's Semantics summary (the visible details are excluded from semantics, so a plain `badge` was not read aloud); Home, Search Results and Saved pass it. Tests: criteria job type group, badge tests on the three screens (provider overridden). Docs: design-traceability rows 1, 3, 5 and Internship Card; Run 19.
+- **Follow-up (same day):** on device every Job type gave 0 results. Reading 28 documents in the Firestore console showed the `hl=vi` sync gets no `detected_extensions`; the schedule type and posted age are only in `raw.extensions` (Vietnamese). Added `lib/core/utils/listing_extensions.dart` (`scheduleTypeFromExtensions` → English labels, `postedTextFromExtensions`), Vietnamese ages in `parsePostedAge`, the fallback in `Internship.fromSerpApi`, and `formatPostedAgeLong` for the Detail meta row (`Posted 3 days ago`, user: "thiếu 2 thông tin này ở intern detail"). `Apply by` stays out: the data has no deadline. Docs: G-25 #8, DC-24 (1), Run 19 rows 3–6.
+- **Verification:** `flutter analyze` → `No issues found!`; `flutter test` → **500 passed**; on device `Internship` → 38 of 83 (Run 19 row 6).
+- **Follow-up:** "cái badge saved này nó đang không tự tắt do tui lag hay code lỗi" → code: the Detail `Saved to your list` SnackBar had an action and no `persist: false`, so it never timed out. Fixed and covered by a test that fails without the fix; `flutter test` → **501 passed** (Run 19 row 7).
+- **Decision:** Accepted. The first badge version used the card's `badge` slot; the test showed it was not in the semantics tree, so `isApplied` was added instead.
+
+---
+
 ## Entry template
 
 ```markdown
