@@ -340,6 +340,14 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-40: Search analytics and distinct Search Results
+- **Request:** "Sửa nhanh trước" after the Flow 1 audit: log `search` from the Search tab / Search Results and `search_filter_apply`, show each job once in Search Results, and update the Flow 1 status in the docs.
+- **Output:** `distinctListings` / `compareBySyncRank` / `compareByNewest` moved from `HomeViewModel` to `lib/core/utils/distinct_listings.dart`; `SearchResultsViewModel` and `SearchViewModel` (trending counts, filter preview) use it. `SearchResultsViewModel` keeps the searched term and the filter-sheet source pending until results are computed, then logs `search` (`search_term`, `result_count`, `source = search`) and `search_filter_apply` (`work_mode`, `location`, `skill_count`, `result_count`, `source = search` / `search_results`); Home adds `source = home`. Docs: analytics-plan rows 4–5, design-traceability rows 2–3 and Flow 1, test-plan TC-04 copy (`No internships found`), `test-report.md` Run 17.
+- **Verification:** `flutter analyze` → `No issues found!`; `flutter test` → **451 passed**; on device and DebugView: Run 17 rows 3–5.
+- **Decision:** Accepted. Kept `elapsed_sec` Home-only (the Search tab has no start time to measure from); a work-mode-only search from the Search tab logs no `search` because there is no term.
+
+---
+
 ## Entry template
 
 ```markdown

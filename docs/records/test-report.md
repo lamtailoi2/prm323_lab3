@@ -269,6 +269,21 @@ Branch `fix/search-field-one-line` from `origin/dev` `3c2c313`. Environment: mac
 
 ---
 
+## Run 17: Search analytics and distinct results (2026-11-02)
+
+Branch `fix/search-analytics` from `origin/dev` `a2d9b85`. Environment: macOS 26.7.1 (arm64) · Flutter 3.47.6 / Dart 3.13.5.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `flutter analyze` | **No issues found!** |
+| 2 | `flutter test` | **451 tests, all passed** (+10): `distinct_listings_test.dart` (best rank kept, accents and case folded, newest copy without rank); Search Results lists a job synced under two keywords once and `countMatching` agrees; `search` logged once with term, distinct count and `source = search`, also when the pool arrives after navigation (a new snapshot does not log again); blank search, sorting, removing chips and Clear filters log nothing; `search_filter_apply` from the Search Results sheet (`work_mode = on_site,remote`, `source = search_results`) and from the Search tab (`any` / `any`, `source = search`); Search trending and filter preview count a duplicated job once; Home `search` carries `source = home` |
+| 3 | On device (Pixel_API_36, 412 dp): Search tab → `Developer` → Search Results | **Passed**: `8 internships found`, 8 different title / company pairs read from the accessibility tree while scrolling (no repeated job). Evidence: `evidence/screens/search-results-distinct-20261102.png` (left) |
+| 4 | On device: Search Results field `Intern` → submit | **Passed**: logcat `search` with `search_term=Intern`, `result_count=53`, `source=search`; DebugView shows the event with `result_count 53` and `source search` |
+| 5 | On device: Filter sheet `On-site` + `Java` → `Show 0 results` | **Passed**: empty state `No internships found` + `Clear filters` (TC-04 copy updated to match); logcat and DebugView `search_filter_apply` with `work_mode=on_site`, `location=any`, `skill_count=1`, `result_count=0`, `source=search_results`. Evidence: `evidence/analytics/analytics-search-events-20261102.png` (DebugView, one parameter open at a time), `analytics-search-logcat-20261102.txt` (all parameters), `evidence/screens/search-results-distinct-20261102.png` (right) |
+| 6 | Not checked | DebugView row for `search_term` (the panel shows two rows in the small browser window; the value is in the logcat file); `search_filter_apply` with `source=search` on device (covered by the ViewModel test only) |
+
+---
+
 ## Run template
 
 ```markdown
