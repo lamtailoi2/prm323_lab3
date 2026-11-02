@@ -53,6 +53,10 @@ void main() {
           path: AppRoutes.profile,
           builder: (context, state) => const Text('Profile tab'),
         ),
+        GoRoute(
+          path: AppRoutes.search,
+          builder: (context, state) => const Text('Search tab'),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -174,6 +178,19 @@ void main() {
     expect(find.text('Saved'), findsOneWidget);
     expect(find.byTooltip('Notifications'), findsOneWidget);
     expect(find.text('No saved internships yet'), findsOneWidget);
+  });
+
+  testWidgets('empty state Search internships opens Search (Flow 2e.2)', (
+    tester,
+  ) async {
+    await pumpSaved(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Search internships'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search tab'), findsOneWidget);
+    expect(find.text('No saved internships yet'), findsNothing);
   });
 
   testWidgets('touch targets are at least 48 dp', (tester) async {
