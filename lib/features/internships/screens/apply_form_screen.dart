@@ -143,7 +143,8 @@ class ApplyFormScreen extends ConsumerWidget {
     if (state.cv?.source == CvSource.profile) {
       return ApplyInfoBanner.fromProfile(onAction: openProfile);
     }
-    if (state.profileCv == null) {
+    // A CV uploaded for this internship needs no tip (CR-20).
+    if (state.profileCv == null && state.uploadedCv == null) {
       return ApplyInfoBanner.tip(onAction: openProfile);
     }
     return null;
