@@ -45,4 +45,14 @@ void main() {
       expect(plainListingItem('  Teamwork  '), 'Teamwork');
     });
   });
+
+  test('a heading that ends in C# keeps the hash', () {
+    expect(
+      plainListingText('## Skills: C#\n- Flutter'),
+      'Skills: C#\n• Flutter',
+    );
+    expect(plainListingText('### .NET / C#'), '.NET / C#');
+    expect(plainListingText('## Requirements ##'), 'Requirements');
+    expect(plainListingText('#hashtag'), '#hashtag');
+  });
 }

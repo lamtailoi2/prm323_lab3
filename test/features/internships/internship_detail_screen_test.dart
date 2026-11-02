@@ -89,7 +89,8 @@ void main() {
       routes: [
         GoRoute(
           path: '/home',
-          builder: (context, state) => const Text('Home tab'),
+          // A Scaffold, like the real tab, so SnackBars outlive the Detail.
+          builder: (context, state) => const Scaffold(body: Text('Home tab')),
           routes: [
             GoRoute(
               path: 'internships/:jobKey',
@@ -354,6 +355,41 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
     expect(find.text('Saved to your list'), findsNothing);
+  });
+
+  testWidgets('Retry after leaving the Detail does not use the closed screen', (
+    tester,
+  ) async {
+    internships.byKey[listing.key] = listing;
+    saved.error = const AppException(
+      AppErrorKind.network,
+      'We could not reach Internly. Check your connection and try again.',
+    );
+    await pumpDetail(tester);
+    await tester.tap(find.bySemanticsLabel('Save internship'));
+    await tester.pumpAndSettle();
+    expect(find.text('Retry'), findsOneWidget);
+
+    // Back to Home; the error SnackBar stays on the root messenger.
+    tester.state<NavigatorState>(find.byType(Navigator).last).pop();
+    await tester.pumpAndSettle();
+    expect(find.text('Home tab'), findsOneWidget);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the Save toggle can be activated by assistive technology', (
+    tester,
+  ) async {
+    internships.byKey[listing.key] = listing;
+    await pumpDetail(tester);
+
+    expect(
+      tester.getSemantics(find.bySemanticsLabel('Save internship')),
+      isSemantics(isButton: true, hasTapAction: true),
+    );
   });
 
   testWidgets('a failed save shows the reason with Retry', (tester) async {

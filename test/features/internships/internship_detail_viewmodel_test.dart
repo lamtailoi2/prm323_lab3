@@ -122,6 +122,18 @@ void main() {
     expect(data().internship.key, listing.key);
   });
 
+  test('unsaving an expired listing keeps it on screen', () async {
+    saved.seed([listing]);
+    listen();
+    await settle();
+    await settle();
+    expect(data().internship.key, listing.key);
+
+    await saved.remove(listing.key);
+    await settle();
+    expect(read(), isA<ViewData<InternshipDetail>>());
+  });
+
   test('a listing deleted while open becomes empty', () async {
     internships.byKey[listing.key] = listing;
     listen();
