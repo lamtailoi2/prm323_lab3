@@ -346,6 +346,8 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
           InternshipPreferences.storageValue(mode),
       ]..sort();
       final location = criteria.location;
+      final jobType = criteria.jobType;
+      final allowance = criteria.allowanceRange;
       unawaited(
         analytics.logEvent('search_filter_apply', {
           'work_mode': modes.isEmpty ? 'any' : modes.join(','),
@@ -353,6 +355,14 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
               ? 'any'
               : location,
           'skill_count': criteria.skills.length,
+          // Every option that filters is logged, so a Job type or allowance
+          // that narrows results to zero can be told apart (CR-13).
+          'job_type': jobType == null || jobType == 'Any job type'
+              ? 'any'
+              : jobType,
+          'allowance': allowance == null || allowance == 'Any allowance'
+              ? 'any'
+              : allowance,
           'result_count': resultCount,
           'source': filterSource,
         }),
