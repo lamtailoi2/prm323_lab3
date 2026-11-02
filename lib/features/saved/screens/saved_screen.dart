@@ -12,6 +12,7 @@ import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
+import '../../applications/viewmodels/applied_providers.dart';
 import '../viewmodels/saved_providers.dart';
 import '../viewmodels/saved_viewmodel.dart';
 
@@ -137,6 +138,9 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
   @override
   Widget build(BuildContext context) {
     final savedAsync = ref.watch(savedInternshipsProvider);
+    final appliedKeys =
+        ref.watch(appliedInternshipKeysProvider).asData?.value ??
+        const <String>{};
 
     return Scaffold(
       appBar: MainTabAppBar(
@@ -217,6 +221,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                               InternshipCard.allowanceNotDisclosed,
                           postedText: internship.postedText,
                           isSaved: true,
+                          isApplied: appliedKeys.contains(internship.key),
                           onTap: () => context.go(
                             AppRoutes.internshipDetail(
                               AppRoutes.saved,

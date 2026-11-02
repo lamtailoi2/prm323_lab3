@@ -18,6 +18,7 @@ import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_spacing.dart';
+import '../../applications/viewmodels/applied_providers.dart';
 import '../../saved/viewmodels/saved_providers.dart';
 import '../../saved/viewmodels/saved_viewmodel.dart';
 import '../viewmodels/home_viewmodel.dart';
@@ -203,17 +204,20 @@ class _FeedLists extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final savedIds = ref.watch(savedInternshipIdsProvider);
+    final appliedKeys =
+        ref.watch(appliedInternshipKeysProvider).asData?.value ??
+        const <String>{};
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (feed.recommended.isNotEmpty) ...[
           _sectionHeader('Recommended for you'),
-          _cards(context, ref, feed.recommended, savedIds),
+          _cards(context, ref, feed.recommended, savedIds, appliedKeys),
         ],
         if (feed.recent.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.section),
           _sectionHeader('Recently Posted'),
-          _cards(context, ref, feed.recent, savedIds),
+          _cards(context, ref, feed.recent, savedIds, appliedKeys),
         ],
         const SizedBox(height: AppSpacing.section),
       ],
@@ -241,6 +245,7 @@ class _FeedLists extends ConsumerWidget {
     WidgetRef ref,
     List<Internship> internships,
     Set<String> savedIds,
+    Set<String> appliedKeys,
   ) {
     return Column(
       children: [
@@ -262,6 +267,7 @@ class _FeedLists extends ConsumerWidget {
               allowanceText: formatAllowance(internship.salary),
               postedText: internship.postedText,
               isSaved: savedIds.contains(internship.key),
+              isApplied: appliedKeys.contains(internship.key),
               onTap: () => context.go(
                 AppRoutes.internshipDetail(AppRoutes.home, internship.key),
               ),
