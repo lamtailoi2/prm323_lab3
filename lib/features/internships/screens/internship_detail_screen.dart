@@ -9,6 +9,7 @@ import '../../../app/router.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/display_format.dart';
+import '../../../core/utils/posted_age.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
@@ -143,6 +144,9 @@ class InternshipDetailScreen extends ConsumerWidget {
       messenger.showSnackBar(
         SnackBar(
           content: const Text('Saved to your list'),
+          // An action makes a SnackBar stay by default; this one hides after
+          // the theme duration (design-system: 4 s even with an action).
+          persist: false,
           action: SnackBarAction(
             label: 'View saved',
             onPressed: () => context.go(AppRoutes.saved),
@@ -234,7 +238,10 @@ class _JobHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final posted = internship.postedText;
+    final postedAt = internship.postedAt;
+    final posted = postedAt != null
+        ? formatPostedAgeLong(postedAt)
+        : internship.postedText;
     final via = internship.via;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
