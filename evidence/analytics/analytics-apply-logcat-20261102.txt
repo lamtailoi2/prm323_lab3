@@ -1,0 +1,7 @@
+# adb logcat (FA-SVC verbose), Pixel_API_36, branch feat/apply-pre-submit, 2026-11-02
+# 1. Home card -> Internship Detail -> Apply now (Apply Form opens)
+name=apply_start,params=Bundle[{source=home, ga_event_origin(_o)=app, ga_screen_class(_sc)=home_apply_form, ga_screen_id(_si)=-7602462871775674700, ga_screen(_sn)=home_apply_form, internship_id=79236d91e0a0e880}]
+# 2. Upload CV -> Sample_CV.pdf (test file, 609 B) uploaded for this internship
+11-02 18:32:37.454  1257  4718 V FA-SVC  : Logging event: origin=app,name=cv_upload,params=Bundle[{file_size_kb=1, source=apply_form, ga_event_origin(_o)=app, ga_screen_class(_sc)=MainActivity, ga_screen_id(_si)=-7602462871775674703}]
+# 3. Offline upload failed after 36 s (retry cap 30 s) -> network back -> Retry -> uploaded
+name=cv_upload,params=Bundle[{file_size_kb=1, source=apply_form, ga_event_origin(_o)=app, ga_screen_class(_sc)=MainActivity, ga_screen_id(_si)=2932912093661574447}]
