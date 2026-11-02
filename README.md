@@ -155,7 +155,7 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 | Tool | Purpose |
 |---|---|
 | Google Stitch | Lab 2 screen generation (design phase) |
-| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements; Profile feature (P-21); Login screen from the Login frame (P-31) ([log](docs/records/implementation-ai-log.md)) |
+| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements; Profile feature (P-21); Login screen from the Login frame (P-31); Saved empty state opens Search (P-33) ([log](docs/records/implementation-ai-log.md)) |
 | OpenCode (`deepseek-v4.1-flash-free`) | Home UI, scheduled SerpAPI → Firestore sync, rules and docs for the Home slice; Saved list, the Home Save Toggle, unsave with Undo and the Saved loading state ([log](docs/records/implementation-ai-log.md)) |
 | Command Code | CV validation vertical slice: callable `validateCv` + Gemini free tier, `CvValidationService`, ViewModel, step widget, tests and docs (P-32) ([log](docs/records/implementation-ai-log.md)) |
 | Google ARTEMIS + Gemini (free tier) | End-to-end tests and the exploratory session |
