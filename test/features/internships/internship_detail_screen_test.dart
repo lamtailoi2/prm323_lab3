@@ -339,6 +339,23 @@ void main() {
     expect(find.text('Saved tab'), findsOneWidget);
   });
 
+  testWidgets('the Saved message hides on its own after a few seconds', (
+    tester,
+  ) async {
+    internships.byKey[listing.key] = listing;
+    await pumpDetail(tester);
+
+    await tester.tap(find.bySemanticsLabel('Save internship'));
+    await tester.pumpAndSettle();
+    expect(find.text('Saved to your list'), findsOneWidget);
+
+    // Theme duration is 4 s; with an action and no `persist: false` it
+    // would stay until tapped.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(find.text('Saved to your list'), findsNothing);
+  });
+
   testWidgets('a failed save shows the reason with Retry', (tester) async {
     internships.byKey[listing.key] = listing;
     saved.error = const AppException(
@@ -357,6 +374,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(saved.savedKeys, [listing.key]);
     expect(find.text('Saved'), findsOneWidget);
+  });
+
+  testWidgets('a synced listing shows its age in full words', (tester) async {
+    internships.byKey[listing.key] = testInternship(
+      '1',
+      title: 'Flutter Developer Intern',
+      postedAt: DateTime.now().subtract(const Duration(days: 3, hours: 1)),
+    );
+    await pumpDetail(tester);
+
+    expect(find.text('Posted 3 days ago'), findsOneWidget);
   });
 
   testWidgets('Apply now opens the Apply Form above the Detail', (
