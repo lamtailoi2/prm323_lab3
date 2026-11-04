@@ -332,6 +332,26 @@ Branch `fix/code-review-r1` from `origin/dev` `4d2aeda`. Environment: macOS 26.7
 
 ---
 
+## Run 21: Flow 2 completion — Validate CV, Review, Success (2026-11-03)
+
+Branch `feat/apply-ui`. Environment: Windows 11 × Flutter 3.47.8 / Dart 3.13.7 (no device or emulator attached).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | formatted (5 files changed on the first run, none after the last edit) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test/features/internships/application_review_viewmodel_test.dart test/features/internships/application_review_screen_test.dart` | **15 passed** (ViewModel 8: load, no write before the listing, submit + `application_create` parameters, failed write then retry, signed out, double tap ignored, listing error + Retry, profile error + Retry; screen 7: both widths + 48 dp guideline, submit → success with the recap, failure message, loading state, missing form data, profile error) |
+| 4 | `flutter test test/features/internships/application_success_screen_test.dart` | **5 passed** (both widths + 48 dp guideline, no recap, `View my applications`, `Back to home`) |
+| 5 | `flutter test` (full suite, after Smart App Control was turned off and `build/unit_test_assets` was rebuilt) | **547 tests, all passed** (+22 from the 525 on `dev`). Before that, the suite showed 9 failures, all `Asset 'shaders/ink_sparkle.frag' not found`, because this machine's Application Control policy blocked `impellerc.exe` (SAC `VerifiedAndReputablePolicyState = 1`); the asset was never built. After turning SAC off the asset is generated and the whole suite is green |
+| 6 | `flutter run -d emulator-5554 --dart-define-from-file=.env` (sdk gphone64 x86 64, Android 17 / API 37) | **Built, installed and launched**: `com.group3.internly/.MainActivity` holds the focus. Before SAC was off this same command failed in `:app:compileFlutterBuildDebug` on the blocked `impellerc.exe` |
+| 7 | Device logcat while walking the flow | **Bug found and fixed**: opening Validate CV logged Riverpod's *"Tried to modify a provider while the widget tree was building"* — `CvValidationStep.initState` starts `CvValidationViewModel.validate()`, which sets `state`, through `listenManual(..., fireImmediately: true)`; the uid is already known when the step opens from the Apply flow. The check now starts in a post-frame callback; regression test added (it fails without the fix). `flutter analyze` **No issues found!**, `flutter test` **547 passed** after the fix |
+| 8 | Complete flow on the device (Apply → Validate CV → Review → Submit → Success → My Applications) | **Not walked end to end yet** |
+| 9 | DebugView (`application_create`) | **Not run** |
+
+Environment: Windows 11 × Flutter 3.47.8 / Dart 3.13.7, Android emulator `sdk gphone64 x86 64` (API 37), `--dart-define-from-file=.env`. Notes: the 9 earlier failures were environmental, not related to this change — `test/core/widgets/components_test.dart`, which touches no changed file, failed the same way; turning Smart App Control off (a one-way Windows setting) removed them. E2E TC-06–TC-08 are still to be written.
+
+---
+
 ## Run template
 
 ```markdown

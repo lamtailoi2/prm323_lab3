@@ -250,6 +250,7 @@ test('download, extraction and Gemini failures become safe HttpsErrors', async (
   const gemini = scriptedDeps({ geminiError: new Error('quota details') });
   await expectHttpsError(
     handleValidateCv(request({ storagePath: cvPath }), gemini.deps, apiKey),
-    'unavailable',
+    // The provider failing is not the student's connection.
+    'failed-precondition',
   );
 });

@@ -2,15 +2,21 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/applications/screens/application_detail_screen.dart';
+import '../features/applications/screens/cv_validation_screen.dart';
 import '../features/applications/screens/my_applications_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/internships/models/search_filter_criteria.dart';
+import '../features/internships/screens/application_review_screen.dart';
+import '../features/internships/screens/application_success_screen.dart';
 import '../features/internships/screens/apply_form_screen.dart';
 import '../features/internships/screens/internship_detail_screen.dart';
 import '../features/internships/screens/search_results_screen.dart';
 import '../features/internships/screens/search_screen.dart';
+import '../features/internships/viewmodels/apply_form_viewmodel.dart'
+    show ApplySession;
 import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/saved/screens/saved_screen.dart';
@@ -44,6 +50,21 @@ abstract final class AppRoutes {
   /// Back (and Cancel in the next step) returns to the Detail.
   static String applyForm(String tab, String internshipKey) =>
       '${internshipDetail(tab, internshipKey)}/apply';
+
+  /// Flow 2 after the form: Validate CV → Review → Success, all above the
+  /// Apply Form so Back walks the application back one step.
+  static String applyValidation(String tab, String internshipKey) =>
+      '${applyForm(tab, internshipKey)}/validation';
+
+  static String applicationReview(String tab, String internshipKey) =>
+      '${applyForm(tab, internshipKey)}/review';
+
+  static String applicationSuccess(String tab, String internshipKey) =>
+      '${applicationReview(tab, internshipKey)}/success';
+
+  /// One application, from My Applications or `View application`.
+  static String applicationDetail(String internshipKey) =>
+      '$applications/$internshipKey';
 }
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
@@ -129,6 +150,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             AppRoutes.applications,
             'my_applications',
             const MyApplicationsScreen(),
+            routes: [
+              GoRoute(
+                path: ':jobKey',
+                name: 'application_detail',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => ApplicationDetailScreen(
+                  internshipKey: state.pathParameters['jobKey']!,
+                ),
+              ),
+            ],
           ),
           _tab(
             AppRoutes.profile,
@@ -211,9 +242,58 @@ GoRoute _internshipDetail(String source) {
           internshipKey: state.pathParameters['jobKey']!,
           source: source,
         ),
+        routes: [
+          GoRoute(
+            path: 'validation',
+            name: '${source}_cv_validation',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) => CvValidationScreen(
+              internshipKey: state.pathParameters['jobKey']!,
+              source: source,
+              session: _applySession(state),
+            ),
+          ),
+          GoRoute(
+            path: 'review',
+            name: '${source}_application_review',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) => ApplicationReviewScreen(
+              internshipKey: state.pathParameters['jobKey']!,
+              source: source,
+              session: _applySession(state),
+            ),
+            routes: [
+              GoRoute(
+                path: 'success',
+                name: '${source}_application_success',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => ApplicationSuccessScreen(
+                  internshipTitle: _successArgs(state)?.internshipTitle,
+                  companyName: _successArgs(state)?.companyName,
+                  workMode: _successArgs(state)?.workMode,
+                  logoUrl: _successArgs(state)?.logoUrl,
+                  submittedAt: _successArgs(state)?.submittedAt,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     ],
   );
+}
+
+/// The CV and `apply_start` time handed from the Apply Form to Validate CV
+/// and Review; `null` when the location was opened directly.
+ApplySession? _applySession(GoRouterState state) {
+  final extra = state.extra;
+  return extra is ApplySession ? extra : null;
+}
+
+/// The recap handed from Review to Success.
+ApplicationSuccessArgs? _successArgs(GoRouterState state) {
+  final extra = state.extra;
+  return extra is ApplicationSuccessArgs ? extra : null;
 }
 
 /// Authenticated routing: signed-out users can reach only Login; signed-in

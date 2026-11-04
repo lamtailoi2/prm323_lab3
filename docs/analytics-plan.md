@@ -26,7 +26,7 @@ Status: **Implemented** (in code and tested) · **Planned** (owner implements wi
 | 7 | `internship_save` | Save succeeds (first save or `Undo` on Saved) | `internship_id` (string), `source` (string: `home` / `saved` / `detail`) | Which saved internships later turn into applications? | Flow 2e | Implemented (Home, Saved Undo, Internship Detail) |
 | 8 | `apply_start` | `Apply now` tapped: the Apply Form opens (once per opened form) | `internship_id` (string), `source` (string: the Detail's tab `home` / `search` / `saved`) | How many detail views lead to starting an application? | Flow 1 pre-submit / Flow 2 | Implemented (`ApplyFormViewModel`; ViewModel and router tests; DebugView not checked yet) |
 | 9 | `cv_match_check` | CV Match Check finishes | `internship_id` (string), `result` (string: `all_matched` / `gaps` / `failed`), `matched_count` (int), `missing_count` (int) | How often do CVs miss requirements, and do gaps stop students from submitting? | Flow 2d | Planned |
-| 10 | `application_create` | Application submitted | `internship_id` (string), `cv_source` (string: `profile` / `uploaded`), `duration_sec` (int, `apply_start` → submit) | How many started applications are submitted, and in under 2 minutes? | Flow 2 end | Planned |
+| 10 | `application_create` | Application submitted | `internship_id` (string), `cv_source` (string: `profile` / `uploaded`), `duration_sec` (int, `apply_start` → submit) | How many started applications are submitted, and in under 2 minutes? | Flow 2 end | Implemented (`ApplicationReviewViewModel`, logged once the document is written; `duration_sec` is measured from the Apply Form opening, carried in `ApplySession`; ViewModel and screen tests; DebugView not checked yet) |
 | 11 | `view_application` | Application Detail opens | `internship_id` (string), `status` (string) | Which statuses do students check most often? | Flow 3 end | Planned |
 | 12 | `application_update` | Student changes an application (e.g. status, withdraw / undo) | `internship_id` (string), `from_status` (string), `to_status` (string) | How do applications progress over time? | Flow 3 (main entity: update) | Planned (G-08) |
 | 13 | `application_delete` | Student deletes an application | `internship_id` (string), `status` (string) | Which applications do students give up on? | Flow 3 (main entity: delete) | Planned (G-08) |
@@ -34,7 +34,7 @@ Status: **Implemented** (in code and tested) · **Planned** (owner implements wi
 | 15 | `notification_center_open` | Notification Center opens | `unread_count` (int) | Do students read the notifications they receive? | FCM | Planned |
 | 16 | `profile_update` | A Profile section is saved (Edit profile, Edit skills, Update preferences) | `section` (string: `details` / `skills` / `preferences`), `item_count` (int: filled detail fields, skills, or selected roles + work modes + location) | Which parts of the profile do students keep up to date, and how many skills do they declare before applying (CV Match Check input, G-24)? | Flow 2 alternative (`Edit profile`, 2d `Edit skills`) | Implemented (ViewModel tests; DebugView not checked yet) |
 | 17 | `cv_upload` | A CV is uploaded **and** saved as the default CV (`profile`), or uploaded on the Apply Form for that internship only (`apply_form`) | `source` (string: `profile` / `apply_form`), `file_size_kb` (int) | How many students have a CV ready before they reach Apply, and how many upload one while applying (Flow 2a)? | Flow 2a (CV from Profile) / Flow 1 pre-submit | Implemented (`UpdateCvViewModel`, `ApplyFormViewModel`; ViewModel tests; DebugView not checked yet) |
-| 18 | `cv_validation_result` | The generic CV quality gate resolves (before Confirm Application) | `is_valid` (bool) | How often does a CV fail the usability gate, and do rejected CVs stop applications? | Flow 2 pre-submit (Validate CV) | Implemented (ViewModel tests; DebugView not checked yet) |
+| 18 | `cv_validation_result` | The generic CV quality gate resolves (before Confirm Application) | `is_valid` (int: `1` valid, `0` not — GA4 takes strings and numbers only, so a bool parameter asserts in debug) | How often does a CV fail the usability gate, and do rejected CVs stop applications? | Flow 2 pre-submit (Validate CV) | Implemented (ViewModel tests; DebugView not checked yet) |
 
 Coverage required by Lab 3 §6 (≥ 7 events): sign-in (1), sign-out (2), main search / primary action (4, 8, 10), each detail screen (6, 11), export and upload (14).
 
@@ -43,7 +43,7 @@ Coverage required by Lab 3 §6 (≥ 7 events): sign-in (1), sign-out (2), main s
 | Funnel | Steps | Success criterion |
 |---|---|---|
 | Find (Flow 1) | `screen_view(home)` → `search` → `view_internship` | `search.elapsed_sec` < 30 |
-| Apply (Flow 2) | `view_internship` → `apply_start` → `cv_match_check` → `cv_validation_result` → `application_create` | `application_create.duration_sec` < 120; `cv_validation_result.is_valid = false` identifies the blocking branch |
+| Apply (Flow 2) | `view_internship` → `apply_start` → `cv_match_check` → `cv_validation_result` → `application_create` | `application_create.duration_sec` < 120; `cv_validation_result.is_valid = 0` identifies the blocking branch |
 | Save → apply (2e) | `internship_save` → `apply_start(source=saved)` → `application_create` | — |
 
 ## Adding an event

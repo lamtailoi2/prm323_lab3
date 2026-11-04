@@ -151,6 +151,17 @@ InternshipApplication testApplication(
   );
 }
 
+/// One [FakeApplicationService.createApplication] call.
+typedef CreatedApplication = ({
+  String internshipKey,
+  String title,
+  String companyName,
+  String cvStoragePath,
+  String cvFileName,
+  String cvUrl,
+  ApplicationApplicant applicant,
+});
+
 /// In-memory [ApplicationService] backed by a broadcast stream. Tests set
 /// [results] before listening, or call [emit] to model a Firestore update.
 class FakeApplicationService implements ApplicationService {
@@ -161,6 +172,15 @@ class FakeApplicationService implements ApplicationService {
   Object? error;
   Completer<void>? gate;
   int watchCalls = 0;
+
+  /// Documents [createApplication] would have written, oldest first.
+  final List<CreatedApplication> created = <CreatedApplication>[];
+
+  /// Thrown by the next [createApplication]; usually an [AppException].
+  Object? createError;
+
+  /// Holds [createApplication] open, as an offline write never completes.
+  Completer<void>? createGate;
 
   final StreamController<List<InternshipApplication>> _updates =
       StreamController<List<InternshipApplication>>.broadcast();
@@ -173,6 +193,63 @@ class FakeApplicationService implements ApplicationService {
     if (failure != null) throw failure;
     yield results;
     yield* _updates.stream;
+  }
+
+  @override
+  Future<void> createApplication({
+    required String internshipKey,
+    required String title,
+    required String companyName,
+    required String cvStoragePath,
+    required String cvFileName,
+    required String cvUrl,
+    required ApplicationApplicant applicant,
+  }) async {
+    await createGate?.future;
+    final failure = createError;
+    if (failure != null) throw failure;
+    created.add((
+      internshipKey: internshipKey,
+      title: title,
+      companyName: companyName,
+      cvStoragePath: cvStoragePath,
+      cvFileName: cvFileName,
+      cvUrl: cvUrl,
+      applicant: applicant,
+    ));
+  }
+
+  /// Keys passed to [withdraw], with the status they had.
+  final List<({String internshipKey, ApplicationStatus previous})> withdrawn =
+      <({String internshipKey, ApplicationStatus previous})>[];
+
+  /// Keys passed to [undoWithdrawal].
+  final List<String> undone = <String>[];
+
+  /// Thrown by the next [withdraw] or [undoWithdrawal].
+  Object? updateError;
+
+  /// Holds [withdraw] / [undoWithdrawal] open, as an offline write never
+  /// completes.
+  Completer<void>? updateGate;
+
+  @override
+  Future<void> withdraw(
+    String internshipKey, {
+    required ApplicationStatus previous,
+  }) async {
+    await updateGate?.future;
+    final failure = updateError;
+    if (failure != null) throw failure;
+    withdrawn.add((internshipKey: internshipKey, previous: previous));
+  }
+
+  @override
+  Future<void> undoWithdrawal(String internshipKey) async {
+    await updateGate?.future;
+    final failure = updateError;
+    if (failure != null) throw failure;
+    undone.add(internshipKey);
   }
 
   /// Pushes a new snapshot, as Firestore would.
@@ -554,6 +631,27 @@ class FakeUserProfileService implements UserProfileService {
   @override
   Future<void> updateDetails(String uid, ProfileDetails details) =>
       _write('details', (current) => _copy(current, details: details));
+
+  @override
+  Future<void> updateApplyDetails(String uid, ProfileDetails details) =>
+      _write('apply details', (current) {
+        final existing = current.details;
+        return _copy(
+          current,
+          details: ProfileDetails(
+            // Only what the Apply Form collects; the rest is kept.
+            fullName: details.fullName ?? existing.fullName,
+            headline: existing.headline,
+            university: details.university ?? existing.university,
+            major: existing.major,
+            yearOfStudy: details.yearOfStudy ?? existing.yearOfStudy,
+            graduationYear: existing.graduationYear,
+            phone: details.phone ?? existing.phone,
+            city: existing.city,
+            bio: existing.bio,
+          ),
+        );
+      });
 
   @override
   Future<void> updateSkills(String uid, List<String> skills) =>

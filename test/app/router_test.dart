@@ -77,6 +77,24 @@ void main() {
     });
   });
 
+  group('AppRoutes · Flow 2', () {
+    test('Validate CV, Review and Success nest under the Apply Form', () {
+      expect(
+        AppRoutes.applyValidation('/home', 'abc'),
+        '/home/internships/abc/apply/validation',
+      );
+      expect(
+        AppRoutes.applicationReview('/search', 'abc'),
+        '/search/internships/abc/apply/review',
+      );
+      expect(
+        AppRoutes.applicationSuccess('/saved', 'abc'),
+        '/saved/internships/abc/apply/review/success',
+      );
+      expect(AppRoutes.applicationDetail('abc'), '/applications/abc');
+    });
+  });
+
   group('InternlyApp', () {
     late FakeAnalyticsService analytics;
     late FakeCrashlyticsService crashlytics;

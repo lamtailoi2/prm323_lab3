@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/skill_match.dart';
+import '../../../core/utils/validators.dart';
 import '../../../models/internship.dart';
 import '../../../models/user_profile.dart';
 import '../../../services/analytics_service.dart';
@@ -36,11 +37,76 @@ class ApplyCv {
   final CvSource source;
 }
 
+/// Text the student types on the Apply Form; university, year of study and
+/// the CV live in [ApplyFormState] because they come from pickers.
+typedef ApplyFormValues = ({
+  String fullName,
+  String email,
+  String phone,
+  String introduction,
+});
+
+/// Validation messages shown under the personal information fields; `null`
+/// when the value is valid.
+@immutable
+class ApplyFieldErrors {
+  const ApplyFieldErrors({
+    this.fullName,
+    this.phone,
+    this.university,
+    this.yearOfStudy,
+  });
+
+  final String? fullName;
+  final String? phone;
+  final String? university;
+  final String? yearOfStudy;
+
+  bool get isEmpty =>
+      fullName == null &&
+      phone == null &&
+      university == null &&
+      yearOfStudy == null;
+}
+
+/// What the Apply Form hands to Validate CV and Review: the CV, the details
+/// and introduction the student is sending, and when the form opened
+/// (`apply_start`), so Review can log `application_create.duration_sec`
+/// (docs/analytics-plan.md row 10).
+@immutable
+class ApplySession {
+  const ApplySession({
+    required this.cv,
+    required this.startedAt,
+    required this.email,
+    required this.details,
+    required this.skills,
+    required this.introduction,
+  });
+
+  final ApplyCv cv;
+  final DateTime startedAt;
+
+  /// The Google address shown on the form; stored with the application.
+  final String email;
+
+  /// `fullName`, `phone`, `university` and `yearOfStudy` as shown on the
+  /// form.
+  final ProfileDetails details;
+
+  /// Skills sent with the application (the Profile skills at submit time).
+  final List<String> skills;
+
+  /// `Short introduction`, written for this application only.
+  final String introduction;
+}
+
 /// Apply Form (Flow 1 pre-submit: Check CV → Upload / Select CV → Pre-submit
 /// Complete).
 @immutable
 class ApplyFormState {
   const ApplyFormState({
+    required this.startedAt,
     this.internship = const ViewLoading(),
     this.profileLoaded = false,
     this.profileCv,
@@ -51,7 +117,20 @@ class ApplyFormState {
     this.missingCv = false,
     this.skillMatch,
     this.profileError,
+    this.fullName = '',
+    this.email = '',
+    this.phone = '',
+    this.university,
+    this.yearOfStudy,
+    this.introduction = '',
+    this.profileSkills = const <String>[],
+    this.errors = const ApplyFieldErrors(),
   });
+
+  /// When the form opened, i.e. when `apply_start` was logged, so the review
+  /// step can report `application_create.duration_sec`
+  /// (docs/analytics-plan.md row 10).
+  final DateTime startedAt;
 
   final ViewState<Internship> internship;
 
@@ -86,6 +165,28 @@ class ApplyFormState {
   /// so with `Retry` instead of looking like "no CV yet" (CR-18).
   final AppException? profileError;
 
+  /// Personal information, prefilled once from the Profile and then edited
+  /// on the form.
+  final String fullName;
+
+  /// The Google address (read-only on the form), sent with the application.
+  final String email;
+  final String phone;
+  final String? university;
+
+  /// 1 for first-year students; `null` until the student picks one.
+  final int? yearOfStudy;
+
+  /// `Short introduction`, kept for this application only.
+  final String introduction;
+
+  /// Profile skills shown in the Skills section; the sheet edits the
+  /// Profile, so this follows the live stream.
+  final List<String> profileSkills;
+
+  /// Messages under the personal information fields, after `Continue`.
+  final ApplyFieldErrors errors;
+
   bool get isUploading => progress != null;
 
   ApplyCv? get cv {
@@ -102,6 +203,7 @@ class ApplyFormState {
   static const Object _keep = Object();
 
   ApplyFormState copyWith({
+    DateTime? startedAt,
     ViewState<Internship>? internship,
     bool? profileLoaded,
     Object? profileCv = _keep,
@@ -112,8 +214,17 @@ class ApplyFormState {
     bool? missingCv,
     Object? skillMatch = _keep,
     Object? profileError = _keep,
+    String? fullName,
+    String? email,
+    String? phone,
+    Object? university = _keep,
+    Object? yearOfStudy = _keep,
+    String? introduction,
+    List<String>? profileSkills,
+    ApplyFieldErrors? errors,
   }) {
     return ApplyFormState(
+      startedAt: startedAt ?? this.startedAt,
       internship: internship ?? this.internship,
       profileLoaded: profileLoaded ?? this.profileLoaded,
       profileCv: identical(profileCv, _keep)
@@ -138,6 +249,18 @@ class ApplyFormState {
       profileError: identical(profileError, _keep)
           ? this.profileError
           : profileError as AppException?,
+      fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      university: identical(university, _keep)
+          ? this.university
+          : university as String?,
+      yearOfStudy: identical(yearOfStudy, _keep)
+          ? this.yearOfStudy
+          : yearOfStudy as int?,
+      introduction: introduction ?? this.introduction,
+      profileSkills: profileSkills ?? this.profileSkills,
+      errors: errors ?? this.errors,
     );
   }
 }
@@ -149,6 +272,9 @@ final applyFormViewModelProvider = NotifierProvider.autoDispose
 
 class ApplyFormViewModel extends Notifier<ApplyFormState> {
   ApplyFormViewModel(this.args);
+
+  /// Longest accepted full name, as on Edit profile.
+  static const int maxFullNameLength = 80;
 
   final ApplyFormArgs args;
 
@@ -167,6 +293,15 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
   List<String>? _profileSkills;
   bool _picking = false;
   bool _startLogged = false;
+
+  /// The Profile prefill happened, so a later snapshot cannot overwrite what
+  /// the student typed on the form.
+  bool _fieldsSeeded = false;
+
+  /// When the form opened, which is when `apply_start` is logged. Kept on
+  /// the ViewModel, not in the state, so a rebuild for another account does
+  /// not restart the clock.
+  final DateTime _startedAt = DateTime.now();
 
   @override
   ApplyFormState build() {
@@ -195,7 +330,7 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
 
     _subscribe(service);
     _logStart();
-    return ApplyFormState(profileLoaded: uid == null);
+    return ApplyFormState(startedAt: _startedAt, profileLoaded: uid == null);
   }
 
   /// Listens to the listing again after a load error.
@@ -313,16 +448,103 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
     }
   }
 
-  /// `Continue to review`: the CV to hand to the review step (Pre-submit
-  /// Complete), or `null` when there is none yet and the CV section must say
-  /// so.
-  ApplyCv? continueToReview() {
+  /// `Continue to review`: what Validate CV and Review need, or `null` when
+  /// the form cannot continue (a CV is still uploading, a failed upload is
+  /// unresolved, or there is no CV yet — the CV section then says so).
+  ApplySession? continueToReview() {
     // A failed upload is resolved first (`Retry` or `Use CV from Profile`),
     // so the Profile CV is never sent in place of the chosen file (CR-15).
     if (state.isUploading || state.uploadError != null) return null;
     final cv = state.cv;
-    if (cv == null) state = state.copyWith(missingCv: true);
-    return cv;
+    if (cv == null) {
+      state = state.copyWith(missingCv: true);
+      return null;
+    }
+    return ApplySession(
+      cv: cv,
+      startedAt: _startedAt,
+      email: state.email,
+      details: ProfileDetails(
+        fullName: state.fullName,
+        phone: state.phone,
+        university: state.university,
+        yearOfStudy: state.yearOfStudy,
+      ),
+      skills: state.profileSkills,
+      introduction: state.introduction,
+    );
+  }
+
+  /// Checks the personal information the View passes from its text fields.
+  /// `false` puts the messages in `state.errors`, so the fields show them.
+  bool validateFields(ApplyFormValues values) {
+    final fullName = values.fullName.trim();
+    final email = values.email.trim();
+    final phone = values.phone.trim();
+    final introduction = values.introduction.trim();
+    final errors = ApplyFieldErrors(
+      fullName:
+          Validators.required(
+            fullName,
+            message: 'Enter a full name to continue.',
+          ) ??
+          Validators.maxLength(
+            fullName,
+            maxFullNameLength,
+            message: 'Use $maxFullNameLength characters or fewer.',
+          ),
+      phone:
+          Validators.required(
+            phone,
+            message: 'Enter a phone number to continue.',
+          ) ??
+          Validators.phone(
+            phone,
+            message: 'Enter a valid phone number (10-11 digits).',
+          ),
+      university: state.university == null
+          ? 'Select your university to continue.'
+          : null,
+      yearOfStudy: state.yearOfStudy == null
+          ? 'Select your year of study to continue.'
+          : null,
+    );
+    if (!errors.isEmpty) {
+      state = state.copyWith(errors: errors);
+      return false;
+    }
+    state = state.copyWith(
+      fullName: fullName,
+      email: email,
+      phone: phone,
+      introduction: introduction,
+      errors: const ApplyFieldErrors(),
+    );
+    return true;
+  }
+
+  /// `Select your university` in the picker sheet.
+  void selectUniversity(String university) {
+    state = state.copyWith(
+      university: university,
+      errors: ApplyFieldErrors(
+        fullName: state.errors.fullName,
+        phone: state.errors.phone,
+        yearOfStudy: state.errors.yearOfStudy,
+      ),
+    );
+  }
+
+  /// `Year of study` in the picker sheet.
+  void selectYearOfStudy(int year) {
+    state = state.copyWith(
+      yearOfStudy: year,
+      errors: ApplyFieldErrors(
+        fullName: state.errors.fullName,
+        phone: state.errors.phone,
+        university: state.errors.university,
+      ),
+    );
   }
 
   Future<bool> _upload(
@@ -419,7 +641,8 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
   void _onProfile(UserProfile? profile) {
     if (!ref.mounted) return;
     _profileSkills = profile?.skills ?? const <String>[];
-    state = state.copyWith(
+    final details = profile?.details;
+    var next = state.copyWith(
       profileLoaded: true,
       profileError: null,
       profileCv: profile?.cv,
@@ -428,7 +651,20 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
         ViewData(:final data) => data,
         _ => null,
       }),
+      profileSkills: _profileSkills,
     );
+    // Prefill once from the Profile: later snapshots (or a sheet that edits
+    // the Profile) must not overwrite what the student typed here.
+    if (!_fieldsSeeded) {
+      _fieldsSeeded = true;
+      next = next.copyWith(
+        fullName: details?.fullName ?? '',
+        phone: details?.phone ?? '',
+        university: details?.university,
+        yearOfStudy: details?.yearOfStudy,
+      );
+    }
+    state = next;
   }
 
   /// `apply_start`: once per opened form (`Apply now` tapped).

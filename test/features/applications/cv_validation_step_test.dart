@@ -54,6 +54,35 @@ FakeAuthService _signedIn() {
 }
 
 void main() {
+  testWidgets('a signed-in uid already known when it opens does not throw', (
+    tester,
+  ) async {
+    final cv = FakeCvValidationService();
+    setScreenSize(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          // The Apply flow reaches this step with the auth state resolved, so
+          // `fireImmediately` returns a uid inside `initState`.
+          currentUserIdProvider.overrideWithValue(testUser.uid),
+          cvValidationServiceProvider.overrideWithValue(cv),
+          analyticsServiceProvider.overrideWithValue(FakeAnalyticsService()),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(body: CvValidationStep(storagePath: _path)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Riverpod 3 forbids a provider change while the tree builds; the check
+    // must start after the frame instead.
+    expect(tester.takeException(), isNull);
+    expect(cv.calls, 1);
+    expect(find.text('Your CV looks good'), findsOneWidget);
+  });
+
   testWidgets('shows the checking state until the callable resolves', (
     tester,
   ) async {
