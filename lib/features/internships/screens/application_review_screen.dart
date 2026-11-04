@@ -12,6 +12,8 @@ import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/app_tag.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/cv_file_tile.dart';
+import '../../../core/widgets/detail_row.dart';
+import '../../../core/widgets/detail_section_card.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
 import '../../../models/user_profile.dart';
@@ -21,7 +23,6 @@ import '../viewmodels/application_review_viewmodel.dart';
 import '../viewmodels/apply_form_viewmodel.dart';
 import '../widgets/application_review_parts.dart';
 import '../widgets/apply_form_parts.dart';
-import '../widgets/detail_parts.dart';
 import 'internship_detail_screen.dart';
 
 /// Application Review (Flow 2 frames "Review Application"): everything the
@@ -231,29 +232,29 @@ class _PersonalInformation extends StatelessWidget {
       title: 'Personal information',
       action: _EditButton(onPressed: onEdit),
       children: [
-        ReviewDetailRow(
+        DetailRow(
           label: 'Full name',
           value: details.fullName ?? ApplicationReviewScreen._notAdded,
         ),
-        ReviewDetailRow(
+        DetailRow(
           label: 'Email',
           value: email.isEmpty ? ApplicationReviewScreen._notAdded : email,
         ),
-        ReviewDetailRow(
+        DetailRow(
           label: 'Phone number',
           value: details.phone ?? ApplicationReviewScreen._notAdded,
         ),
-        ReviewDetailRow(
+        DetailRow(
           label: 'University',
           value: details.university ?? ApplicationReviewScreen._notAdded,
         ),
-        ReviewDetailRow(
+        DetailRow(
           label: 'Year of study',
           value: year == null
               ? ApplicationReviewScreen._notAdded
               : 'Year $year',
         ),
-        ReviewDetailRow(
+        DetailRow(
           label: 'Academic standing',
           value: year == null
               ? ApplicationReviewScreen._notAdded

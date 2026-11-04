@@ -159,6 +159,7 @@ typedef CreatedApplication = ({
   String cvStoragePath,
   String cvFileName,
   String cvUrl,
+  int cvSizeBytes,
   ApplicationApplicant applicant,
 });
 
@@ -203,6 +204,7 @@ class FakeApplicationService implements ApplicationService {
     required String cvStoragePath,
     required String cvFileName,
     required String cvUrl,
+    required int cvSizeBytes,
     required ApplicationApplicant applicant,
   }) async {
     await createGate?.future;
@@ -215,6 +217,7 @@ class FakeApplicationService implements ApplicationService {
       cvStoragePath: cvStoragePath,
       cvFileName: cvFileName,
       cvUrl: cvUrl,
+      cvSizeBytes: cvSizeBytes,
       applicant: applicant,
     ));
   }

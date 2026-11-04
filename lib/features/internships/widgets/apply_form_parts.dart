@@ -4,7 +4,9 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/display_format.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/company_logo.dart';
 import '../../../core/widgets/cv_file_tile.dart';
+import '../../../core/widgets/detail_section_card.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../models/internship.dart';
 import '../../../theme/app_colors.dart';
@@ -12,7 +14,6 @@ import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import '../viewmodels/apply_form_viewmodel.dart';
-import 'detail_parts.dart';
 
 /// "Step 1 of 2 · Your details" with the two-segment progress of the Apply
 /// Form frames, and "Step 2 of 2 · Review & submit" on Application Review
@@ -132,7 +133,7 @@ class ApplySummaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              DetailCompanyLogo(
+              CompanyLogo(
                 companyName: internship.companyName,
                 size: AppSizes.companyLogoLarge,
                 url: internship.logoUrl,

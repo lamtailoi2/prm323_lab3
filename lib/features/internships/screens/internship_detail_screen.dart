@@ -11,6 +11,8 @@ import '../../../core/utils/allowance.dart';
 import '../../../core/utils/display_format.dart';
 import '../../../core/utils/posted_age.dart';
 import '../../../core/widgets/app_top_bar.dart';
+import '../../../core/widgets/company_logo.dart';
+import '../../../core/widgets/detail_section_card.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
 import '../../../theme/app_colors.dart';
@@ -257,7 +259,7 @@ class _JobHeader extends StatelessWidget {
       children: [
         Row(
           children: [
-            DetailCompanyLogo(
+            CompanyLogo(
               companyName: internship.companyName,
               url: internship.logoUrl,
               size: AppSizes.companyLogoLarge,
@@ -388,7 +390,7 @@ class _CompanySection extends StatelessWidget {
       children: [
         Row(
           children: [
-            DetailCompanyLogo(
+            CompanyLogo(
               companyName: internship.companyName,
               url: internship.logoUrl,
               size: AppSizes.companyLogo,

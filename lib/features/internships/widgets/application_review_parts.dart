@@ -113,34 +113,3 @@ class ReviewReadyPanel extends StatelessWidget {
     );
   }
 }
-
-/// One label / value pair of the review, read as "Full name: Minh Nguyen".
-class ReviewDetailRow extends StatelessWidget {
-  const ReviewDetailRow({super.key, required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Semantics(
-      container: true,
-      label: '$label: $value',
-      excludeSemantics: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.s4),
-          Text(value, style: textTheme.bodyMedium),
-        ],
-      ),
-    );
-  }
-}

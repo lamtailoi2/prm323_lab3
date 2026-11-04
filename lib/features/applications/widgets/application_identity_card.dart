@@ -3,20 +3,22 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/display_format.dart';
+import '../../../core/widgets/company_logo.dart';
 import '../../../models/internship.dart';
 import '../../../models/internship_application.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
-import '../../internships/widgets/detail_parts.dart';
-import 'application_status_badge.dart';
 
-/// Header of Application Detail: the position, the company, the facts the
-/// listing gave and the current status.
+/// Header of Application Detail: the position, the company and the facts
+/// the listing gave.
 ///
-/// `Duration` from the frame is absent: Google Jobs does not provide it
-/// (DC-10). Facts without data are hidden.
+/// The status badge lives only on the tracker below (DC-29); showing it
+/// here too would repeat the same status twice on screen. `Duration` from
+/// the frame is absent: Google Jobs does not provide it (DC-10). No
+/// verified tick: the app has no data behind "verified" (precedent DC-15,
+/// DC-24). Facts without data are hidden.
 class ApplicationIdentityCard extends StatelessWidget {
   const ApplicationIdentityCard({
     super.key,
@@ -62,7 +64,7 @@ class ApplicationIdentityCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              DetailCompanyLogo(
+              CompanyLogo(
                 companyName: application.companyName,
                 size: AppSizes.companyLogoLarge,
                 url: listing?.logoUrl,
@@ -93,15 +95,11 @@ class ApplicationIdentityCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.s8),
-              ApplicationStatusBadge(status: application.status),
             ],
           ),
           const SizedBox(height: AppSpacing.s12),
-          const Divider(height: 1),
-          const SizedBox(height: AppSpacing.s12),
           Wrap(
-            spacing: AppSpacing.s16,
+            spacing: AppSpacing.s8,
             runSpacing: AppSpacing.s8,
             children: [
               for (final fact in facts) _Fact(icon: fact.icon, text: fact.text),
@@ -113,7 +111,8 @@ class ApplicationIdentityCard extends StatelessWidget {
   }
 }
 
-/// One fact chip, read as a single label.
+/// One fact chip, read as a single label; `surface-variant` background per
+/// the frame (never an invented tint — design-system.md §2.12 precedent).
 class _Fact extends StatelessWidget {
   const _Fact({required this.icon, required this.text});
 
@@ -126,13 +125,29 @@ class _Fact extends StatelessWidget {
       container: true,
       label: text,
       excludeSemantics: true,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: AppSizes.iconSmall, color: AppColors.textSecondary),
-          const SizedBox(width: AppSpacing.s4),
-          Text(text, style: Theme.of(context).textTheme.bodyMedium),
-        ],
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: AppRadii.smallAll,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s8,
+            vertical: AppSpacing.s4,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: AppSizes.iconSmall,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: AppSpacing.s4),
+              Text(text, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
       ),
     );
   }

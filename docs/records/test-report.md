@@ -380,6 +380,42 @@ Environment: Windows 11 × Flutter 3.47.8 / Dart 3.13.7, Android emulator `sdk g
 
 ---
 
+## Run 24: Flow 3 Application Detail audit (2026-11-04)
+
+Branch `feat/application-detail` on Windows 11. Environment: Flutter 3.47.8 / Dart 3.13.7 (no device or emulator attached).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | **Formatted 186 files (0 changed)** |
+| 2 | `flutter analyze` | **No issues found!** (47.5 s) |
+| 3 | `flutter test test/features/applications/application_detail_viewmodel_test.dart test/features/applications/application_detail_screen_test.dart test/app/router_test.dart` | **33 passed** (ViewModel 7: load + `view_application` once, empty, error + Retry, withdraw keeps the previous status, Undo window, failed withdraw, double tap; screen 10: both widths with tracker/CV/facts, withdraw dialog → Undo, Cancel, Undo, Preview, error, empty, loading skeleton, no applicant snapshot; router 16) |
+| 4 | `flutter test` (full suite) | **583 tests, all passed** |
+| 5 | E2E TC-09/TC-10 (`e2e_test/test_applications.py`) | **Not run**: the cases are written, but this machine has no ARTEMIS daemon or toolchain (`evidence/artemis/e2e-environment-20261031.md`) |
+| 6 | Device screenshots (`evidence/screens/application-*.png`) | **5 captured** on the Android emulator (1080 × 2400) with the real signed-in test account: `application-list`, `application-detail-submitted`, `application-detail-applicant`, `application-detail-withdraw-dialog`, `application-detail-withdrawn`. `empty`, `rejected`, `error` and `loading` were not captured: the account has one application, there is no UI to set another status, and a network error cannot be produced deterministically |
+| 7 | DebugView (`view_application`) | **Not run** |
+
+Notes: the audit found the Flow 3 code already implemented and green; this run covers the documentation/status corrections, the new E2E source and the state screenshots. No product code changed in this run, so the suite count is unchanged from the previous full run on this branch.
+
+---
+
+## Run 25: Flow 3 Application Detail — Figma alignment (2026-11-04)
+
+Branch `feat/application-detail` on Windows 11. Environment: Flutter 3.47.8 / Dart 3.13.7 (no device or emulator attached). Follows Run 24: Option 1 ("Đồng bộ hoàn toàn với Figma") from the P-48 audit, implemented in P-49.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **189 files, 1 changed** (`applicant_card.dart`, then `application_detail_screen_test.dart` on a second pass) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test/models/internship_application_test.dart test/features/applications/ test/app/router_test.dart` | **88 passed** |
+| 4 | `flutter test` (full suite) | **593 tests, all passed** |
+| 5 | E2E TC-09/TC-10 | **Not run** (same as Run 24: no ARTEMIS daemon/toolchain on this machine) |
+| 6 | Device screenshots (`evidence/screens/application-*.png`) | **Not recaptured.** No emulator was run in this session; the 5 screenshots from Run 24 predate this run's UI changes (4-step tracker with progress, destructive withdraw styling, chip facts, new CV tile copy) and no longer match the current build. Recapturing them is open work, not fabricated here |
+| 7 | DebugView (`view_application`) | **Not run** |
+
+Code changed in this run (unlike Run 24, which was docs-only): `application_status_tracker.dart`, `application_identity_card.dart`, `applicant_card.dart`, `application_detail_screen.dart`, `internship_application.dart`, `application_service.dart`, `application_review_viewmodel.dart`, `test/helpers/fakes.dart`, plus the four Flow 3 test files. The suite count rose from 583 (Run 24) to 593: +10 net (new tracker/CV/nav/badge/colour/error-message tests, two new `cvSizeBytes` model-parsing assertions, no tests removed).
+
+---
+
 ## Run template
 
 ```markdown

@@ -4,12 +4,12 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/utils/skill_match.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../core/widgets/detail_section_card.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import '../viewmodels/apply_form_viewmodel.dart';
-import 'detail_parts.dart';
 
 /// "Personal information" of the Apply Form frames: the details the company
 /// receives, prefilled from the Profile and editable here.

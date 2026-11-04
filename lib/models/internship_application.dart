@@ -22,6 +22,11 @@ enum ApplicationStatus {
   /// Visible label, from `screen-spec.md` › My Applications.
   final String label;
 
+  /// A decision (accepted / rejected) or a withdrawal ends the application,
+  /// so it can no longer be withdrawn.
+  bool get canWithdraw =>
+      this == submitted || this == underReview || this == interview;
+
   /// Parses a stored value; `null` for an unknown one.
   static ApplicationStatus? fromStorage(String raw) {
     for (final status in values) {
@@ -52,6 +57,7 @@ class InternshipApplication {
     this.cvFileName,
     this.cvUrl,
     this.cvStoragePath,
+    this.cvSizeBytes,
     this.applicant,
   });
 
@@ -78,6 +84,8 @@ class InternshipApplication {
       cvFileName: reader.optionalString('cvFileName'),
       cvUrl: reader.optionalString('cvUrl'),
       cvStoragePath: reader.optionalString('cvStoragePath'),
+      // Absent on applications saved before this field existed.
+      cvSizeBytes: reader.optionalInt('cvSizeBytes'),
       applicant: _optionalApplicant(reader),
     );
   }
@@ -116,6 +124,7 @@ class InternshipApplication {
   final String? cvFileName;
   final String? cvUrl;
   final String? cvStoragePath;
+  final int? cvSizeBytes;
 
   /// Who applied, written by the Apply flow; `null` for documents saved
   /// before the snapshot existed.

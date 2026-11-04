@@ -101,7 +101,7 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `ApplyViewModel` | Application Form, CV Match Check, Review, Success | `ApplicationService`, `UserProfileService`, `FileStorageService`, `CvValidationService`, `RemoteConfigService`, `AnalyticsService`, `CrashlyticsService` | Planned |
 | `CvValidationViewModel` | Validate CV step (Apply, pre-submit) | `CvValidationService`, `AnalyticsService` | Done (service, ViewModel, step widget, tests; Apply screens not built) |
 | `MyApplicationsViewModel` | My Applications | `ApplicationService` | Done (list, status filter, retry; no writes, no detail) |
-| `ApplicationDetailViewModel` | Application Detail | `ApplicationService`, `AnalyticsService` | Planned |
+| `ApplicationDetailViewModel` | Application Detail | `ApplicationService`, `InternshipService`, `ExternalLinkService`, `AnalyticsService` | Done (load, tracker, withdraw/undo, preview, tests) |
 | `ProfileViewModel` | Profile | `UserProfileService` (+ auth for email and photo) | Done |
 | `EditProfileViewModel` | Edit profile | `UserProfileService`, `AnalyticsService` | Done |
 | `EditSkillsViewModel`, `EditPreferencesViewModel` | Profile sheets | `UserProfileService`, `AnalyticsService` | Done |
@@ -183,16 +183,21 @@ Rules for feature owners:
 
 Email and photo are never copied here; they come from the Google account. `city` (where the student lives) and `preferences.location` (where they want an internship) are both kept; Update preferences starts from `city` when its location is empty (G-30). Replacing the CV keeps the old file in Storage because submitted applications may still link to it.
 
-**Application document `users/{uid}/applications/{jobKey}`** (`InternshipApplication`, `lib/models/internship_application.dart`). The document ID is the listing key, so one student can have at most one application per listing. The Apply flow owns the writes; My Applications only reads them today.
+**Application document `users/{uid}/applications/{jobKey}`** (`InternshipApplication`, `lib/models/internship_application.dart`). The document ID is the listing key, so one student can have at most one application per listing. The Apply flow writes the snapshot; My Applications and Application Detail read it.
 
 | Field | Type | Written by |
 |---|---|---|
 | `title`, `companyName` | string (required) | Apply flow (snapshot of the listing, which expires from the pool, G-25) |
 | `appliedAt` | timestamp (required) | Apply flow |
-| `status` | `submitted` / `under_review` / `interview` / `accepted` / `rejected` (required, `ApplicationStatus`) | Apply flow; later the student's own status update |
+| `status` | `submitted` / `under_review` / `interview` / `accepted` / `rejected` / `withdrawn` (required, `ApplicationStatus`) | Apply flow; withdraw / undo (Flow 3d) |
 | `nextStepAt` | timestamp or null (optional) | Interview slot or the employer's reply deadline, when the student records one |
+| `withdrawnAt`, `previousStatus` | timestamp / status or null (optional) | `ApplicationService.withdraw` keeps the status it replaced so `undoWithdrawal` can restore it |
+| `cvFileName`, `cvUrl`, `cvStoragePath`, `cvSizeBytes` | string / string / string / int or null (optional) | Apply flow; the CV that was sent, read-only afterwards (`Preview` opens `cvUrl`; `cvSizeBytes` backs the `{size} • Uploaded {date}` CV tile on Application Detail) |
+| `applicant` | map: `fullName` (required), `email`, `phone`, `university`, `yearOfStudy`, `skills`, `shortIntroduction` | Apply flow; the profile values at submission time |
 
-A stored status outside that list (for example `withdrawn`) is malformed: the document is skipped and logged, because only the five page-05 statuses have a badge (G-18, DC-22). My Applications sorts by `appliedAt` descending and derives the count line and the status chips from the documents it received, so no index beyond the default is needed.
+A required field that is missing or has the wrong type makes the document malformed: the service skips and logs it. A stored status outside the six `ApplicationStatus` values is malformed too. The optional `applicant` / CV snapshot is parsed defensively — a malformed map becomes `null` and the rest of the application still loads (Application Detail hides that card). My Applications sorts by `appliedAt` descending and derives the count line and the status chips from the documents it received, so no index beyond the default is needed.
+
+Application Detail subscribes to `ApplicationService.watchApplications()` and picks the document whose `jobKey` equals the route parameter, so the screen follows status, withdraw and undo writes live; it also watches `InternshipService.watchByKey(jobKey)` for the live listing facts (logo, pay, work mode, location, posted age) while the listing is still in the shared pool. `view_application` is logged once per opened detail (analytics-plan row 11).
 
 ## 7. Firebase and API integration points
 

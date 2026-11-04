@@ -229,7 +229,7 @@ Destinations and order: **Home** (`home`) · **Search** (`search`) · **Saved** 
 
 *"Explain the failure and likely cause in plain language. Pair a meaningful icon with the message and a 48 dp recovery action."* Example: `wifi_off` (error color) + "We could not load internships. Check your connection and try again." + full-width Primary `Retry`. There is no separate title. Icon size 32 dp (**verify**).
 
-### 2.12 Application Status: 5 specimens · Built (generic `StatusBadge`; the status → icon/color mapping below belongs to the Applications feature)
+### 2.12 Application Status: 6 specimens · Built (generic `StatusBadge`; the status → icon/color mapping below belongs to the Applications feature)
 
 *"Noninteractive badges: 14 sp label + meaningful 20 dp icon. Use surfaceVariant, never invented semantic tints. No color-only meaning."*
 
@@ -240,9 +240,9 @@ Destinations and order: **Home** (`home`) · **Search** (`search`) · **Saved** 
 | Interview | `event` | `primary` | `surfaceVariant` |
 | Accepted | `check_circle` | `success` | `surfaceVariant` |
 | Rejected | `cancel` | `error` | `surfaceVariant` |
-| *Withdrawn* | *not on page 05* | *not specified* | — |
+| Withdrawn | `undo` | `textSecondary` (neutral) | `surfaceVariant` |
 
-Radius 8 (badge family). ⚠️ **Withdrawn** (Flow 3d) has no specimen (G-18). ⚠️ The Rejected color pair fails AA (§3).
+Radius 8 (badge family). **Withdrawn** (Flow 3d) is not on page 05; `ApplicationStatusBadge` uses the neutral treatment from the Application Detail withdrawn frame (G-18 resolved 2026-11-04, DC-29). ⚠️ The Rejected color pair fails AA (§3).
 
 ### 2.13 Snackbar: 1 variant · Themed (`SnackBarThemeData`) + content built by the feature
 
