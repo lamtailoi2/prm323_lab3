@@ -332,7 +332,35 @@ Branch `fix/code-review-r1` from `origin/dev` `4d2aeda`. Environment: macOS 26.7
 
 ---
 
-## Run 21: Flow 2 completion — Validate CV, Review, Success (2026-11-03)
+## Run 21: Work mode from the listing text (2026-11-02)
+
+Branch `dev` on Windows 11. Environment: Flutter 3.47.8 / Dart 3.13.7.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | Cause check (code + earlier pool checks) | **Cause found**: `Internship.fromSerpApi` read the work mode only from `title` and `extensions`; `hl=vi` listings have no `detected_extensions` and the chips hold only the schedule and posted age, so work mode was known for **1 of 289** IT listings (Run 12) and a Work mode filter hid all the rest → `Show 0 results` |
+| 2 | `dart format lib test` | Completed; 1 file changed |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **533 tests, all passed** (+8): `internship_test.dart` work mode from title/chips/location, explicit Vietnamese and English wording in the description, both arrangements → hybrid, "hybrid app" / "remote server" false positives rejected, no wording → `null`; `search_filter_criteria_test.dart` work mode (selected modes, unknown left out, no mode keeps all) |
+| 5 | On device | **Not run**: needs the emulator and a signed-in account to measure how many of the current listings state their arrangement |
+
+---
+
+## Run 22: Filter skills from the pool (2026-11-02)
+
+Branch `dev` on Windows 11. Environment: Flutter 3.47.8 / Dart 3.13.7.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | Cause check | **Found**: the sheet's Skills chips were a fixed `Flutter / React / NestJS / Java / UI/UX / Data` list, unrelated to CV validation, the Profile or the pool |
+| 2 | `dart format lib test` | Completed; 0 changed |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **538 tests, all passed** (+5): `skill_suggestions_test.dart` (most common first, `knownSkills` tie, alphabetical tie, empty pool, 6-chip cap); the sheet test now asserts the pool's `Flutter`, `Dart` and `Node.js` chips, that fixed `React` is gone, and that tapping `Flutter` narrows the count |
+| 5 | On device | **Not run** |
+
+---
+
+## Run 23: Flow 2 completion — Validate CV, Review, Success (2026-11-03)
 
 Branch `feat/apply-ui`. Environment: Windows 11 × Flutter 3.47.8 / Dart 3.13.7 (no device or emulator attached).
 
