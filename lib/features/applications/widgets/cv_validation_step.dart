@@ -55,11 +55,19 @@ class _CvValidationStepState extends ConsumerState<CvValidationStep> {
       previous,
       next,
     ) {
-      if (next != null && !_started) {
-        _started = true;
-        unawaited(_run());
-      }
+      if (next != null && !_started) _start();
     }, fireImmediately: true);
+  }
+
+  /// Starts the check after the current frame. `fireImmediately` runs inside
+  /// `initState`, and Riverpod forbids a provider change while the widget
+  /// tree is building (the signed-in uid is already known when the step
+  /// opens from the Apply flow).
+  void _start() {
+    _started = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_run());
+    });
   }
 
   @override

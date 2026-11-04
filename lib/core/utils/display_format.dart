@@ -19,6 +19,15 @@ String formatShortDate(DateTime date) {
   return '${_months[local.month - 1]} ${local.day}, ${local.year}';
 }
 
+/// Date and time as the Application submitted frame shows it:
+/// `Oct 19, 2026, 22:20` (24-hour clock).
+String formatShortDateTime(DateTime date) {
+  final local = date.toLocal();
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '${formatShortDate(local)}, $hour:$minute';
+}
+
 /// Day and month without a year, as the My Applications cards show it:
 /// `1 Oct` (used as `Applied 1 Oct`).
 String formatDayMonth(DateTime date) {

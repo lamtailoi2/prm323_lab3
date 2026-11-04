@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/widgets/app_button.dart';
 import 'package:internly/features/internships/screens/apply_form_screen.dart';
+import 'package:internly/features/internships/viewmodels/apply_form_viewmodel.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
@@ -32,6 +33,7 @@ void main() {
   late FakeFileStorageService storage;
   late FakeExternalLinkService links;
   late FakeRemoteConfigService remoteConfig;
+  late FakeAuthService auth;
 
   final listing = testInternship(
     '1',
@@ -46,16 +48,25 @@ void main() {
     sizeBytes: 420 * 1024,
     uploadedAt: DateTime(2026, 10, 14),
   );
+  const details = ProfileDetails(
+    fullName: 'Minh Nguyen',
+    phone: '0908 123 456',
+    university: 'HCM University of Technology',
+    yearOfStudy: 3,
+  );
 
   setUp(() {
     internships = FakeInternshipService()..byKey[listing.key] = listing;
-    profiles = FakeUserProfileService(profile: UserProfile(cv: profileCv));
+    profiles = FakeUserProfileService(
+      profile: UserProfile(cv: profileCv, details: details),
+    );
     saved = FakeSavedInternshipService();
     analytics = FakeAnalyticsService();
     picker = FakeDocumentPickerService();
     storage = FakeFileStorageService();
     links = FakeExternalLinkService();
     remoteConfig = FakeRemoteConfigService();
+    auth = FakeAuthService(initialUser: testUser);
   });
 
   tearDown(() async {
@@ -63,6 +74,7 @@ void main() {
     await profiles.dispose();
     await saved.dispose();
     remoteConfig.dispose();
+    await auth.dispose();
   });
 
   Future<void> pumpForm(WidgetTester tester, {double width = 360}) async {
@@ -79,12 +91,28 @@ void main() {
           path: '/profile',
           builder: (context, state) => const Text('Profile tab'),
         ),
+        // Stands in for CvValidationScreen so the test only checks that the
+        // form hands the data over (the real screens have their own tests).
+        // The form builds `/{tab}/internships/:jobKey/apply/...` from its
+        // `source`.
+        GoRoute(
+          path: '/home/internships/:jobKey/apply/validation',
+          builder: (context, state) {
+            final session = state.extra;
+            return Text(
+              session is ApplySession
+                  ? 'Validate CV step: ${session.cv.file.fileName}'
+                  : 'Validate CV step',
+            );
+          },
+        ),
       ],
     );
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          authServiceProvider.overrideWithValue(auth),
           internshipServiceProvider.overrideWithValue(internships),
           userProfileServiceProvider.overrideWithValue(profiles),
           savedInternshipServiceProvider.overrideWithValue(saved),
@@ -104,12 +132,22 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// The form is long: scroll the section under test into view.
+  Future<void> scrollTo(WidgetTester tester, Finder finder) async {
+    await tester.dragUntilVisible(
+      finder,
+      find.byType(Scrollable).first,
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+  }
+
   AppButton continueButton(WidgetTester tester) => tester.widget<AppButton>(
     find.widgetWithText(AppButton, 'Continue to review'),
   );
 
   for (final width in checkWidths) {
-    testWidgets('CV from Profile: summary, banner and file at $width dp', (
+    testWidgets('CV from Profile: summary, banner and CV at $width dp', (
       tester,
     ) async {
       await pumpForm(tester, width: width);
@@ -124,6 +162,22 @@ void main() {
         ),
         findsOneWidget,
       );
+
+      // Personal information, prefilled from the Profile. The title carries
+      // the ` *` of a required section, so match it by text.
+      await scrollTo(tester, find.text('Minh Nguyen'));
+      expect(
+        find.textContaining('Personal information', findRichText: true),
+        findsOneWidget,
+      );
+      expect(find.text('Minh Nguyen'), findsOneWidget);
+      expect(find.text('student@example.com'), findsOneWidget);
+      expect(
+        find.text('The company will use this to arrange an interview'),
+        findsOneWidget,
+      );
+
+      await scrollTo(tester, find.text('Profile_CV.pdf'));
       expect(find.text('Profile_CV.pdf'), findsOneWidget);
       expect(find.text('420 KB · PDF'), findsOneWidget);
       expect(find.text('From your Profile'), findsOneWidget);
@@ -132,14 +186,11 @@ void main() {
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text('Continue to review'));
-      await tester.pump();
-      expect(
-        find.text('Your CV is ready. The review step is coming soon.'),
-        findsOneWidget,
-      );
+      await tester.pumpAndSettle();
+      expect(find.text('Validate CV step: Profile_CV.pdf'), findsOneWidget);
     });
 
-    testWidgets('no Profile CV: tip, upload area and its error at $width dp', (
+    testWidgets('empty Profile: tip and field errors at $width dp', (
       tester,
     ) async {
       profiles.profile = const UserProfile();
@@ -153,29 +204,51 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Go to Profile'), findsOneWidget);
-      expect(find.text('PDF, up to 10 MB'), findsOneWidget);
-      expect(find.text('Upload CV'), findsOneWidget);
 
       await tester.tap(find.text('Continue to review'));
-      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // The Google name fills the first field; the rest say what is missing
+      // and nothing navigates.
+      expect(find.text('Test Student'), findsOneWidget);
+      expect(find.text('Enter a phone number to continue.'), findsOneWidget);
+      expect(find.text('Select your university to continue.'), findsOneWidget);
       expect(
-        find.text(
-          'Add a CV to continue. Companies need it to review your '
-          'application.',
-        ),
+        find.text('Select your year of study to continue.'),
         findsOneWidget,
       );
+      expect(find.textContaining('Validate CV step'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   }
 
+  testWidgets('complete details without a CV: the CV section says so', (
+    tester,
+  ) async {
+    profiles.profile = const UserProfile(details: details);
+    await pumpForm(tester);
+    await scrollTo(tester, find.text('PDF, up to 10 MB'));
+
+    await tester.tap(find.text('Continue to review'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Add a CV to continue. Companies need it to review your application.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Validate CV step'), findsNothing);
+  });
+
   testWidgets(
     'Upload CV opens the Profile CV sheet; the CV is uploaded for this job',
     (tester) async {
-      profiles.profile = const UserProfile();
+      profiles.profile = const UserProfile(details: details);
       picker.next = PickedDocument(name: 'Job_CV.pdf', bytes: pdfBytes());
       storage.gate = Completer<void>();
       await pumpForm(tester);
+      await scrollTo(tester, find.text('Upload CV'));
 
       await tester.tap(find.text('Upload CV'));
       await tester.pumpAndSettle();
@@ -223,6 +296,7 @@ void main() {
         'We could not upload the file. Check your connection and try again.',
       );
       await pumpForm(tester);
+      await scrollTo(tester, find.text('Replace'));
 
       await tester.tap(find.text('Replace'));
       await tester.pumpAndSettle();
@@ -259,6 +333,7 @@ void main() {
       picker.next = PickedDocument(name: 'Job_CV.pdf', bytes: pdfBytes());
       storage.gate = Completer<void>();
       await pumpForm(tester);
+      await scrollTo(tester, find.text('Replace'));
 
       await tester.tap(find.text('Replace'));
       await tester.pumpAndSettle();
@@ -299,6 +374,7 @@ void main() {
       'We could not load your Profile CV. Try again.',
     );
     await pumpForm(tester);
+    await scrollTo(tester, find.text('Upload CV'));
 
     expect(
       find.text('We could not load your Profile CV. Try again.'),
@@ -314,6 +390,7 @@ void main() {
     profiles.loadError = null;
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
+    await scrollTo(tester, find.text('From your Profile'));
     expect(find.text('From your Profile'), findsOneWidget);
   });
 
@@ -352,7 +429,7 @@ void main() {
   });
 
   for (final width in checkWidths) {
-    testWidgets('summary facts and the skill match line at $width dp', (
+    testWidgets('summary facts and the Skills section at $width dp', (
       tester,
     ) async {
       internships.byKey[listing.key] = testInternship(
@@ -365,6 +442,7 @@ void main() {
       );
       profiles.profile = UserProfile(
         cv: profileCv,
+        details: details,
         skills: const ['Flutter', 'Dart'],
       );
       await pumpForm(tester, width: width);
@@ -372,66 +450,42 @@ void main() {
       expect(find.text('Techcombank · Việt Nam'), findsOneWidget);
       expect(find.bySemanticsLabel('Allowance: Negotiable'), findsOneWidget);
       expect(find.bySemanticsLabel('Job type: Not disclosed'), findsOneWidget);
+
+      await scrollTo(tester, find.text('You have 2 of 6 required skills'));
       expect(find.text('You have 2 of 6 required skills'), findsOneWidget);
-      expect(find.text('Missing: Java, Kotlin, Swift +1 more'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      // The Profile banner sits above the skill match line.
-      expect(
-        tester
-            .getTopLeft(
-              find.text(
-                'We filled this in from your Profile. Check it before you '
-                'continue.',
-              ),
-            )
-            .dy,
-        lessThan(
-          tester.getTopLeft(find.text('You have 2 of 6 required skills')).dy,
-        ),
-      );
-
-      await tester.tap(find.text('Show all skills'));
-      await tester.pump();
       expect(find.text('Missing: Java, Kotlin, Swift, SQL'), findsOneWidget);
-      expect(find.text('You have: Flutter, Dart'), findsOneWidget);
+      expect(find.text('Flutter'), findsOneWidget);
+      expect(find.text('Dart'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('Show fewer'));
-      await tester.pump();
-      expect(find.text('Missing: Java, Kotlin, Swift +1 more'), findsOneWidget);
-      expect(find.text('You have: Flutter, Dart'), findsNothing);
-
-      // The Edit skills sheet opens over the form, so nothing on it is
-      // lost (CR-16).
-      await tester.tap(find.text('Edit skills'));
+      // The Edit skills sheet opens over the form, so nothing on it is lost
+      // (CR-16).
+      await tester.tap(find.text('Add skill'));
       await tester.pumpAndSettle();
       expect(find.text('Select your technical proficiencies'), findsOneWidget);
       expect(find.text('Profile tab'), findsNothing);
 
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
-      expect(find.text('Techcombank · Việt Nam'), findsOneWidget);
+      // Still on the form, at the section the sheet was opened from.
+      expect(find.text('You have 2 of 6 required skills'), findsOneWidget);
     });
   }
 
-  testWidgets('without Profile skills the line asks to add them', (
+  testWidgets('without Profile skills the section asks to add them', (
     tester,
   ) async {
     internships.byKey[listing.key] = testInternship(
       '1',
       skills: const ['Flutter', 'Dart'],
     );
+    profiles.profile = const UserProfile(details: details);
     await pumpForm(tester);
+    await scrollTo(tester, find.text('This internship asks for 2 skills'));
 
     expect(find.text('This internship asks for 2 skills'), findsOneWidget);
-    expect(
-      find.text('Add your skills in Profile to see how you match.'),
-      findsOneWidget,
-    );
-    expect(find.text('Add skills'), findsOneWidget);
-
-    await tester.tap(find.text('Show all skills'));
-    await tester.pump();
-    expect(find.text('Skills: Flutter, Dart'), findsOneWidget);
+    expect(find.text('Add skill'), findsOneWidget);
+    expect(find.text('Flutter'), findsOneWidget);
+    expect(find.text('Dart'), findsOneWidget);
   });
 }

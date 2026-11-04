@@ -63,7 +63,7 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: AppSpacing.section),
         CvSection(
           cv: data.profile.cv,
-          onUpload: () => showAppSheet(
+          onUpload: () => showAppSheet<void>(
             context,
             (_) => UpdateCvSheet(current: data.profile.cv),
           ),
@@ -76,13 +76,14 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: AppSpacing.section),
         SkillsSection(
           skills: data.profile.skills,
-          onEdit: () => showAppSheet(context, (_) => const EditSkillsSheet()),
+          onEdit: () =>
+              showAppSheet<void>(context, (_) => const EditSkillsSheet()),
         ),
         const SizedBox(height: AppSpacing.section),
         PreferencesSection(
           preferences: data.profile.preferences,
           onEdit: () =>
-              showAppSheet(context, (_) => const EditPreferencesSheet()),
+              showAppSheet<void>(context, (_) => const EditPreferencesSheet()),
         ),
       ],
     };

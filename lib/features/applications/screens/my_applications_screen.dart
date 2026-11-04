@@ -59,20 +59,11 @@ class MyApplicationsScreen extends ConsumerWidget {
           feed: data,
           selected: state.selectedStatus,
           onSelectStatus: viewModel.selectStatus,
-          onOpen: () => _openApplicationDetail(context),
+          onOpen: (application) =>
+              context.push(AppRoutes.applicationDetail(application.jobKey)),
         ),
       },
     );
-  }
-
-  /// Application Detail is not built yet (design-traceability.md §1 row 11).
-  /// An honest message is better than a dead tap or a fake screen.
-  void _openApplicationDetail(BuildContext context) {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        const SnackBar(content: Text('Application details are coming soon.')),
-      );
   }
 }
 
@@ -117,7 +108,7 @@ class _ApplicationsBody extends StatelessWidget {
   final MyApplicationsFeed feed;
   final ApplicationStatus? selected;
   final ValueChanged<ApplicationStatus?> onSelectStatus;
-  final VoidCallback onOpen;
+  final ValueChanged<InternshipApplication> onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -157,8 +148,8 @@ class _ApplicationsBody extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: AppSpacing.s12),
                 child: ApplicationCard(
                   application: application,
-                  onTap: onOpen,
-                  onPrimaryAction: onOpen,
+                  onTap: () => onOpen(application),
+                  onPrimaryAction: () => onOpen(application),
                 ),
               );
             },

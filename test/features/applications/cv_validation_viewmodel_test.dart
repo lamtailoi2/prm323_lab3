@@ -62,7 +62,7 @@ void main() {
     expect(analytics.events, contains('cv_validation_result'));
     expect(
       analytics.parameters['cv_validation_result'],
-      equals(<String, Object>{'is_valid': true}),
+      equals(<String, Object>{'is_valid': 1}),
     );
   });
 
@@ -84,7 +84,7 @@ void main() {
     );
     expect(
       analytics.parameters['cv_validation_result'],
-      equals(<String, Object>{'is_valid': false}),
+      equals(<String, Object>{'is_valid': 0}),
     );
   });
 

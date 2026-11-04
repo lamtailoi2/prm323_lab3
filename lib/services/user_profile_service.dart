@@ -18,6 +18,12 @@ abstract interface class UserProfileService {
 
   Future<void> updateDetails(String uid, ProfileDetails details);
 
+  /// Merge write of the fields the Apply Form collects (`fullName`, `phone`,
+  /// `university`, `yearOfStudy`). Null fields are skipped, so saving an
+  /// application never clears the headline, major, city, bio or graduation
+  /// year that Edit profile owns.
+  Future<void> updateApplyDetails(String uid, ProfileDetails details);
+
   Future<void> updateSkills(String uid, List<String> skills);
 
   Future<void> updatePreferences(String uid, InternshipPreferences preferences);
@@ -72,6 +78,15 @@ class FirestoreUserProfileService implements UserProfileService {
   @override
   Future<void> updateDetails(String uid, ProfileDetails details) =>
       _merge(uid, 'details', details.toFirestore());
+
+  @override
+  Future<void> updateApplyDetails(String uid, ProfileDetails details) {
+    final fields = <String, Object?>{
+      for (final entry in details.toFirestore().entries)
+        if (entry.value != null) entry.key: entry.value,
+    };
+    return _merge(uid, 'apply details', fields);
+  }
 
   @override
   Future<void> updateSkills(String uid, List<String> skills) =>

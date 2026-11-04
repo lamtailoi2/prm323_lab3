@@ -120,6 +120,11 @@ void main() {
           path: '/applications',
           builder: (context, state) => const Text('Applications tab'),
         ),
+        GoRoute(
+          path: '/applications/:jobKey',
+          builder: (context, state) =>
+              Text('Application ${state.pathParameters['jobKey']}'),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -219,7 +224,7 @@ void main() {
 
       await tester.tap(find.text('View application'));
       await tester.pumpAndSettle();
-      expect(find.text('Applications tab'), findsOneWidget);
+      expect(find.textContaining('Application '), findsOneWidget);
     });
   }
 

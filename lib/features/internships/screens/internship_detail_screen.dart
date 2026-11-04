@@ -102,14 +102,17 @@ class InternshipDetailScreen extends ConsumerWidget {
             ),
           ),
           isApplied: data.application != null,
-          onPrimary: data.application != null
-              // Application Detail is not built yet, so the student lands on
-              // the My Applications list that holds this application (DC-24).
-              ? () => context.go(AppRoutes.applications)
-              // Flow 1 pre-submit; push keeps this Detail underneath.
-              : () => context.push(
-                  AppRoutes.applyForm('/$source', data.internship.key),
-                ),
+          onPrimary: switch (data.application) {
+            // Flow 3c: `View application` opens the tracked application
+            // (DC-24 item 11).
+            final application? => () => context.push(
+              AppRoutes.applicationDetail(application.jobKey),
+            ),
+            // Flow 1 pre-submit; push keeps this Detail underneath.
+            null => () => context.push(
+              AppRoutes.applyForm('/$source', data.internship.key),
+            ),
+          },
         ),
         _ => null,
       },

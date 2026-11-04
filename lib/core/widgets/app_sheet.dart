@@ -11,8 +11,11 @@ import 'cv_file_tile.dart';
 /// Opens a bottom sheet above the bottom navigation, as in the Lab 2 Edit
 /// Skills, Update Preferences and Update CV frames (Profile) and the CV sheet
 /// of the Apply Form.
-Future<void> showAppSheet(BuildContext context, WidgetBuilder builder) {
-  return showModalBottomSheet<void>(
+///
+/// Sheets that ask for a choice pop it (`Navigator.pop(value)`) and it comes
+/// back as the result, e.g. the university and year-of-study pickers.
+Future<T?> showAppSheet<T>(BuildContext context, WidgetBuilder builder) {
+  return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
     useRootNavigator: true,

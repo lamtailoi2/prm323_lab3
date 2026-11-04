@@ -214,13 +214,97 @@ void main() {
     },
   );
 
-  test('Continue to review hands over the selected CV', () async {
+  test('prefills the personal information from the Profile once', () async {
+    profiles.profile = UserProfile(
+      cv: profileCv,
+      details: const ProfileDetails(
+        fullName: 'Minh Nguyen',
+        phone: '0908 123 456',
+        university: 'HCMUT',
+        yearOfStudy: 3,
+      ),
+      skills: const ['Flutter'],
+    );
+    listen();
+    await settle();
+
+    expect(read().fullName, 'Minh Nguyen');
+    expect(read().phone, '0908 123 456');
+    expect(read().university, 'HCMUT');
+    expect(read().yearOfStudy, 3);
+    expect(read().profileSkills, ['Flutter']);
+
+    // A later snapshot (the Skills sheet saving) keeps the values the
+    // student may have changed on the form.
+    await profiles.updateDetails(
+      testUser.uid,
+      const ProfileDetails(fullName: 'Someone Else'),
+    );
+    await profiles.updateSkills(testUser.uid, const ['Flutter', 'Dart']);
+    await settle();
+    expect(read().fullName, 'Minh Nguyen');
+    expect(read().profileSkills, ['Flutter', 'Dart']);
+  });
+
+  test('validation messages follow the frames', () async {
     final viewModel = listen();
     await settle();
 
-    final cv = viewModel.continueToReview();
-    expect(cv?.file.storagePath, 'cvs/uid-123/profile.pdf');
-    expect(cv?.source, CvSource.profile);
+    expect(
+      viewModel.validateFields((
+        fullName: ' ',
+        email: '',
+        phone: 'abc',
+        introduction: '',
+      )),
+      isFalse,
+    );
+    expect(read().errors.fullName, 'Enter a full name to continue.');
+    expect(read().errors.phone, 'Enter a valid phone number (10-11 digits).');
+    expect(read().errors.university, 'Select your university to continue.');
+    expect(read().errors.yearOfStudy, 'Select your year of study to continue.');
+
+    viewModel.selectUniversity('HCMUT');
+    expect(read().errors.university, isNull);
+    viewModel.selectYearOfStudy(2);
+    expect(read().errors.yearOfStudy, isNull);
+  });
+
+  test('Continue to review hands over the selected CV and details', () async {
+    final viewModel = listen();
+    await settle();
+    expect(
+      viewModel.validateFields((
+        fullName: '  Minh Nguyen ',
+        email: 'minh@example.com',
+        phone: '0908 123 456',
+        introduction: ' I build Flutter apps. ',
+      )),
+      isFalse,
+      reason: 'university and year of study are not chosen yet',
+    );
+
+    viewModel.selectUniversity('HCMC University of Technology');
+    viewModel.selectYearOfStudy(3);
+    expect(
+      viewModel.validateFields((
+        fullName: '  Minh Nguyen ',
+        email: 'minh@example.com',
+        phone: '0908 123 456',
+        introduction: ' I build Flutter apps. ',
+      )),
+      isTrue,
+    );
+
+    final session = viewModel.continueToReview();
+    expect(session?.cv.file.storagePath, 'cvs/uid-123/profile.pdf');
+    expect(session?.cv.source, CvSource.profile);
+    expect(session?.email, 'minh@example.com');
+    expect(session?.details.fullName, 'Minh Nguyen');
+    expect(session?.details.phone, '0908 123 456');
+    expect(session?.details.university, 'HCMC University of Technology');
+    expect(session?.details.yearOfStudy, 3);
+    expect(session?.introduction, 'I build Flutter apps.');
     expect(read().missingCv, isFalse);
   });
 
@@ -370,7 +454,7 @@ void main() {
     expect(read().missingCv, isFalse);
 
     viewModel.useProfileCv();
-    expect(viewModel.continueToReview()?.source, CvSource.profile);
+    expect(viewModel.continueToReview()?.cv.source, CvSource.profile);
   });
 
   test('Use CV from Profile drops a failed upload', () async {

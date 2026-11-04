@@ -18,6 +18,7 @@ class DetailSectionCard extends StatelessWidget {
     required this.children,
     this.spacing = AppSpacing.s12,
     this.isRequired = false,
+    this.action,
   });
 
   final IconData icon;
@@ -26,6 +27,10 @@ class DetailSectionCard extends StatelessWidget {
 
   /// Adds the red ` *` of the Apply Form, read as "required".
   final bool isRequired;
+
+  /// Optional action at the end of the header row, e.g. `Edit` on Application
+  /// Review or `Add skill` on the Apply Form.
+  final Widget? action;
 
   /// Gap between the header and each child (Figma: 8 for "About the role",
   /// 12 for the other sections).
@@ -71,6 +76,7 @@ class DetailSectionCard extends StatelessWidget {
                     style: textTheme.titleMedium,
                   ),
                 ),
+                ?action,
               ],
             ),
           ),

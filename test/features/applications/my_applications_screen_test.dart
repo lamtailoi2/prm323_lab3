@@ -50,6 +50,11 @@ void main() {
           builder: (context, state) => const MyApplicationsScreen(),
         ),
         GoRoute(
+          path: '${AppRoutes.applications}/:jobKey',
+          builder: (context, state) =>
+              Text('Application ${state.pathParameters['jobKey']}'),
+        ),
+        GoRoute(
           path: AppRoutes.profile,
           builder: (context, state) => const Text('Profile tab'),
         ),
@@ -273,7 +278,7 @@ void main() {
     expect(find.text('5 applications'), findsOneWidget);
   });
 
-  testWidgets('opening an application and Review offer are honest for now', (
+  testWidgets('a card and Review offer open Application Detail', (
     tester,
   ) async {
     applications.results = page;
@@ -283,13 +288,15 @@ void main() {
     await tester.tap(find.text(ApplicationCard.reviewOfferLabel));
     await tester.pumpAndSettle();
 
-    // Application Detail is not built yet, so the screen does not fake it.
-    expect(find.text('Application details are coming soon.'), findsOneWidget);
+    expect(find.textContaining('Application '), findsOneWidget);
 
+    // A card tap opens the same screen.
+    await pumpApplications(tester, height: 1400);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('QA Engineer Intern'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Application details are coming soon.'), findsOneWidget);
+    expect(find.textContaining('Application '), findsOneWidget);
   });
 
   testWidgets('avatar opens Profile and the bell is honest', (tester) async {

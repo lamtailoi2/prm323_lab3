@@ -80,7 +80,10 @@ class FirebaseAnalyticsService implements AnalyticsService {
   Future<void> _guard(Future<void> Function() call) async {
     try {
       await call();
-    } on Exception catch (error) {
+    } catch (error) {
+      // Catching `Object`, not just `Exception`: a failed analytics call must
+      // never break a user flow, and the SDK throws assertions (an `Error`)
+      // for unsupported parameter types in debug builds.
       debugPrint('Analytics call failed: $error');
     }
   }
