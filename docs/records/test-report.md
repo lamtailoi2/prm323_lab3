@@ -332,6 +332,54 @@ Branch `fix/code-review-r1` from `origin/dev` `4d2aeda`. Environment: macOS 26.7
 
 ---
 
+## Run 21: Work mode from the listing text (2026-11-02)
+
+Branch `dev` on Windows 11. Environment: Flutter 3.47.8 / Dart 3.13.7.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | Cause check (code + earlier pool checks) | **Cause found**: `Internship.fromSerpApi` read the work mode only from `title` and `extensions`; `hl=vi` listings have no `detected_extensions` and the chips hold only the schedule and posted age, so work mode was known for **1 of 289** IT listings (Run 12) and a Work mode filter hid all the rest → `Show 0 results` |
+| 2 | `dart format lib test` | Completed; 1 file changed |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **533 tests, all passed** (+8): `internship_test.dart` work mode from title/chips/location, explicit Vietnamese and English wording in the description, both arrangements → hybrid, "hybrid app" / "remote server" false positives rejected, no wording → `null`; `search_filter_criteria_test.dart` work mode (selected modes, unknown left out, no mode keeps all) |
+| 5 | On device | **Not run**: needs the emulator and a signed-in account to measure how many of the current listings state their arrangement |
+
+---
+
+## Run 22: Filter skills from the pool (2026-11-02)
+
+Branch `dev` on Windows 11. Environment: Flutter 3.47.8 / Dart 3.13.7.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | Cause check | **Found**: the sheet's Skills chips were a fixed `Flutter / React / NestJS / Java / UI/UX / Data` list, unrelated to CV validation, the Profile or the pool |
+| 2 | `dart format lib test` | Completed; 0 changed |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **538 tests, all passed** (+5): `skill_suggestions_test.dart` (most common first, `knownSkills` tie, alphabetical tie, empty pool, 6-chip cap); the sheet test now asserts the pool's `Flutter`, `Dart` and `Node.js` chips, that fixed `React` is gone, and that tapping `Flutter` narrows the count |
+| 5 | On device | **Not run** |
+
+---
+
+## Run 23: Flow 2 completion — Validate CV, Review, Success (2026-11-03)
+
+Branch `feat/apply-ui`. Environment: Windows 11 × Flutter 3.47.8 / Dart 3.13.7 (no device or emulator attached).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | formatted (5 files changed on the first run, none after the last edit) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test/features/internships/application_review_viewmodel_test.dart test/features/internships/application_review_screen_test.dart` | **15 passed** (ViewModel 8: load, no write before the listing, submit + `application_create` parameters, failed write then retry, signed out, double tap ignored, listing error + Retry, profile error + Retry; screen 7: both widths + 48 dp guideline, submit → success with the recap, failure message, loading state, missing form data, profile error) |
+| 4 | `flutter test test/features/internships/application_success_screen_test.dart` | **5 passed** (both widths + 48 dp guideline, no recap, `View my applications`, `Back to home`) |
+| 5 | `flutter test` (full suite, after Smart App Control was turned off and `build/unit_test_assets` was rebuilt) | **547 tests, all passed** (+22 from the 525 on `dev`). Before that, the suite showed 9 failures, all `Asset 'shaders/ink_sparkle.frag' not found`, because this machine's Application Control policy blocked `impellerc.exe` (SAC `VerifiedAndReputablePolicyState = 1`); the asset was never built. After turning SAC off the asset is generated and the whole suite is green |
+| 6 | `flutter run -d emulator-5554 --dart-define-from-file=.env` (sdk gphone64 x86 64, Android 17 / API 37) | **Built, installed and launched**: `com.group3.internly/.MainActivity` holds the focus. Before SAC was off this same command failed in `:app:compileFlutterBuildDebug` on the blocked `impellerc.exe` |
+| 7 | Device logcat while walking the flow | **Bug found and fixed**: opening Validate CV logged Riverpod's *"Tried to modify a provider while the widget tree was building"* — `CvValidationStep.initState` starts `CvValidationViewModel.validate()`, which sets `state`, through `listenManual(..., fireImmediately: true)`; the uid is already known when the step opens from the Apply flow. The check now starts in a post-frame callback; regression test added (it fails without the fix). `flutter analyze` **No issues found!**, `flutter test` **547 passed** after the fix |
+| 8 | Complete flow on the device (Apply → Validate CV → Review → Submit → Success → My Applications) | **Not walked end to end yet** |
+| 9 | DebugView (`application_create`) | **Not run** |
+
+Environment: Windows 11 × Flutter 3.47.8 / Dart 3.13.7, Android emulator `sdk gphone64 x86 64` (API 37), `--dart-define-from-file=.env`. Notes: the 9 earlier failures were environmental, not related to this change — `test/core/widgets/components_test.dart`, which touches no changed file, failed the same way; turning Smart App Control off (a one-way Windows setting) removed them. E2E TC-06–TC-08 are still to be written.
+
+---
+
 ## Run template
 
 ```markdown

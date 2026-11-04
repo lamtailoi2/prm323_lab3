@@ -7,6 +7,7 @@ import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/distinct_listings.dart';
 import '../../../core/utils/skill_matcher.dart';
+import '../../../core/utils/skill_suggestions.dart';
 import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/internship_service.dart';
@@ -105,6 +106,10 @@ class SearchViewModel extends Notifier<SearchState> {
       _pool.where((internship) => criteria.matches(internship, query: query)),
     ).length;
   }
+
+  /// Skills the current pool mentions, for the Filter sheet's chips.
+  List<String> get suggestedSkills =>
+      suggestedFilterSkills(distinctListings(_pool));
 
   /// Records [term] in this student's search history. Called when the
   /// student submits the search field or picks a recent/trending term, so

@@ -5,10 +5,13 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PDFParse } from 'pdf-parse';
 
 /**
- * Free-tier Gemini model chosen under G-26 (zero-cost decision). Reuse the
- * same provider as ARTEMIS rather than introducing a second one.
+ * Free-tier Gemini model for the gate (G-26, zero-cost decision).
+ *
+ * The `-latest` alias is deliberate: pinned versions are retired and then
+ * answer `404 Not Found` (`gemini-2.5-flash-lite` did on 2026-11-03, while
+ * `gemini-flash-lite-latest` kept working), which blocked every CV check.
  */
-export const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+export const GEMINI_MODEL = 'gemini-flash-lite-latest';
 
 /** Below this, a PDF is treated as unreadable without spending Gemini quota. */
 export const MIN_CV_TEXT_LENGTH = 50;
@@ -168,8 +171,10 @@ export async function handleValidateCv(
     );
   } catch (error) {
     logger.error('validateCv: Gemini request failed', { error });
+    // `failed-precondition`: the model provider is not working, not the
+    // student's connection, so the app must not tell them to check it.
     throw new HttpsError(
-      'unavailable',
+      'failed-precondition',
       'CV validation is unavailable right now. Please try again.',
     );
   }

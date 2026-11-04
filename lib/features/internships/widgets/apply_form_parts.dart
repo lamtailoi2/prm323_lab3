@@ -3,7 +3,6 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/display_format.dart';
-import '../../../core/utils/skill_match.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/cv_file_tile.dart';
 import '../../../core/widgets/skeleton.dart';
@@ -16,16 +15,25 @@ import '../viewmodels/apply_form_viewmodel.dart';
 import 'detail_parts.dart';
 
 /// "Step 1 of 2 · Your details" with the two-segment progress of the Apply
-/// Form frames; step 2 is the review step of Flow 4.
+/// Form frames, and "Step 2 of 2 · Review & submit" on Application Review
+/// (both segments filled).
 class ApplyStepHeader extends StatelessWidget {
-  const ApplyStepHeader({super.key});
+  const ApplyStepHeader({super.key}) : _step = 1;
+
+  const ApplyStepHeader.review({super.key}) : _step = 2;
+
+  final int _step;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final isReview = _step == 2;
+    final upcoming = isReview ? AppColors.primary : AppColors.border;
     return Semantics(
       container: true,
-      label: 'Step 1 of 2, your details. Next: review',
+      label: isReview
+          ? 'Step 2 of 2, review and submit'
+          : 'Step 1 of 2, your details. Next: review',
       excludeSemantics: true,
       child: DecoratedBox(
         decoration: const BoxDecoration(
@@ -46,26 +54,29 @@ class ApplyStepHeader extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Step 1 of 2 · Your details',
+                      isReview
+                          ? 'Step 2 of 2 · Review & submit'
+                          : 'Step 1 of 2 · Your details',
                       style: textTheme.labelLarge?.copyWith(
                         color: AppColors.primary,
                       ),
                     ),
                   ),
-                  Text(
-                    'Review',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
+                  if (!isReview)
+                    Text(
+                      'Review',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.s8),
-              const Row(
+              Row(
                 children: [
-                  Expanded(child: _StepBar(color: AppColors.primary)),
-                  SizedBox(width: AppSpacing.s8),
-                  Expanded(child: _StepBar(color: AppColors.border)),
+                  const Expanded(child: _StepBar(color: AppColors.primary)),
+                  const SizedBox(width: AppSpacing.s8),
+                  Expanded(child: _StepBar(color: upcoming)),
                 ],
               ),
             ],
@@ -201,124 +212,6 @@ class _SummaryFact extends StatelessWidget {
           Icon(icon, size: AppSizes.iconSmall, color: AppColors.textSecondary),
           const SizedBox(width: AppSpacing.s4),
           Text(value, style: Theme.of(context).textTheme.bodyMedium),
-        ],
-      ),
-    );
-  }
-}
-
-/// The Skills summary line of the Application Form frame ("3 of 4 required ·
-/// Missing: REST API") without the rest of the Skills section (DC-26): the
-/// same match as the Internship Detail card, `Show all skills` to list every
-/// missing and matched skill (as Detail's `Show all N benefits`), and `Edit
-/// skills` (or `Add skills`) on Profile.
-class ApplySkillMatchLine extends StatefulWidget {
-  const ApplySkillMatchLine({
-    super.key,
-    required this.match,
-    required this.onEditSkills,
-  });
-
-  final SkillMatch match;
-  final VoidCallback onEditSkills;
-
-  @override
-  State<ApplySkillMatchLine> createState() => _ApplySkillMatchLineState();
-}
-
-class _ApplySkillMatchLineState extends State<ApplySkillMatchLine> {
-  /// Missing skills named before "+N more" while collapsed.
-  static const int _namedMissing = 3;
-
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final match = widget.match;
-    final hasSkills = match.profileHasSkills;
-    final missing = match.missing;
-    final more = missing.length - _namedMissing;
-    final canExpand = hasSkills
-        ? more > 0 || match.matched.isNotEmpty
-        : match.total > 0;
-    final lines = <String>[
-      if (!hasSkills) 'Add your skills in Profile to see how you match.',
-      if (!hasSkills && _expanded) 'Skills: ${missing.join(', ')}',
-      if (hasSkills && missing.isNotEmpty)
-        _expanded || more <= 0
-            ? 'Missing: ${missing.join(', ')}'
-            : 'Missing: ${missing.take(_namedMissing).join(', ')} +$more more',
-      if (hasSkills && _expanded && match.matched.isNotEmpty)
-        'You have: ${match.matched.join(', ')}',
-    ];
-    final secondary = textTheme.bodyMedium?.copyWith(
-      color: AppColors.textSecondary,
-    );
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s12,
-        AppSpacing.s16,
-        AppSpacing.s4,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.largeAll,
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(
-                Symbols.auto_awesome_rounded,
-                size: AppSizes.iconSmall,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: AppSpacing.s8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      hasSkills
-                          ? 'You have ${match.matched.length} of '
-                                '${match.total} required skills'
-                          : 'This internship asks for ${match.total} '
-                                '${match.total == 1 ? 'skill' : 'skills'}',
-                      style: textTheme.labelLarge,
-                    ),
-                    for (final line in lines) ...[
-                      const SizedBox(height: AppSpacing.s4),
-                      Text(line, style: secondary),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.only(left: AppSpacing.s16),
-            child: Wrap(
-              children: [
-                if (canExpand)
-                  AppButton(
-                    label: _expanded ? 'Show fewer' : 'Show all skills',
-                    variant: AppButtonVariant.text,
-                    onPressed: () => setState(() => _expanded = !_expanded),
-                  ),
-                AppButton(
-                  label: hasSkills ? 'Edit skills' : 'Add skills',
-                  variant: AppButtonVariant.text,
-                  onPressed: widget.onEditSkills,
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

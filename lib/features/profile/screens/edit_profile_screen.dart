@@ -241,7 +241,7 @@ class _EditProfileFormState extends ConsumerState<_EditProfileForm> {
                   readOnly: true,
                   // Wraps instead of cutting "Graduating 2026" at 360 dp.
                   maxLines: null,
-                  onTap: () => showAppSheet(
+                  onTap: () => showAppSheet<void>(
                     context,
                     (_) => const AcademicStandingSheet(),
                   ),

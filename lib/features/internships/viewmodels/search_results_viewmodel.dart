@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/distinct_listings.dart';
+import '../../../core/utils/skill_suggestions.dart';
 import '../../../models/internship.dart';
 import '../../../models/user_profile.dart';
 import '../../../services/analytics_service.dart';
@@ -195,6 +196,14 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
     if (state.sortBy == sortBy) return;
     state = state.copyWith(sortBy: sortBy);
     _filterAndEmit();
+  }
+
+  /// Skills the current pool mentions, for the Filter sheet's chips.
+  List<String> get suggestedSkills {
+    final raw = _rawList;
+    return raw == null
+        ? const <String>[]
+        : suggestedFilterSkills(distinctListings(raw));
   }
 
   /// Counts how many listings would match [testCriteria] and current [state.query].
