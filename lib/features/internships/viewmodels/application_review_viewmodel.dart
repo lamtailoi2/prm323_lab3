@@ -106,6 +106,7 @@ class ApplicationReviewViewModel extends Notifier<ApplicationReviewState> {
         cvStoragePath: session.cv.file.storagePath,
         cvFileName: session.cv.file.fileName,
         cvUrl: session.cv.file.url,
+        cvSizeBytes: session.cv.file.sizeBytes,
         applicant: ApplicationApplicant(
           fullName: session.details.fullName ?? '',
           email: session.email.isEmpty ? null : session.email,

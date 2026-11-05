@@ -27,7 +27,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-15 | iOS added to scope; Lab 2 designed for Android only | Team | Resolved (Material on both) |
 | G-16 | Figma pages available only as screenshots; 19 of 31 components not covered | Design owner | Open |
 | G-17 | Allowance format: `$1,200/month` (Figma) vs VND per month (Stitch / AI log) | Home / Search owner | Resolved (VND format; allowance read from the description, 2026-10-28) |
-| G-18 | No "Withdrawn" status badge specimen | Applications owner | Open |
+| G-18 | No "Withdrawn" status badge specimen | Applications owner | Resolved (2026-11-04; page-05 specimen still needs the sixth status added) |
 | G-19 | Two Figma color pairs fail WCAG AA contrast | Design owner | Open (proposals DC-04, DC-05) |
 | G-20 | iOS: SPM cannot resolve Firebase 13 + GoogleSignIn 9 | Tech lead | Resolved (CocoaPods; see note) |
 | G-21 | App ID / bundle ID and repository naming not confirmed | Team | Resolved (keep `prm323_lab3`, user decision) |
@@ -150,6 +150,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 ### G-18: Withdrawn badge
 - **Found:** Flow 3d sets the status to Withdrawn, but Figma 05 "Application Status" has only five specimens (Submitted, Under review, Interview, Accepted, Rejected).
 - **Needed:** icon and color for Withdrawn (likely the neutral treatment). Check the Application Detail "withdrawn" frame on Figma page 03.
+- **Resolved (2026-11-04):** the Application Detail withdrawn frame supplies the neutral treatment — `undo` icon + `textSecondary` on `surfaceVariant` — implemented in `ApplicationStatusBadge` and recorded as DC-29. The page-05 specimen still needs the sixth status added.
 
 ### G-19: Contrast failures
 - **Found (computed):** Rejected badge `#DC2626` on `#F1F5F9` = 4.41:1; selected filter chip `#2563EB` on `#DBEAFE` = 4.24:1. Both are below the 4.5:1 that DESIGN.md §13 requires for 14 sp text. Details in [`design-system.md` §3](../design/design-system.md#3-contrast-check-computed).
