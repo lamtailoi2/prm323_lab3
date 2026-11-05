@@ -136,11 +136,41 @@ def logged_analytics_events() -> list[str]:
 
 SAMPLE_CV_NAME = "Sample_CV.pdf"
 
+# Fictional details only. The structure (contact, education, skills,
+# projects) is what the `validateCv` Gemini rubric accepts as a CV, and the
+# text is well over its 50-character minimum, so a case that continues past
+# the Apply Form reaches Review instead of "We could not use this CV".
+SAMPLE_CV_LINES = [
+    "Test Student - Software Engineering Intern",
+    "Email: test.student@example.com | Phone: 0900 000 000 | Ho Chi Minh City",
+    "",
+    "EDUCATION",
+    "BSc Software Engineering, Example University, 2023 - 2027 (GPA 3.4 / 4.0)",
+    "",
+    "SKILLS",
+    "Flutter, Dart, Firebase, REST APIs, Git, SQL, English (IELTS 6.5)",
+    "",
+    "PROJECTS",
+    "Campus Events app (Flutter, Firestore): event list, search and reminders.",
+    "Library REST API (Node.js): book loans with JWT sign-in and unit tests.",
+    "",
+    "EXPERIENCE",
+    "Teaching assistant, Mobile Programming lab, Example University, 2025.",
+]
+
 
 def _sample_pdf() -> bytes:
-    """A one-page PDF with no personal data, to upload as a test CV."""
-    text = b"Sample CV - test data for Internly"
-    content = b"BT /F1 18 Tf 72 720 Td (" + text + b") Tj ET"
+    """A one-page PDF CV with fictional data, to upload as a test CV."""
+
+    def literal(line: str) -> bytes:
+        escaped = line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+        return b"(" + escaped.encode("latin-1") + b") Tj T*"
+
+    content = (
+        b"BT /F1 11 Tf 16 TL 56 760 Td "
+        + b" ".join(literal(line) for line in SAMPLE_CV_LINES)
+        + b" ET"
+    )
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
