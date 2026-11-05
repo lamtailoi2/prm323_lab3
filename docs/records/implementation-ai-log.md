@@ -489,6 +489,17 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-54: TC-14 accepts Back closing the app after sign-out
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Sửa TC-14" after a first exploratory run failed with `assert False is True` on `login_button_visible`.
+- **Output:**
+  - Cause, from the run's steps and its last screenshot (trace `5e93964f`): sign-out reached Login. Back from Login then closed the app to the Android home screen. That is correct (Login is the root after sign-out, and no signed-in screen came back), but the test required Login to stay on screen.
+  - `e2e_test/test_auth.py` TC-14 now reports `login_after_sign_out`, `after_back` (`login` / `android_home` / `other_app_screen`), `bottom_nav_visible_after_back` and, after reopening the app if Back closed it, `login_after_reopen`. It asserts Login after sign-out, `after_back` in (`login`, `android_home`), no bottom navigation, and Login again after reopening (still signed out).
+  - `docs/test-plan.md` §3 TC-14 row updated to match.
+- **Verification:** `python -m py_compile test_auth.py` → OK; `uv run pytest test_auth.py --collect-only -q` → 2 tests collected. The new TC-14 has **not been run on a device yet**.
+- **Decision:** Accepted. The app behaviour is right and the expectation was wrong. Back closing the app after sign-out is standard Android behaviour, and the security check (no way back into signed-in screens) is kept and made stronger by reopening the app.
+
+---
+
 ## Entry template
 
 ```markdown
