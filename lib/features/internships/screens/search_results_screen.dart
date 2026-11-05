@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +22,8 @@ import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import '../../applications/viewmodels/applied_providers.dart';
+import '../../saved/viewmodels/saved_providers.dart';
+import '../../saved/viewmodels/saved_viewmodel.dart';
 import '../models/search_filter_criteria.dart';
 import '../viewmodels/search_results_viewmodel.dart';
 import '../widgets/search_results_filter_sheet.dart';
@@ -92,11 +96,31 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
     );
   }
 
+  /// Saves or unsaves through the shared Saved feature, so Search writes the
+  /// same `users/{uid}/savedInternships/{key}` copy the Saved screen reads.
+  Future<void> _toggleSaved(Internship internship) async {
+    final viewModel = ref.read(savedViewModelProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+
+    final result = await viewModel.toggleAndReport(
+      internship,
+      source: 'search',
+    );
+    if (!mounted) return;
+
+    if (result.error case final error?) {
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(searchResultsViewModelProvider);
     final viewModel = ref.read(searchResultsViewModelProvider.notifier);
     final user = ref.watch(authStateChangesProvider).value;
+    final savedIds = ref.watch(savedInternshipIdsProvider);
     final appliedJobs =
         ref.watch(appliedJobsProvider).asData?.value ?? const <String>{};
 
@@ -179,10 +203,11 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
                   internships: data,
                   query: state.query,
                   sortBy: state.sortBy,
-                  savedIds: state.savedIds,
+                  savedIds: savedIds,
                   appliedJobs: appliedJobs,
                   onSortChanged: viewModel.setSortBy,
-                  onSaveToggle: viewModel.toggleSave,
+                  onSaveToggle: (internship) =>
+                      unawaited(_toggleSaved(internship)),
                 ),
               },
             ],
@@ -334,7 +359,7 @@ class _ResultsListView extends StatelessWidget {
   /// `Applied` badge.
   final Set<String> appliedJobs;
   final ValueChanged<SearchSortBy> onSortChanged;
-  final ValueChanged<String> onSaveToggle;
+  final ValueChanged<Internship> onSaveToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -446,7 +471,7 @@ class _ResultsListView extends StatelessWidget {
             isApplied: appliedJobs.contains(
               jobIdentity(internship.title, internship.companyName),
             ),
-            onSaveToggle: () => onSaveToggle(internship.key),
+            onSaveToggle: () => onSaveToggle(internship),
             // push keeps this results page (query, filters, scroll) under
             // the detail, so Back returns to the same results.
             onTap: () => context.push(

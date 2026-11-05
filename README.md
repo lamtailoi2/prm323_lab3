@@ -61,7 +61,7 @@ Exact versions are pinned in [`pubspec.yaml`](pubspec.yaml) and [`e2e_test/pypro
 - **Android:** Android SDK with `cmdline-tools`, platform 36, JDK 17, and a device or emulator.
 - Firebase: Node.js 22 (Cloud Functions runtime), `firebase-tools`, `flutterfire_cli`.
 - A free SerpAPI key (**owner only**, for the sync function secret).
-- E2E tests: Python 3.12+, `uv`, ADB, a Google ARTEMIS checkout.
+- E2E tests: Python 3.12+, `uv`, ADB, a Google ARTEMIS checkout with [`e2e_test/artemis-local.patch`](e2e_test/artemis-local.patch) applied ([guide](docs/guides/artemis-e2e.md)).
 
 ### Install and configure
 
@@ -102,7 +102,7 @@ dart format lib test        # format
 flutter analyze             # must print "No issues found!"
 flutter test                # unit, ViewModel, widget and routing tests
 
-# End-to-end (Google ARTEMIS, Android device, see docs/test-plan.md)
+# End-to-end (Google ARTEMIS, Android device, see docs/guides/artemis-e2e.md)
 cd e2e_test && cp .env.example .env && uv sync
 uv run pytest --count 3 -v  # every test 3 times
 ```
