@@ -63,9 +63,9 @@ Every instruction states the start, the steps and what must be visible, and asks
 |---|---|---|---|---|---|---|---|
 | TC-01 | Sign-in | App installed, signed out (test signs out first if needed); Analytics debug mode | Tap `Continue with Google` → pick the test account in the native picker | `screen_title == "Home"`; nav labels `[Home, Search, Saved, Applications, Profile]`; Login button gone; **`login` event in Logcat** | Native | `test_auth.py` | Ready |
 | TC-02 | Navigation | Signed in | Tap Search, Saved, Applications, Profile, Home | For each tap: app bar title == tab and the tab is selected | Happy | `test_navigation.py` | Ready |
-| TC-03 | Flow 1 | Signed in | Home → search `Flutter intern` → Filters → `Remote` → Show results | `result_count > 0`; first card title not empty; every visible card shows `Remote` | Happy | `test_search.py` | Planned |
-| TC-04 | Flow 1a | Signed in | Search a keyword with no results (e.g. `zzqx intern`) | Empty state title `No internships found` and a `Clear filters` button | Error | `test_search.py` | Planned |
-| TC-05 | Flow 1 → detail | Signed in | Search `Flutter intern` → open the first card | Detail title and company == the card's; `Apply now` visible; report the job title | Happy | `test_detail.py` | Planned |
+| TC-03 | Flow 1 (Search → Filter & Sort → Job Listing) | Signed in; Analytics debug mode | Search tab → `Intern` → `Find Internships` → `Filters` → `Job type: Internship` → `Show … results` | `N internships found` with `N > 0`; active chips include `Internship` and `Intern`; first card title not empty; **`search` and `search_filter_apply` in Logcat** | Happy | `test_search.py` | Ready (not run) |
+| TC-04 | Flow 1a | Signed in | Search `zzqx intern` → read the empty state → tap its button | Empty title `No internships found`, button `Clear filters`; after it, `N internships found` with `N > 0` | Error | `test_search.py` | Ready (not run) |
+| TC-05 | Flow 1 → Job Detail | Signed in | Search `Intern` → note the first card → open it → Back | App bar `Internship details`; Detail title and company == the card's; `Apply now` and `Save` visible; search field still `Intern` after Back | Happy | `test_detail.py` | Ready (not run) |
 | TC-06 | Flow 2 + 2d | Signed in; profile complete with skills that do not cover every requirement | From a listing not applied to: Apply now → Continue → read CV Match Check → Continue to review → Submit | Match summary `N of M` with `N < M`; at least 1 suggestion; Success shows the same title and company | Happy | `test_apply.py` | Planned |
 | TC-07 | Flow 2c | Signed in; TC-06 listing already applied (test applies first if needed) | Open the same listing again | `You applied on …` visible; `Apply now` not visible; `View application` opens status `Submitted` | Alt | `test_apply.py` | Planned |
 | TC-08 | Flow 2e (+2e.1) | Signed in; Saved list emptied by the test first | Open a listing → Save → Saved tab → open the saved card; back; Unsave → Undo | Snackbar `Saved to your list`; saved count == 1; detail shows `Apply now`; after Undo the card is back | Alt | `test_saved.py` | Planned |
@@ -77,13 +77,16 @@ Every instruction states the start, the steps and what must be visible, and asks
 | TC-14 | Sign-out | Signed in (test signs in first if needed) | Profile → scroll to Settings & support → Sign out → press Back | Login visible; bottom navigation not visible | Happy | `test_auth.py` | Ready |
 | TC-15 | Permission | Fresh install on Android 13+ | First launch after sign-in | Notification permission dialog shown; after Allow, the Firebase demo area shows permission granted | Native | `test_notifications.py` | Planned |
 | TC-16 | Home role discovery | Signed in; at least one Frontend listing in the pool | Home → read `Browse by Role` / `All roles` → tap `Frontend` → tap `All roles` | `selected_role == "Frontend"` with a check mark; at least one recommended title; `after_all_roles_screen_title == "Search"` | Happy | `test_home_roles.py` | Ready (not run) |
+| TC-18 | Flow 1 pre-submit (Check CV → Continue) | Signed in; Analytics debug mode | Search `Intern` → first card → `Apply now` → read the CV section → fill empty personal fields (`Test Student`, `0908123456`, `FPT University`, `Year 3`) → `Continue to review` | App bar `Apply Form`; step `Step 1 of 2 · Your details`; with a CV: next screen `Validate CV` (Flow 4 starts there; its result is not asserted); without: still `Apply Form` with `Add a CV to continue…`; **`apply_start` in Logcat** | Happy | `test_apply_form.py` | Ready (not run) |
+| TC-19 | Flow 1 pre-submit (Upload / Select CV) | Signed in; the test pushes `Sample_CV.pdf` (no personal data) to Downloads | Apply Form → `Replace` / `Upload CV` → `Choose file` → pick the file in the Android picker → `Update CV` / `Upload CV` | CV file name ends in `.pdf`; line under it `Uploaded for this internship` | Native | `test_apply_form.py` | Ready (not run) |
+| TC-20 | Flow 1 alt. (CV upload failed) | Signed in; the test turns Wi-Fi and data off with `adb` and back on afterwards; listings from the Firestore cache | Apply Form → `Replace` → pick `Sample_CV.pdf` → `Update CV` → wait for the error | Error `We could not upload the file. Check your connection and try again.` (upload retries are capped at 30 s) | Error · Native | `test_apply_form.py` | Ready (not run) |
 | TC-17 | Profile upkeep (Flow 2 alt., 2d `Edit skills`) | Signed in; `Docker` not yet in the profile skills (test removes it first if needed) | Profile → `Add skill` → search `dock` → tap `Docker` → `Save changes` | Sheet closed; `Technical skills` lists `Docker`; reported skills include `Docker` | Alt | `test_profile_skills.py` | Ready (not run) |
 
 ### Coverage (Lab 3 §7)
 
 | Required | Test cases |
 |---|---|
-| Each Lab 2 flow end to end incl. alternative and error paths | Flow 1: TC-03/04/05 · Flow 2: TC-06/07/08 · Flow 3: TC-09/10 |
+| Each Lab 2 flow end to end incl. alternative and error paths | Flow 1: TC-03/04/05 + pre-submit TC-18/19/20 · Flow 2: TC-06/07/08 · Flow 3: TC-09/10 |
 | Sign-in · sign-out | TC-01 · TC-14 |
 | Main search / primary action | TC-03, TC-06 |
 | Each top-level tab | TC-02 |
@@ -92,9 +95,9 @@ Every instruction states the start, the steps and what must be visible, and asks
 | Each kind of detail screen | Internship Detail TC-05 · Application Detail TC-09 |
 | Export and upload | TC-11 |
 | Remote Config values on screen | TC-12 |
-| ≥ 1 error path | TC-04, TC-10 |
-| ≥ 1 native interaction | TC-01 (account picker), TC-10 (Quick Settings), TC-13 (notification shade), TC-15 (permission dialog) |
-| ≥ 1 analytics check | TC-01 (`login` in Logcat) |
+| ≥ 1 error path | TC-04, TC-10, TC-20 |
+| ≥ 1 native interaction | TC-01 (account picker), TC-10 (Quick Settings), TC-13 (notification shade), TC-15 (permission dialog), TC-19 / TC-20 (Android document picker) |
+| ≥ 1 analytics check | TC-01 (`login` in Logcat), TC-03 (`search`, `search_filter_apply`), TC-18 (`apply_start`) |
 | Exploratory session (Pro) | §5 |
 
 ## 4. Results (≥ 3 runs per test)
