@@ -8,27 +8,23 @@ import 'package:internly/models/internship.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/internship_service.dart';
-import 'package:internly/services/saved_service.dart';
 import 'package:internly/services/search_history_service.dart';
 
 import '../../helpers/fakes.dart';
 
 void main() {
   late FakeInternshipService internships;
-  late FakeSavedService saved;
   late FakeSearchHistoryService history;
   late FakeAnalyticsService analytics;
 
   setUp(() {
     internships = FakeInternshipService();
-    saved = FakeSavedService();
     history = FakeSearchHistoryService();
     analytics = FakeAnalyticsService();
   });
 
   tearDown(() async {
     await internships.dispose();
-    await saved.dispose();
     await history.dispose();
   });
 
@@ -36,7 +32,6 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         internshipServiceProvider.overrideWithValue(internships),
-        savedServiceProvider.overrideWithValue(saved),
         searchHistoryServiceProvider.overrideWithValue(history),
         analyticsServiceProvider.overrideWithValue(analytics),
         currentUserIdProvider.overrideWithValue(uid ?? testUser.uid),
@@ -266,24 +261,6 @@ void main() {
     await settle();
     state = container.read(searchResultsViewModelProvider);
     expect(state.results, isA<ViewData<List<Internship>>>());
-  });
-
-  test('toggleSave updates savedIds and calls service', () async {
-    internships.results = sampleListings;
-    final container = createContainer();
-    final notifier = listen(container);
-    await settle();
-
-    final key = sampleListings.first.key;
-    await notifier.toggleSave(key);
-
-    var state = container.read(searchResultsViewModelProvider);
-    expect(state.savedIds, contains(key));
-    expect(saved.savedByUid[testUser.uid], contains(key));
-
-    await notifier.toggleSave(key);
-    state = container.read(searchResultsViewModelProvider);
-    expect(state.savedIds, isNot(contains(key)));
   });
 
   test('the same job under several sync keywords is listed once', () async {

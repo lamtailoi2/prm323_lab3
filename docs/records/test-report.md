@@ -416,6 +416,25 @@ Code changed in this run (unlike Run 24, which was docs-only): `application_stat
 
 ---
 
+## Run 26: Search bookmark writes the Saved document shape (2026-11-05)
+
+Branch `feat/saved-internships` on Windows 11. Environment: Flutter 3.47.8 / Dart 3.13.7, Android emulator `sdk gphone64 x86 64` (API 37, 1080 × 2424). Follows P-51: Search used the legacy `SavedService`, which wrote only `savedAt`, so the Saved screen could not read the item.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **Formatted 188 files (0 changed)** |
+| 2 | `flutter analyze` | **No issues found!** (74.1 s) |
+| 3 | `flutter test` (full suite) | **592 tests, all passed** |
+| 4 | Search bookmark widget test (`test/features/internships/search_results_screen_test.dart`) | **Passed**: the tap writes to `FakeSavedInternshipService` and the card changes to the `Remove from saved` state. The ViewModel test for the removed `toggleSave` was deleted with the method |
+| 5 | `flutter run -d emulator-5554 --dart-define-from-file=.env` | **Built, installed and launched**, signed in as the test account. Home, Search and Saved tabs loaded real Firestore data (94 listings) |
+| 6 | Manual: Search Results → bookmark `Recruitment Intern` → Saved tab | **Passed**: the bookmark filled on Search, and Saved changed from 3 to **4 saved** with `Recruitment Intern` at the top (`evidence/screens/search-bookmark-saved-20261105.png`, `saved-after-search-bookmark-20261105.png`) |
+| 7 | Manual: Search Results → unbookmark the same card → Saved tab | **Passed**: Saved dropped back to **3 saved** and the item disappeared (`saved-after-search-unsave-20261105.png`) |
+| 8 | DebugView (`internship_save` with `source: search`) | **Not run** |
+
+Changed files: `search_results_viewmodel.dart` (saved state/subscription removed), `search_results_screen.dart` (uses `savedInternshipIdsProvider` + `SavedViewModel`), deleted `lib/services/saved_service.dart`, and the Search/router/fakes tests.
+
+---
+
 ## Run template
 
 ```markdown

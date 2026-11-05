@@ -14,7 +14,6 @@ import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
 import 'package:internly/services/saved_internship_service.dart';
-import 'package:internly/services/saved_service.dart';
 import 'package:internly/services/search_history_service.dart';
 import 'package:internly/services/user_profile_service.dart';
 
@@ -113,8 +112,6 @@ void main() {
       final internships = listings ?? FakeInternshipService();
       final saved = FakeSavedInternshipService()..seed(savedListings);
       addTearDown(saved.dispose);
-      final savedIds = FakeSavedService();
-      addTearDown(savedIds.dispose);
       final remoteConfig = FakeRemoteConfigService();
       final searchHistory = FakeSearchHistoryService();
       final profiles = FakeUserProfileService();
@@ -137,7 +134,6 @@ void main() {
             userProfileServiceProvider.overrideWithValue(profiles),
             applicationServiceProvider.overrideWithValue(applications),
             savedInternshipServiceProvider.overrideWithValue(saved),
-            savedServiceProvider.overrideWithValue(savedIds),
           ],
           child: const InternlyApp(),
         ),

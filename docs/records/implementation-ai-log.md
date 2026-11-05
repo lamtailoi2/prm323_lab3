@@ -455,6 +455,14 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-51: Search bookmark uses the Saved feature's write path
+- **Request:** "bấm bookmark saved bên search lại kh lưu đc qua bên saved internship, fix" — tapping the bookmark on a Search Results card showed no item on the Saved screen.
+- **Output:** **Cause:** Search wrote through the legacy `SavedService` (`lib/services/saved_service.dart`), which stored only `{savedAt}` in `users/{uid}/savedInternships/{key}`; `SavedInternshipService.watchSaved` reads the copied listing from the `internship` field and skipped those documents, so the bookmark looked saved on Search but the Saved list stayed empty. Removed the second write path: `SearchResultsViewModel` no longer owns saved state or subscriptions; `SearchResultsScreen` watches `savedInternshipIdsProvider` for the bookmark and calls `SavedViewModel.toggleAndReport(..., source: 'search')`, like Home and Internship Detail, showing a failure in its own SnackBar. Deleted `SavedService`, `savedServiceProvider` and `FakeSavedService`; updated the Search ViewModel/screen/router tests to `FakeSavedInternshipService`, and the bookmark widget test now asserts the shared saved collection receives the key and the card flips to `Remove from saved`.
+- **Verification:** `dart format lib test` → **188 files, 0 changed**; `flutter analyze` → **No issues found!** (74.1 s); `flutter test` → **592 tests, all passed**. On the Android 17 (API 37) emulator (`flutter run -d emulator-5554 --dart-define-from-file=.env`, signed in with the test account): bookmarking `Recruitment Intern` on Search Results filled the icon and the Saved tab changed from 3 to 4 saved items with that listing on top; unbookmarking it on Search returned Saved to 3 and removed the card. Screenshots: `evidence/screens/search-bookmark-saved-20261105.png`, `saved-after-search-bookmark-20261105.png`, `saved-after-search-unsave-20261105.png`.
+- **Decision:** Accepted. This performs the merge that P-44 left to the Search owner: one saved service and one document shape for Home, Search, Detail and Saved, so the same bookmark is readable everywhere.
+
+---
+
 ## Entry template
 
 ```markdown
