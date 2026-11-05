@@ -471,6 +471,24 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-53: ARTEMIS cases for Save (TC-08) and Apply → Success (TC-06, TC-07)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "viết test cho flow 2 và flow 4": task sheet items 8 (Flow 2 Save: TC-07, TC-08) and 9 (Flow 4 Application: TC-06).
+- **Output:**
+  - `e2e_test/test_saved.py` TC-08: Save from Detail, Saved list, open the saved card, unsave, Undo.
+  - `e2e_test/test_apply.py` TC-06: Apply Form → Validate CV → Review → Submit → Success, plus the `application_create` Logcat check. TC-07: an applied listing shows the `You applied on` banner, `View application` and Application Detail.
+  - Every asserted string was read from the screens first: `internship_detail_screen.dart`, `detail_bottom_bar.dart`, `saved_screen.dart`, `cv_validation_step.dart`, `application_review_screen.dart`, `application_success_screen.dart`, `application_detail_screen.dart`.
+  - `FILL_PERSONAL` and a new `UPLOAD_SAMPLE_CV` moved to `conftest.py`. TC-19's instruction text is unchanged (compared as strings).
+  - `docs/test-plan.md` §3: TC-06/07/08 rewritten to the built flow, Ready (not run).
+- **Verification:** `python -m py_compile` on the changed files → OK; `uv run pytest --collect-only -q` → 16 tests collected, including the three new ones. **Not run on a device**: the operator runs them.
+- **Decision:**
+  - Modified from the old plan rows. TC-06 follows the flow the app has (Validate CV → Review → Success), because CV Match Check (2d) is not built (DC-09, task 5).
+  - TC-08 compares Saved counts instead of emptying Saved first, so the account's saved listings stay.
+  - TC-06 / TC-07 use `Developer` listings and TC-08 uses `Python` listings. Applying to or saving TC-05's `Intern` listing would remove the `Apply now` / `Save` buttons it asserts.
+  - TC-06 uses the fictional `Sample_CV.pdf`, so the account's own CV is not sent to `validateCv`.
+  - TC-11 (export), TC-13 and TC-15 (notifications) were not written: those screens do not exist yet (tasks 1–3), and writing them now would mean guessing UI (AGENTS.md rule 1).
+
+---
+
 ## Entry template
 
 ```markdown
