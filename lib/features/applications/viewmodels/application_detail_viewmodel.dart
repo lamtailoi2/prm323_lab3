@@ -125,11 +125,28 @@ class ApplicationDetailViewModel extends Notifier<ApplicationDetailState> {
         application.status == ApplicationStatus.withdrawn) {
       return false;
     }
-    final service = ref.read(applicationServiceProvider);
+    final service = ref.read(applicationServiceProvider); // read before await
+    final analytics = ref.read(analyticsServiceProvider);
+    final previousStatus = application.status;
     state = state.copyWith(action: const AsyncLoading());
     try {
-      await service.withdraw(application.jobKey, previous: application.status);
+      await service.withdraw(application.jobKey, previous: previousStatus);
       if (ref.mounted) state = state.copyWith(action: const AsyncData(null));
+      // Withdraw is this entity's update (status change) and delete (the
+      // student gives up on it), per G-08 / docs/analytics-plan.md rows 12-13.
+      unawaited(
+        analytics.logEvent('application_update', {
+          'internship_id': application.jobKey,
+          'from_status': previousStatus.storageValue,
+          'to_status': ApplicationStatus.withdrawn.storageValue,
+        }),
+      );
+      unawaited(
+        analytics.logEvent('application_delete', {
+          'internship_id': application.jobKey,
+          'status': previousStatus.storageValue,
+        }),
+      );
       return true;
     } on AppException catch (error, stack) {
       if (ref.mounted) state = state.copyWith(action: AsyncError(error, stack));
@@ -145,11 +162,21 @@ class ApplicationDetailViewModel extends Notifier<ApplicationDetailState> {
         !state.canUndoWithdrawal) {
       return false;
     }
-    final service = ref.read(applicationServiceProvider);
+    final service = ref.read(applicationServiceProvider); // read before await
+    final analytics = ref.read(analyticsServiceProvider);
+    final restoredStatus =
+        application.previousStatus ?? ApplicationStatus.submitted;
     state = state.copyWith(action: const AsyncLoading());
     try {
       await service.undoWithdrawal(application.jobKey);
       if (ref.mounted) state = state.copyWith(action: const AsyncData(null));
+      unawaited(
+        analytics.logEvent('application_update', {
+          'internship_id': application.jobKey,
+          'from_status': ApplicationStatus.withdrawn.storageValue,
+          'to_status': restoredStatus.storageValue,
+        }),
+      );
       return true;
     } on AppException catch (error, stack) {
       if (ref.mounted) state = state.copyWith(action: AsyncError(error, stack));
