@@ -41,6 +41,15 @@ SIGNED_OUT = (
     "for the Login screen."
 )
 
+# ARTEMIS 351ca84 accepts `expected_output` but never runs its Outputter, so a
+# run returns no `output`. The agent is asked to put the JSON in its final
+# status report instead, which `final_report()` reads back.
+REPORT_AS_JSON = (
+    " Finish by calling report_task_status. Its explanation must be exactly "
+    "one JSON object and nothing else, no sentence before or after it, with "
+    "every key filled in from what you saw: "
+)
+
 
 @pytest.fixture(scope="session")
 def artemis() -> ArtemisClient:
@@ -50,6 +59,17 @@ def artemis() -> ArtemisClient:
         device_serial=DEVICE_SERIAL,
         default_profile=os.environ.get("ARTEMIS_PROFILE", "flash"),  # type: ignore[arg-type]
     )
+
+
+@pytest.fixture(autouse=True)
+def cold_start_app() -> None:
+    """Every run starts from a cold app (the sign-in session is kept), so text
+    or screens left by the previous run cannot make a case pass."""
+    _adb("shell", "am", "force-stop", APP_PACKAGE)
+    # A debug build starts slowly; input during its splash raises an "isn't
+    # responding" dialog, so the app is launched and left to settle first.
+    _adb("shell", "am", "start", "-W", "-n", f"{APP_PACKAGE}/.MainActivity")
+    time.sleep(10)
 
 
 async def run_case(
@@ -62,7 +82,7 @@ async def run_case(
     """Runs one instruction and returns the agent's structured report."""
     started = time.monotonic()
     result = await artemis.run(
-        instruction,
+        f"{instruction}{REPORT_AS_JSON}{expected_output}",
         expected_output=expected_output,
         locked_app_package=APP_PACKAGE,
     )
@@ -70,9 +90,23 @@ async def run_case(
     assert result.succeeded, (
         f"{test_id}: {result.status} {result.error or ''} (trace {result.trace_id})"
     )
-    report = parse_report(result.output)
+    report = parse_report(result.output) or parse_report(
+        await final_report(artemis, result.task_id)
+    )
     assert report, f"{test_id}: no structured output (trace {result.trace_id})"
     return report
+
+
+async def final_report(artemis: ArtemisClient, task_id: str) -> str | None:
+    """Explanation of the agent's last `report_task_status` step, read from the
+    daemon's step history (`GET /api/sessions/{id}/steps`)."""
+    # The pinned client has no public call for the step history.
+    steps = await artemis._request("GET", f"/api/sessions/{task_id}/steps")
+    for step in reversed(steps if isinstance(steps, list) else []):
+        action = step.get("action_taken") or {}
+        if action.get("action") == "report_task_status":
+            return (action.get("args") or {}).get("explanation")
+    return None
 
 
 def parse_report(output: Any) -> dict[str, Any]:
