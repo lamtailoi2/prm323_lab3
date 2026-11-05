@@ -417,6 +417,62 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-48: Flow 3 Application Detail audit and gap closure
+- **Request:** read the current source, check the Flow 3 plan (`plan-flow3-implement.md`) for mistakes or missing items, supplement it, and implement what remains.
+- **Output:** the audit found the feature already implemented on `feat/application-detail` — `ApplicationDetailScreen` (`ApplicationIdentityCard`, `ApplicationStatusTracker`, `ApplicantCard`), `ApplicationDetailViewModel` (`ViewState`, retry, withdraw + Undo within 24 h, `view_application` once), route `application_detail`, card / `Review offer` / `View application` navigation, model snapshot fields (`cvFileName` / `cvUrl` / `cvStoragePath`, `applicant`, `withdrawnAt` / `previousStatus`) and `ApplicationService.watchApplications()` + `withdraw` / `undoWithdrawal`. The plan was stale in several places (it deferred withdraw, assumed a `watchApplication(jobKey)` method and `CvFile` / `ApplicantSnapshot` models that do not exist, and reused deviation ID DC-27, which belongs to Review / Success). Closed the real gaps: added `e2e_test/test_applications.py` (TC-09 happy path, TC-10 airplane-mode recovery); corrected `analytics-plan` row 11 to Implemented; marked TC-09/TC-10 Ready (not run) and added their result rows in `test-plan.md`; defined the missing DC-29 in `design-traceability.md`, superseded DC-22 (d)–(f) and updated DC-24 item 11; updated the application schema and status rules in `architecture.md`; added Withdrawn to the badge table in `design-system.md` and resolved G-18 in `handoff-gaps.md`; recorded Run 24. `plan-flow3-implement.md` §2, §4–§7, §10.1 and §15 were corrected to the as-built contract.
+- **Verification:** `dart format --output=none --set-exit-if-changed lib test` → **186 files, 0 changed**; `flutter analyze` → **No issues found!**; Flow 3 targeted tests → **33 passed**; `flutter test` → **583 passed**. Five full-screen device screenshots were captured on the Android emulator (1080 × 2400) with the real signed-in test account — `application-list`, `application-detail-submitted`, `application-detail-applicant`, `application-detail-withdraw-dialog`, `application-detail-withdrawn` — saved in `evidence/screens/application-*.png` (full screen, not redacted; the owner asked for the real test-account screenshots). `empty`, `rejected`, `error` and `loading` were not captured: the account has one application, there is no UI to set another status, and a network error cannot be produced deterministically. E2E TC-09/TC-10 written but **not run** (no ARTEMIS daemon/toolchain); DebugView not run.
+- **Decision:** Accepted the existing implementation (it is ahead of the plan and covered by tests); the plan and docs were corrected rather than the code. Withdraw / Undo stays, because Flow 3d is part of the Lab 2 flow and the Application Detail withdrawn frame supplies the badge (G-18 resolved). E2E results and the DebugView screenshot remain open.
+
+---
+
+### P-49: Flow 3 Application Detail — full Figma alignment (option 1)
+- **Request:** after the P-48 audit, the owner chose "Phương án 1 – Đồng bộ hoàn toàn với Figma": align the UI with the Figma frame, fix the navigation bug and the error copy, add the missing tests, update the docs and recapture evidence. Rules given: do not guess, ask when unsure, avoid re-reading files unnecessarily. `plan-flow3-implement.md` must be corrected wherever it no longer matches.
+- **Output:** verified the audit against `docs/design/screenshots/application-detail-final.png` before changing anything; it found DC-29 itself wrong about the tracker (it described 5 steps including "Onboarding"; the frame has 4 and no Onboarding), so the docs were corrected to the frame rather than the code. Product changes: `application_status_tracker.dart` — 4 steps with the frame's names (`Technical interview`, `Offer decision`), a `Step X of 4 (Y% completed)` progress line, right-aligned step dates, and the duplicate badge removed from the identity card (it now lives only on the tracker); `application_identity_card.dart` — facts render as `surface-variant` chips and the raw `Divider(height: 1)` is gone; `applicant_card.dart` — the CV tile reads `{size} • Uploaded {date}` from a new `cvSizeBytes` recorded at submission, with the previous `PDF · Submitted {date}` kept for older documents; `internship_application.dart` / `application_service.dart` / `application_review_viewmodel.dart` — `cvSizeBytes` added to the model, the `createApplication` contract and the Firestore write; `application_detail_screen.dart` — heading `About {companyName}`, app-bar back and the empty state's `Back to Applications` use `context.go('/applications')` instead of `Navigator.maybePop` (which returned to Internship Detail), and `Withdraw application` is styled destructive with `AppColors.error` through a local `_DestructiveWithdrawButton` theme override (no new `AppButtonVariant`, per the design-system rule and the owner's choice); `application_service.dart` — `_toWriteAppException` takes the action name, so a failed withdraw / undo reads "We could not withdraw this application …" / "We could not undo this withdrawal …" instead of the generic apply-submission message. Tests: `application_detail_screen_test.dart` (4 steps + progress, `{size} • Uploaded`, generic CV fallback, single status badge, app-bar back to `/applications`, empty-state action to `/applications`, destructive button colour), `application_detail_viewmodel_test.dart` (withdraw- and undo-specific failure messages), `internship_application_test.dart` (`cvSizeBytes` present / absent), `test/helpers/fakes.dart` (`CreatedApplication.cvSizeBytes`). Docs: DC-29 rewritten to the frame (4 steps, progress, static step descriptions, `About {companyName}`, destructive withdraw, back behaviour, no verified tick, no Version 2.4, CV tile); `architecture.md` — `ApplicationDetailViewModel` Done with its real services (`ApplicationService`, `InternshipService`, `ExternalLinkService`, `AnalyticsService`) and `cvSizeBytes` in the application schema; `handoff-gaps.md` — G-18 table row Resolved with the page-05 specimen note; `design-system.md` — §2.12 "6 specimens".
+- **Verification:** `dart format --output=none --set-exit-if-changed lib test` → **0 changed after formatting**; `flutter analyze` → **No issues found!**; Flow 3 targeted (`internship_application_test`, `test/features/applications/`, `test/app/router_test.dart`) → **88 passed**; `flutter test` (full suite) → **593 passed**. No screenshots or E2E were captured in this entry: the emulator was not run and ARTEMIS is not available on this machine — recapturing `evidence/screens/application-*.png` from the new build is still open (the existing five were taken before these changes and no longer match).
+- **Decision:** Applied. Accepted the design system rule that `AppButton` gains no destructive variant; the withdraw styling stays local to the screen and is recorded in DC-29. Rejected the audit's suggestion to render the frame's per-step process captions and the "Expected review outcome by" banner as static text: they describe one employer's process and the app has no such data (rule 7), so the tracker keeps its generic descriptions and real dates only, and DC-29 records that deviation. Kept `Year of study` out of the applicant rows (the frame does not show it). Kept the company card to logo / name / location (API limit, DC-24).
+
+---
+
+### P-50: ARTEMIS host setup, first TC-05 runs and E2E harness fixes
+- **Request:** (Claude Code, Opus 5.5, session 2026-11-05; operator Phạm Nguyễn Hoàng Anh) "guide me to install and run ARTEMIS for Lab 3". Then, step by step at the operator's choice: wait for the overloaded model, switch to Flash-Lite, find why TC-05 fails, fix `conftest.py` (approved by Lâm Tài Lợi, its author), patch ARTEMIS's text input, run TC-05 three times, write the run guide, record and commit.
+- **Output:**
+  - Host setup: ARTEMIS host on macOS (`~/artemis` at `351ca84`, `uv` via Homebrew, `scrcpy`, daemon without `start.sh`). The operator created the Gemini key (free tier) and entered it themself.
+  - Diagnosis, each step checked against the daemon log, the session API or the device:
+    - the default model is capped at 20 requests per day and was overloaded, and the fallback never triggers before the 180 s timeout;
+    - nothing calls the Outputter, so runs return no `output`;
+    - `KEYCODE_PASTE` is ignored by Flutter text fields;
+    - leftover text and the cold-start ANR affected runs.
+  - `e2e_test/conftest.py` (`6fe33a9`): `REPORT_AS_JSON` + `final_report()` (reads `report_task_status` from `/api/sessions/{id}/steps`), and the `cold_start_app` fixture (force-stop, `am start -W`, 10 s).
+  - `e2e_test/artemis-local.patch`: Flash-Lite models and `adb input text` for ASCII.
+  - `docs/guides/artemis-e2e.md`.
+  - `docs/test-plan.md`: model row, §1, TC-05 Done, §4 row and the flaky / failed table.
+  - `evidence/artemis/e2e-environment-20261105.md` with `runs-20261105.jsonl` and three screenshots.
+  - README and disclosure rows.
+- **Verification:**
+  - `artemis doctor` all ✔.
+  - Direct API calls per model (HTTP codes in the evidence file).
+  - Manual input check on the emulator (`keyevent 279` leaves the field empty, `adb shell input text` types).
+  - `git apply --check` of the patch on a clean `351ca84` → applies.
+  - `python -m py_compile conftest.py` → OK.
+  - 11 real TC-05 runs, all recorded with their causes. The final `uv run pytest test_detail.py --count 3 -v` → **3 passed** (traces `505846be`, `045c4d16`, `ebe3d568`, average 65.7 s).
+  - No Flutter code changed, so `flutter analyze` / `flutter test` were not run for this entry.
+- **Decision:**
+  - Modified. The default `gemini-3.8-flash` was replaced, because its free tier (20 requests per day) cannot carry the suite.
+  - ARTEMIS is patched locally instead of changing the app: the paste behaviour is the tool's, and the app's Search code was checked and is correct.
+  - The report is read through the daemon's step API with the client's private `_request` (the pinned client has no public call). Revisit if ARTEMIS is upgraded.
+  - Run 3 passed but is not counted, because it did not type.
+  - Replays stay on the host, because they show the signed-in account.
+
+---
+
+### P-51: Search bookmark uses the Saved feature's write path
+- **Request:** "bấm bookmark saved bên search lại kh lưu đc qua bên saved internship, fix" — tapping the bookmark on a Search Results card showed no item on the Saved screen.
+- **Output:** **Cause:** Search wrote through the legacy `SavedService` (`lib/services/saved_service.dart`), which stored only `{savedAt}` in `users/{uid}/savedInternships/{key}`; `SavedInternshipService.watchSaved` reads the copied listing from the `internship` field and skipped those documents, so the bookmark looked saved on Search but the Saved list stayed empty. Removed the second write path: `SearchResultsViewModel` no longer owns saved state or subscriptions; `SearchResultsScreen` watches `savedInternshipIdsProvider` for the bookmark and calls `SavedViewModel.toggleAndReport(..., source: 'search')`, like Home and Internship Detail, showing a failure in its own SnackBar. Deleted `SavedService`, `savedServiceProvider` and `FakeSavedService`; updated the Search ViewModel/screen/router tests to `FakeSavedInternshipService`, and the bookmark widget test now asserts the shared saved collection receives the key and the card flips to `Remove from saved`.
+- **Verification:** `dart format lib test` → **188 files, 0 changed**; `flutter analyze` → **No issues found!** (74.1 s); `flutter test` → **592 tests, all passed**. On the Android 17 (API 37) emulator (`flutter run -d emulator-5554 --dart-define-from-file=.env`, signed in with the test account): bookmarking `Recruitment Intern` on Search Results filled the icon and the Saved tab changed from 3 to 4 saved items with that listing on top; unbookmarking it on Search returned Saved to 3 and removed the card. Screenshots: `evidence/screens/search-bookmark-saved-20261105.png`, `saved-after-search-bookmark-20261105.png`, `saved-after-search-unsave-20261105.png`.
+- **Decision:** Accepted. This performs the merge that P-44 left to the Search owner: one saved service and one document shape for Home, Search, Detail and Saved, so the same bookmark is readable everywhere.
+
+---
+
 ## Entry template
 
 ```markdown

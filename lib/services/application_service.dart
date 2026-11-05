@@ -26,6 +26,7 @@ abstract interface class ApplicationService {
     required String cvStoragePath,
     required String cvFileName,
     required String cvUrl,
+    required int cvSizeBytes,
     required ApplicationApplicant applicant,
   });
 
@@ -103,6 +104,7 @@ class FirestoreApplicationService implements ApplicationService {
     required String cvStoragePath,
     required String cvFileName,
     required String cvUrl,
+    required int cvSizeBytes,
     required ApplicationApplicant applicant,
   }) async {
     final uid = _uid;
@@ -130,11 +132,12 @@ class FirestoreApplicationService implements ApplicationService {
             // The CV can no longer be replaced, so it is stored here too.
             'cvFileName': cvFileName,
             'cvUrl': cvUrl,
+            'cvSizeBytes': cvSizeBytes,
             // What the student sent: the profile can change later.
             'applicant': applicant.toFirestore(),
           });
     } on FirebaseException catch (error) {
-      throw _toWriteAppException(error);
+      throw _toWriteAppException(error, action: 'submit your application');
     } on Exception catch (error) {
       throw AppException(
         AppErrorKind.unknown,
@@ -152,7 +155,7 @@ class FirestoreApplicationService implements ApplicationService {
     'status': ApplicationStatus.withdrawn.storageValue,
     'withdrawnAt': FieldValue.serverTimestamp(),
     'previousStatus': previous.storageValue,
-  });
+  }, action: 'withdraw this application');
 
   @override
   Future<void> undoWithdrawal(String internshipKey) async {
@@ -161,7 +164,7 @@ class FirestoreApplicationService implements ApplicationService {
       'status': status.storageValue,
       'withdrawnAt': FieldValue.delete(),
       'previousStatus': FieldValue.delete(),
-    });
+    }, action: 'undo this withdrawal');
   }
 
   /// Reads the stored status a withdrawal replaced; `submitted` when the
@@ -187,16 +190,19 @@ class FirestoreApplicationService implements ApplicationService {
           ? ApplicationStatus.fromStorage(raw) ?? ApplicationStatus.submitted
           : ApplicationStatus.submitted;
     } on FirebaseException catch (error) {
-      throw _toWriteAppException(error);
+      throw _toWriteAppException(error, action: 'undo this withdrawal');
     }
   }
 
   /// Merge write of the fields an update changes; the rest of the document,
-  /// including the applicant snapshot, is kept.
+  /// including the applicant snapshot, is kept. [action] names what the
+  /// student was doing, so a failure reads e.g. "withdraw this application"
+  /// instead of the generic submit-application message.
   Future<void> _updateApplication(
     String internshipKey,
-    Map<String, Object?> fields,
-  ) async {
+    Map<String, Object?> fields, {
+    required String action,
+  }) async {
     final uid = _uid;
     if (uid == null || uid.isEmpty) {
       throw const AppException(
@@ -212,7 +218,7 @@ class FirestoreApplicationService implements ApplicationService {
           .doc(internshipKey)
           .set(fields, SetOptions(merge: true));
     } on FirebaseException catch (error) {
-      throw _toWriteAppException(error);
+      throw _toWriteAppException(error, action: action);
     }
   }
 
@@ -265,8 +271,12 @@ class FirestoreApplicationService implements ApplicationService {
   }
 
   /// The write fails for the same reasons a read does, but the message names
-  /// the action the student just took.
-  static AppException _toWriteAppException(FirebaseException error) {
+  /// the action the student just took (e.g. "withdraw this application"),
+  /// instead of always reading as a failed submission.
+  static AppException _toWriteAppException(
+    FirebaseException error, {
+    required String action,
+  }) {
     return switch (error.code) {
       'permission-denied' || 'unauthenticated' => AppException(
         AppErrorKind.permissionDenied,
@@ -277,13 +287,12 @@ class FirestoreApplicationService implements ApplicationService {
       'deadline-exceeded' ||
       'network-request-failed' => AppException(
         AppErrorKind.network,
-        'We could not submit your application. Check your connection and try '
-        'again.',
+        'We could not $action. Check your connection and try again.',
         cause: error,
       ),
       _ => AppException(
         AppErrorKind.unknown,
-        'We could not submit your application. Try again in a moment.',
+        'We could not $action. Try again in a moment.',
         cause: error,
       ),
     };

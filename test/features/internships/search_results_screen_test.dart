@@ -14,7 +14,7 @@ import 'package:internly/models/internship.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/internship_service.dart';
-import 'package:internly/services/saved_service.dart';
+import 'package:internly/services/saved_internship_service.dart';
 import 'package:internly/services/search_history_service.dart';
 import 'package:internly/theme/app_theme.dart';
 
@@ -23,14 +23,14 @@ import '../../helpers/pump.dart';
 
 void main() {
   late FakeInternshipService internships;
-  late FakeSavedService saved;
+  late FakeSavedInternshipService saved;
   late FakeSearchHistoryService history;
   late FakeAnalyticsService analytics;
   late Set<String> appliedKeys;
 
   setUp(() {
     internships = FakeInternshipService();
-    saved = FakeSavedService();
+    saved = FakeSavedInternshipService();
     history = FakeSearchHistoryService();
     analytics = FakeAnalyticsService();
     appliedKeys = <String>{};
@@ -54,7 +54,7 @@ void main() {
       ProviderScope(
         overrides: [
           internshipServiceProvider.overrideWithValue(internships),
-          savedServiceProvider.overrideWithValue(saved),
+          savedInternshipServiceProvider.overrideWithValue(saved),
           searchHistoryServiceProvider.overrideWithValue(history),
           analyticsServiceProvider.overrideWithValue(analytics),
           appliedJobsProvider.overrideWith((ref) => Stream.value(appliedKeys)),
@@ -273,7 +273,10 @@ void main() {
     await tester.tap(bookmarkButtons.first);
     await tester.pumpAndSettle();
 
-    expect(saved.savedByUid[testUser.uid], contains(sampleListings[1].key));
+    // The write goes to the shared saved collection the Saved screen reads,
+    // and the card flips to the saved state.
+    expect(saved.savedKeys, contains(sampleListings[1].key));
+    expect(find.byTooltip('Remove from saved'), findsOneWidget);
   });
 
   testWidgets('opens filter sheet and displays all sections', (tester) async {

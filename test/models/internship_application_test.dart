@@ -61,6 +61,7 @@ void main() {
       expect(application.applicant, isNull);
       expect(application.withdrawnAt, isNull);
       expect(application.cvFileName, isNull);
+      expect(application.cvSizeBytes, isNull);
     });
 
     test('reads the withdrawal, the CV snapshot and the applicant', () {
@@ -75,6 +76,7 @@ void main() {
         'cvFileName': 'Profile_CV.pdf',
         'cvUrl': 'https://storage.example/cvs/profile.pdf',
         'cvStoragePath': 'cvs/uid-123/profile.pdf',
+        'cvSizeBytes': 430080,
         'applicant': {
           'fullName': ' Minh Nguyen ',
           'email': 'minh@example.com',
@@ -91,6 +93,7 @@ void main() {
       expect(application.previousStatus, ApplicationStatus.underReview);
       expect(application.cvFileName, 'Profile_CV.pdf');
       expect(application.cvUrl, 'https://storage.example/cvs/profile.pdf');
+      expect(application.cvSizeBytes, 430080);
       final applicant = application.applicant!;
       expect(applicant.fullName, 'Minh Nguyen');
       expect(applicant.email, 'minh@example.com');

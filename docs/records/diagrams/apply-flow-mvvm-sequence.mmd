@@ -1,0 +1,31 @@
+sequenceDiagram
+    actor Student
+    participant V as ApplicationReviewScreen (View)
+    participant VM as ApplicationReviewViewModel
+    participant AS as ApplicationService
+    participant UP as UserProfileService
+    participant AN as AnalyticsService
+    participant FS as Cloud Firestore
+
+    Student->>V: taps "Submit application"
+    V->>VM: submit(session)
+    VM->>VM: guard: state.submit.isLoading? ignore repeated tap
+    VM->>VM: read providers BEFORE first await (AGENTS.md async rule)
+    VM-->>V: state.submit = AsyncLoading() (button shows spinner, disabled)
+    VM->>AS: createApplication(jobKey, title, companyName, cvStoragePath, cvFileName, cvUrl, applicant)
+    AS->>FS: users/{uid}/applications/{jobKey}.set({...status: submitted...})
+    alt write succeeds
+        FS-->>AS: ack
+        AS-->>VM: void
+        VM->>AN: logEvent("application_create", {internship_id, cv_source, duration_sec})
+        VM->>UP: updateApplyDetails(uid, details) / updateSkills(uid, skills)
+        Note over VM,UP: profile sync failure is logged to Crashlytics only, it never turns a stored submission into an error
+        VM->>VM: check ref.mounted before touching state
+        VM-->>V: state.submit = AsyncData(null), returns submittedAt
+        V->>V: context.go(success route) with recap (title, company, submittedAt)
+    else Firestore/permission/network error
+        FS-->>AS: FirebaseException
+        AS-->>VM: throw AppException(kind, userMessage, cause)
+        VM-->>V: state.submit = AsyncError(AppException)
+        V->>V: shows error.message + "Retry" (no raw exception ever rendered)
+    end

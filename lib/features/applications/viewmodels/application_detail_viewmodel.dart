@@ -10,6 +10,7 @@ import '../../../models/internship_application.dart';
 import '../../../services/analytics_service.dart';
 import '../../../services/application_service.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/external_link_service.dart';
 import '../../../services/internship_service.dart';
 
 /// `DateTime.now`, injectable so the 24-hour undo window is testable.
@@ -122,7 +123,7 @@ class ApplicationDetailViewModel extends Notifier<ApplicationDetailState> {
     final application = _current;
     if (application == null ||
         state.action.isLoading ||
-        application.status == ApplicationStatus.withdrawn) {
+        !application.status.canWithdraw) {
       return false;
     }
     final service = ref.read(applicationServiceProvider); // read before await
@@ -181,6 +182,24 @@ class ApplicationDetailViewModel extends Notifier<ApplicationDetailState> {
     } on AppException catch (error, stack) {
       if (ref.mounted) state = state.copyWith(action: AsyncError(error, stack));
       return false;
+    }
+  }
+
+  /// Opens the submitted CV in the device's viewer. Returns the failure so the
+  /// View can show it; `null` means the viewer opened.
+  Future<AppException?> previewCv() async {
+    final url = _current?.cvUrl;
+    if (url == null) {
+      return const AppException(
+        AppErrorKind.unknown,
+        'This application has no submitted CV.',
+      );
+    }
+    try {
+      await ref.read(externalLinkServiceProvider).open(Uri.parse(url));
+      return null;
+    } on AppException catch (error) {
+      return error;
     }
   }
 

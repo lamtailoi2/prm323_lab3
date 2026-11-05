@@ -81,7 +81,7 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 ## 3. State management and dependency injection (Riverpod 3)
 
 - **Riverpod only.** No Provider, Bloc, GetX, or `setState` for shared state. No singletons accessed from widgets.
-- **Services** are `Provider<Interface>` next to their interface (e.g. `serpApiClientProvider`). Tests override them with fakes (`overrideWithValue`).
+- **Services** are `Provider<Interface>` next to their interface (e.g. `internshipServiceProvider`). Tests override them with fakes (`overrideWithValue`).
 - **Data screens** expose a `ViewState<T>` (`core/state/view_state.dart`): `ViewLoading`, `ViewEmpty`, `ViewError(AppException)`, `ViewData(T)`. Views switch over it exhaustively and render the shared skeleton / `StateView.empty` / `StateView.error` + Retry.
 - **One-shot actions** (sign in, submit, save) use `AsyncValue<void>`; `AsyncError` carries an `AppException` whose message is safe to show.
 - **Async rules:** read every provider before the first `await`; check `ref.mounted` before setting state after an `await`; ignore repeated taps while loading.
@@ -90,28 +90,32 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 
 ### ViewModels and the services they use
 
-| ViewModel | Screen | Services | Status |
-|---|---|---|---|
-| `LoginViewModel` | Login | `AuthService`, `AnalyticsService` | Done |
-| `SignOutViewModel` | Profile | `AuthService`, `AnalyticsService` | Done |
-| `HomeViewModel` | Home | `InternshipService`, `UserProfileService` (preferred location), `RemoteConfigService`, `AnalyticsService` | Done |
-| `SearchViewModel` | Search, Search Results | `InternshipService`, `AnalyticsService` | Planned |
-| `InternshipDetailViewModel` | Internship Detail | `InternshipService`, `SavedInternshipService`, `ApplicationService`, `AnalyticsService` | Planned |
-| `SavedViewModel` | Saved Internships | `SavedInternshipService`, `AnalyticsService` | Planned |
-| `ApplyViewModel` | Application Form, CV Match Check, Review, Success | `ApplicationService`, `UserProfileService`, `FileStorageService`, `CvValidationService`, `RemoteConfigService`, `AnalyticsService`, `CrashlyticsService` | Planned |
-| `CvValidationViewModel` | Validate CV step (Apply, pre-submit) | `CvValidationService`, `AnalyticsService` | Done (service, ViewModel, step widget, tests; Apply screens not built) |
-| `MyApplicationsViewModel` | My Applications | `ApplicationService` | Done (list, status filter, retry; no writes, no detail) |
-| `ApplicationDetailViewModel` | Application Detail | `ApplicationService`, `AnalyticsService` | Planned |
-| `ProfileViewModel` | Profile | `UserProfileService` (+ auth for email and photo) | Done |
-| `EditProfileViewModel` | Edit profile | `UserProfileService`, `AnalyticsService` | Done |
-| `EditSkillsViewModel`, `EditPreferencesViewModel` | Profile sheets | `UserProfileService`, `AnalyticsService` | Done |
-| `UpdateCvViewModel` | Update CV sheet | `DocumentPickerService`, `FileStorageService`, `UserProfileService`, `AnalyticsService` | Done |
-| `OpenCvViewModel` | Profile (View CV) | `ExternalLinkService` | Done |
-| `FirebaseDemoViewModel` | Firebase demo area | `RemoteConfigService`, `CrashlyticsService`, `NotificationService` | Planned |
-| `NotificationCenterViewModel` | Notification Center | `NotificationService`, `AnalyticsService` | Planned |
-| `ReportExportViewModel` | Report export | `ReportExportService`, `FileStorageService`, `ApplicationService`, `AnalyticsService` | Planned |
+| ViewModel | Screen | State | Services | Status |
+|---|---|---|---|---|
+| `LoginViewModel` | Login | `AsyncValue<void>` | `AuthService`, `AnalyticsService` | Done |
+| `SignOutViewModel` | Profile | `AsyncValue<void>` | `AuthService`, `AnalyticsService` | Done |
+| `HomeViewModel` | Home | `HomeState` (`ViewState<HomeFeed>` + selected role) | `InternshipService`, `UserProfileService` (preferred location, skills), `RemoteConfigService`, `AnalyticsService` | Done |
+| `SearchViewModel` | Search | `SearchState` | `InternshipService`, `SearchHistoryService` | Done |
+| `SearchResultsViewModel` | Search Results | `SearchResultsState` | `InternshipService`, `SearchHistoryService`, `AnalyticsService` | Done |
+| `InternshipDetailViewModel` | Internship Detail | `ViewState<InternshipDetail>` | `InternshipService`, `UserProfileService` (CV Match Check), `RemoteConfigService`, `ApplicationService`, `AnalyticsService` | Done |
+| `SavedViewModel` | Saved Internships (also the bookmark toggles on Home, Search Results and Internship Detail) | `AsyncValue<void>` | `SavedInternshipService`, `AnalyticsService` | Done |
+| `ApplyFormViewModel` | Application Form (CV pick/upload, profile prefill; also the CV sheet) | `ApplyFormState` | `UserProfileService`, `FileStorageService`, `DocumentPickerService`, `ExternalLinkService`, `InternshipService`, `RemoteConfigService`, `AnalyticsService` | Done |
+| `CvValidationViewModel` | Validate CV step (Apply, pre-submit; `widgets/cv_validation_step.dart`) | `ViewState<CvValidationResult>` | `CvValidationService`, `AnalyticsService` | Done (service, ViewModel, step widget, tests) |
+| `ApplicationReviewViewModel` | Application Review → Success | `ApplicationReviewState` | `ApplicationService`, `InternshipService`, `UserProfileService`, `AnalyticsService`, `CrashlyticsService` | Done (Application Success is a stateless recap screen, no ViewModel) |
+| `MyApplicationsViewModel` | My Applications | `MyApplicationsState` | `ApplicationService` | Done (list, status filter, retry; read-only) |
+| `ApplicationDetailViewModel` | Application Detail | `ApplicationDetailState` | `ApplicationService`, `InternshipService`, `ExternalLinkService`, `AnalyticsService` | Done (load, tracker, withdraw/undo, preview, tests) |
+| `ProfileViewModel` | Profile | `ViewState<ProfileOverview>` | `UserProfileService`, auth state (`authStateChangesProvider`) for email and photo | Done |
+| `EditProfileViewModel` | Edit profile (also the academic standing sheet) | `EditProfileState` | `UserProfileService`, `AnalyticsService` | Done |
+| `EditSkillsViewModel`, `EditPreferencesViewModel` | Profile sheets | `EditSkillsState`, `EditPreferencesState` | `UserProfileService`, `AnalyticsService` | Done |
+| `UpdateCvViewModel` | Update CV sheet | `UpdateCvState` | `DocumentPickerService`, `FileStorageService`, `UserProfileService`, `AnalyticsService` | Done |
+| `OpenCvViewModel` | Profile (View CV) | `AsyncValue<void>` | `ExternalLinkService` | Done |
+| `FirebaseDemoViewModel` | Firebase demo area | — | `RemoteConfigService`, `CrashlyticsService`, `NotificationService` | Planned (no file in `lib/`) |
+| `NotificationCenterViewModel` | Notification Center | — | `NotificationService`, `AnalyticsService` | Planned (no file in `lib/`) |
+| `ReportExportViewModel` | Report export | — | `ReportExportService`, `FileStorageService`, `ApplicationService`, `AnalyticsService` | Planned (no file in `lib/`) |
 
-Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `ApplicationService` (Firestore `users/{uid}/applications` listener, read-only), `UserProfileService` (Firestore `users/{uid}` listener + merge writes per section), `FileStorageService` (Cloud Storage for Firebase), `DocumentPickerService` (system file picker, `file_selector`), `ExternalLinkService` (opens a URL in another app, `url_launcher`), `CvValidationService` (callable `validateCv`), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`; Gemini is called only by the callable `validateCv` function.
+Three shared providers sit next to the ViewModels and serve widgets directly: `savedInternshipsProvider` (`StreamProvider<List<Internship>>`) and `savedInternshipIdsProvider` (`Provider<Set<String>>`, the keys for the Save Toggle) in `lib/features/saved/viewmodels/saved_providers.dart`, and `appliedJobsProvider` (`StreamProvider<Set<String>>`, the job identities for the `Applied` badge) in `lib/features/applications/viewmodels/applied_providers.dart`. All three depend on user-scoped services, so sign-out drops them (AGENTS.md rule 11).
+
+Services that exist today (one file per service in `lib/services/`, with its implementation and Riverpod provider; interface-based services declare the interface in the same file): `AuthService` (Firebase Auth, plus `authStateChangesProvider` and `currentUserIdProvider`), `InternshipService` (Firestore `internships` listener), `ApplicationService` (Firestore `users/{uid}/applications` listener; create, withdraw and undo), `UserProfileService` (Firestore `users/{uid}` listener + merge writes per section), `SavedInternshipService` (Firestore `users/{uid}/savedInternships` listener; save and remove), `SearchHistoryService` (Firestore `users/{uid}/searchHistory`: recent terms, record and clear), `FileStorageService` (Cloud Storage for Firebase), `DocumentPickerService` (system file picker, `file_selector`), `ExternalLinkService` (opens a URL in another app, `url_launcher`), `CvValidationService` (callable `validateCv`), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. `LocalAuthService` and `LocalFileStorageService` are local implementations of `AuthService` / `FileStorageService` (in-memory user, app documents directory) that no default provider wires in. `NotificationService` and `ReportExportService` do not exist yet; their features add them. SerpAPI is called only by the scheduled function in `functions/`; Gemini is called only by the callable `validateCv` function.
 
 ## 4. Sequence: Home feed (shared Firestore pool)
 
@@ -132,7 +136,7 @@ sequenceDiagram
         FS-->>IS: snapshot of active documents
         IS-->>VM: List<Internship> (malformed docs skipped + logged)
         VM->>VM: split into Recommended / Recently Posted (Remote Config limits)
-        VM->>A: logEvent("search", {search_term, result_count, elapsed_sec})
+        VM->>A: logEvent("search", {search_term, result_count, elapsed_sec, source: home})
         VM-->>V: ViewData → InternshipCard list
     else empty pool
         IS-->>VM: []
@@ -183,16 +187,21 @@ Rules for feature owners:
 
 Email and photo are never copied here; they come from the Google account. `city` (where the student lives) and `preferences.location` (where they want an internship) are both kept; Update preferences starts from `city` when its location is empty (G-30). Replacing the CV keeps the old file in Storage because submitted applications may still link to it.
 
-**Application document `users/{uid}/applications/{jobKey}`** (`InternshipApplication`, `lib/models/internship_application.dart`). The document ID is the listing key, so one student can have at most one application per listing. The Apply flow owns the writes; My Applications only reads them today.
+**Application document `users/{uid}/applications/{jobKey}`** (`InternshipApplication`, `lib/models/internship_application.dart`). The document ID is the listing key, so one student can have at most one application per listing. The Apply flow writes the snapshot; My Applications and Application Detail read it.
 
 | Field | Type | Written by |
 |---|---|---|
 | `title`, `companyName` | string (required) | Apply flow (snapshot of the listing, which expires from the pool, G-25) |
 | `appliedAt` | timestamp (required) | Apply flow |
-| `status` | `submitted` / `under_review` / `interview` / `accepted` / `rejected` (required, `ApplicationStatus`) | Apply flow; later the student's own status update |
+| `status` | `submitted` / `under_review` / `interview` / `accepted` / `rejected` / `withdrawn` (required, `ApplicationStatus`) | Apply flow; withdraw / undo (Flow 3d) |
 | `nextStepAt` | timestamp or null (optional) | Interview slot or the employer's reply deadline, when the student records one |
+| `withdrawnAt`, `previousStatus` | timestamp / status or null (optional) | `ApplicationService.withdraw` keeps the status it replaced so `undoWithdrawal` can restore it |
+| `cvFileName`, `cvUrl`, `cvStoragePath`, `cvSizeBytes` | string / string / string / int or null (optional) | Apply flow; the CV that was sent, read-only afterwards (`Preview` opens `cvUrl`; `cvSizeBytes` backs the `{size} • Uploaded {date}` CV tile on Application Detail) |
+| `applicant` | map: `fullName` (required), `email`, `phone`, `university`, `yearOfStudy`, `skills`, `shortIntroduction` | Apply flow; the profile values at submission time |
 
-A stored status outside that list (for example `withdrawn`) is malformed: the document is skipped and logged, because only the five page-05 statuses have a badge (G-18, DC-22). My Applications sorts by `appliedAt` descending and derives the count line and the status chips from the documents it received, so no index beyond the default is needed.
+A required field that is missing or has the wrong type makes the document malformed: the service skips and logs it. A stored status outside the six `ApplicationStatus` values is malformed too. The optional `applicant` / CV snapshot is parsed defensively — a malformed map becomes `null` and the rest of the application still loads (Application Detail hides that card). My Applications sorts by `appliedAt` descending and derives the count line and the status chips from the documents it received, so no index beyond the default is needed.
+
+Application Detail subscribes to `ApplicationService.watchApplications()` and picks the document whose `jobKey` equals the route parameter, so the screen follows status, withdraw and undo writes live; it also watches `InternshipService.watchByKey(jobKey)` for the live listing facts (logo, pay, work mode, location, posted age) while the listing is still in the shared pool. `view_application` is logged once per opened detail (analytics-plan row 11).
 
 ## 7. Firebase and API integration points
 
