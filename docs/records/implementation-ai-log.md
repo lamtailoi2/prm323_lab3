@@ -463,6 +463,14 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-52: runs.jsonl records the pytest result
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) after P-50, write the pytest outcome of each ARTEMIS run into `runs.jsonl`. The pass/fail of TC-05 runs had to be looked up in the daemon log, because `succeeded` is ARTEMIS's own status and stayed `true` when the report check failed.
+- **Output:** `e2e_test/conftest.py`: `_record()` keeps the run in `_pending_run`; a `pytest_runtest_makereport` hook writes it when the test's call phase ends, adding `pytest` (`passed` / `failed`) and `failure` (the assertion or exception message). A test that fails before ARTEMIS runs still gets a line, keyed by the test name. `docs/guides/artemis-e2e.md` §5 and `docs/test-plan.md` §1 describe the new fields.
+- **Verification:** `python -m py_compile conftest.py` → OK. A throwaway test file (fixture overridden, no ARTEMIS call, no device) produced three lines: a pass (`"pytest": "passed"`), a failure after a run (`"succeeded": true`, `"pytest": "failed"`, `"failure": "AssertionError: … no structured output …"`) and a failure before a run (`"failure": "FileNotFoundError: adb"`). The file was deleted and `runs.jsonl` restored to its 11 lines. Not yet seen on a real ARTEMIS run.
+- **Decision:** Accepted. Lines written before this change keep their old shape; nothing in `evidence/` was rewritten.
+
+---
+
 ## Entry template
 
 ```markdown

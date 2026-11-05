@@ -45,7 +45,7 @@ uv sync
 uv run pytest --count 3 -v            # every test 3 times (pytest-repeat)
 ```
 
-Each run appends `{test_id, status, trace_id, seconds}` to `e2e_test/artifacts/runs.jsonl`. Copy the run table, trace IDs and screenshots / replays into `evidence/artemis/`.
+Each run appends `{test_id, status, succeeded, trace_id, seconds, error, pytest, failure}` to `e2e_test/artifacts/runs.jsonl` once the test ends; `pytest` (`passed` / `failed`) is the result, `succeeded` only ARTEMIS's status. Copy the run table, trace IDs and screenshots / replays into `evidence/artemis/`.
 
 ## 2. Critical flows → screens
 

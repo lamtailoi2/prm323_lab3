@@ -110,7 +110,7 @@ What `conftest.py` does for every test:
 
 ## 5. Read and record the results
 
-- **The pytest result is the test result.** In `e2e_test/artifacts/runs.jsonl`, `succeeded` is only ARTEMIS's own status. It is `true` even when the report was missing or wrong.
+- **The pytest result is the test result.** Each line of `e2e_test/artifacts/runs.jsonl` is written when the test ends, with `"pytest": "passed"` or `"failed"` and, for a failure, its message in `failure`. `succeeded` is only ARTEMIS's own status: it is `true` even when the report was missing or wrong. Lines written before 2026-11-06 have no `pytest` field.
 - To see what the agent did, open the session in the web console. You can also read its steps (each action, the screenshots' names and the final report):
   ```bash
   curl -s http://127.0.0.1:8000/api/sessions/<trace_id>/steps
