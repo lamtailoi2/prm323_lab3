@@ -117,6 +117,10 @@ void main() {
           builder: (context, state) => const Text('Profile tab'),
         ),
         GoRoute(
+          path: '/profile/notifications',
+          builder: (context, state) => const Text('Notification Center'),
+        ),
+        GoRoute(
           path: '/applications',
           builder: (context, state) => const Text('Applications tab'),
         ),
@@ -472,14 +476,12 @@ void main() {
     expect(find.textContaining('skill match'), findsNothing);
   });
 
-  testWidgets('the bell explains notifications are coming soon', (
-    tester,
-  ) async {
+  testWidgets('the bell opens the Notification Center', (tester) async {
     internships.byKey[listing.key] = listing;
     await pumpDetail(tester);
 
     await tester.tap(find.byTooltip('Notifications'));
-    await tester.pump();
-    expect(find.text('Notifications are coming soon.'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Notification Center'), findsOneWidget);
   });
 }

@@ -107,8 +107,7 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
           IconButton(
             tooltip: 'Notifications',
             icon: const Icon(Symbols.notifications_rounded),
-            onPressed: () =>
-                _showMessage(context, 'Notifications are coming soon.'),
+            onPressed: () => context.push(AppRoutes.notificationCenter),
           ),
           _ProfileAction(
             user: user,
@@ -191,12 +190,6 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
         ),
       ),
     );
-  }
-
-  static void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

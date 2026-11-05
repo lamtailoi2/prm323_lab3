@@ -5,6 +5,7 @@ import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/utils/job_key.dart';
 import 'package:internly/features/internships/models/search_history_entry.dart';
 import 'package:internly/models/app_user.dart';
+import 'package:internly/models/cv_match_result.dart';
 import 'package:internly/models/cv_validation_result.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/models/internship_application.dart';
@@ -13,6 +14,7 @@ import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
+import 'package:internly/services/cv_match_service.dart';
 import 'package:internly/services/cv_validation_service.dart';
 import 'package:internly/services/document_picker_service.dart';
 import 'package:internly/services/external_link_service.dart';
@@ -380,6 +382,7 @@ class FakeAuthService implements AuthService {
 class FakeCrashlyticsService implements CrashlyticsService {
   final Map<String, Object> customKeys = <String, Object>{};
   final List<Object> recordedErrors = <Object>[];
+  int crashCalls = 0;
   String? userId;
 
   @override
@@ -403,7 +406,7 @@ class FakeCrashlyticsService implements CrashlyticsService {
       customKeys[key] = value;
 
   @override
-  void crashForTesting() {}
+  void crashForTesting() => crashCalls++;
 }
 
 /// In-memory [SearchHistoryService] backed by a broadcast stream, keyed by
@@ -768,6 +771,47 @@ class FakeCvValidationService implements CvValidationService {
   Future<CvValidationResult> validate(String storagePath) async {
     calls++;
     paths.add(storagePath);
+    await gate?.future;
+    final failure = error;
+    if (failure != null) throw failure;
+    return result;
+  }
+}
+
+/// Records CV Match calls instead of reaching Cloud Functions.
+class FakeCvMatchService implements CvMatchService {
+  CvMatchResult result = const CvMatchResult(
+    internshipTitle: 'Flutter Intern',
+    companyName: 'Northstar Labs',
+    percent: 50,
+    matchedCount: 1,
+    totalRequired: 2,
+    matched: <String>['Flutter'],
+    missing: <String>['Dart'],
+    niceToHave: <String>[],
+    suggestions: <CvMatchSuggestion>[
+      CvMatchSuggestion(skill: 'Dart', text: 'Mention your Dart project.'),
+    ],
+    summary: 'A solid start.',
+    cvReadable: true,
+  );
+  AppException? error;
+
+  /// Completes the next check only when the test calls `complete()`.
+  Completer<void>? gate;
+
+  int calls = 0;
+  final List<String> paths = <String>[];
+  final List<String> internshipKeys = <String>[];
+
+  @override
+  Future<CvMatchResult> match({
+    required String storagePath,
+    required String internshipKey,
+  }) async {
+    calls++;
+    paths.add(storagePath);
+    internshipKeys.add(internshipKey);
     await gate?.future;
     final failure = error;
     if (failure != null) throw failure;
