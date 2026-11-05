@@ -3,8 +3,8 @@
 Every test sends ONE natural-language instruction, asks the agent for a JSON
 object describing what is visible at the end (`expected_output`), and asserts on
 those values, not on the run status alone. Each run is appended to
-`artifacts/runs.jsonl` (test id, status, trace id, duration) for the evidence
-table in docs/test-plan.md.
+`artifacts/runs.jsonl` (test id, ARTEMIS status, trace id, duration, pytest
+result and failure) for the evidence table in docs/test-plan.md.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import time
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -128,9 +129,13 @@ def parse_report(output: Any) -> dict[str, Any]:
     return {}
 
 
+# The current test's run; written to runs.jsonl once its pytest result is known.
+_pending_run: dict[str, Any] | None = None
+
+
 def _record(test_id: str, result: Any, seconds: float) -> None:
-    ARTIFACTS.mkdir(exist_ok=True)
-    line = {
+    global _pending_run
+    _pending_run = {
         "test_id": test_id,
         "status": result.status,
         "succeeded": result.succeeded,
@@ -138,8 +143,28 @@ def _record(test_id: str, result: Any, seconds: float) -> None:
         "seconds": round(seconds, 1),
         "error": result.error,
     }
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(
+    item: pytest.Item, call: pytest.CallInfo[None]
+) -> Generator[None, Any, None]:
+    """Appends the run with its pytest result: `succeeded` is only ARTEMIS's
+    status and stays true when the report or an assertion fails."""
+    outcome = yield
+    report = outcome.get_result()
+    if report.when != "call":
+        return
+    global _pending_run
+    line = _pending_run or {"test_id": item.name}
+    _pending_run = None
+    line["pytest"] = report.outcome
+    if report.failed:
+        crash = getattr(report.longrepr, "reprcrash", None)
+        line["failure"] = (crash.message if crash else str(report.longrepr))[:300]
+    ARTIFACTS.mkdir(exist_ok=True)
     with (ARTIFACTS / "runs.jsonl").open("a", encoding="utf-8") as file:
-        file.write(json.dumps(line) + "\n")
+        file.write(json.dumps(line, ensure_ascii=False) + "\n")
 
 
 # ---- Analytics check through Logcat (Lab 3: at least one test) -------------
