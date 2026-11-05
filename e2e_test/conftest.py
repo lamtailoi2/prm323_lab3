@@ -130,3 +130,61 @@ def logged_analytics_events() -> list[str]:
     """Event names logged since the last `enable_analytics_debug()`."""
     dump = _adb("logcat", "-d", "-s", "FA", "FA-SVC")
     return re.findall(r"Logging event: origin=app,name=([a-z0-9_]+)", dump)
+
+
+# ---- Device setup for the Apply Form cases (Flow 1 pre-submit) ------------
+
+SAMPLE_CV_NAME = "Sample_CV.pdf"
+
+
+def _sample_pdf() -> bytes:
+    """A one-page PDF with no personal data, to upload as a test CV."""
+    text = b"Sample CV - test data for Internly"
+    content = b"BT /F1 18 Tf 72 720 Td (" + text + b") Tj ET"
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+        b"/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length %d >>\nstream\n" % len(content) + content + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for number, body in enumerate(objects, 1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % number + body + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
+    for offset in offsets:
+        out += b"%010d 00000 n \n" % offset
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (
+        len(objects) + 1,
+        xref,
+    )
+    return bytes(out)
+
+
+def push_sample_cv() -> None:
+    """Puts `Sample_CV.pdf` in the device's Downloads, where the Android
+    document picker lists it."""
+    ARTIFACTS.mkdir(exist_ok=True)
+    local = ARTIFACTS / SAMPLE_CV_NAME
+    local.write_bytes(_sample_pdf())
+    _adb("push", str(local), f"/sdcard/Download/{SAMPLE_CV_NAME}")
+    _adb(
+        "shell",
+        "am",
+        "broadcast",
+        "-a",
+        "android.intent.action.MEDIA_SCANNER_SCAN_FILE",
+        "-d",
+        f"file:///sdcard/Download/{SAMPLE_CV_NAME}",
+    )
+
+
+def set_network(enabled: bool) -> None:
+    """Turns Wi-Fi and mobile data on or off (emulator / test device only)."""
+    state = "enable" if enabled else "disable"
+    _adb("shell", "svc", "wifi", state)
+    _adb("shell", "svc", "data", state)
