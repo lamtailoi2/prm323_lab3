@@ -259,7 +259,15 @@ Reference: the Saved unsave Snackbar — `check_circle` + `Removed from Saved` +
 
 ### 2.14 Components not on page 05
 
-Listed in the Lab 2 README but missing from the page 05 screenshot. Their specs must be read from the Figma component library before each is built: Save Toggle, Skill Tag, Badge, Info Banner, Text Area, Upload Dropzone, Bottom Sheet Option Row, Job Summary Card, CV File Card, Upload Progress Card, Match Card, Map Preview Card, Progress Stepper, Meta Tile, Section Header, Bullet Item, Benefit Item, Review Row (G-16).
+Listed in the Lab 2 README but missing from the page 05 screenshot. Their specs must be read from the Figma component library before each is built: Save Toggle, Skill Tag, Badge, Info Banner, Text Area, Upload Dropzone, Bottom Sheet Option Row, Job Summary Card, CV File Card, Upload Progress Card, Match Card, Map Preview Card, Progress Stepper, Meta Tile, Bullet Item, Benefit Item, Review Row (G-16).
+
+### 2.15 Built ahead of their Figma spec (G-16)
+
+No specimen exists yet for these three; built from the tokens so Internship Detail, the Apply Form, Application Review, Application Success and Application Detail (features/internships, features/applications) did not each invent a one-off. Add the real Figma spec here when it is available.
+
+- **`CompanyLogo`** (`core/widgets/company_logo.dart`) — square logo, initials fallback on `primaryContainer` when `url` is absent or fails to load (Figma "Logo").
+- **`DetailRow`** (`core/widgets/detail_row.dart`) — one label/value pair, `Semantics` announced as `"$label: $value"` (Figma "Review Row").
+- **`DetailSectionCard`** (`core/widgets/detail_section_card.dart`) — bordered section with an icon + title header, optional `isRequired` marker and trailing `action` (Figma "Section Header").
 
 ---
 
