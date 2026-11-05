@@ -98,8 +98,9 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `SearchViewModel` | Search, Search Results | `InternshipService`, `AnalyticsService` | Planned |
 | `InternshipDetailViewModel` | Internship Detail | `InternshipService`, `SavedInternshipService`, `ApplicationService`, `AnalyticsService` | Planned |
 | `SavedViewModel` | Saved Internships | `SavedInternshipService`, `AnalyticsService` | Planned |
-| `ApplyViewModel` | Application Form, CV Match Check, Review, Success | `ApplicationService`, `UserProfileService`, `FileStorageService`, `CvValidationService`, `RemoteConfigService`, `AnalyticsService`, `CrashlyticsService` | Planned |
-| `CvValidationViewModel` | Validate CV step (Apply, pre-submit) | `CvValidationService`, `AnalyticsService` | Done (service, ViewModel, step widget, tests; Apply screens not built) |
+| `ApplyFormViewModel` | Application Form (CV pick/upload, profile prefill) | `UserProfileService`, `FileStorageService`, `DocumentPickerService`, `ExternalLinkService`, `InternshipService`, `RemoteConfigService`, `AnalyticsService` | Done |
+| `CvValidationViewModel` | Validate CV step (Apply, pre-submit) | `CvValidationService`, `AnalyticsService` | Done (service, ViewModel, step widget, tests) |
+| `ApplicationReviewViewModel` | Application Review → Success | `ApplicationService`, `InternshipService`, `UserProfileService`, `AnalyticsService`, `CrashlyticsService` | Done (Application Success is a stateless recap screen, no ViewModel) |
 | `MyApplicationsViewModel` | My Applications | `ApplicationService` | Done (list, status filter, retry; no writes, no detail) |
 | `ApplicationDetailViewModel` | Application Detail | `ApplicationService`, `InternshipService`, `ExternalLinkService`, `AnalyticsService` | Done (load, tracker, withdraw/undo, preview, tests) |
 | `ProfileViewModel` | Profile | `UserProfileService` (+ auth for email and photo) | Done |
