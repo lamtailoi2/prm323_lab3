@@ -407,6 +407,16 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+---
+
+### P-48: Tú's grading-sheet tasks (DC-09 deviation, application_update/application_delete, evidence plan)
+- **Request:** the pasted task breakdown for Tú (5 items: row 5 CV Match Check/DC-09, rows 14-15 DebugView evidence, row 16 log Planned events, row 20 auth evidence) plus the ARTEMIS Flow 3 review assignment; asked to read the repo and plan the work, branching off `feat/application-detail` if needed.
+- **Output:** explored the repo (DC-09/G-24 status, analytics event implementation vs plan, ARTEMIS Flow 3 test status) before planning. User decided: record DC-09 as a deviation rather than build the separate CV Match Check screen; branch `chore/analytics-evidence-artemis` off `main`; scope row 16 to only `application_update`/`application_delete` (the other three Planned events have no UI hook yet). Changes made: `docs/design-traceability.md` row 7 and DC-09 (§4) marked Superseded, pointing to the existing Skill match summary (DC-24); `docs/records/handoff-gaps.md` G-24 marked Resolved with a 2026-11-05 note; `ApplicationDetailViewModel.withdraw()` now logs `application_update` (status → `withdrawn`) and `application_delete` (G-08: a withdrawal is this entity's delete), `undoWithdrawal()` logs `application_update` back to the restored status; `docs/analytics-plan.md` rows 12-13 flipped Planned → Implemented, rows 9/14/15 (`cv_match_check`, `export_report`, `notification_center_open`) annotated with why they stay blocked. Two new ViewModel tests added. Rows 14-15 (DebugView screenshots) and row 20 (auth console screenshots) and the ARTEMIS Flow 3 UI-copy review are manual steps left for Tú to run on a device — not done by the agent.
+- **Verification:** `dart format lib test` → 2 files formatted; `flutter analyze` → `No issues found!`; `flutter test test/features/applications/application_detail_viewmodel_test.dart` → 10 passed; `flutter test` full suite → **585 tests, all passed** (Run 24, `docs/records/test-report.md`).
+- **Decision:** Accepted (user chose this plan via AskUserQuestion before implementation). Not done in this session: capturing the actual DebugView/auth-console screenshots (needs a running device/emulator and Firebase Console access) and the ARTEMIS Flow 3 UI-copy re-check against the live app.
+
+---
+
 ## Entry template
 
 ```markdown

@@ -108,6 +108,20 @@ installed, and there is no `google/artemis` checkout or model API key on this
 machine. No test was executed and no `runs.jsonl` entry was written. See
 [`../evidence/artemis/e2e-environment-20261031.md`](../evidence/artemis/e2e-environment-20261031.md).
 
+**UI-copy review (2026-11-05, Tú, no execution):** re-read `test_applications.py`'s
+TC-09/TC-10 steps (`feat/application-detail` branch, not yet merged) against the
+current app code. Confirmed current copy matches every assertion: bottom-nav
+label `Applications` (`my_applications_screen.dart`), empty state
+`You have not applied yet`, card shows position/company/`Applied <date>`/status
+badge (`application_card.dart`), tapping a card opens `Application Detail`
+(`application_detail_screen.dart`) showing the same position, company and
+status badge component (`ApplicationStatusBadge`, shared between list and
+detail per `design-traceability.md` row 11), and the error state shows a
+message with a `Retry` button. No UI-copy mismatch found; no change to the
+`.py` file was needed. Still blocked on the same missing ARTEMIS
+daemon/toolchain as the 2026-10-31 attempt — this machine cannot execute the
+test, only review its wording.
+
 | Test ID | Runs | Passed | Pass rate | Avg time (s) | Trace IDs / evidence | Notes |
 |---|---|---|---|---|---|---|
 | TC-01 | 0 | 0 | n/a | n/a | **Not run 2026-10-31**: no ARTEMIS daemon/toolchain (`evidence/artemis/e2e-environment-20261031.md`) | Ready case; must pass 3/3 before marked Done |
