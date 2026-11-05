@@ -1,0 +1,65 @@
+diff --git a/artemis/drivers/android/adb_driver.py b/artemis/drivers/android/adb_driver.py
+index 360aa48..3d41d52 100644
+--- a/artemis/drivers/android/adb_driver.py
++++ b/artemis/drivers/android/adb_driver.py
+@@ -326,7 +326,10 @@ class AndroidAdbDriver(BaseDeviceDriver):
+             norm_text = text.replace(r"\r\n", "\n").replace(r"\n", "\n").replace(r"\r", "\n")
+ 
+             # 1. Tier 1: Try clipboard injection + KEYCODE_PASTE (Zero IME interference, preserves multiline, works for all charsets)
+-            if self._ui_adb_client:
++            # Local patch (Internly Lab 3): Flutter text fields ignore KEYCODE_PASTE while
++            # this tier still reports success, so ASCII text goes to `adb input text` (tier 3),
++            # as input_ime.py already does.
++            if self._ui_adb_client and not norm_text.isascii():
+                 try:
+                     set_clip_ok = False
+                     if hasattr(self._ui_adb_client, "set_clipboard"):
+diff --git a/config/artemis.jsonc b/config/artemis.jsonc
+index 517d738..4e34c1f 100644
+--- a/config/artemis.jsonc
++++ b/config/artemis.jsonc
+@@ -8,11 +8,11 @@
+   // ------------------------------------------------------------------------------
+   "default": {
+     "provider": "google",
+-    "model": "gemini-3.8-flash",
++    "model": "gemini-3.1-flash-lite",
+     "thinking_level": "medium",
+     "fallback": {
+       "provider": "google",
+-      "model": "gemini-3.7-flash",
++      "model": "gemini-3.5-flash-lite",
+       "thinking_level": "medium"
+     }
+   },
+@@ -95,10 +95,10 @@
+ 
+     // 🔽 Hopper: Fast lightweight package name locator
+     "hopper": {
+-      "model": "gemini-3.5-flash-lite",
++      "model": "gemini-3.1-flash-lite",
+       "fallback": {
+         "provider": "google",
+-        "model": "gemini-3.1-flash-lite"
++        "model": "gemini-3.5-flash-lite"
+       }
+     },
+ 
+@@ -145,7 +145,7 @@
+       // replacing images only after strictly objective, high-density summaries are ready.
+       "step_summarizer": {
+         "enabled": true, // Whether background step summarization is active
+-        "model": "gemini-3.5-flash-lite", // Lightweight model for fast background inference
++        "model": "gemini-3.1-flash-lite", // Lightweight model for fast background inference
+         "prune_history_xml": true // Prune outdated heavy XML trees from historical steps
+       }
+     },
+@@ -246,7 +246,7 @@
+         // call each); milestone closes are exempt, the hard line waives it.
+         "min_steps": 3,
+         "target_source_tokens": 2000,
+-        "model": "gemini-3.8-flash",
++        "model": "gemini-3.1-flash-lite",
+         "max_chunks": 8
+         // "max_eras": 8 // independent era cap; omitted = follows max_chunks
+       },
