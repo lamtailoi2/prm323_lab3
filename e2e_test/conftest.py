@@ -272,6 +272,28 @@ def push_sample_cv() -> None:
     )
 
 
+# Instruction parts shared by the cases that go through the Apply Form.
+
+# Fills only what the test account's Profile left empty, so `Continue to
+# review` is decided by the CV alone.
+FILL_PERSONAL = (
+    "In 'Personal information' fill only the fields that are empty: "
+    "'Full name' type 'Test Student', 'Phone number' type '0908123456', "
+    "'University' tap it and choose 'FPT University', 'Year of study' tap it "
+    "and choose 'Year 3'."
+)
+
+# Needs `push_sample_cv()` first. The fictional CV passes Validate CV, and the
+# account's own CV is never sent to the `validateCv` function.
+UPLOAD_SAMPLE_CV = (
+    "In the 'CV / Resume' section tap 'Replace' (or 'Upload CV' if there is "
+    "no file). In the sheet tap 'Choose file'. In the Android file picker "
+    f"choose '{SAMPLE_CV_NAME}' (open Downloads if it is not listed). Back in "
+    "the sheet tap the blue 'Update CV' (or 'Upload CV') button and wait "
+    "until the sheet closes."
+)
+
+
 def set_network(enabled: bool) -> None:
     """Turns Wi-Fi and mobile data on or off (emulator / test device only)."""
     state = "enable" if enabled else "disable"

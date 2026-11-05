@@ -1,0 +1,47 @@
+"""TC-08 Flow 2e Save: Save from Detail → Saved → open it → Unsave → Undo."""
+
+from conftest import SIGNED_IN, run_case
+
+SAVED_COUNT = (
+    "the number in the line that ends with 'saved' above the list (0 if the "
+    "screen says 'No saved internships yet')"
+)
+
+
+async def test_tc08_save_then_unsave_with_undo(artemis):
+    # Counts are compared before / after instead of emptying Saved first, so
+    # the account keeps its saved listings. 'Python' keeps TC-05's 'Intern'
+    # listing out of it (TC-05 asserts its `Save` button).
+    report = await run_case(
+        artemis,
+        "TC-08",
+        f"{SIGNED_IN} Tap 'Saved' in the bottom navigation and note "
+        f"{SAVED_COUNT}. Tap 'Search', type 'Python' in the search field and "
+        "tap 'Find Internships'. Tap the first internship card that has no "
+        "'Applied' badge and whose bookmark is not filled. Note its job title. "
+        "On the detail screen tap 'Save' at the bottom and read the message "
+        "that appears at the bottom of the screen. Tap 'Saved' in the bottom "
+        f"navigation, note {SAVED_COUNT} again and the title of the first "
+        "card. Tap that card, read whether the button at the bottom is "
+        "'Apply now' or 'View application', then tap the Back arrow. On the "
+        "Saved list tap the filled bookmark of the card with the noted title "
+        "and then at once tap 'Undo' in the message at the bottom (it "
+        "disappears after about 4 seconds). Read the message text before "
+        "tapping Undo. Then note the saved number and whether the card with "
+        "the noted title is in the list.",
+        expected_output=(
+            'JSON: {"saved_before": number, "card_title": string, '
+            '"save_message": string, "saved_after_save": number, '
+            '"first_saved_title": string, "detail_button": string, '
+            '"remove_message": string, "saved_after_undo": number, '
+            '"card_back_after_undo": boolean}'
+        ),
+    )
+    assert report["save_message"] == "Saved to your list"
+    assert report["saved_after_save"] == report["saved_before"] + 1
+    # Saved is sorted by `Recent`, so the new item is on top.
+    assert report["first_saved_title"] == report["card_title"]
+    assert report["detail_button"] == "Apply now"
+    assert report["remove_message"] == "Removed from Saved"
+    assert report["saved_after_undo"] == report["saved_after_save"]
+    assert report["card_back_after_undo"] is True
