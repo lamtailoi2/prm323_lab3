@@ -423,6 +423,38 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-50: ARTEMIS host setup, first TC-05 runs and E2E harness fixes
+- **Request:** (Claude Code, Opus 5.5, session 2026-11-05; operator Phạm Nguyễn Hoàng Anh) "guide me to install and run ARTEMIS for Lab 3". Then, step by step at the operator's choice: wait for the overloaded model, switch to Flash-Lite, find why TC-05 fails, fix `conftest.py` (approved by Lâm Tài Lợi, its author), patch ARTEMIS's text input, run TC-05 three times, write the run guide, record and commit.
+- **Output:**
+  - Host setup: ARTEMIS host on macOS (`~/artemis` at `351ca84`, `uv` via Homebrew, `scrcpy`, daemon without `start.sh`). The operator created the Gemini key (free tier) and entered it themself.
+  - Diagnosis, each step checked against the daemon log, the session API or the device:
+    - the default model is capped at 20 requests per day and was overloaded, and the fallback never triggers before the 180 s timeout;
+    - nothing calls the Outputter, so runs return no `output`;
+    - `KEYCODE_PASTE` is ignored by Flutter text fields;
+    - leftover text and the cold-start ANR affected runs.
+  - `e2e_test/conftest.py` (`6fe33a9`): `REPORT_AS_JSON` + `final_report()` (reads `report_task_status` from `/api/sessions/{id}/steps`), and the `cold_start_app` fixture (force-stop, `am start -W`, 10 s).
+  - `e2e_test/artemis-local.patch`: Flash-Lite models and `adb input text` for ASCII.
+  - `docs/guides/artemis-e2e.md`.
+  - `docs/test-plan.md`: model row, §1, TC-05 Done, §4 row and the flaky / failed table.
+  - `evidence/artemis/e2e-environment-20261105.md` with `runs-20261105.jsonl` and three screenshots.
+  - README and disclosure rows.
+- **Verification:**
+  - `artemis doctor` all ✔.
+  - Direct API calls per model (HTTP codes in the evidence file).
+  - Manual input check on the emulator (`keyevent 279` leaves the field empty, `adb shell input text` types).
+  - `git apply --check` of the patch on a clean `351ca84` → applies.
+  - `python -m py_compile conftest.py` → OK.
+  - 11 real TC-05 runs, all recorded with their causes. The final `uv run pytest test_detail.py --count 3 -v` → **3 passed** (traces `505846be`, `045c4d16`, `ebe3d568`, average 65.7 s).
+  - No Flutter code changed, so `flutter analyze` / `flutter test` were not run for this entry.
+- **Decision:**
+  - Modified. The default `gemini-3.8-flash` was replaced, because its free tier (20 requests per day) cannot carry the suite.
+  - ARTEMIS is patched locally instead of changing the app: the paste behaviour is the tool's, and the app's Search code was checked and is correct.
+  - The report is read through the daemon's step API with the client's private `_request` (the pinned client has no public call). Revisit if ARTEMIS is upgraded.
+  - Run 3 passed but is not counted, because it did not type.
+  - Replays stay on the host, because they show the signed-in account.
+
+---
+
 ## Entry template
 
 ```markdown

@@ -61,7 +61,7 @@ Exact versions are pinned in [`pubspec.yaml`](pubspec.yaml) and [`e2e_test/pypro
 - **Android:** Android SDK with `cmdline-tools`, platform 36, JDK 17, and a device or emulator.
 - Firebase: Node.js 22 (Cloud Functions runtime), `firebase-tools`, `flutterfire_cli`.
 - A free SerpAPI key (**owner only**, for the sync function secret).
-- E2E tests: Python 3.12+, `uv`, ADB, a Google ARTEMIS checkout.
+- E2E tests: Python 3.12+, `uv`, ADB, a Google ARTEMIS checkout with [`e2e_test/artemis-local.patch`](e2e_test/artemis-local.patch) applied ([guide](docs/guides/artemis-e2e.md)).
 
 ### Install and configure
 
@@ -102,7 +102,7 @@ dart format lib test        # format
 flutter analyze             # must print "No issues found!"
 flutter test                # unit, ViewModel, widget and routing tests
 
-# End-to-end (Google ARTEMIS, Android device, see docs/test-plan.md)
+# End-to-end (Google ARTEMIS, Android device, see docs/guides/artemis-e2e.md)
 cd e2e_test && cp .env.example .env && uv sync
 uv run pytest --count 3 -v  # every test 3 times
 ```
@@ -155,7 +155,7 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 | Tool | Purpose |
 |---|---|
 | Google Stitch | Lab 2 screen generation (design phase) |
-| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements; Profile feature (P-21); Login screen from the Login frame (P-31); Saved empty state opens Search (P-33); Internship Detail, Search filters and analytics, Apply Form, Job type and Applied badge (P-34 – P-43); fixes from the AI review (P-44) ([log](docs/records/implementation-ai-log.md)) |
+| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements; Profile feature (P-21); Login screen from the Login frame (P-31); Saved empty state opens Search (P-33); Internship Detail, Search filters and analytics, Apply Form, Job type and Applied badge (P-34 – P-43); fixes from the AI review (P-44); ARTEMIS host setup, E2E harness fixes and the run guide (P-50) ([log](docs/records/implementation-ai-log.md)) |
 | OpenCode (`deepseek-v4.1-flash-free`) | Home UI, scheduled SerpAPI → Firestore sync, rules and docs for the Home slice; Saved list, the Home Save Toggle, unsave with Undo and the Saved loading state ([log](docs/records/implementation-ai-log.md)) |
 | Command Code | CV validation vertical slice: callable `validateCv` + Gemini free tier, `CvValidationService`, ViewModel, step widget, tests and docs (P-32); work mode read from the listing text so the Search filter no longer returns an empty list (P-45); Filter Skills from the current pool instead of a fixed list (P-46); Flow 2 completion: Validate CV screen, Application Review, Success, `ApplicationService.createApplication()` and `application_create` (P-47) ([log](docs/records/implementation-ai-log.md)) |
 | Google ARTEMIS + Gemini (free tier) | End-to-end tests and the exploratory session |

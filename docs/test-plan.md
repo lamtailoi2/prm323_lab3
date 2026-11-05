@@ -7,6 +7,7 @@ End-to-end tests drive the **Android** app with [Google ARTEMIS](https://github.
 | ARTEMIS commit | `351ca8422f7b5b54e80a9c1ce03a222e02415b6b` (2026-09-29), pinned in `e2e_test/pyproject.toml` and README |
 | SDK | `artemis-client` (`ArtemisClient.run(goal, expected_output=…, locked_app_package=…)`) |
 | Profiles | **Flash** for every regression test; **Pro** only for the exploratory session |
+| Model | `gemini-3.1-flash-lite`, fallback `gemini-3.5-flash-lite` (free tier), set on the host by [`e2e_test/artemis-local.patch`](../e2e_test/artemis-local.patch) since 2026-11-05: the default `gemini-3.8-flash` allows 20 requests per day on the free tier and was overloaded |
 | Device | Android device or emulator (API 33+ for the notification permission case) |
 | Account | Dedicated Google test account added on the device; no password stored anywhere |
 | Secrets | `e2e_test/.env` (from `.env.example`, git-ignored); the model API key stays on the ARTEMIS host |
@@ -24,12 +25,16 @@ Never add a payment method to the Google AI Studio project or SerpAPI account us
 
 ## 1. How to run
 
+Step-by-step guide with troubleshooting: [`guides/artemis-e2e.md`](guides/artemis-e2e.md).
+
 ```bash
-# 1. ARTEMIS host (once): clone google/artemis at the pinned commit, add the model API key
-#    to its own .env, then start the daemon and connect the device.
-git clone https://github.com/google/artemis && cd artemis
+# 1. ARTEMIS host (once): clone google/artemis at the pinned commit, apply the team's patch
+#    (model + text input, required), add the model API key to its own .env, start the daemon.
+git clone https://github.com/google/artemis ~/artemis && cd ~/artemis
 git checkout 351ca8422f7b5b54e80a9c1ce03a222e02415b6b
-./start.sh
+git apply <repo>/e2e_test/artemis-local.patch
+uv sync --python 3.12 && cp .env.example .env   # set GEMINI_API_KEY
+uv run python -m artemis ui --no-open           # daemon on http://127.0.0.1:8000
 
 # 2. App: install a debug build with Firebase configured and the SerpAPI key.
 flutter build apk --debug --dart-define-from-file=.env && adb install -r build/app/outputs/flutter-apk/app-debug.apk
@@ -65,7 +70,7 @@ Every instruction states the start, the steps and what must be visible, and asks
 | TC-02 | Navigation | Signed in | Tap Search, Saved, Applications, Profile, Home | For each tap: app bar title == tab and the tab is selected | Happy | `test_navigation.py` | Ready |
 | TC-03 | Flow 1 (Search → Filter & Sort → Job Listing) | Signed in; Analytics debug mode | Search tab → `Intern` → `Find Internships` → `Filters` → `Job type: Internship` → `Show … results` | `N internships found` with `N > 0`; active chips include `Internship` and `Intern`; first card title not empty; **`search` and `search_filter_apply` in Logcat** | Happy | `test_search.py` | Ready (not run) |
 | TC-04 | Flow 1a | Signed in | Search `zzqx intern` → read the empty state → tap its button | Empty title `No internships found`, button `Clear filters`; after it, `N internships found` with `N > 0` | Error | `test_search.py` | Ready (not run) |
-| TC-05 | Flow 1 → Job Detail | Signed in | Search `Intern` → note the first card → open it → Back | App bar `Internship details`; Detail title and company == the card's; `Apply now` and `Save` visible; search field still `Intern` after Back | Happy | `test_detail.py` | Ready (not run) |
+| TC-05 | Flow 1 → Job Detail | Signed in | Search `Intern` → note the first card → open it → Back | App bar `Internship details`; Detail title and company == the card's; `Apply now` and `Save` visible; search field still `Intern` after Back | Happy | `test_detail.py` | Done (3/3, 2026-11-05) |
 | TC-06 | Flow 2 + 2d | Signed in; profile complete with skills that do not cover every requirement | From a listing not applied to: Apply now → Continue → read CV Match Check → Continue to review → Submit | Match summary `N of M` with `N < M`; at least 1 suggestion; Success shows the same title and company | Happy | `test_apply.py` | Planned |
 | TC-07 | Flow 2c | Signed in; TC-06 listing already applied (test applies first if needed) | Open the same listing again | `You applied on …` visible; `Apply now` not visible; `View application` opens status `Submitted` | Alt | `test_apply.py` | Planned |
 | TC-08 | Flow 2e (+2e.1) | Signed in; Saved list emptied by the test first | Open a listing → Save → Saved tab → open the saved card; back; Unsave → Undo | Snackbar `Saved to your list`; saved count == 1; detail shows `Apply now`; after Undo the card is back | Alt | `test_saved.py` | Planned |
@@ -111,8 +116,16 @@ installed, and there is no `google/artemis` checkout or model API key on this
 machine. No test was executed and no `runs.jsonl` entry was written. See
 [`../evidence/artemis/e2e-environment-20261031.md`](../evidence/artemis/e2e-environment-20261031.md).
 
+**Run 2026-11-05 (macOS host, `emulator-5554` API 36):** first real runs. TC-05
+was run 11 times while the model choice, the report read-back, typing and the
+cold start were fixed. Every run and its cause is in
+[`../evidence/artemis/e2e-environment-20261105.md`](../evidence/artemis/e2e-environment-20261105.md)
+and in the flaky / failed table below. The row reports the final three runs on
+the fixed setup (`6fe33a9` + `artemis-local.patch`).
+
 | Test ID | Runs | Passed | Pass rate | Avg time (s) | Trace IDs / evidence | Notes |
 |---|---|---|---|---|---|---|
+| TC-05 | 3 | 3 | 100% | 65.7 | `505846be`, `045c4d16`, `ebe3d568` ([evidence](../evidence/artemis/e2e-environment-20261105.md), [`runs-20261105.jsonl`](../evidence/artemis/runs-20261105.jsonl)) | `uv run pytest test_detail.py --count 3 -v`, 2026-11-05 23:35–23:38, `gemini-3.1-flash-lite`. All 11 runs that day: 6 passed (one of them not valid, run 3), 5 failed; causes below |
 | TC-01 | 0 | 0 | n/a | n/a | **Not run 2026-10-31**: no ARTEMIS daemon/toolchain (`evidence/artemis/e2e-environment-20261031.md`) | Ready case; must pass 3/3 before marked Done |
 | TC-02 | 0 | 0 | n/a | n/a | **Not run 2026-10-31**: same environment blocker | Ready case; must pass 3/3 before marked Done |
 | TC-14 | 0 | 0 | n/a | n/a | **Not run 2026-10-31**: same environment blocker | Ready case; must pass 3/3 before marked Done |
@@ -126,6 +139,12 @@ machine. No test was executed and no `runs.jsonl` entry was written. See
 
 | Test ID | Pass rate | Cause | Fix (commit / instruction change) |
 |---|---|---|---|
+| TC-05 run 1 (`1d8523a8`) | 0/1 | Environment: `gemini-3.5-flash-lite` returned 503 "high demand"; the call timed out after 180 s before ARTEMIS tried its fallback | Primary model `gemini-3.1-flash-lite` ([`artemis-local.patch`](../e2e_test/artemis-local.patch)) |
+| TC-05 run 2 (`ea95f1be`) | 0/1 | Harness: ARTEMIS `351ca84` never runs its Outputter, so `result.output` is `None` (`no structured output`) | `run_case()` asks for the JSON in `report_task_status` and `final_report()` reads it from `/api/sessions/{id}/steps` (`6fe33a9`) |
+| TC-05 run 3 (`56300b5c`) | passed, not counted | Test isolation: the agent did not type; "Intern" was left in the field by run 2 | `cold_start_app` fixture force-stops the app before each run (`6fe33a9`) |
+| TC-05 run 4 (`d3b8a433`) | 0/1 | Tool: ARTEMIS types by clipboard + `KEYCODE_PASTE`, which a Flutter `TextField` ignores while ARTEMIS reports success; the report was also prose | ASCII text typed with `adb shell input text` ([`artemis-local.patch`](../e2e_test/artemis-local.patch)) |
+| TC-05 run 5 (`d589c61d`) | 1/1 (197 s) | Timing: "internly isn't responding" twice during the debug build's cold start; the agent recovered | Fixture launches the app with `am start -W` and waits 10 s (`6fe33a9`) |
+| TC-05 runs 6–8 (`a0ee4316`, `a96423d9`, `fced7607`) | 1/3 | Ambiguous instruction: `gemini-3.1-flash-lite` wrote a sentence instead of the JSON in 2 of 3 runs (the flow itself was right) | Stricter request naming `report_task_status` and "exactly one JSON object" (`6fe33a9`); runs 9–11 then passed 3/3 |
 
 ## 5. Exploratory session (Pro profile, 15–30 min)
 
@@ -142,7 +161,7 @@ Command: `uv run artemis run "<charter>" --profile pro` on the ARTEMIS host.
 
 1. One pytest function = one instruction through `run_case()` (`e2e_test/conftest.py`).
 2. The instruction states the starting point, the steps and exactly what must be visible; "check that the app works" is not a test.
-3. Ask for a JSON report in `expected_output` and assert on its values.
+3. Ask for a JSON report in `expected_output` and assert on its values. `run_case()` repeats that schema in the instruction and reads the JSON from the agent's final `report_task_status`, because ARTEMIS `351ca84` returns no `output`.
 4. Tests never depend on each other's order: start from `SIGNED_IN` / `SIGNED_OUT` or create the needed data inside the instruction.
 5. Add `Semantics` labels / tooltips to every widget a test needs (shared components already expose them).
 6. Never commit `.env`, account credentials or model API keys.
