@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -17,13 +18,16 @@ import 'package:internly/models/internship.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
+import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/document_picker_service.dart';
 import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/file_storage_service.dart';
+import 'package:internly/services/notification_service.dart';
 import 'package:internly/services/user_profile_service.dart';
 import 'package:internly/theme/app_theme.dart';
 
 import '../../helpers/fakes.dart';
+import '../../helpers/notification_fakes.dart';
 import '../../helpers/pump.dart';
 
 final _cv = CvFile(
@@ -59,6 +63,8 @@ void main() {
   late FakeDocumentPickerService picker;
   late FakeFileStorageService storage;
   late FakeExternalLinkService links;
+  late FakeCrashlyticsService crashlytics;
+  late FakeNotificationService notificationService;
 
   setUp(() {
     auth = FakeAuthService(initialUser: testUser);
@@ -67,11 +73,14 @@ void main() {
     picker = FakeDocumentPickerService();
     storage = FakeFileStorageService();
     links = FakeExternalLinkService();
+    crashlytics = FakeCrashlyticsService();
+    notificationService = FakeNotificationService();
   });
 
   tearDown(() async {
     await profiles.dispose();
     await auth.dispose();
+    await notificationService.dispose();
   });
 
   Future<void> pumpProfile(
@@ -106,6 +115,8 @@ void main() {
           documentPickerServiceProvider.overrideWithValue(picker),
           fileStorageServiceProvider.overrideWithValue(storage),
           externalLinkServiceProvider.overrideWithValue(links),
+          crashlyticsServiceProvider.overrideWithValue(crashlytics),
+          notificationServiceProvider.overrideWithValue(notificationService),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light(),
@@ -265,6 +276,53 @@ void main() {
 
     expect(auth.signOutCalls, 1);
     expect(analytics.events, contains('logout'));
+  });
+
+  testWidgets('crash test control asks first, then forces the crash', (
+    tester,
+  ) async {
+    await pumpProfile(tester);
+    await scrollTo(tester, find.text('Simulate app crash'));
+    expect(find.text('Diagnostics'), findsOneWidget);
+
+    await tester.tap(find.text('Simulate app crash'));
+    await tester.pumpAndSettle();
+    expect(find.text('Simulate a crash?'), findsOneWidget);
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(crashlytics.crashCalls, 0);
+
+    await tester.tap(find.text('Simulate app crash'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Crash now'));
+    await tester.pumpAndSettle();
+    expect(crashlytics.crashCalls, 1);
+  });
+
+  testWidgets('FCM token tile copies the device token', (tester) async {
+    final copied = <String?>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied.add(
+              (call.arguments as Map<Object?, Object?>)['text'] as String?,
+            );
+          }
+          return null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+
+    await pumpProfile(tester);
+    await scrollTo(tester, find.text('Copy FCM token'));
+    await tester.tap(find.text('Copy FCM token'));
+    await tester.pumpAndSettle();
+
+    expect(copied, ['fcm-test-token']);
+    expect(find.text('FCM token copied.'), findsOneWidget);
   });
 
   testWidgets('settings rows without a screen say so honestly', (tester) async {

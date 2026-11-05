@@ -39,6 +39,7 @@ class MyApplicationsScreen extends ConsumerWidget {
         title: 'Applications',
         user: user,
         onProfile: () => context.go(AppRoutes.profile),
+        onNotifications: () => context.push(AppRoutes.notificationCenter),
       ),
       body: switch (state.applications) {
         ViewLoading<MyApplicationsFeed>() => const _LoadingBody(),

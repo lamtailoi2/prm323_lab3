@@ -96,6 +96,17 @@ void main() {
         // The form builds `/{tab}/internships/:jobKey/apply/...` from its
         // `source`.
         GoRoute(
+          path: '/home/internships/:jobKey/apply/match',
+          builder: (context, state) {
+            final session = state.extra;
+            return Text(
+              session is ApplySession
+                  ? 'CV Match step: ${session.cv.file.fileName}'
+                  : 'CV Match step',
+            );
+          },
+        ),
+        GoRoute(
           path: '/home/internships/:jobKey/apply/validation',
           builder: (context, state) {
             final session = state.extra;
@@ -187,7 +198,7 @@ void main() {
 
       await tester.tap(find.text('Continue to review'));
       await tester.pumpAndSettle();
-      expect(find.text('Validate CV step: Profile_CV.pdf'), findsOneWidget);
+      expect(find.text('CV Match step: Profile_CV.pdf'), findsOneWidget);
     });
 
     testWidgets('empty Profile: tip and field errors at $width dp', (
@@ -221,6 +232,20 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('cv_match_enabled off skips CV Match and opens Validate CV', (
+    tester,
+  ) async {
+    remoteConfig.publish(RemoteConfigKeys.cvMatchEnabled, false);
+    await pumpForm(tester);
+    await scrollTo(tester, find.text('Profile_CV.pdf'));
+
+    await tester.tap(find.text('Continue to review'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Validate CV step: Profile_CV.pdf'), findsOneWidget);
+    expect(find.textContaining('CV Match step'), findsNothing);
+  });
 
   testWidgets('complete details without a CV: the CV section says so', (
     tester,
