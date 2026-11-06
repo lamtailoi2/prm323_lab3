@@ -4,8 +4,10 @@ while offline."""
 
 import pytest
 from conftest import (
+    FILL_PERSONAL,
     SAMPLE_CV_NAME,
     SIGNED_IN,
+    UPLOAD_SAMPLE_CV,
     enable_analytics_debug,
     logged_analytics_events,
     push_sample_cv,
@@ -20,15 +22,6 @@ OPEN_APPLY_FORM = (
 )
 
 NO_CV = "Add a CV to continue. Companies need it to review your application."
-
-# Fills only what the test account's Profile left empty, so `Continue to
-# review` is decided by the CV alone.
-FILL_PERSONAL = (
-    "In 'Personal information' fill only the fields that are empty: "
-    "'Full name' type 'Test Student', 'Phone number' type '0908123456', "
-    "'University' tap it and choose 'FPT University', 'Year of study' tap it "
-    "and choose 'Year 3'."
-)
 
 
 async def test_tc18_apply_form_checks_the_cv_before_continue(artemis):
@@ -67,13 +60,8 @@ async def test_tc19_upload_a_cv_for_this_internship(artemis):
     report = await run_case(
         artemis,
         "TC-19",
-        f"{SIGNED_IN} {OPEN_APPLY_FORM} In the 'CV / Resume' section tap "
-        "'Replace' (or 'Upload CV' if there is no file). In the sheet tap "
-        f"'Choose file'. In the Android file picker choose '{SAMPLE_CV_NAME}' "
-        "(open Downloads if it is not listed). Back in the sheet tap the blue "
-        "'Update CV' (or 'Upload CV') button and wait until the sheet closes. "
-        "Report the file name and the line under it in the 'CV / Resume' "
-        "section.",
+        f"{SIGNED_IN} {OPEN_APPLY_FORM} {UPLOAD_SAMPLE_CV} Report the file "
+        "name and the line under it in the 'CV / Resume' section.",
         expected_output=(
             'JSON: {"cv_file_name": string, "cv_source_line": string}'
         ),

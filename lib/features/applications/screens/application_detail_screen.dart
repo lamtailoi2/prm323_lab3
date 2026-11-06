@@ -54,10 +54,7 @@ class ApplicationDetailScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Symbols.notifications_rounded),
             tooltip: 'Notifications',
-            // Same honest message as the other app bars until the
-            // Notification Center exists (DC-11).
-            onPressed: () =>
-                _showMessage(context, 'Notifications are coming soon.'),
+            onPressed: () => context.push(AppRoutes.notificationCenter),
           ),
         ],
       ),

@@ -21,15 +21,18 @@ import '../../helpers/pump.dart';
 void main() {
   late FakeInternshipService internships;
   late FakeSearchHistoryService history;
+  late FakeAuthService auth;
 
   setUp(() {
     internships = FakeInternshipService();
     history = FakeSearchHistoryService();
+    auth = FakeAuthService(initialUser: testUser);
   });
 
   tearDown(() async {
     await internships.dispose();
     await history.dispose();
+    await auth.dispose();
   });
 
   Future<void> pumpSearch(
@@ -62,6 +65,10 @@ void main() {
             ),
           ],
         ),
+        GoRoute(
+          path: AppRoutes.notificationCenter,
+          builder: (context, state) => const Text('Notification Center'),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -70,6 +77,7 @@ void main() {
         overrides: [
           internshipServiceProvider.overrideWithValue(internships),
           searchHistoryServiceProvider.overrideWithValue(history),
+          authServiceProvider.overrideWithValue(auth),
           currentUserIdProvider.overrideWithValue(uid),
         ],
         child: MaterialApp.router(
@@ -99,6 +107,8 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Search'), findsOneWidget);
+        expect(find.byTooltip('Notifications'), findsOneWidget);
+        expect(find.byTooltip('Profile'), findsOneWidget);
         expect(find.text('Work mode'), findsOneWidget);
         expect(find.text('All'), findsOneWidget);
         expect(find.text('Remote'), findsOneWidget);
@@ -118,6 +128,16 @@ void main() {
       },
     );
   }
+
+  testWidgets('the bell opens the Notification Center', (tester) async {
+    await pumpSearch(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Notifications'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Notification Center'), findsOneWidget);
+  });
 
   testWidgets('no listings and no history hides both sections', (tester) async {
     await pumpSearch(tester);

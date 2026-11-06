@@ -10,10 +10,11 @@ import '../../../core/state/view_state.dart';
 import '../../../core/utils/posted_age.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_search_field.dart';
-import '../../../core/widgets/app_top_bar.dart';
+import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
+import '../../../services/auth_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
@@ -50,7 +51,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final viewModel = ref.read(searchViewModelProvider.notifier);
 
     return Scaffold(
-      appBar: const AppTopBar.main(title: 'Search'),
+      appBar: MainTabAppBar(
+        title: 'Search',
+        user: ref.watch(authStateChangesProvider).value,
+        onProfile: () => context.go(AppRoutes.profile),
+        onNotifications: () => context.push(AppRoutes.notificationCenter),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(

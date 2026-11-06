@@ -3,8 +3,8 @@
 Every test sends ONE natural-language instruction, asks the agent for a JSON
 object describing what is visible at the end (`expected_output`), and asserts on
 those values, not on the run status alone. Each run is appended to
-`artifacts/runs.jsonl` (test id, status, trace id, duration) for the evidence
-table in docs/test-plan.md.
+`artifacts/runs.jsonl` (test id, ARTEMIS status, trace id, duration, pytest
+result and failure) for the evidence table in docs/test-plan.md.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import time
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -128,9 +129,13 @@ def parse_report(output: Any) -> dict[str, Any]:
     return {}
 
 
+# The current test's run; written to runs.jsonl once its pytest result is known.
+_pending_run: dict[str, Any] | None = None
+
+
 def _record(test_id: str, result: Any, seconds: float) -> None:
-    ARTIFACTS.mkdir(exist_ok=True)
-    line = {
+    global _pending_run
+    _pending_run = {
         "test_id": test_id,
         "status": result.status,
         "succeeded": result.succeeded,
@@ -138,8 +143,28 @@ def _record(test_id: str, result: Any, seconds: float) -> None:
         "seconds": round(seconds, 1),
         "error": result.error,
     }
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(
+    item: pytest.Item, call: pytest.CallInfo[None]
+) -> Generator[None, Any, None]:
+    """Appends the run with its pytest result: `succeeded` is only ARTEMIS's
+    status and stays true when the report or an assertion fails."""
+    outcome = yield
+    report = outcome.get_result()
+    if report.when != "call":
+        return
+    global _pending_run
+    line = _pending_run or {"test_id": item.name}
+    _pending_run = None
+    line["pytest"] = report.outcome
+    if report.failed:
+        crash = getattr(report.longrepr, "reprcrash", None)
+        line["failure"] = (crash.message if crash else str(report.longrepr))[:300]
+    ARTIFACTS.mkdir(exist_ok=True)
     with (ARTIFACTS / "runs.jsonl").open("a", encoding="utf-8") as file:
-        file.write(json.dumps(line) + "\n")
+        file.write(json.dumps(line, ensure_ascii=False) + "\n")
 
 
 # ---- Analytics check through Logcat (Lab 3: at least one test) -------------
@@ -247,8 +272,78 @@ def push_sample_cv() -> None:
     )
 
 
+# Instruction parts shared by the cases that go through the Apply Form.
+
+# Fills only what the test account's Profile left empty, so `Continue to
+# review` is decided by the CV alone.
+FILL_PERSONAL = (
+    "In 'Personal information' fill only the fields that are empty: "
+    "'Full name' type 'Test Student', 'Phone number' type '0908123456', "
+    "'University' tap it and choose 'FPT University', 'Year of study' tap it "
+    "and choose 'Year 3'."
+)
+
+# Needs `push_sample_cv()` first. The fictional CV passes Validate CV, and the
+# account's own CV is never sent to the `validateCv` function.
+UPLOAD_SAMPLE_CV = (
+    "In the 'CV / Resume' section tap 'Replace' (or 'Upload CV' if there is "
+    "no file). In the sheet tap 'Choose file'. In the Android file picker "
+    f"choose '{SAMPLE_CV_NAME}' (open Downloads if it is not listed). Back in "
+    "the sheet tap the blue 'Update CV' (or 'Upload CV') button and wait "
+    "until the sheet closes."
+)
+
+
 def set_network(enabled: bool) -> None:
     """Turns Wi-Fi and mobile data on or off (emulator / test device only)."""
     state = "enable" if enabled else "disable"
     _adb("shell", "svc", "wifi", state)
     _adb("shell", "svc", "data", state)
+
+
+# ---- Notifications (TC-13, TC-15) -------------------------------------------
+
+NOTIFICATION_PERMISSION = "android.permission.POST_NOTIFICATIONS"
+
+
+def reset_notification_permission() -> None:
+    """Puts the notification permission back to "never asked", as after a
+    fresh install, and relaunches the app: it asks again once signed in."""
+    _adb("shell", "am", "force-stop", APP_PACKAGE)
+    _adb("shell", "pm", "revoke", APP_PACKAGE, NOTIFICATION_PERMISSION)
+    _adb(
+        "shell",
+        "pm",
+        "clear-permission-flags",
+        APP_PACKAGE,
+        NOTIFICATION_PERMISSION,
+        "user-set",
+        "user-fixed",
+    )
+    _adb("shell", "am", "start", "-W", "-n", f"{APP_PACKAGE}/.MainActivity")
+
+
+def grant_notification_permission() -> None:
+    _adb("shell", "pm", "grant", APP_PACKAGE, NOTIFICATION_PERMISSION)
+
+
+def notification_permission_granted() -> bool:
+    dump = _adb("shell", "dumpsys", "package", APP_PACKAGE)
+    return f"{NOTIFICATION_PERMISSION}: granted=true" in dump
+
+
+def app_notification_titles() -> set[str]:
+    """Titles of this app's notifications currently in the shade."""
+    dump = _adb("shell", "dumpsys", "notification", "--noredact")
+    titles = set()
+    for record in dump.split("NotificationRecord(")[1:]:
+        if f"pkg={APP_PACKAGE} " not in record.split("\n", 1)[0]:
+            continue
+        match = re.search(r"android\.title=String \((.*)\)", record)
+        if match:
+            titles.add(match.group(1))
+    return titles
+
+
+def send_app_to_background() -> None:
+    _adb("shell", "input", "keyevent", "KEYCODE_HOME")

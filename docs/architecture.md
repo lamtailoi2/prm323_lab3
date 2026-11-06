@@ -90,32 +90,30 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 
 ### ViewModels and the services they use
 
-| ViewModel | Screen | State | Services | Status |
-|---|---|---|---|---|
-| `LoginViewModel` | Login | `AsyncValue<void>` | `AuthService`, `AnalyticsService` | Done |
-| `SignOutViewModel` | Profile | `AsyncValue<void>` | `AuthService`, `AnalyticsService` | Done |
-| `HomeViewModel` | Home | `HomeState` (`ViewState<HomeFeed>` + selected role) | `InternshipService`, `UserProfileService` (preferred location, skills), `RemoteConfigService`, `AnalyticsService` | Done |
-| `SearchViewModel` | Search | `SearchState` | `InternshipService`, `SearchHistoryService` | Done |
-| `SearchResultsViewModel` | Search Results | `SearchResultsState` | `InternshipService`, `SearchHistoryService`, `AnalyticsService` | Done |
-| `InternshipDetailViewModel` | Internship Detail | `ViewState<InternshipDetail>` | `InternshipService`, `UserProfileService` (CV Match Check), `RemoteConfigService`, `ApplicationService`, `AnalyticsService` | Done |
-| `SavedViewModel` | Saved Internships (also the bookmark toggles on Home, Search Results and Internship Detail) | `AsyncValue<void>` | `SavedInternshipService`, `AnalyticsService` | Done |
-| `ApplyFormViewModel` | Application Form (CV pick/upload, profile prefill; also the CV sheet) | `ApplyFormState` | `UserProfileService`, `FileStorageService`, `DocumentPickerService`, `ExternalLinkService`, `InternshipService`, `RemoteConfigService`, `AnalyticsService` | Done |
-| `CvValidationViewModel` | Validate CV step (Apply, pre-submit; `widgets/cv_validation_step.dart`) | `ViewState<CvValidationResult>` | `CvValidationService`, `AnalyticsService` | Done (service, ViewModel, step widget, tests) |
-| `ApplicationReviewViewModel` | Application Review → Success | `ApplicationReviewState` | `ApplicationService`, `InternshipService`, `UserProfileService`, `AnalyticsService`, `CrashlyticsService` | Done (Application Success is a stateless recap screen, no ViewModel) |
-| `MyApplicationsViewModel` | My Applications | `MyApplicationsState` | `ApplicationService` | Done (list, status filter, retry; read-only) |
-| `ApplicationDetailViewModel` | Application Detail | `ApplicationDetailState` | `ApplicationService`, `InternshipService`, `ExternalLinkService`, `AnalyticsService` | Done (load, tracker, withdraw/undo, preview, tests) |
-| `ProfileViewModel` | Profile | `ViewState<ProfileOverview>` | `UserProfileService`, auth state (`authStateChangesProvider`) for email and photo | Done |
-| `EditProfileViewModel` | Edit profile (also the academic standing sheet) | `EditProfileState` | `UserProfileService`, `AnalyticsService` | Done |
-| `EditSkillsViewModel`, `EditPreferencesViewModel` | Profile sheets | `EditSkillsState`, `EditPreferencesState` | `UserProfileService`, `AnalyticsService` | Done |
-| `UpdateCvViewModel` | Update CV sheet | `UpdateCvState` | `DocumentPickerService`, `FileStorageService`, `UserProfileService`, `AnalyticsService` | Done |
-| `OpenCvViewModel` | Profile (View CV) | `AsyncValue<void>` | `ExternalLinkService` | Done |
-| `FirebaseDemoViewModel` | Firebase demo area | — | `RemoteConfigService`, `CrashlyticsService`, `NotificationService` | Planned (no file in `lib/`) |
-| `NotificationCenterViewModel` | Notification Center | — | `NotificationService`, `AnalyticsService` | Planned (no file in `lib/`) |
-| `ReportExportViewModel` | Report export | — | `ReportExportService`, `FileStorageService`, `ApplicationService`, `AnalyticsService` | Planned (no file in `lib/`) |
+| ViewModel | Screen | Services | Status |
+|---|---|---|---|
+| `LoginViewModel` | Login | `AuthService`, `AnalyticsService` | Done |
+| `SignOutViewModel` | Profile | `AuthService`, `AnalyticsService` | Done |
+| `HomeViewModel` | Home | `InternshipService`, `UserProfileService` (preferred location), `RemoteConfigService`, `AnalyticsService` | Done |
+| `SearchViewModel` | Search, Search Results | `InternshipService`, `AnalyticsService` | Planned |
+| `InternshipDetailViewModel` | Internship Detail | `InternshipService`, `SavedInternshipService`, `ApplicationService`, `AnalyticsService` | Planned |
+| `SavedViewModel` | Saved Internships | `SavedInternshipService`, `AnalyticsService` | Planned |
+| `ApplyFormViewModel` | Application Form (CV pick/upload, profile prefill) | `UserProfileService`, `FileStorageService`, `DocumentPickerService`, `ExternalLinkService`, `InternshipService`, `RemoteConfigService`, `AnalyticsService` | Done |
+| `CvValidationViewModel` | Validate CV step (Apply, pre-submit) | `CvValidationService`, `AnalyticsService` | Done (service, ViewModel, step widget, tests) |
+| `CvMatchViewModel` | CV Match Check step (Apply, advisory) | `CvMatchService`, `AnalyticsService` | Done (model, service, ViewModel, step + screen, tests) |
+| `ApplicationReviewViewModel` | Application Review → Success | `ApplicationService`, `InternshipService`, `UserProfileService`, `AnalyticsService`, `CrashlyticsService` | Done (Application Success is a stateless recap screen, no ViewModel) |
+| `MyApplicationsViewModel` | My Applications | `ApplicationService` | Done (list, status filter, retry; no writes, no detail) |
+| `ApplicationDetailViewModel` | Application Detail | `ApplicationService`, `InternshipService`, `ExternalLinkService`, `AnalyticsService` | Done (load, tracker, withdraw/undo, preview, tests) |
+| `ProfileViewModel` | Profile | `UserProfileService` (+ auth for email and photo) | Done |
+| `EditProfileViewModel` | Edit profile | `UserProfileService`, `AnalyticsService` | Done |
+| `EditSkillsViewModel`, `EditPreferencesViewModel` | Profile sheets | `UserProfileService`, `AnalyticsService` | Done |
+| `UpdateCvViewModel` | Update CV sheet | `DocumentPickerService`, `FileStorageService`, `UserProfileService`, `AnalyticsService` | Done |
+| `OpenCvViewModel` | Profile (View CV) | `ExternalLinkService` | Done |
+| `FirebaseDemoViewModel` | Firebase demo area | `RemoteConfigService`, `CrashlyticsService`, `NotificationService` | Planned |
+| `NotificationCenterViewModel` | Notification Center | `NotificationService`, `AnalyticsService` | Done (history, read state, deep link, `notification_center_open`, tests) |
+| `ReportExportViewModel` | Report export | `ReportExportService`, `FileStorageService`, `ApplicationService`, `AnalyticsService` | Planned |
 
-Three shared providers sit next to the ViewModels and serve widgets directly: `savedInternshipsProvider` (`StreamProvider<List<Internship>>`) and `savedInternshipIdsProvider` (`Provider<Set<String>>`, the keys for the Save Toggle) in `lib/features/saved/viewmodels/saved_providers.dart`, and `appliedJobsProvider` (`StreamProvider<Set<String>>`, the job identities for the `Applied` badge) in `lib/features/applications/viewmodels/applied_providers.dart`. All three depend on user-scoped services, so sign-out drops them (AGENTS.md rule 11).
-
-Services that exist today (one file per service in `lib/services/`, with its implementation and Riverpod provider; interface-based services declare the interface in the same file): `AuthService` (Firebase Auth, plus `authStateChangesProvider` and `currentUserIdProvider`), `InternshipService` (Firestore `internships` listener), `ApplicationService` (Firestore `users/{uid}/applications` listener; create, withdraw and undo), `UserProfileService` (Firestore `users/{uid}` listener + merge writes per section), `SavedInternshipService` (Firestore `users/{uid}/savedInternships` listener; save and remove), `SearchHistoryService` (Firestore `users/{uid}/searchHistory`: recent terms, record and clear), `FileStorageService` (Cloud Storage for Firebase), `DocumentPickerService` (system file picker, `file_selector`), `ExternalLinkService` (opens a URL in another app, `url_launcher`), `CvValidationService` (callable `validateCv`), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. `LocalAuthService` and `LocalFileStorageService` are local implementations of `AuthService` / `FileStorageService` (in-memory user, app documents directory) that no default provider wires in. `NotificationService` and `ReportExportService` do not exist yet; their features add them. SerpAPI is called only by the scheduled function in `functions/`; Gemini is called only by the callable `validateCv` function.
+Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `ApplicationService` (Firestore `users/{uid}/applications` listener, read-only), `UserProfileService` (Firestore `users/{uid}` listener + merge writes per section), `FileStorageService` (Cloud Storage for Firebase), `DocumentPickerService` (system file picker, `file_selector`), `ExternalLinkService` (opens a URL in another app, `url_launcher`), `CvValidationService` (callable `validateCv`), `CvMatchService` (callable `matchCv`: Groq extracts CV/JD technologies, rule-based score + commentary), `NotificationService` (Cloud Messaging, permission, token + refresh and `users/{uid}/notifications` history), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`; Gemini is called only by the callable `validateCv`, and Groq only by `matchCv`.
 
 ## 4. Sequence: Home feed (shared Firestore pool)
 
@@ -164,6 +162,7 @@ The pool itself is filled by `syncInternshipsJob` every six hours (Plan → back
 | Profile, saved internships, applications, notifications, report metadata | **Cloud Firestore** under `users/{uid}/…` | The signed-in user | Owner only: `users/{uid}/**` (`firebase/firestore.rules`, final) |
 | CVs, generated PDF reports | **Cloud Storage for Firebase** `cvs/{uid}/…`, `reports/{uid}/…` (Blaze, US bucket, no-cost quota); metadata in Firestore `users/{uid}/…` | The signed-in user | `firebase/storage.rules`: owner only, PDF ≤ 10 MB; the service checks the same before uploading (G-12) |
 | CV text for the quality gate | Read server-side from `cvs/{uid}/…` by the callable `validateCv`, then sent to Gemini as plain text | Callable Cloud Function (Admin SDK) | Only the caller's own `cvs/${request.auth.uid}/…` path; the key is a Secret Manager secret (`GEMINI_API_KEY`), never in the app |
+| CV match check | Read server-side from `cvs/{uid}/…` by the callable `matchCv`, combined with `internships/{jobKey}` and `users/{uid}.skills`; CV text and the job description are sent to Groq to extract technology lists (the local vocabulary is unioned in) | Callable Cloud Function (Admin SDK) | Caller's own CV path only; no match result is stored; separate `GROQ_API_KEY` secret, never in the app |
 | Feature switches, limits | **Remote Config** (defaults in `firebase/remote-config-defaults.json`) | App team | Read-only in the app; real-time updates |
 
 Rules for feature owners:
@@ -211,6 +210,7 @@ Application Detail subscribes to `ApplicationService.watchApplications()` and pi
 | Auth (Google) | `services/auth_service.dart` | Cancelled picker → info message; network / config → error message |
 | SerpAPI sync | `functions/src/sync.ts` (scheduled) | Missing secret / quota / network → logged + `sync/state.lastError`; the app keeps serving the last good pool |
 | CV validation (Gemini) | `functions/src/validate-cv.ts` (callable) + `services/cv_validation_service.dart` | Wrong/other user's path → `permission-denied`; unreadable PDF or < 50 extracted characters → invalid result (no Gemini call); model output that is not JSON → fail open; download / Gemini failure → `HttpsError` with a safe message, mapped to `AppException` + Retry in the app |
+| CV match (Groq) | `functions/src/match-cv.ts` (callable) + `services/cv_match_service.dart` | Wrong/other user's CV path → `permission-denied`; missing listing → `not-found`; model extraction unparseable → local `knownSkills` vocabulary; unreadable PDF or < 50 characters → Profile skills only (`cvReadable: false`); commentary failure → deterministic suggestions (never blocks); `Continue` stays enabled in every app state |
 | Listings | `services/internship_service.dart` | permission denied / offline → `AppException` with Retry; malformed documents skipped and logged |
 | Applications | `services/application_service.dart` | permission denied / offline → `AppException` with Retry on My Applications; malformed documents (missing fields, unknown status) skipped and logged |
 | File storage | `services/file_storage_service.dart` | Signed out → permission denied; not a PDF / too large → invalid input; `unauthorized` / `quota-exceeded` / `retry-limit-exceeded` → message; progress reported |
@@ -225,7 +225,8 @@ Application Detail subscribes to `ApplicationService.watchApplications()` and pi
 
 - Firebase config files are app configuration and are committed (Lab 3 §9).
 - The SerpAPI key lives in **Secret Manager** as `SERPAPI_KEY` and is read only by the scheduled function. It is not part of the APK or the Flutter `.env` (G-25).
-- The Gemini key lives in **Secret Manager** as `GEMINI_API_KEY`, bound only to the `validateCv` function (least privilege). It is the same free-tier Google AI Studio key as ARTEMIS (G-26) but a separate secret binding. Set it with `firebase functions:secrets:set GEMINI_API_KEY`.
+- The Gemini key lives in **Secret Manager** as `GEMINI_API_KEY`, bound only to the `validateCv` function (least privilege). It is the same free-tier Google AI Studio key as ARTEMIS (G-26). Set it with `firebase functions:secrets:set GEMINI_API_KEY`.
+- The Groq key lives in **Secret Manager** as `GROQ_API_KEY`, bound only to `matchCv`. Groq extracts technology lists from the CV and the job description and writes the match commentary with `openai/gpt-oss-20b` in JSON mode (`reasoning_effort: low`, 4096 completion tokens); extraction failures fall back to the local vocabulary and commentary failures to deterministic suggestions, so an outage never blocks applying. Set it with `firebase functions:secrets:set GROQ_API_KEY`.
 - Never commit service-account JSON, keystores, `.p8` keys, model API keys or test-account credentials.
 
 ## 9. Testing

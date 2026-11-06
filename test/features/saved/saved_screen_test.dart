@@ -61,6 +61,10 @@ void main() {
           path: AppRoutes.search,
           builder: (context, state) => const Text('Search tab'),
         ),
+        GoRoute(
+          path: AppRoutes.notificationCenter,
+          builder: (context, state) => const Text('Notification Center'),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -154,14 +158,14 @@ void main() {
     });
   }
 
-  testWidgets('bell shows an honest coming-soon message', (tester) async {
+  testWidgets('bell opens the Notification Center', (tester) async {
     saved.seed(page);
     await pumpSaved(tester);
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Notifications'));
-    await tester.pump();
-    expect(find.text('Notifications are coming soon.'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Notification Center'), findsOneWidget);
   });
 
   testWidgets('avatar opens Profile', (tester) async {

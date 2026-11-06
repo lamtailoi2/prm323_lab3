@@ -2,7 +2,7 @@
 
 Status: **TC-05 passed 3 of 3** on the final setup (runs 9–11, 23:35–23:38 +07). Runs 1–8 were made while the environment and the harness were being fixed. They are all listed below with their causes. Nothing here is reconstructed: run data comes from `e2e_test/artifacts/runs.jsonl` (copied to [`runs-20261105.jsonl`](runs-20261105.jsonl)) and from the daemon's session API.
 
-How to reproduce this setup: [`docs/guides/artemis-e2e.md`](../../docs/guides/artemis-e2e.md). Setup and diagnosis were done with Claude Code (P-50).
+How to reproduce this setup: [`docs/guides/artemis-e2e.md`](../../docs/guides/artemis-e2e.md). Setup and diagnosis were done with Claude Code (P-57).
 
 ## Environment
 

@@ -58,10 +58,7 @@ class InternshipDetailScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Symbols.notifications_rounded),
             tooltip: 'Notifications',
-            // Same honest message as the tab app bars until the
-            // Notification Center exists (DC-11).
-            onPressed: () =>
-                _showMessage(context, 'Notifications are coming soon.'),
+            onPressed: () => context.push(AppRoutes.notificationCenter),
           ),
         ],
       ),
@@ -165,12 +162,6 @@ class InternshipDetailScreen extends ConsumerWidget {
         ),
       );
     }
-  }
-
-  static void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
