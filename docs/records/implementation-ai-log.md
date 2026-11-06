@@ -682,6 +682,22 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-70: Job type / allowance chips on Search Results; Edit skills no longer wipes Profile skills
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "mình sửa lun ik sửa sao cho nó chạy đúng logic và thuận tiện để test tiếp tục", after ARTEMIS TC-03 failed 0/3 and the operator reported "add skill ở application form … refresh hết skill lấy từ profile và đổi luôn ở profile".
+- **Output:**
+  - **Filter chips.** `SearchFilterCriteria.criteriaCount` (the Filters badge) counted `jobType` and `allowanceRange`, but `_ActiveFiltersRow` had no chip for them, so after `Job type: Internship` the list shrank (54 → 23) with only the query chip shown. `search_results_screen.dart` now shows `filter_job_type` and `filter_allowance` chips (not for `Any …`); `SearchResultsViewModel.clearJobType()` / `clearAllowanceRange()` remove them.
+  - **Edit skills.** `EditSkillsViewModel.build()` read `profileViewModelProvider` once. That provider is auto-dispose and only the Profile screens watch it, so from the Apply Form `Add skill` (CR-16) on a fresh start it was still `ViewLoading`: the draft started empty and `Save changes` stored `[new skill]`, replacing the Profile skills. The view model now listens to the profile (which also keeps it alive), seeds the draft from the first snapshot, and has `ready`; `toggle`, `clearAll` and `save` do nothing and `Save changes` is disabled until then. Later snapshots still do not reset the draft.
+  - Tests: Results VM (`clearJobType` / `clearAllowanceRange` keep the other filters), Results widget (both chips shown and removable; `Any …` shows none), profile VM (opened before the profile loaded: not ready, edits and save ignored, then seeded; later snapshots keep the draft), Apply Form widget (`Add skill` → `2 chosen` → add `Git` → `Save changes` → Profile skills `[Flutter, Dart, Git]`).
+  - `docs/design-traceability.md` Search Results and Profile rows.
+  - Not changed: `EditProfileViewModel` and `EditPreferencesViewModel` read the profile the same way, but they open only from the Profile tab, where it has loaded.
+- **Verification:**
+  - A temporary probe test on the old code: opened before the profile loaded, selected `[]`; saving `Python` left the Profile with `[Python]` (`Flutter`, `Dart`, `Git` lost). Probe deleted.
+  - The new Apply Form test fails on the old code (`Found 0 widgets with text "2 chosen"`) and passes on the new one.
+  - Format, analyze and the full suite: test-report Run 32.
+- **Decision:** Accepted. No design change: chips use the existing active filter chip, and the disabled `Save changes` is the Primary button's documented state.
+
+---
+
 ## Entry template
 
 ```markdown
