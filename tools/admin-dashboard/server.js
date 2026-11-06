@@ -16,8 +16,10 @@ import express from 'express';
 import admin from 'firebase-admin';
 
 import {
+  buildTestCrashData,
   chunk,
   normaliseMessageId,
+  normaliseTarget,
   requireText,
   toIso,
   validateRoute,
@@ -116,6 +118,122 @@ const handle = (fn) => (req, res) => {
 
 function isoOrNull(value) {
   return toIso(value);
+}
+
+function httpError(message, status) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+/// One user or every user document with a unique FCM token. Both the
+/// notification and crash endpoints use this so recipient selection cannot
+/// drift between them.
+async function resolveRecipients({ target, uid }) {
+  if (target === 'all') {
+    const snapshot = await db().collection('users').limit(1000).get();
+    const seen = new Set();
+    const recipients = snapshot.docs
+      .map((doc) => ({
+        uid: doc.id,
+        token:
+          typeof doc.get('fcmToken') === 'string'
+            ? doc.get('fcmToken').trim()
+            : '',
+      }))
+      .filter((entry) => {
+        if (!entry.token || seen.has(entry.token)) return false;
+        seen.add(entry.token);
+        return true;
+      });
+    if (recipients.length === 0) {
+      throw httpError(
+        'No FCM tokens in the users collection yet. Open the app while ' +
+          'signed in first.',
+        409,
+      );
+    }
+    return recipients;
+  }
+
+  const uidValue = requireText(uid, 128);
+  if (uidValue.error) {
+    throw httpError('Choose a user or send to all users.', 400);
+  }
+  const snapshot = await db().collection('users').doc(uidValue.value).get();
+  if (!snapshot.exists) {
+    throw httpError(`No user document for ${uidValue.value}.`, 404);
+  }
+  const token = snapshot.get('fcmToken');
+  if (typeof token !== 'string' || !token.trim()) {
+    throw httpError(
+      'This user has no FCM token yet. Open the app while signed in and ' +
+        'try again.',
+      409,
+    );
+  }
+  return [{ uid: uidValue.value, token: token.trim() }];
+}
+
+/// Sends one message to every recipient in groups of 500 (the multicast
+/// limit) and returns a per-recipient result, including the message ID used
+/// for the history document.
+async function deliver(recipients, message) {
+  const results = [];
+  for (const group of chunk(recipients, 500)) {
+    if (group.length === 1) {
+      try {
+        const messageId = await messaging().send({
+          ...message,
+          token: group[0].token,
+        });
+        results.push({
+          uid: group[0].uid,
+          ok: true,
+          messageId: normaliseMessageId(messageId),
+        });
+      } catch (error) {
+        results.push({
+          uid: group[0].uid,
+          ok: false,
+          error: error.code ?? error.message,
+        });
+      }
+      continue;
+    }
+
+    try {
+      const response = await messaging().sendEachForMulticast({
+        ...message,
+        tokens: group.map((entry) => entry.token),
+      });
+      response.responses.forEach((entry, index) => {
+        const recipient = group[index];
+        if (entry.success) {
+          results.push({
+            uid: recipient.uid,
+            ok: true,
+            messageId: normaliseMessageId(entry.messageId),
+          });
+        } else {
+          results.push({
+            uid: recipient.uid,
+            ok: false,
+            error: entry.error?.code ?? 'unknown',
+          });
+        }
+      });
+    } catch (error) {
+      group.forEach((recipient) =>
+        results.push({
+          uid: recipient.uid,
+          ok: false,
+          error: error.code ?? error.message,
+        }),
+      );
+    }
+  }
+  return results;
 }
 
 app.get(
@@ -298,54 +416,11 @@ app.post(
       return;
     }
     const saveHistory = req.body?.saveHistory !== false;
-    const target = req.body?.target === 'all' ? 'all' : 'uid';
-
-    let recipients;
-    if (target === 'uid') {
-      const uid = requireText(req.body?.uid, 128);
-      if (uid.error) {
-        res.status(400).json({ error: 'Choose a user or send to all users.' });
-        return;
-      }
-      const snapshot = await db().collection('users').doc(uid.value).get();
-      if (!snapshot.exists) {
-        res.status(404).json({ error: `No user document for ${uid.value}.` });
-        return;
-      }
-      const token = snapshot.get('fcmToken');
-      if (typeof token !== 'string' || !token.trim()) {
-        res.status(409).json({
-          error:
-            'This user has no FCM token yet. Open the app while signed in ' +
-            'and try again.',
-        });
-        return;
-      }
-      recipients = [{ uid: uid.value, token: token.trim() }];
-    } else {
-      const snapshot = await db().collection('users').limit(1000).get();
-      const seen = new Set();
-      recipients = snapshot.docs
-        .map((doc) => ({
-          uid: doc.id,
-          token: typeof doc.get('fcmToken') === 'string'
-            ? doc.get('fcmToken').trim()
-            : '',
-        }))
-        .filter((entry) => {
-          if (!entry.token || seen.has(entry.token)) return false;
-          seen.add(entry.token);
-          return true;
-        });
-      if (recipients.length === 0) {
-        res.status(409).json({
-          error:
-            'No FCM tokens in the users collection yet. Open the app while ' +
-            'signed in first.',
-        });
-        return;
-      }
-    }
+    const target = normaliseTarget(req.body?.target);
+    const recipients = await resolveRecipients({
+      target,
+      uid: req.body?.uid,
+    });
 
     const notification = { title: title.value, body };
     const data = route.value ? { route: route.value } : {};
@@ -355,72 +430,10 @@ app.post(
       android: { priority: 'high' },
     };
 
-    const results = [];
-    const historyWrites = [];
-
-    for (const group of chunk(recipients, 500)) {
-      if (group.length === 1) {
-        try {
-          const messageId = await messaging().send({
-            ...message,
-            token: group[0].token,
-          });
-          results.push({
-            uid: group[0].uid,
-            ok: true,
-            messageId: normaliseMessageId(messageId),
-          });
-          historyWrites.push({
-            uid: group[0].uid,
-            messageId: normaliseMessageId(messageId),
-            token: group[0].token,
-          });
-        } catch (error) {
-          results.push({
-            uid: group[0].uid,
-            ok: false,
-            error: error.code ?? error.message,
-          });
-        }
-        continue;
-      }
-
-      try {
-        const response = await messaging().sendEachForMulticast({
-          ...message,
-          tokens: group.map((entry) => entry.token),
-        });
-        response.responses.forEach((entry, index) => {
-          const recipient = group[index];
-          if (entry.success) {
-            results.push({
-              uid: recipient.uid,
-              ok: true,
-              messageId: normaliseMessageId(entry.messageId),
-            });
-            historyWrites.push({
-              uid: recipient.uid,
-              messageId: normaliseMessageId(entry.messageId),
-              token: recipient.token,
-            });
-          } else {
-            results.push({
-              uid: recipient.uid,
-              ok: false,
-              error: entry.error?.code ?? 'unknown',
-            });
-          }
-        });
-      } catch (error) {
-        group.forEach((recipient) =>
-          results.push({
-            uid: recipient.uid,
-            ok: false,
-            error: error.code ?? error.message,
-          }),
-        );
-      }
-    }
+    const results = await deliver(recipients, message);
+    const historyWrites = results.filter(
+      (entry) => entry.ok && entry.messageId,
+    );
 
     let historyWritten = 0;
     let historyError = null;
@@ -463,6 +476,42 @@ app.post(
       failureCount: results.length - successCount,
       historyWritten,
       historyError,
+      results,
+    });
+  }),
+);
+
+app.post(
+  '/api/test-crash',
+  handle(async (req, res) => {
+    const target = normaliseTarget(req.body?.target);
+    const recipients = await resolveRecipients({
+      target,
+      uid: req.body?.uid,
+    });
+
+    // Data-only: no `notification` block, so the system shows no banner. The
+    // app recognises `type=test_crash` and calls Crashlytics.crash().
+    const message = {
+      data: buildTestCrashData({
+        target,
+        requestedAt: new Date().toISOString(),
+      }),
+      android: { priority: 'high' },
+      apns: {
+        payload: {
+          aps: { 'content-available': 1 },
+        },
+      },
+    };
+
+    const results = await deliver(recipients, message);
+    const successCount = results.filter((entry) => entry.ok).length;
+    res.json({
+      requested: recipients.length,
+      successCount,
+      failureCount: results.length - successCount,
+      target,
       results,
     });
   }),

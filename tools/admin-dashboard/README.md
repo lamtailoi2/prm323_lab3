@@ -39,22 +39,30 @@ shows which credential is in use.
 ## What it does
 
 - **Users** — `users/{uid}` joined with Firebase Auth: name, email, uid,
-  device token and when it was last stored. Copy a token with one click.
-- **Send notification** — title, optional body, optional in-app `route`
-  (`/home`, `/search`, `/saved`, `/applications`, `/profile` or a path below
-  one of them, e.g. `/home/internships/<jobKey>`), to one user or every user
-  with a token. The server reports per-recipient successes and FCM error codes.
-  A single send covers up to 1000 user documents (duplicate tokens are sent
-  once).
+  device token and when it was last stored. Copy a token with one click. The
+  recipient picker in the compose form uses the same list.
+- **Send notification** — choose **one recipient** or **everyone with a
+  token** from the recipient picker. Students without a device token appear
+  disabled with the reason, so a send cannot silently target an unreachable
+  device. Title, optional body, optional in-app `route` (`/home`, `/search`,
+  `/saved`, `/applications`, `/profile` or a path below one of them, e.g.
+  `/home/internships/<jobKey>`). The server reports per-recipient successes
+  and FCM error codes. A send covers up to 1000 user documents (duplicate
+  tokens are sent once).
 - **Notification history** — reads `users/{uid}/notifications` (newest first,
   read / unread, route, time) and deletes one entry or clears the list.
+- **Crash test** — sends a data-only FCM command (`type=test_crash`) to the
+  same recipient selection. Every selected app closes immediately and uploads
+  a fatal report on its next launch. The action requires the acknowledgment
+  checkbox and a confirmation dialog; it writes no notification or history
+  document. The on-device control stays at Profile → Diagnostics → *Simulate
+  app crash*.
 
 When **Write to the user's notification history** is checked, the server also
 writes the document with the FCM message ID as its ID, the same ID the app uses
 when it receives the message, so the two writes merge instead of duplicating.
-
-The app keeps the Crashlytics test crash (Profile → Diagnostics → *Simulate app
-crash*); the dashboard does not trigger crashes remotely.
+The crash command deliberately skips this write: the app recognises the
+control message before its notification handlers and crashes instead.
 
 ## Security
 
@@ -73,3 +81,4 @@ crash*); the dashboard does not trigger crashes remotely.
 | User shows **No token** | Open the app on that device while signed in; the coordinator stores the token after sign-in. |
 | Send reports `messaging/registration-token-not-registered` | The app was uninstalled or the token rotated; open the app again so it stores the new token. |
 | Send fails with `messaging/invalid-argument` | Check the custom data: `route` must be an in-app path (the form validates it). |
+| Crash command succeeds but the app does not close | Install the current app build (the `type=test_crash` handler is in `NotificationService`) and make sure the chosen user has a device token. Data messages need Google Play services. |
