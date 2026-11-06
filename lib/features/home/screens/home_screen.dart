@@ -10,6 +10,7 @@ import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/distinct_listings.dart';
+import '../../../core/utils/greeting.dart';
 import '../../../core/utils/job_role.dart';
 import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/internship_card.dart';
@@ -52,7 +53,9 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: MainTabAppBar(
-        title: 'Home',
+        // Home greets the student by name (Tab Header v2, DC-31).
+        title: _displayName(user?.displayName) ?? 'Home',
+        greeting: greetingFor(DateTime.now()),
         user: user,
         onProfile: () => context.go(AppRoutes.profile),
         onNotifications: () => context.push(AppRoutes.notificationCenter),
@@ -135,6 +138,12 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+/// The Google account name, or null when it is missing or blank.
+String? _displayName(String? name) {
+  final trimmed = name?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.state,
@@ -155,7 +164,7 @@ class _HomeHeader extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.screenHorizontal,
-            AppSpacing.s16,
+            AppSpacing.s8,
             AppSpacing.screenHorizontal,
             0,
           ),
