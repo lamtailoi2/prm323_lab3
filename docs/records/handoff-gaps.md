@@ -72,6 +72,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 ### G-06: Remote Config display and Crashlytics controls
 - **Found:** Lab 3 requires displaying current Remote Config values, a handled-exception demo and an explicit test-crash control. Lab 2 has no place for them.
 - **Proposal:** a "Diagnostics" group in Profile → "Settings & Support" (the Stitch Profile final already has this section). Never trigger a crash at startup.
+- **Resolved (2026-11-06):** `FirebaseDemoScreen` at `/profile/firebase`, opened from Profile → Diagnostics → `Firebase demo`. It shows every Remote Config parameter with its value and source, refreshes on live updates, and offers `Send a non-fatal error` and `Simulate app crash` (confirmation first). It links to the Notification Center; the Report export row is disabled (`Coming soon.`) until G-05.
 
 ### G-07: Values not documented in the handoff
 Values below are **estimated from the Figma screenshots** or left at Material defaults. Verify each in Figma inspect mode and update the code and [`design-system.md`](../design/design-system.md).

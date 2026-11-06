@@ -109,7 +109,7 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `EditSkillsViewModel`, `EditPreferencesViewModel` | Profile sheets | `UserProfileService`, `AnalyticsService` | Done |
 | `UpdateCvViewModel` | Update CV sheet | `DocumentPickerService`, `FileStorageService`, `UserProfileService`, `AnalyticsService` | Done |
 | `OpenCvViewModel` | Profile (View CV) | `ExternalLinkService` | Done |
-| `FirebaseDemoViewModel` | Firebase demo area | `RemoteConfigService`, `CrashlyticsService`, `NotificationService` | Planned |
+| `FirebaseDemoViewModel` | Firebase demo area | `RemoteConfigService`, `CrashlyticsService`, `NotificationService` | Done (live Remote Config values with source, non-fatal and crash tests, FCM token, links; ViewModel and screen tests) |
 | `NotificationCenterViewModel` | Notification Center | `NotificationService`, `AnalyticsService` | Done (history, read state, deep link, `notification_center_open`, tests) |
 | `ReportExportViewModel` | Report export | `ReportExportService`, `FileStorageService`, `ApplicationService`, `AnalyticsService` | Planned |
 

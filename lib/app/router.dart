@@ -21,6 +21,7 @@ import '../features/internships/viewmodels/apply_form_viewmodel.dart'
     show ApplySession;
 import '../features/notifications/screens/notification_center_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
+import '../features/profile/screens/firebase_demo_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/saved/screens/saved_screen.dart';
 import '../models/app_user.dart';
@@ -43,6 +44,7 @@ abstract final class AppRoutes {
   static const String applications = '/applications';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
+  static const String firebaseDemo = '/profile/firebase';
   static const String notificationCenter = notificationCenterPath;
 
   /// Internship Detail opened from the [tab] it belongs to, e.g.
@@ -179,6 +181,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 name: 'edit_profile',
                 parentNavigatorKey: rootNavigatorKey,
                 builder: (context, state) => const EditProfileScreen(),
+              ),
+              // Lab 3 demo controls: Remote Config values and Crashlytics
+              // tests (G-06). Above the shell like the other Profile tools.
+              GoRoute(
+                path: 'firebase',
+                name: 'firebase_demo',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => const FirebaseDemoScreen(),
               ),
               // The Notification Center opens above the shell, so Back
               // returns to the tab the bell was tapped on (G-04).
