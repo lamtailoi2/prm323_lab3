@@ -1,6 +1,6 @@
-# ARTEMIS runs — 2026-11-06 (TC-01, TC-02, TC-14, TC-16, TC-17)
+# ARTEMIS runs — 2026-11-06 (TC-01, TC-02, TC-07 – TC-10, TC-14, TC-16, TC-17)
 
-Status: **TC-01, TC-02, TC-14, TC-16 and TC-17 each passed 3 of 3** on the final setup.
+Status: **TC-01, TC-02, TC-07, TC-09, TC-14, TC-16 and TC-17 each passed 3 of 3** on the final setup. **TC-08 passed 0 of 3 and TC-10 failed its exploratory run**: both expectations were wrong, and both cases were rewritten in `f9b5f43` but not run again yet (see [Flow 2 and Flow 3](#flow-2-and-flow-3-0804--0830)).
 
 - TC-02, TC-16, TC-17 ran 07:12–07:24 +07 on `gemini-3.1-flash-lite`.
 - TC-14 and TC-01 ran 07:35–07:47 on `gemini-3.5-flash-lite`, because 3.1 had used up its daily quota.
@@ -77,5 +77,69 @@ uv run pytest "test_auth.py::test_tc14_sign_out_returns_to_login" "test_auth.py:
 | TC-17 | 3/3 | 97.5 |
 
 TC-01 also checked the `login` analytics event in Logcat on each run. TC-17 adds `Docker` to the test account's profile skills, removing it first when it is already there.
+
+## Flow 2 and Flow 3 (08:04 – 08:30)
+
+Same profile build and device; model `gemini-3.5-flash-lite` (the 3.1 daily quota was still used up).
+
+### The one application used by TC-07, TC-09 and TC-10
+
+The test account had no application ("You have not applied yet"). So that the cases share **one** application instead of each creating its own, it was submitted by hand with `adb` taps (no ARTEMIS run, no model calls) at 08:04: **Client Success Intern — Wegrow**. It is the third card of the `Intern` results, chosen so that TC-05's `Recruitment Intern` keeps its `Apply now` button.
+
+The Profile CV `Sample_CV.pdf` (609 B, uploaded 2026-11-02, the old one-line sample) has too little text:
+- CV match showed "We could not read your CV".
+- Validate CV stopped with "We could not use this CV — CV appears to be empty or unreadable." (`validateCv` needs at least 50 characters).
+
+For this application only, it was replaced with the full fictional CV that `conftest.py` builds (1218 B; `pdf-parse` 2.4.5, the library the function uses, reads 522 characters from it locally). The application then went through CV match → Validate CV → Review → `Application submitted!`.
+
+Note for Lập's TC-06: it uses the Profile CV, so it will stop at Validate CV until the Profile CV is replaced.
+
+### Runs
+
+| # | Start (+07) | Test | Trace | pytest | Time (s) | Model calls | Note |
+|---|---|---|---|---|---|---|---|
+| 22 | 08:10 | TC-09 | `ea708962` | passed | 29.3 | 5 | exploratory |
+| 23 | 08:10 | TC-07 | `b08c12ee` | passed | 65.6 | 13 | exploratory |
+| 24 | 08:12 | TC-08 | `7da3ef7c` | passed | 116.8 | 32 | exploratory |
+| 25 | 08:14 | TC-10 | `f1e857a4` | **failed** | 193.5 | 48 | exploratory; airplane mode on, but Applications still showed the cached list, with no error and no `Retry` (the case expected both) |
+| 26 | 08:18 | TC-07 | `b3c12d02` | passed | 50.7 | 13 | counted |
+| 27 | 08:19 | TC-07 | `c293b71d` | passed | 50.5 | 13 | counted |
+| 28 | 08:20 | TC-07 | `789431b9` | passed | 57.4 | 13 | counted |
+| 29 | 08:21 | TC-08 | `437397d9` | **failed** | 122.9 | 34 | counted; `first_saved_title` was another card (see below) |
+| 30 | 08:24 | TC-08 | `a3dc0d3b` | **failed** | 116.7 | 32 | counted; same cause |
+| 31 | 08:26 | TC-08 | `e1d1565d` | **failed** | 102.8 | 28 | counted; Undo was missed, and the count went 7 → 5 |
+| 32 | 08:28 | TC-09 | `58144485` | passed | 21.2 | 5 | counted |
+| 33 | 08:28 | TC-09 | `b44e3547` | passed | 23.2 | 5 | counted |
+| 34 | 08:29 | TC-09 | `dfe47b1a` | passed | 27.2 | 5 | counted |
+
+Counted command: `uv run pytest "test_apply.py::test_tc07_…" "test_saved.py::test_tc08_…" "test_applications.py::test_tc09_…" --count 3 -v` → 6 passed, 3 failed in 703.80 s.
+
+| Test | Passed | Average time (s) |
+|---|---|---|
+| TC-07 | 3/3 | 52.9 |
+| TC-08 | 0/3 | 114.1 |
+| TC-09 | 3/3 | 23.9 |
+
+### Why TC-08 and TC-10 failed
+
+**TC-08.** The case assumed that the listing it had just saved is the first card on Saved. Saved is ordered by the listing's **posting date**, not by when it was saved: `saved_screen.dart` notes that the service does not expose `savedAt`. The `Recent` label suggests otherwise, so this is raised with the Saved owner.
+
+In run 31 the agent also missed `Undo`, because the Snackbar lasts about 4 s. Over the four TC-08 runs, the account's Saved list changed:
+- **"Thực Tập Sinh IT Developer Tiếng Nhật – Trình N3" (SENZU BASE) was unsaved.**
+- "Intern AI Software Engineer" (Nexlab) was added.
+
+This is known from Saved screenshots taken before and after. The account owner chose to leave the list as it is.
+
+Rewritten in `f9b5f43`:
+- The case finds the saved card by its title.
+- It never touches another card, so a missed Undo can only remove what the case added.
+
+**TC-10.** Offline, the app kept showing the applications from Firestore's offline cache. That is the app working as intended, and the case expected an error state instead. The agent also needed 11 swipes to find the Airplane mode tile.
+
+Rewritten in `f9b5f43`:
+- Wi-Fi and data are turned off with `adb`, as in TC-20.
+- It asserts that the list, with its count line, stays visible offline with no error and no `Retry`.
+
+Model use for this block was about 250 calls (13 runs).
 
 Replays and step screenshots of every trace are on the ARTEMIS host in `~/artemis/traces/`. They are not committed because they show the signed-in account.

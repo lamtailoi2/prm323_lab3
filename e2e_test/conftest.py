@@ -299,3 +299,51 @@ def set_network(enabled: bool) -> None:
     state = "enable" if enabled else "disable"
     _adb("shell", "svc", "wifi", state)
     _adb("shell", "svc", "data", state)
+
+
+# ---- Notifications (TC-13, TC-15) -------------------------------------------
+
+NOTIFICATION_PERMISSION = "android.permission.POST_NOTIFICATIONS"
+
+
+def reset_notification_permission() -> None:
+    """Puts the notification permission back to "never asked", as after a
+    fresh install, and relaunches the app: it asks again once signed in."""
+    _adb("shell", "am", "force-stop", APP_PACKAGE)
+    _adb("shell", "pm", "revoke", APP_PACKAGE, NOTIFICATION_PERMISSION)
+    _adb(
+        "shell",
+        "pm",
+        "clear-permission-flags",
+        APP_PACKAGE,
+        NOTIFICATION_PERMISSION,
+        "user-set",
+        "user-fixed",
+    )
+    _adb("shell", "am", "start", "-W", "-n", f"{APP_PACKAGE}/.MainActivity")
+
+
+def grant_notification_permission() -> None:
+    _adb("shell", "pm", "grant", APP_PACKAGE, NOTIFICATION_PERMISSION)
+
+
+def notification_permission_granted() -> bool:
+    dump = _adb("shell", "dumpsys", "package", APP_PACKAGE)
+    return f"{NOTIFICATION_PERMISSION}: granted=true" in dump
+
+
+def app_notification_titles() -> set[str]:
+    """Titles of this app's notifications currently in the shade."""
+    dump = _adb("shell", "dumpsys", "notification", "--noredact")
+    titles = set()
+    for record in dump.split("NotificationRecord(")[1:]:
+        if f"pkg={APP_PACKAGE} " not in record.split("\n", 1)[0]:
+            continue
+        match = re.search(r"android\.title=String \((.*)\)", record)
+        if match:
+            titles.add(match.group(1))
+    return titles
+
+
+def send_app_to_background() -> None:
+    _adb("shell", "input", "keyevent", "KEYCODE_HOME")
