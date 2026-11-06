@@ -107,7 +107,7 @@ uv run pytest -k tc05 --count 3 -v           # one case by name
 uv run pytest --count 3 -v                   # whole suite: mind the daily quota (§6)
 ```
 
-TC-13 needs you during the run: when it prints *"send one FCM message…"*, send a message with route `/saved` to the test account, from `tools/admin-dashboard` or the Firebase console (Profile → Diagnostics → Copy FCM token). The case waits up to 180 s, so run it with `-s` to see the prompt: `uv run pytest test_notifications.py -k tc13 -s -v`.
+TC-13 needs you during the run: when it prints *"send one FCM message…"*, send a message with route `/saved` to the test account, from `tools/admin-dashboard` or the Firebase console (Profile → Firebase demo → Copy FCM token). The case waits up to 180 s, so run it with `-s` to see the prompt: `uv run pytest test_notifications.py -k tc13 -s -v`.
 
 What `conftest.py` does for every test:
 
