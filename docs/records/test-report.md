@@ -630,6 +630,25 @@ Follow-ups: capture `evidence/crashlytics/` (dashboard with fatal + non-fatal, u
 
 ---
 
+## Run 33: Admin dashboard refactor + admin crash command — 2026-11-06
+
+Environment: Windows 11 · Flutter 3.47.8 · Node 24 · `emulator-5554` (1080 × 2400) · Firebase project `prm-lab3` · signed-in test account.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd tools/admin-dashboard && npm test` | **9 passed** |
+| 2 | `node --check server.js`, `lib/admin.js`, `public/app.js` | Clean |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **676 passed** |
+| 5 | `POST /api/test-crash` to the signed-in UID | `successCount: 1`; logcat showed `FATAL EXCEPTION: FirebaseCrashlyticsTestCrash` on the app PID, then the app closed |
+| 6 | Rebuilt and reinstalled the APK; Profile → Diagnostics | Both `Simulate app crash` and `Firebase demo` are present |
+| 7 | `agent-browser` visual check | Recipient select lists all 9 users plus `Everyone with a token (5)`; no-token users are disabled; selecting `Mai Duy Lập` enabled `Send notification` and changed the chip to `To Mai Duy Lập`; the crash acknowledgment enabled `Send test crash` |
+| 8 | Crashlytics dashboard for the admin crash | **Not checked** (the fatal report uploads on the next launch) |
+
+Notes: the app must be rebuilt after the `test_crash` handler lands; the first attempt used the earlier APK and did not close. The dashboard is served only on `127.0.0.1:4317`.
+
+---
+
 ## Run template
 
 ```markdown

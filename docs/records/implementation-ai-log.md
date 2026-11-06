@@ -710,6 +710,34 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-72: Firebase demo area, Remote Config source fix and the Profile crash control
+- **Request:** "kiểm tra xem tôi đã làm những tính năng hay task này chưa, nếu chưa hướng dẫn tôi từng bước" then "làm hoàn thiện luôn từng bước giúp tôi"; later "giữ lại giúp tôi nút crash ở profile người dùng đi".
+- **Output:**
+  - `FirebaseDemoScreen` + `FirebaseDemoViewModel` at `/profile/firebase`: Remote Config key/value/source, live `onUpdated` refresh, `Send a non-fatal error`, `Simulate app crash`, `Copy FCM token`, Notification Center link, and a disabled Report export row until G-05. Route `firebase_demo`; Profile → Diagnostics keeps the `Simulate app crash` tile and adds the `Firebase demo` entry.
+  - **Bug found on device:** `RemoteConfigValue.source.name` returns `valueRemote` / `valueDefault` / `valueStatic`, so the screen labelled remote values `In-app default`. `FirebaseRemoteConfigService.snapshot()` now maps them through `sourceName()`; tests cover the mapping and the `From Firebase` label.
+  - Tests: `firebase_demo_viewmodel_test.dart`, `firebase_demo_screen_test.dart` (360/412 dp, live update, non-fatal, crash confirmation, links, FCM token, tap targets), restored Profile crash test, `remote_config_defaults_test.dart` source mapping.
+  - Docs: design traceability, architecture, G-06, Run 31, evidence images.
+- **Verification:** `flutter analyze` → No issues found; `flutter test` → **676 passed**. Device walk on `emulator-5554`: all three parameters show `From Firebase` (`6 / 10 / true`); non-fatal showed its SnackBar; the Profile Diagnostics section shows both `Simulate app crash` and `Firebase demo`. Evidence: `evidence/remote-config/remote-config-app-from-firebase-20261106.png`, `evidence/crashlytics/crashlytics-nonfatal-sent-20261106.png`. The test crash and Crashlytics dashboard screenshots are not part of this entry.
+- **Decision:** Accepted. The source mapping lives in the service so the SDK enum never leaks into UI code. The Profile crash control stays after the user's correction; the FCM token remains on the demo screen.
+
+---
+
+### P-73: Admin dashboard refactor, explicit recipients and admin-triggered crash
+- **Request:** "dựa vào skill UI vừa cài, refactor lại UI của dashboard admin", fix "user đang không chọn chỉ định được ai sẽ được gửi notification", remove the UI slop, and add a crash control so the admin can test the whole app without opening each user's Profile.
+- **Output:**
+  - **Backend:** `lib/admin.js` gains `normaliseTarget()` and `buildTestCrashData()`; `server.js` extracts `resolveRecipients()` and `deliver()` (one user or every unique token, 500-per-batch) and adds `POST /api/test-crash`, which sends a **data-only** FCM command `{type: 'test_crash', source: 'admin_dashboard', target, requestedAt}` with high Android priority and no notification block.
+  - **App:** `NotificationService.testCrashRequests()` exposes `TestCrashRequest`; foreground/opened/initial messages filter control messages out of the history; `NotificationCoordinator` sets `crash_source`, `crash_target` and `crash_requested_at` then calls `crashForTesting()`; the background isolate does the same through `FirebaseCrashlytics.instance.crash()`. No Firestore rules change.
+  - **UI:** rewritten `public/index.html`, `styles.css`, `app.js` as a warm-paper ops desk: explicit recipient picker (everyone or one student; no-token students disabled with the reason), title/body/route, delivery and history panels, skeleton/empty/error states, focus rings, 44 dp targets, reduced-motion support, and a crash panel with an acknowledgment checkbox plus a native confirmation dialog. The full-page screenshot sticky-header duplication is a capture artifact; the viewport render is clean.
+  - README updated with the new recipient and crash workflows.
+- **Verification:**
+  - `cd tools/admin-dashboard && npm test` → **9 passed**; `node --check` on `server.js`, `lib/admin.js` and `public/app.js` → clean.
+  - `flutter analyze` → No issues found; `flutter test` → **676 passed** (includes the admin crash coordinator test).
+  - End-to-end on `emulator-5554`: `POST /api/test-crash` to `mgqfiZkcaaRbV5zEsad9bODhKvu1` returned `successCount: 1`; logcat showed `FATAL EXCEPTION` / `FirebaseCrashlyticsTestCrash` on the app PID, which then closed. The app was rebuilt and reinstalled before this run.
+  - `agent-browser` (via `npx agent-browser 0.41.2`) rendered the dashboard: the recipient select lists all 9 users plus `Everyone with a token (5)`; no-token users are disabled; selecting `Mai Duy Lập` enabled `Send notification` and changed the chip to `To Mai Duy Lập`; the crash acknowledgment enabled `Send test crash`.
+- **Decision:** Accepted. A data-only FCM command avoids a new Firestore collection and rules change, works from the dashboard, and is recognised before the notification handlers so it never writes history or shows a banner. The remote crash is destructive, so it requires the acknowledgment and a confirmation dialog and is only reachable on the localhost-bound dashboard. The existing Profile crash control remains for on-device testing.
+
+---
+
 ## Entry template
 
 ```markdown
