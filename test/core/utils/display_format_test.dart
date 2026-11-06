@@ -23,6 +23,40 @@ void main() {
     });
   });
 
+  group('formatRelativeTime', () {
+    final now = DateTime(2026, 11, 5, 12);
+
+    test('recent notifications read as minutes and hours', () {
+      expect(
+        formatRelativeTime(now.subtract(const Duration(seconds: 20)), now: now),
+        'Just now',
+      );
+      expect(
+        formatRelativeTime(now.subtract(const Duration(minutes: 5)), now: now),
+        '5 min ago',
+      );
+      expect(
+        formatRelativeTime(now.subtract(const Duration(hours: 2)), now: now),
+        '2 h ago',
+      );
+    });
+
+    test('older notifications read as days, then as a date', () {
+      expect(
+        formatRelativeTime(now.subtract(const Duration(days: 1)), now: now),
+        'Yesterday',
+      );
+      expect(
+        formatRelativeTime(now.subtract(const Duration(days: 3)), now: now),
+        '3 days ago',
+      );
+      expect(
+        formatRelativeTime(now.subtract(const Duration(days: 9)), now: now),
+        'Oct 27, 2026',
+      );
+    });
+  });
+
   group('application dates', () {
     test('applied date is day and month, as on the card', () {
       expect(formatDayMonth(DateTime(2026, 10, 1)), '1 Oct');

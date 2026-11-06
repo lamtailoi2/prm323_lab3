@@ -10,10 +10,11 @@ import '../../../core/state/view_state.dart';
 import '../../../core/utils/posted_age.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_search_field.dart';
-import '../../../core/widgets/app_top_bar.dart';
+import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
+import '../../../services/auth_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
@@ -48,9 +49,22 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(searchViewModelProvider);
     final viewModel = ref.read(searchViewModelProvider.notifier);
+    // The tab keeps this screen alive under Search Results, so a query
+    // cleared or changed there must show here too, not the old term.
+    ref.listen(searchViewModelProvider.select((state) => state.query), (
+      _,
+      query,
+    ) {
+      if (_controller.text != query) _controller.text = query;
+    });
 
     return Scaffold(
-      appBar: const AppTopBar.main(title: 'Search'),
+      appBar: MainTabAppBar(
+        title: 'Search',
+        user: ref.watch(authStateChangesProvider).value,
+        onProfile: () => context.go(AppRoutes.profile),
+        onNotifications: () => context.push(AppRoutes.notificationCenter),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
@@ -80,11 +94,23 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ..._trendingSection(context, state, viewModel),
               ..._recentSearchesSection(context, state, viewModel),
               const SizedBox(height: AppSpacing.s8),
-              AppButton(
-                label: 'Find Internships',
-                icon: Symbols.search_rounded,
-                expand: true,
-                onPressed: () => _submit(context, viewModel, _controller.text),
+              // Results open only after a query or a filter (screen-spec
+              // §Search), so with neither the button shows its disabled state
+              // instead of a tap that does nothing.
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _controller,
+                builder: (context, value, _) {
+                  final canSubmit =
+                      value.text.trim().isNotEmpty || state.workMode != null;
+                  return AppButton(
+                    label: 'Find Internships',
+                    icon: Symbols.search_rounded,
+                    expand: true,
+                    onPressed: canSubmit
+                        ? () => _submit(context, viewModel, _controller.text)
+                        : null,
+                  );
+                },
               ),
             ],
           ),
@@ -101,6 +127,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final trimmed = term.trim();
     final mode = ref.read(searchViewModelProvider).workMode;
     if (trimmed.isEmpty && mode == null) return;
+    viewModel.syncQuery(trimmed);
     if (trimmed.isNotEmpty) {
       _controller.text = trimmed;
       // Recorded in the background: an offline Firestore write only
@@ -145,6 +172,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     // Navigate only once the sheet has closed, so its route is gone.
     if (criteria == null || !context.mounted) return;
     final term = _controller.text.trim();
+    viewModel.syncQuery(term);
     if (term.isNotEmpty) unawaited(viewModel.recordSearch(term));
     context.go(
       Uri(

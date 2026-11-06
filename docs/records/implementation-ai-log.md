@@ -407,6 +407,309 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-48: Flow 3 Application Detail audit and gap closure
+- **Request:** read the current source, check the Flow 3 plan (`plan-flow3-implement.md`) for mistakes or missing items, supplement it, and implement what remains.
+- **Output:** the audit found the feature already implemented on `feat/application-detail` — `ApplicationDetailScreen` (`ApplicationIdentityCard`, `ApplicationStatusTracker`, `ApplicantCard`), `ApplicationDetailViewModel` (`ViewState`, retry, withdraw + Undo within 24 h, `view_application` once), route `application_detail`, card / `Review offer` / `View application` navigation, model snapshot fields (`cvFileName` / `cvUrl` / `cvStoragePath`, `applicant`, `withdrawnAt` / `previousStatus`) and `ApplicationService.watchApplications()` + `withdraw` / `undoWithdrawal`. The plan was stale in several places (it deferred withdraw, assumed a `watchApplication(jobKey)` method and `CvFile` / `ApplicantSnapshot` models that do not exist, and reused deviation ID DC-27, which belongs to Review / Success). Closed the real gaps: added `e2e_test/test_applications.py` (TC-09 happy path, TC-10 airplane-mode recovery); corrected `analytics-plan` row 11 to Implemented; marked TC-09/TC-10 Ready (not run) and added their result rows in `test-plan.md`; defined the missing DC-29 in `design-traceability.md`, superseded DC-22 (d)–(f) and updated DC-24 item 11; updated the application schema and status rules in `architecture.md`; added Withdrawn to the badge table in `design-system.md` and resolved G-18 in `handoff-gaps.md`; recorded Run 24. `plan-flow3-implement.md` §2, §4–§7, §10.1 and §15 were corrected to the as-built contract.
+- **Verification:** `dart format --output=none --set-exit-if-changed lib test` → **186 files, 0 changed**; `flutter analyze` → **No issues found!**; Flow 3 targeted tests → **33 passed**; `flutter test` → **583 passed**. Five full-screen device screenshots were captured on the Android emulator (1080 × 2400) with the real signed-in test account — `application-list`, `application-detail-submitted`, `application-detail-applicant`, `application-detail-withdraw-dialog`, `application-detail-withdrawn` — saved in `evidence/screens/application-*.png` (full screen, not redacted; the owner asked for the real test-account screenshots). `empty`, `rejected`, `error` and `loading` were not captured: the account has one application, there is no UI to set another status, and a network error cannot be produced deterministically. E2E TC-09/TC-10 written but **not run** (no ARTEMIS daemon/toolchain); DebugView not run.
+- **Decision:** Accepted the existing implementation (it is ahead of the plan and covered by tests); the plan and docs were corrected rather than the code. Withdraw / Undo stays, because Flow 3d is part of the Lab 2 flow and the Application Detail withdrawn frame supplies the badge (G-18 resolved). E2E results and the DebugView screenshot remain open.
+
+---
+
+### P-49: Flow 3 Application Detail — full Figma alignment (option 1)
+- **Request:** after the P-48 audit, the owner chose "Phương án 1 – Đồng bộ hoàn toàn với Figma": align the UI with the Figma frame, fix the navigation bug and the error copy, add the missing tests, update the docs and recapture evidence. Rules given: do not guess, ask when unsure, avoid re-reading files unnecessarily. `plan-flow3-implement.md` must be corrected wherever it no longer matches.
+- **Output:** verified the audit against `docs/design/screenshots/application-detail-final.png` before changing anything; it found DC-29 itself wrong about the tracker (it described 5 steps including "Onboarding"; the frame has 4 and no Onboarding), so the docs were corrected to the frame rather than the code. Product changes: `application_status_tracker.dart` — 4 steps with the frame's names (`Technical interview`, `Offer decision`), a `Step X of 4 (Y% completed)` progress line, right-aligned step dates, and the duplicate badge removed from the identity card (it now lives only on the tracker); `application_identity_card.dart` — facts render as `surface-variant` chips and the raw `Divider(height: 1)` is gone; `applicant_card.dart` — the CV tile reads `{size} • Uploaded {date}` from a new `cvSizeBytes` recorded at submission, with the previous `PDF · Submitted {date}` kept for older documents; `internship_application.dart` / `application_service.dart` / `application_review_viewmodel.dart` — `cvSizeBytes` added to the model, the `createApplication` contract and the Firestore write; `application_detail_screen.dart` — heading `About {companyName}`, app-bar back and the empty state's `Back to Applications` use `context.go('/applications')` instead of `Navigator.maybePop` (which returned to Internship Detail), and `Withdraw application` is styled destructive with `AppColors.error` through a local `_DestructiveWithdrawButton` theme override (no new `AppButtonVariant`, per the design-system rule and the owner's choice); `application_service.dart` — `_toWriteAppException` takes the action name, so a failed withdraw / undo reads "We could not withdraw this application …" / "We could not undo this withdrawal …" instead of the generic apply-submission message. Tests: `application_detail_screen_test.dart` (4 steps + progress, `{size} • Uploaded`, generic CV fallback, single status badge, app-bar back to `/applications`, empty-state action to `/applications`, destructive button colour), `application_detail_viewmodel_test.dart` (withdraw- and undo-specific failure messages), `internship_application_test.dart` (`cvSizeBytes` present / absent), `test/helpers/fakes.dart` (`CreatedApplication.cvSizeBytes`). Docs: DC-29 rewritten to the frame (4 steps, progress, static step descriptions, `About {companyName}`, destructive withdraw, back behaviour, no verified tick, no Version 2.4, CV tile); `architecture.md` — `ApplicationDetailViewModel` Done with its real services (`ApplicationService`, `InternshipService`, `ExternalLinkService`, `AnalyticsService`) and `cvSizeBytes` in the application schema; `handoff-gaps.md` — G-18 table row Resolved with the page-05 specimen note; `design-system.md` — §2.12 "6 specimens".
+- **Verification:** `dart format --output=none --set-exit-if-changed lib test` → **0 changed after formatting**; `flutter analyze` → **No issues found!**; Flow 3 targeted (`internship_application_test`, `test/features/applications/`, `test/app/router_test.dart`) → **88 passed**; `flutter test` (full suite) → **593 passed**. No screenshots or E2E were captured in this entry: the emulator was not run and ARTEMIS is not available on this machine — recapturing `evidence/screens/application-*.png` from the new build is still open (the existing five were taken before these changes and no longer match).
+- **Decision:** Applied. Accepted the design system rule that `AppButton` gains no destructive variant; the withdraw styling stays local to the screen and is recorded in DC-29. Rejected the audit's suggestion to render the frame's per-step process captions and the "Expected review outcome by" banner as static text: they describe one employer's process and the app has no such data (rule 7), so the tracker keeps its generic descriptions and real dates only, and DC-29 records that deviation. Kept `Year of study` out of the applicant rows (the frame does not show it). Kept the company card to logo / name / location (API limit, DC-24).
+
+---
+
+### P-50: FCM in all three app states + Notification Center
+- **Request:** "FCM: nhận thông báo ở cả 3 trạng thái app — cài firebase_messaging, xin quyền (Android 13+), gửi test message từ Firebase console, chụp evidence/fcm/. Notification Center: lưu `users/{uid}/notifications`, bấm mở đúng màn, chuông thay câu coming soon, log `notification_center_open`."
+- **Output:** added `firebase_messaging` 17.0.0 (pinned) and `POST_NOTIFICATIONS`; `models/app_notification.dart`; `services/notification_service.dart` (permission, token + `users/{uid}.fcmToken`, `users/{uid}/notifications` listener with malformed-document logging, deep link payload, top-level background handler); `app/notification_coordinator.dart` (foreground SnackBar + history, background / terminated open → history + read + navigate, safe route validation in `core/utils/notification_target.dart`); `features/notifications/` (ViewModel with `ViewState`, read mark, `notification_center_open` once, screen with skeleton / empty / error + Retry, tile with unread dot + Semantics); route `/profile/notifications`; every app-bar bell now opens the Notification Center; Profile → Diagnostics gained `Copy FCM token`; `formatRelativeTime`; fakes and 30 new tests. Docs: `analytics-plan` row 15, `architecture` table/services, `design-traceability`, `handoff-gaps` G-04/G-13, `firebase-setup` §9, Run 26.
+- **Verification:** `dart format lib test` 202 files; `flutter analyze` → **No issues found!**; targeted notification/profile tests → **44 passed**; `flutter test` → **624 passed**; `flutter build apk --debug --dart-define-from-file=.env` → **✓ Built** (73.7 s); on `Medium_Phone_API_37.0` (API 37, Play Store image) the app opened signed in, the permission dialog appeared, `POST_NOTIFICATIONS: granted=true`, `Copy FCM token` showed `FCM token copied.`, and the bell opened `No notifications yet`. FCM delivery in the three states and the DebugView check are **not run** (need console test messages).
+- **Decision:** Accepted. A console test message gets a notification payload; on Android the background isolate only runs for data messages, so background/terminated history is written when the notification is tapped (`onMessageOpenedApp` / `getInitialMessage`), which keeps the entry honest without a backend. Foreground messages show an in-app SnackBar (no `flutter_local_notifications` dependency and no extra Android desugaring). `getToken()` is kept (with a reasoned `ignore`) because the console's test-message field takes the FCM registration token although FlutterFire 17 deprecates it in favour of the FID API.
+
+---
+
+### P-51: Search bell, token refresh and the FCM evidence follow-up
+- **Request:** "kiểm tra xem còn thiếu gì không" then "làm lần lượt giúp tôi": close the gaps found in the FCM / Notification Center audit (Search tab had no bell, no `onTokenRefresh` handler, evidence and docs incomplete).
+- **Output:** `SearchScreen` now uses `MainTabAppBar` (title → bell → avatar, as design-system §2.6 requires for every bottom-navigation destination); `NotificationService.tokenRefreshes()` added plus `NotificationCoordinator._storeToken`, so a rotated FCM token updates `users/{uid}.fcmToken` (the deprecated `onTokenRefresh` carries a reasoned `ignore`, like `getToken()`); `FakeNotificationService.refreshToken()`; `test/app/notification_coordinator_test.dart` (2 cases); `search_screen_test.dart` now provides a `FakeAuthService`, asserts both app-bar actions at 360 / 412 dp and that the bell opens the Notification Center; docs: Run 27, this entry, `firebase-setup` §9 token bullet.
+- **Verification:** `dart format` 0 changed; `flutter analyze` → **No issues found!**; targeted tests → **58 passed**; `flutter test` → **627 passed**; on `emulator-5554`, console test messages arrived in the foreground, background and terminated states (screenshots in `evidence/fcm/`), and after `setprop debug.firebase.analytics.app` + restart the bell produced `FA-SVC ... name=notification_center_open ... unread_count=7` in logcat. Tap-to-destination screenshot and the DebugView browser capture are **not run**.
+- **Decision:** Accepted. The Search tab gains the same two actions as the other tabs instead of a bell-only variant, because the design system says the bar is identical on every destination. Token refresh follows the existing deprecated-token workflow (console test messages take the FCM registration token, not the FID from `onRegistered`).
+
+---
+
+### P-52: Local admin dashboard (FCM, users, notification history)
+- **Request:** "một số tác vụ đang phải chạy lên Firebase… notification, nút crash… tạo một web dashboard cho admin để quản lý, không cần chạy lên Firebase nữa." Answers: local on this machine; send notification, users + FCM token, view/delete notification history; the test crash stays in the app.
+- **Output:** new `tools/admin-dashboard/` (Node 20+, Express 4, firebase-admin 13): `server.js` exposes `GET /api/status`, `GET /api/users` (Firestore `users` joined with Firebase Auth for email/display name), `GET /api/notifications?uid=`, `DELETE /api/notifications/:uid/:id`, `DELETE /api/notifications?uid=`, `POST /api/send` (one user or all users with a token, `sendEachForMulticast` in chunks of 500, per-recipient result, optional history write); `lib/admin.js` holds the route/validation helpers; `public/` is a dependency-free dark UI with user filter, token copy, compose form, history list and delete; `npm test` covers the helpers. The service-account key is read from `INTERNLY_ADMIN_SA`, `GOOGLE_APPLICATION_CREDENTIALS` or `%USERPROFILE%\.internly-admin\service-account.json` (never in the repo); the server binds to `127.0.0.1` only. History documents use the FCM message ID as the document ID, the same ID the app writes, so server and client writes merge. Root `.gitignore` ignores `tools/admin-dashboard/node_modules/`; README docs table links the tool.
+- **Verification:** `npm install` 237 packages; `npm test` → **6 passed**; `node --check` on `server.js`, `lib/admin.js` and `public/app.js` → clean; `node server.js` → UI, CSS and `/app.js` return **200**; `/api/status` reports the missing credential with the exact path and next step; `/api/users` returns **503** with the same hint. Real send/list/delete and the rendered UI were **not run**: the machine has no service-account key or `gcloud` ADC, and `agent-browser` is not installed. No dependency was added to the Flutter app.
+- **Decision:** Accepted. Local-only instead of hosting: no deploy, no cost and no privileged credential on a server. The dashboard does **not** trigger crashes remotely (the app's debug crash control stays the only trigger), and does not replace Crashlytics/Remote Config, which still need the Firebase Console. Sending still requires a one-time service-account key from the Console; after that, day-to-day notification work happens in the dashboard.
+
+---
+
+### P-53: Admin dashboard — real send, message-ID fix, history and deep link
+- **Request:** "đã add file json key vào rồi mà sao vẫn không nhận credentials", then continue verifying the dashboard with the real project.
+- **Output:** the key the developer downloaded to the repository root was moved to `%USERPROFILE%\.internly-admin\service-account.json` (outside the repo, at the path the server reads). Found and fixed a real bug in `POST /api/send`: Firebase Admin returns `messageId` as `projects/<project>/messages/<id>`, which Firestore rejects as a document path; `lib/admin.js` gained `normaliseMessageId()` (trailing ID, the value `RemoteMessage.messageId` carries, so the server and app writes merge), server.js uses it for results and history writes, and a batch failure now returns `historyError` instead of failing an already-delivered send. `public/app.js` shows `historyError`. Added the message-ID unit test (7 dashboard tests). Docs: Run 28, this entry.
+- **Verification:** `npm test` → **7 passed**; `node --check` clean; real key: `/api/status` → `prm-lab3 ready=True`, `/api/users` → 8 users; `POST /api/send` to the one token → `success=1 historyWritten=1`; the app showed the SnackBar, tapping **View** opened the **Saved** tab (screenshot `evidence/fcm/fcm-notification-tap-saved-20261106.png`); the history entry exists with the normalised message ID and `route=/saved`; deleting both test entries through `DELETE /api/notifications` worked. Background/terminated notification taps were not re-captured in this run.
+- **Decision:** Accepted. Normalising the ID keeps a single history document per delivered message; the client and server both write the same document with `merge: true`. The server's 4317 instance must be restarted after adding the key because credentials are read once at startup.
+
+---
+
+### P-54: CV Match Check (G-24 / DC-09)
+- **Request:** "giờ làm thêm phần CV match giúp tôi, có thể tham khảo web này, nó có chức năng CV match https://techjobs.vn/cv-match." Answers: per-internship step inside Apply; rule-based score + AI commentary (like techjobs); Form → CV Match → Validate CV → Review.
+- **Output:** backend refactored to share CV helpers (`functions/src/cv-shared.ts`, with `validate-cv.ts` re-exporting and behaving identically) and added `skills.ts` (TypeScript port of `knownSkills` + word-boundary matcher), `match-cv-score.ts` (requirement split incl. nice-to-have sections, case-insensitive scoring from Profile + CV skills, fallback suggestions, tolerant commentary parsing) and `match-cv.ts` (callable handler: reads `internships/{key}` and `users/{uid}.skills`, downloads and extracts the PDF, computes the score, calls Gemini only when there are gaps, falls back deterministically on any model failure or unreadable CV). `index.ts` exports `matchCv` with the same `GEMINI_API_KEY` secret. Client: `models/cv_match_result.dart`, `services/cv_match_service.dart` (callable + parse + error mapping), `features/applications/viewmodels/cv_match_viewmodel.dart` (`ViewState`, `cv_match_check`), `widgets/cv_match_step.dart` (score, matched, gaps + one suggestion, nice-to-have, `Continue` always enabled, Retry), `screens/cv_match_screen.dart` (session guard, route `…/apply/match`), router helper/route, and the Apply Form now branches on `cv_match_enabled` (on → CV Match, off → Validate CV). Tests: 22 Flutter + 23 functions, plus `e2e_test/test_apply.py` TC-06 (written). Docs: `design-traceability` row 7, flow row 2, DC-30; `handoff-gaps` G-24 resolved; `architecture` ViewModel/service/data/failure/secrets; `analytics-plan` row 9; `test-plan` TC-06; `firebase-setup` deploy note; Run 29.
+- **Verification:** `dart format lib test` → 0 changed; `flutter analyze` → **No issues found!**; targeted CV match + Apply Form tests → **38 passed**; `flutter test` → **649 passed**; `cd functions && npm test` → **41 passed**; `npm run build` → `tsc` clean. Deploy, device walk, screenshots and DebugView are **not run** (no owner deploy/secret in this session); TC-06 written but not run.
+- **Decision:** Accepted. Deterministic scoring keeps the percentage reproducible and lets the step work without Gemini (blank key, quota, malformed output, unreadable PDF → Profile-only fallback with the same honest suggestions); Gemini only writes the summary and one suggestion per gap (techjobs-style). The step is advisory only: `Continue` is enabled while loading and after errors, and the blocking Validate CV gate stays after it. `Edit skills` / `Replace CV` return to the Apply Form instead of mutating `ApplySession`, keeping the submitted skills consistent (DC-30). The TS skill list is a deliberate duplicate guarded by a parity test. *(Provider note: the match commentary moved from Gemini to Groq in P-55; `validateCv` stays on Gemini.)*
+
+---
+
+### P-55: CV Match commentary on Groq
+- **Request:** "nếu được tôi có thể đổi 1 cái sang grod được không" — confirmed as Groq, and the CV Match commentary is the call to move.
+- **Output:** new `functions/src/groq.ts` (OpenAI-compatible `/openai/v1/chat/completions`, `openai/gpt-oss-20b`, temperature 0, `response_format: json_object`, 25 s `AbortSignal.timeout`, error body capped at 200 chars and never containing the key, system + user messages) and `groq.test.ts` (request shape, HTTP error, empty content, blank key). `index.ts` binds a new `GROQ_API_KEY` secret to `matchCv` only and passes `askGroq`; `match-cv.ts` uses a provider-neutral `askModel` dependency and neutral log messages. `validateCv` is unchanged and keeps `GEMINI_API_KEY`. Docs: architecture (services, data, failure, secrets), DC-30, G-24, `firebase-setup` §13, a provider note on P-54, Run 30.
+- **Verification:** `cd functions && npm test` → **45 passed** (+4: real Firestore shape, Groq client); `npm run build` → `tsc` clean; deployed `matchCv`/`validateCv`/`syncInternshipsJob` with `firebase deploy --only functions`; a direct Groq probe showed `llama-3.3-70b-versatile` → 404 and `openai/gpt-oss-20b` → 200 JSON mode, so the model was switched; on `emulator-5554` the CV Match screen returned `50% match`, PostgreSQL matched from the CV text, SQL as a gap, with a Groq-written summary and suggestion (`evidence/screens/cv-match-groq-20261106.png`), then `Continue` ran Validate CV (Gemini) and reached Review. No Flutter file changed (Run 29's 649 tests still stand). DebugView not checked.
+- **Decision:** Accepted. Groq serves only the advisory match commentary because it already has a deterministic fallback: a Groq outage, quota or malformed JSON still returns the score plus canned suggestions and never blocks applying. The blocking Validate CV gate stays on Gemini, so a Groq outage cannot stop a submission. Separate secrets per function keep least privilege; the key never reaches the app.
+
+---
+
+### P-56: CV Match — model skill extraction from CV + JD, real-device verification
+- **Request:** "chạy giúp tôi", then "CV match … dựa vào skill hay những công nghệ được nêu trong CV, sau đó so sánh với job description" → chose Groq extraction from CV + JD with deterministic scoring.
+- **Output:** new `functions/src/skill-extraction.ts` (`SKILL_EXTRACTION_RUBRIC`, `parseSkillExtraction`, `canonicalSkill` aliases such as JS → JavaScript, Postgres → PostgreSQL, Node → Node.js, Go → Golang, `buildSkillExtractionPrompt`, `unionSkills`, vocabulary fallback). `matchCv` now: parses the real Firestore document (`raw`), downloads the CV, calls Groq extraction with both texts, unions the result with the local `knownSkills` vocabulary, removes nice-to-have overlaps, then scores deterministically (a skill matches when in the extracted CV list or in `users/{uid}.skills`). The commentary stays a second Groq call. `groq.ts` adds `reasoning_effort: low` and `max_completion_tokens: 4096` (gpt-oss otherwise spends the budget on hidden reasoning and JSON mode returns empty content), and extraction now has its own system rubric (`askExtraction`) instead of the commentary prompt. Long suggestions are clipped at word boundaries. Docs: Run 30, architecture, DC-30, G-24.
+- **Verification:** `npm --prefix functions test` → **46 passed**; build clean; deployed `matchCv`/`validateCv`/`syncInternshipsJob`; direct Groq probe of the real CV + JD prompt → 200 with `cvSkills`/`jobSkills`/`jobNiceToHave`; on `emulator-5554` the CV Match screen changed from the vocabulary result (`50%`, 1/2) to the extraction result: **`17% match`, `Low match`, `1 of 6 requirements matched`** — PostgreSQL matched, gaps SQL, Data Studio, Metabase, Power BI, Looker Studio, with a Groq summary (`evidence/screens/cv-match-extraction-20261106.png`). `Continue` still reached Validate CV (Gemini) → Review. Flutter untouched (Run 29's 649 tests stand). DebugView not checked.
+- **Decision:** Accepted. The score stays deterministic; Groq is only an extractor, and the local vocabulary is unioned in so a model omission cannot erase a skill the listing plainly names. Two Groq calls happen only when the match has gaps (extraction + commentary); any failure falls back to vocabulary + canned suggestions and never blocks applying. Known limitation: alternatives in a JD (e.g. “Data Studio/Looker Studio, Metabase, Power BI”) are counted as separate required skills, which lowers the percentage; grouping them is a future refinement.
+
+---
+
+### P-57: ARTEMIS host setup, first TC-05 runs and E2E harness fixes
+- **Request:** (Claude Code, Opus 5.5, session 2026-11-05; operator Phạm Nguyễn Hoàng Anh) "guide me to install and run ARTEMIS for Lab 3". Then, step by step at the operator's choice: wait for the overloaded model, switch to Flash-Lite, find why TC-05 fails, fix `conftest.py` (approved by Lâm Tài Lợi, its author), patch ARTEMIS's text input, run TC-05 three times, write the run guide, record and commit.
+- **Output:**
+  - Host setup: ARTEMIS host on macOS (`~/artemis` at `351ca84`, `uv` via Homebrew, `scrcpy`, daemon without `start.sh`). The operator created the Gemini key (free tier) and entered it themself.
+  - Diagnosis, each step checked against the daemon log, the session API or the device:
+    - the default model is capped at 20 requests per day and was overloaded, and the fallback never triggers before the 180 s timeout;
+    - nothing calls the Outputter, so runs return no `output`;
+    - `KEYCODE_PASTE` is ignored by Flutter text fields;
+    - leftover text and the cold-start ANR affected runs.
+  - `e2e_test/conftest.py` (`6fe33a9`): `REPORT_AS_JSON` + `final_report()` (reads `report_task_status` from `/api/sessions/{id}/steps`), and the `cold_start_app` fixture (force-stop, `am start -W`, 10 s).
+  - `e2e_test/artemis-local.patch`: Flash-Lite models and `adb input text` for ASCII.
+  - `docs/guides/artemis-e2e.md`.
+  - `docs/test-plan.md`: model row, §1, TC-05 Done, §4 row and the flaky / failed table.
+  - `evidence/artemis/e2e-environment-20261105.md` with `runs-20261105.jsonl` and three screenshots.
+  - README and disclosure rows.
+- **Verification:**
+  - `artemis doctor` all ✔.
+  - Direct API calls per model (HTTP codes in the evidence file).
+  - Manual input check on the emulator (`keyevent 279` leaves the field empty, `adb shell input text` types).
+  - `git apply --check` of the patch on a clean `351ca84` → applies.
+  - `python -m py_compile conftest.py` → OK.
+  - 11 real TC-05 runs, all recorded with their causes. The final `uv run pytest test_detail.py --count 3 -v` → **3 passed** (traces `505846be`, `045c4d16`, `ebe3d568`, average 65.7 s).
+  - No Flutter code changed, so `flutter analyze` / `flutter test` were not run for this entry.
+- **Decision:**
+  - Modified. The default `gemini-3.8-flash` was replaced, because its free tier (20 requests per day) cannot carry the suite.
+  - ARTEMIS is patched locally instead of changing the app: the paste behaviour is the tool's, and the app's Search code was checked and is correct.
+  - The report is read through the daemon's step API with the client's private `_request` (the pinned client has no public call). Revisit if ARTEMIS is upgraded.
+  - Run 3 passed but is not counted, because it did not type.
+  - Replays stay on the host, because they show the signed-in account.
+
+---
+
+### P-58: Search bookmark uses the Saved feature's write path
+- **Request:** "bấm bookmark saved bên search lại kh lưu đc qua bên saved internship, fix" — tapping the bookmark on a Search Results card showed no item on the Saved screen.
+- **Output:** **Cause:** Search wrote through the legacy `SavedService` (`lib/services/saved_service.dart`), which stored only `{savedAt}` in `users/{uid}/savedInternships/{key}`; `SavedInternshipService.watchSaved` reads the copied listing from the `internship` field and skipped those documents, so the bookmark looked saved on Search but the Saved list stayed empty. Removed the second write path: `SearchResultsViewModel` no longer owns saved state or subscriptions; `SearchResultsScreen` watches `savedInternshipIdsProvider` for the bookmark and calls `SavedViewModel.toggleAndReport(..., source: 'search')`, like Home and Internship Detail, showing a failure in its own SnackBar. Deleted `SavedService`, `savedServiceProvider` and `FakeSavedService`; updated the Search ViewModel/screen/router tests to `FakeSavedInternshipService`, and the bookmark widget test now asserts the shared saved collection receives the key and the card flips to `Remove from saved`.
+- **Verification:** `dart format lib test` → **188 files, 0 changed**; `flutter analyze` → **No issues found!** (74.1 s); `flutter test` → **592 tests, all passed**. On the Android 17 (API 37) emulator (`flutter run -d emulator-5554 --dart-define-from-file=.env`, signed in with the test account): bookmarking `Recruitment Intern` on Search Results filled the icon and the Saved tab changed from 3 to 4 saved items with that listing on top; unbookmarking it on Search returned Saved to 3 and removed the card. Screenshots: `evidence/screens/search-bookmark-saved-20261105.png`, `saved-after-search-bookmark-20261105.png`, `saved-after-search-unsave-20261105.png`.
+- **Decision:** Accepted. This performs the merge that P-44 left to the Search owner: one saved service and one document shape for Home, Search, Detail and Saved, so the same bookmark is readable everywhere.
+
+---
+
+### P-59: runs.jsonl records the pytest result
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) after P-57, write the pytest outcome of each ARTEMIS run into `runs.jsonl`. The pass/fail of TC-05 runs had to be looked up in the daemon log, because `succeeded` is ARTEMIS's own status and stayed `true` when the report check failed.
+- **Output:** `e2e_test/conftest.py`: `_record()` keeps the run in `_pending_run`; a `pytest_runtest_makereport` hook writes it when the test's call phase ends, adding `pytest` (`passed` / `failed`) and `failure` (the assertion or exception message). A test that fails before ARTEMIS runs still gets a line, keyed by the test name. `docs/guides/artemis-e2e.md` §5 and `docs/test-plan.md` §1 describe the new fields.
+- **Verification:** `python -m py_compile conftest.py` → OK. A throwaway test file (fixture overridden, no ARTEMIS call, no device) produced three lines: a pass (`"pytest": "passed"`), a failure after a run (`"succeeded": true`, `"pytest": "failed"`, `"failure": "AssertionError: … no structured output …"`) and a failure before a run (`"failure": "FileNotFoundError: adb"`). The file was deleted and `runs.jsonl` restored to its 11 lines. Not yet seen on a real ARTEMIS run.
+- **Decision:** Accepted. Lines written before this change keep their old shape; nothing in `evidence/` was rewritten.
+
+---
+
+### P-60: ARTEMIS cases for Save (TC-08) and Apply → Success (TC-06, TC-07)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "viết test cho flow 2 và flow 4": task sheet items 8 (Flow 2 Save: TC-07, TC-08) and 9 (Flow 4 Application: TC-06).
+- **Output:**
+  - `e2e_test/test_saved.py` TC-08: Save from Detail, Saved list, open the saved card, unsave, Undo.
+  - `e2e_test/test_apply.py` TC-06: Apply Form → Validate CV → Review → Submit → Success, plus the `application_create` Logcat check. TC-07: an applied listing shows the `You applied on` banner, `View application` and Application Detail.
+  - Every asserted string was read from the screens first: `internship_detail_screen.dart`, `detail_bottom_bar.dart`, `saved_screen.dart`, `cv_validation_step.dart`, `application_review_screen.dart`, `application_success_screen.dart`, `application_detail_screen.dart`.
+  - `FILL_PERSONAL` and a new `UPLOAD_SAMPLE_CV` moved to `conftest.py`. TC-19's instruction text is unchanged (compared as strings).
+  - `docs/test-plan.md` §3: TC-06/07/08 rewritten to the built flow, Ready (not run).
+- **Verification:** `python -m py_compile` on the changed files → OK; `uv run pytest --collect-only -q` → 16 tests collected, including the three new ones. **Not run on a device**: the operator runs them.
+- **Decision:**
+  - Modified from the old plan rows. TC-06 follows the flow the app has (Validate CV → Review → Success), because CV Match Check (2d) is not built (DC-09, task 5).
+  - TC-08 compares Saved counts instead of emptying Saved first, so the account's saved listings stay.
+  - TC-06 / TC-07 use `Developer` listings and TC-08 uses `Python` listings. Applying to or saving TC-05's `Intern` listing would remove the `Apply now` / `Save` buttons it asserts.
+  - TC-06 uses the fictional `Sample_CV.pdf`, so the account's own CV is not sent to `validateCv`.
+  - Superseded on 2026-11-06: when `dev` (PR #24, CV Match) was merged in, TC-06 became Lập's version (CV Match → Validate CV → Submit) and TC-07 searches `Intern` instead of `Developer` (see P-62).
+  - TC-11 (export), TC-13 and TC-15 (notifications) were not written: those screens do not exist yet (tasks 1–3), and writing them now would mean guessing UI (AGENTS.md rule 1).
+
+---
+
+### P-61: TC-14 accepts Back closing the app after sign-out
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Sửa TC-14" after a first exploratory run failed with `assert False is True` on `login_button_visible`.
+- **Output:**
+  - Cause, from the run's steps and its last screenshot (trace `5e93964f`): sign-out reached Login. Back from Login then closed the app to the Android home screen. That is correct (Login is the root after sign-out, and no signed-in screen came back), but the test required Login to stay on screen.
+  - `e2e_test/test_auth.py` TC-14 now reports `login_after_sign_out`, `after_back` (`login` / `android_home` / `other_app_screen`), `bottom_nav_visible_after_back` and, after reopening the app if Back closed it, `login_after_reopen`. It asserts Login after sign-out, `after_back` in (`login`, `android_home`), no bottom navigation, and Login again after reopening (still signed out).
+  - `docs/test-plan.md` §3 TC-14 row updated to match.
+- **Verification:** `python -m py_compile test_auth.py` → OK; `uv run pytest test_auth.py --collect-only -q` → 2 tests collected. The new TC-14 has **not been run on a device yet**.
+- **Decision:** Accepted. The app behaviour is right and the expectation was wrong. Back closing the app after sign-out is standard Android behaviour, and the security check (no way back into signed-in screens) is kept and made stronger by reopening the app.
+
+---
+
+### P-62: Merge `dev` (PR #24) into `test/e2e-flow1`, each owner's version kept
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) merge `dev` before the evidence runs; the operator's rule: "nào liên quan đến tôi thì lấy của tôi, nào của thành viên khác thì lấy của họ, ví dụ TC-06 lấy của Lập".
+- **Output:**
+  - `docs/test-plan.md` §3: TC-03/04/05/07/08 rows from this branch (PR #24 had put back older `Planned` rows, including TC-05 `Done (3/3, 2026-11-05)`); TC-06 row from `dev` (Lập, CV Match).
+  - `e2e_test/test_apply.py`: Lập's TC-06 unchanged, plus this branch's TC-07, which now searches `Intern` for an applied listing (Lập's TC-06 applies to a Home card, not a `Developer` one).
+  - AI log: PR #24 had dropped two entries and reused their numbers. Lập's P-50 – P-56 are kept as they are. The dropped entries are restored with new numbers: the ARTEMIS setup (was P-50) → P-57, Hảo's Search bookmark fix (was P-51) → P-58. This branch's P-52 – P-54 → P-59 – P-61. The README and `code-review.md` rows that PR #24 lost are restored with the new numbers; the 2026-11-05 evidence file points at P-57.
+- **Verification:** `git show b23c144:…` vs `origin/dev` confirmed what PR #24 removed; `pytest --collect-only` after the merge → 16 tests; no conflict markers left; the only duplicate IDs left are the older P-21 – P-27.
+- **Decision:** Applied the operator's ownership rule. Not changed: Lập's TC-06 itself, although it applies to the first unapplied Home card (it may be TC-05's `Intern` listing) and uses the account's own CV — raised with the operator to pass on to Lập.
+
+---
+
+### P-63: ARTEMIS evidence for TC-01, TC-02, TC-14, TC-16, TC-17 (2026-11-06)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "giờ chạy lấy evidence ik để làm doc", then "Đổi sang 3.5 ngay" when `gemini-3.1-flash-lite` ran out of daily quota.
+- **Output:**
+  - A profile APK built from `origin/dev` `a5d1e4a`, installed on `emulator-5554`, with notifications granted by `adb`.
+  - Three counted runs each of TC-02, TC-16, TC-17 (`gemini-3.1-flash-lite`) and TC-14, TC-01 (`gemini-3.5-flash-lite`, swapped on the host for the day).
+  - `evidence/artemis/e2e-environment-20261106.md` and `runs-20261106.jsonl`: all 21 runs, six of them exploratory, plus the cancelled attempt `0a061c60`.
+  - `docs/test-plan.md`: header model and app-build rows; §1 builds a profile APK and grants notifications; §3 marks the five cases Done (3/3, 2026-11-06); §4 adds a results row for each case and the failures with their causes.
+  - `docs/guides/artemis-e2e.md`: profile build, the notification grant, the 500-requests-per-day limit and what to do when a model runs out.
+- **Verification:** both `uv run pytest … --count 3 -v` runs are logged in the evidence file: 9 passed in 724.66 s and 6 passed in 717.43 s. Every number comes from `runs.jsonl` (now with the `pytest` field) and from the daemon's `/api/sessions/{id}`, `/steps` and `/usage`. The 429 message gave the daily limit (`quotaValue: 500`) and the reset (about 7.4 h, 15:00 in Vietnam).
+- **Decision:**
+  - The exploratory runs are recorded, not dropped. The TC-16 freeze on the debug build is recorded as timing and fixed by the profile build. The old TC-14 failure is recorded as a wrong expectation, fixed in `512c8f4`.
+  - The day's model swap stays local to the ARTEMIS host: the committed `artemis-local.patch` keeps `gemini-3.1-flash-lite` as primary.
+
+---
+
+### P-64: One shared application, Flow 2 / Flow 3 runs and their records (2026-11-06)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) run Flow 2 and Flow 3 once each, then three times while the quota lasted. "Tạo 1 cái trước để tui xem trước": create one application first, which the cases share.
+- **Output:**
+  - Application **Client Success Intern — Wegrow** submitted by hand with `adb` taps (no model calls). The Profile CV (609 B, 2026-11-02) is unreadable to `validateCv`, so for this application only it was replaced with the full fictional `Sample_CV.pdf`.
+  - Four exploratory runs: TC-09, TC-07, TC-08 passed; TC-10 failed.
+  - Counted runs: TC-07 3/3, TC-09 3/3, TC-08 0/3.
+  - `evidence/artemis/e2e-environment-20261106.md` §Flow 2 and Flow 3, 13 more lines in `runs-20261106.jsonl`.
+  - `docs/test-plan.md`: TC-07 and TC-09 Done (3/3, 2026-11-06), TC-08 and TC-10 rows rewritten, §4 rows, failure rows.
+- **Verification:**
+  - `pdf-parse` 2.4.5 (the library the function uses) read 522 characters from the full sample CV locally.
+  - Counted command: 6 passed, 3 failed in 703.80 s.
+  - Causes were checked against step screenshots: the Saved order (`saved_screen.dart`) and the offline Applications screen showing the cached list.
+  - Saved screenshots from before and after the TC-08 runs show the account's SENZU BASE listing unsaved and Nexlab "Intern AI Software Engineer" added.
+- **Decision:**
+  - TC-08 and TC-10 failures are recorded as wrong expectations plus one timing miss, not as app bugs. Their fixes are P-65.
+  - The account's Saved list was left as it is (the owner's choice).
+  - Raised for the owners: the Saved `Recent` label orders by posting date; Lập's TC-06 will stop at Validate CV while the Profile CV is the old sample.
+
+---
+
+### P-65: TC-08 finds its card by title; TC-10 runs offline with `adb`
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Làm luôn", after the TC-08 and TC-10 failures in P-64.
+- **Output:**
+  - `e2e_test/test_saved.py` TC-08 finds the saved listing by its title, reports `saved_card_found` instead of the first card, and may unsave only that card, with `Undo` as one quick sequence.
+  - `e2e_test/test_applications.py` TC-10 (now `test_tc10_application_list_stays_visible_offline`) turns Wi-Fi and data off with `set_network(False)` and back on in `finally`. It asserts a visible card, a position, the `N application(s)` line, no error and no `Retry`.
+  - Commit `f9b5f43`.
+- **Verification:** `python -m py_compile` → OK; `pytest --collect-only` → 16 tests. **Not run on a device yet**: there was no model quota left before the 15:00 reset.
+- **Decision:**
+  - Accepted. TC-10 now checks what the app does offline (Firestore cache). An error with `Retry` would appear only when the stream itself fails.
+  - TC-10 loses its "Native" part, because the native sign-in case TC-01 already covers native UI.
+
+---
+
+### P-66: ARTEMIS cases TC-13 (open a notification) and TC-15 (permission dialog)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Viết TC-13, TC-15". These became possible once PR #24 (FCM, Notification Center) was merged.
+- **Output:**
+  - `e2e_test/test_notifications.py`:
+    - TC-13 sends the app to the background, waits up to 180 s for the operator to send one FCM message with route `/saved`, then has the agent open it from the shade. It checks the `Saved` screen and that the Notifications screen lists the same title as `Read`.
+    - TC-15 revokes `POST_NOTIFICATIONS`, clears its flags, relaunches the app, and has the agent read the dialog and tap `Allow`. It checks `Home` and the granted permission, and always grants the permission back in `finally`.
+  - `conftest.py` helpers: `reset_notification_permission`, `grant_notification_permission`, `notification_permission_granted`, `app_notification_titles` (parses `dumpsys notification --noredact`), `send_app_to_background`.
+  - `docs/test-plan.md` §3 TC-13/TC-15 rows, now Ready (not run); the guide explains TC-13's manual send.
+- **Verification:**
+  - Every asserted string was read from the code: route handling in `notification_target.dart`; `NotificationCoordinator.signedIn` asks for the permission and `_open` marks a notification read; the `Notifications` title and `Read`/`Unread` labels.
+  - By hand on the emulator: `pm revoke` + `pm clear-permission-flags` + relaunch showed "Allow internly to send you notifications?" with `Allow` / `Don't allow`. `Allow` granted it again.
+  - The helpers ran on the device (permission `True`, no internly notification in the shade).
+  - `py_compile` → OK; `pytest --collect-only` → 18 tests.
+  - **Not run with ARTEMIS yet.**
+- **Decision:**
+  - TC-13 is semi-manual, because the suite must not hold a service-account key.
+  - TC-15 replaces "fresh install" with a permission reset that leaves the sign-in in place; the old "Firebase demo area shows permission granted" check became an `adb` check, because that area is not built (task 4).
+
+---
+
+### P-67: TC-06 (Lập's) made runnable
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "sửa lại tc 06 giúp Lập đi". The fix was asked for on Lập's behalf. The case stays Lập's: his CV match assertions are unchanged.
+- **Output:** `e2e_test/test_apply.py` TC-06:
+  - **CV.** `push_sample_cv()` and `UPLOAD_SAMPLE_CV` replace the Profile CV for the application. The 2026-11-02 Profile sample is too short for `validateCv` (P-64), and no personal CV is sent to the functions.
+  - **Listing.** `CHOOSE_LISTING` searches `Developer` and takes the first card with no `Applied` badge and at least three skill tags. A Home card without skills shows "Nothing to compare yet" with no gaps. A first draft also skipped `Recruitment Intern` by name to protect TC-05; P-68 removed that and made TC-05 itself skip applied listings.
+  - **Validate CV.** Its extra "tap 'Continue to review'" is gone, because the app moves to `Review application` by itself (`cv_validation_screen.dart` `onValid`).
+  - **Assertions.** `FILL_PERSONAL` added; the success recap must now equal the chosen card's title and company.
+  - `docs/test-plan.md` TC-06 row updated to match.
+- **Verification:**
+  - Copy checked in `cv_match_step.dart`: `% match`, `N of M requirements matched`, `Gaps to review`, and `Continue` enabled while loading. The CV match → Validate CV → Review → `Application submitted!` path was walked by hand on 2026-11-06 (P-64).
+  - `py_compile` → OK; `pytest --collect-only` → TC-06 and TC-07 collected.
+  - **Not run with ARTEMIS yet.**
+- **Decision:** Applied at the operator's request; to be confirmed with Lập. Each run still submits a real application, as the flow requires.
+
+---
+
+### P-68: TC-05 takes the first unapplied, unsaved card
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "ok sửa đi". The request asked to stop protecting TC-05 by a hard-coded listing title in TC-06 and to make TC-05 itself robust.
+- **Output:**
+  - `e2e_test/test_detail.py` TC-05 searches `Intern` and opens the first card with no `Applied` badge whose bookmark is not filled. TC-06 and TC-08 apply to and save listings, applications cannot be deleted, and the case asserts `Apply now` and `Save`.
+  - `test_apply.py` `CHOOSE_LISTING` no longer names `Recruitment Intern`: listings come from the sync and expire after about 7 days, so a title in a test goes stale.
+  - The `test_saved.py` comment no longer mentions TC-05.
+  - `docs/test-plan.md` TC-05 row changed to Ready, to rerun. Its 2026-11-05 result (3/3) was obtained with the earlier "first card" wording, and the §4 row keeps it as history. TC-06 row updated to match.
+- **Verification:** `py_compile` → OK; `pytest --collect-only` → 18 tests. **Not run on a device yet**: TC-05 needs three new runs.
+- **Decision:** Accepted. TC-05 still checks the same behaviour (Detail opens the tapped card; `Apply now`, `Save`; Back keeps the query) but no longer depends on which listing is first.
+
+---
+
+### P-69: Search — `Find Internships` disabled when empty; the field follows Search Results
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "valid lại màn search khi search input trống nhưng button find intership vẫn bấm được", then "sao tôi search inter xong bấm x ở ô search rồi qua về home rồi bấm lại thanh search thì nó chưa clear input "inter" nữa".
+- **Output:**
+  - `search_screen.dart`: `Find Internships` gets `onPressed: null` (the design-system Primary disabled state) while the trimmed query is empty and no work mode is selected; a `ValueListenableBuilder` on the field's controller re-enables it as soon as the student types. Before, the tap did nothing.
+  - Stale query: Search and Search Results each own a text field, and the Search tab stays alive under Search Results (`StatefulShellRoute.indexedStack`). Clearing on Results (the `Clear search` button, the query chip, `Clear all`, `Clear filters`) left the old term on Search, where Home's search bar or the Search tab brings it back.
+  - `search_viewmodel.dart`: `SearchState.query` (the term last searched from this tab) and `syncQuery()`. Search sets it on submit and on `Show N results`; Search Results reports every query change through one `ref.listen`; Search writes the value into its field with `ref.listen`. Every existing state rebuild carries `query`.
+  - Tests: `search_screen_test.dart` (disabled without a query or work mode, `'   '` stays disabled, a work mode alone enables it and opens Results), `search_viewmodel_test.dart` (`syncQuery` trims and keeps the work mode; later snapshots keep the query), `router_test.dart` group "the Search field follows Search Results" (the reported path: clear on Results → Home → Home's search bar → empty field; a new query on Results shows on Search). Existing tests that type and tap at once now pump one frame in between, because the button only enables after a rebuild.
+  - `docs/design-traceability.md` Search row.
+- **Verification:**
+  - `dart format --output=none --set-exit-if-changed lib test` → 0 changed; `flutter analyze` → No issues found.
+  - Search tests (`router_test`, `search_viewmodel_test`, `search_screen_test`, `search_results_screen_test`) → 64 passed.
+  - With the field update in `SearchScreen` switched off, both new router tests fail (`Actual: 'inter'`), so they catch the reported bug. After a failure, `flutter test` waited instead of exiting (a passing run exits normally); not investigated here.
+  - Full suite → 654 passed (test-report Run 31).
+  - Device (profile build, emulator `Pixel_API_36`): empty field → button disabled; `inter` → enabled → Results; `Clear search` on Results → Home → Home's search bar → empty Search field; a new query `Python` on Results → Search tab shows `Python` (Run 31 #5–9).
+- **Decision:** Accepted. No design change: the disabled state is the Primary button's documented state, and screen-spec §Search opens results only after a query or filters.
+
+---
+
+### P-70: Job type / allowance chips on Search Results; Edit skills no longer wipes Profile skills
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "mình sửa lun ik sửa sao cho nó chạy đúng logic và thuận tiện để test tiếp tục", after ARTEMIS TC-03 failed 0/3 and the operator reported "add skill ở application form … refresh hết skill lấy từ profile và đổi luôn ở profile".
+- **Output:**
+  - **Filter chips.** `SearchFilterCriteria.criteriaCount` (the Filters badge) counted `jobType` and `allowanceRange`, but `_ActiveFiltersRow` had no chip for them, so after `Job type: Internship` the list shrank (54 → 23) with only the query chip shown. `search_results_screen.dart` now shows `filter_job_type` and `filter_allowance` chips (not for `Any …`); `SearchResultsViewModel.clearJobType()` / `clearAllowanceRange()` remove them.
+  - **Edit skills.** `EditSkillsViewModel.build()` read `profileViewModelProvider` once. That provider is auto-dispose and only the Profile screens watch it, so from the Apply Form `Add skill` (CR-16) on a fresh start it was still `ViewLoading`: the draft started empty and `Save changes` stored `[new skill]`, replacing the Profile skills. The view model now listens to the profile (which also keeps it alive), seeds the draft from the first snapshot, and has `ready`; `toggle`, `clearAll` and `save` do nothing and `Save changes` is disabled until then. Later snapshots still do not reset the draft.
+  - Tests: Results VM (`clearJobType` / `clearAllowanceRange` keep the other filters), Results widget (both chips shown and removable; `Any …` shows none), profile VM (opened before the profile loaded: not ready, edits and save ignored, then seeded; later snapshots keep the draft), Apply Form widget (`Add skill` → `2 chosen` → add `Git` → `Save changes` → Profile skills `[Flutter, Dart, Git]`).
+  - `docs/design-traceability.md` Search Results and Profile rows.
+  - Not changed: `EditProfileViewModel` and `EditPreferencesViewModel` read the profile the same way, but they open only from the Profile tab, where it has loaded.
+- **Verification:**
+  - A temporary probe test on the old code: opened before the profile loaded, selected `[]`; saving `Python` left the Profile with `[Python]` (`Flutter`, `Dart`, `Git` lost). Probe deleted.
+  - The new Apply Form test fails on the old code (`Found 0 widgets with text "2 chosen"`) and passes on the new one.
+  - Format, analyze and the full suite: test-report Run 32.
+- **Decision:** Accepted. No design change: chips use the existing active filter chip, and the disabled `Save changes` is the Primary button's documented state.
+
+---
+
+### P-71: Flow 1 ARTEMIS runs; TC-18 and TC-19 reworded
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Run Flow 1", then "Fix and rerun" for TC-18 / TC-19, "Switch to 3.1" and "ok làm nốt đi".
+- **Output:**
+  - `e2e_test/test_apply_form.py` TC-18: `Continue to review` may open `CV match` (Remote Config `cv_match_enabled` on) or `Validate CV`.
+  - TC-19: reports every line under the CV file name after `Update CV` and the sheet has closed; asserts `… · PDF` and `Uploaded for this internship` among them.
+  - `e2e_test/conftest.py` `UPLOAD_SAMPLE_CV` (also used by TC-06): replace the CV even if the Profile CV is shown.
+  - `docs/test-plan.md` TC-03 – TC-05, TC-18 – TC-20 rows, §4 results and causes; `evidence/artemis/e2e-environment-20261106.md` Flow 1 section; runs 35–65 appended to `evidence/artemis/runs-20261106.jsonl`.
+- **Verification:** 31 ARTEMIS runs, 10:30–12:29. Each Flow 1 case has 3 counted passes: TC-03 after the P-70 app fix, TC-18 and TC-19 on the new wording. The failed runs are listed with their causes in the evidence file: an app bug, a wrong expectation, ambiguous wording, and one quota timeout.
+- **Decision:** Accepted. The TC-03 failure was a real app bug and was fixed in the app (P-70), not in the test.
+
+---
+
 ## Entry template
 
 ```markdown

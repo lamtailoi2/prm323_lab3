@@ -9,6 +9,7 @@ import 'package:internly/models/internship_application.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
+import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/internship_service.dart';
 
 import '../../helpers/fakes.dart';
@@ -17,6 +18,7 @@ void main() {
   late FakeApplicationService applications;
   late FakeInternshipService internships;
   late FakeAnalyticsService analytics;
+  late FakeExternalLinkService links;
 
   final appliedAt = DateTime(2026, 10, 11, 9);
   final withdrawnAt = DateTime(2026, 10, 12, 9);
@@ -42,6 +44,7 @@ void main() {
     applications = FakeApplicationService()..results = [application];
     internships = FakeInternshipService();
     analytics = FakeAnalyticsService();
+    links = FakeExternalLinkService();
   });
 
   tearDown(() async {
@@ -55,6 +58,7 @@ void main() {
         applicationServiceProvider.overrideWithValue(applications),
         internshipServiceProvider.overrideWithValue(internships),
         analyticsServiceProvider.overrideWithValue(analytics),
+        externalLinkServiceProvider.overrideWithValue(links),
         currentUserIdProvider.overrideWithValue(testUser.uid),
         nowProvider.overrideWithValue(() => now ?? DateTime(2026, 10, 12, 10)),
       ],
@@ -161,11 +165,14 @@ void main() {
     expect(applications.undone, isEmpty);
   });
 
-  test('a failed withdraw keeps the screen and reports the message', () async {
+  test('a failed withdraw reports a withdraw-specific message', () async {
+    // What FirestoreApplicationService._toWriteAppException actually builds
+    // for `withdraw` (action: 'withdraw this application'), not the
+    // generic apply-submission message (DC-29).
     applications.updateError = const AppException(
       AppErrorKind.network,
-      'We could not submit your application. Check your connection and try '
-      'again.',
+      'We could not withdraw this application. Check your connection and '
+      'try again.',
     );
     final container = build();
     await settle();
@@ -173,7 +180,25 @@ void main() {
     expect(await viewModel(container).withdraw(), isFalse);
     final action = read(container).action;
     expect(action, isA<AsyncError<void>>());
-    expect((action as AsyncError<void>).error, isA<AppException>());
+    final error = (action as AsyncError<void>).error as AppException;
+    expect(error.message, contains('withdraw this application'));
+  });
+
+  test('a failed undo reports an undo-specific message', () async {
+    applications.results = [withdrawn];
+    applications.updateError = const AppException(
+      AppErrorKind.network,
+      'We could not undo this withdrawal. Check your connection and try '
+      'again.',
+    );
+    final container = build(now: withdrawnAt.add(const Duration(hours: 1)));
+    await settle();
+    await settle();
+
+    expect(await viewModel(container).undoWithdrawal(), isFalse);
+    final action = read(container).action;
+    final error = (action as AsyncError<void>).error as AppException;
+    expect(error.message, contains('undo this withdrawal'));
   });
 
   test('a second tap while the write runs is ignored', () async {
@@ -189,5 +214,79 @@ void main() {
     applications.updateGate!.complete();
     expect(await first, isTrue);
     expect(applications.withdrawn, hasLength(1));
+  });
+
+  test('preview opens the submitted CV', () async {
+    applications.results = [
+      InternshipApplication(
+        jobKey: key,
+        title: application.title,
+        companyName: application.companyName,
+        appliedAt: appliedAt,
+        status: ApplicationStatus.underReview,
+        cvFileName: 'Profile_CV.pdf',
+        cvUrl: 'https://storage.example/cvs/profile.pdf',
+      ),
+    ];
+    final container = build();
+    await settle();
+    await settle();
+
+    expect(await viewModel(container).previewCv(), isNull);
+    expect(
+      links.opened.single.toString(),
+      'https://storage.example/cvs/profile.pdf',
+    );
+  });
+
+  test('preview without a submitted CV reports the message', () async {
+    final container = build();
+    await settle();
+    await settle();
+
+    final error = await viewModel(container).previewCv();
+    expect(error?.message, 'This application has no submitted CV.');
+    expect(links.opened, isEmpty);
+  });
+
+  test('preview reports a viewer failure', () async {
+    applications.results = [
+      InternshipApplication(
+        jobKey: key,
+        title: application.title,
+        companyName: application.companyName,
+        appliedAt: appliedAt,
+        status: ApplicationStatus.underReview,
+        cvUrl: 'https://storage.example/cvs/profile.pdf',
+      ),
+    ];
+    links.error = const AppException(
+      AppErrorKind.unknown,
+      'No app on this device can open this file.',
+    );
+    final container = build();
+    await settle();
+    await settle();
+
+    final error = await viewModel(container).previewCv();
+    expect(error?.message, 'No app on this device can open this file.');
+  });
+
+  test('an application with a decision cannot be withdrawn', () async {
+    applications.results = [
+      InternshipApplication(
+        jobKey: key,
+        title: application.title,
+        companyName: application.companyName,
+        appliedAt: appliedAt,
+        status: ApplicationStatus.rejected,
+      ),
+    ];
+    final container = build();
+    await settle();
+    await settle();
+
+    expect(await viewModel(container).withdraw(), isFalse);
+    expect(applications.withdrawn, isEmpty);
   });
 }

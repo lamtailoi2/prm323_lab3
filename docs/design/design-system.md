@@ -229,7 +229,7 @@ Destinations and order: **Home** (`home`) · **Search** (`search`) · **Saved** 
 
 *"Explain the failure and likely cause in plain language. Pair a meaningful icon with the message and a 48 dp recovery action."* Example: `wifi_off` (error color) + "We could not load internships. Check your connection and try again." + full-width Primary `Retry`. There is no separate title. Icon size 32 dp (**verify**).
 
-### 2.12 Application Status: 5 specimens · Built (generic `StatusBadge`; the status → icon/color mapping below belongs to the Applications feature)
+### 2.12 Application Status: 6 specimens · Built (generic `StatusBadge`; the status → icon/color mapping below belongs to the Applications feature)
 
 *"Noninteractive badges: 14 sp label + meaningful 20 dp icon. Use surfaceVariant, never invented semantic tints. No color-only meaning."*
 
@@ -240,9 +240,9 @@ Destinations and order: **Home** (`home`) · **Search** (`search`) · **Saved** 
 | Interview | `event` | `primary` | `surfaceVariant` |
 | Accepted | `check_circle` | `success` | `surfaceVariant` |
 | Rejected | `cancel` | `error` | `surfaceVariant` |
-| *Withdrawn* | *not on page 05* | *not specified* | — |
+| Withdrawn | `undo` | `textSecondary` (neutral) | `surfaceVariant` |
 
-Radius 8 (badge family). ⚠️ **Withdrawn** (Flow 3d) has no specimen (G-18). ⚠️ The Rejected color pair fails AA (§3).
+Radius 8 (badge family). **Withdrawn** (Flow 3d) is not on page 05; `ApplicationStatusBadge` uses the neutral treatment from the Application Detail withdrawn frame (G-18 resolved 2026-11-04, DC-29). ⚠️ The Rejected color pair fails AA (§3).
 
 ### 2.13 Snackbar: 1 variant · Themed (`SnackBarThemeData`) + content built by the feature
 
@@ -259,7 +259,15 @@ Reference: the Saved unsave Snackbar — `check_circle` + `Removed from Saved` +
 
 ### 2.14 Components not on page 05
 
-Listed in the Lab 2 README but missing from the page 05 screenshot. Their specs must be read from the Figma component library before each is built: Save Toggle, Skill Tag, Badge, Info Banner, Text Area, Upload Dropzone, Bottom Sheet Option Row, Job Summary Card, CV File Card, Upload Progress Card, Match Card, Map Preview Card, Progress Stepper, Meta Tile, Section Header, Bullet Item, Benefit Item, Review Row (G-16).
+Listed in the Lab 2 README but missing from the page 05 screenshot. Their specs must be read from the Figma component library before each is built: Save Toggle, Skill Tag, Badge, Info Banner, Text Area, Upload Dropzone, Bottom Sheet Option Row, Job Summary Card, CV File Card, Upload Progress Card, Match Card, Map Preview Card, Progress Stepper, Meta Tile, Bullet Item, Benefit Item, Review Row (G-16).
+
+### 2.15 Built ahead of their Figma spec (G-16)
+
+No specimen exists yet for these three; built from the tokens so Internship Detail, the Apply Form, Application Review, Application Success and Application Detail (features/internships, features/applications) did not each invent a one-off. Add the real Figma spec here when it is available.
+
+- **`CompanyLogo`** (`core/widgets/company_logo.dart`) — square logo, initials fallback on `primaryContainer` when `url` is absent or fails to load (Figma "Logo").
+- **`DetailRow`** (`core/widgets/detail_row.dart`) — one label/value pair, `Semantics` announced as `"$label: $value"` (Figma "Review Row").
+- **`DetailSectionCard`** (`core/widgets/detail_section_card.dart`) — bordered section with an icon + title header, optional `isRequired` marker and trailing `action` (Figma "Section Header").
 
 ---
 

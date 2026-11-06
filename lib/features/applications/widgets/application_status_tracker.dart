@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/utils/display_format.dart';
+import '../../../core/widgets/detail_section_card.dart';
 import '../../../models/internship_application.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
-import '../../internships/widgets/detail_parts.dart';
 import 'application_status_badge.dart';
 
 /// How one step of the tracker reads.
@@ -15,7 +15,7 @@ enum _StepState { done, active, upcoming, withdrawn, rejected }
 
 typedef _Step = ({
   String title,
-  String? caption,
+  String? date,
   String description,
   _StepState state,
 });
@@ -23,8 +23,9 @@ typedef _Step = ({
 /// `Status tracker` of Application Detail.
 ///
 /// The steps follow the status the **student** set (G-25 #6): the screen
-/// never claims employer events or dates the app does not have, unlike the
-/// frame's "Expected review outcome by Oct 24".
+/// never claims employer events, a review deadline or step notes the app
+/// does not have, unlike the frame's "Expected review outcome by Oct 24"
+/// banner and per-step process notes (DC-29).
 class ApplicationStatusTracker extends StatelessWidget {
   const ApplicationStatusTracker({super.key, required this.application});
 
@@ -40,21 +41,25 @@ class ApplicationStatusTracker extends StatelessWidget {
       description: 'You are waiting for the company to reply.',
     ),
     (
-      title: 'Interview',
+      title: 'Technical interview',
       description: 'An interview is scheduled or has taken place.',
     ),
-    (title: 'Offer', description: 'The company has sent its decision.'),
-    (title: 'Onboarding', description: 'Start date and paperwork.'),
+    (
+      title: 'Offer decision',
+      description: 'The company has sent its decision.',
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
     final steps = _rows();
+    final progress = _progress();
     return DetailSectionCard(
       icon: Symbols.timeline_rounded,
       title: 'Status tracker',
       action: ApplicationStatusBadge(status: application.status),
       children: [
+        if (progress case final progress?) _ProgressLine(progress: progress),
         for (var i = 0; i < steps.length; i++) ...[
           if (i > 0) const SizedBox(height: AppSpacing.s16),
           _StepRow(step: steps[i]),
@@ -63,10 +68,26 @@ class ApplicationStatusTracker extends StatelessWidget {
     );
   }
 
+  /// `Step X of 4 (Y% completed)`; only meaningful while the tracker shows
+  /// the normal 4-step flow (not the 2-step withdrawn / rejected one).
+  ({int step, int total, int percent})? _progress() {
+    final activeIndex = switch (application.status) {
+      ApplicationStatus.submitted => 0,
+      ApplicationStatus.underReview => 1,
+      ApplicationStatus.interview => 2,
+      ApplicationStatus.accepted => 3,
+      _ => null,
+    };
+    if (activeIndex == null) return null;
+    final total = _steps.length;
+    final step = activeIndex + 1;
+    return (step: step, total: total, percent: (step * 100) ~/ total);
+  }
+
   List<_Step> _rows() {
     final _Step submitted = (
       title: 'Submitted',
-      caption: 'Submitted ${formatShortDate(application.appliedAt)}',
+      date: formatShortDate(application.appliedAt),
       description: _steps.first.description,
       state: application.status == ApplicationStatus.submitted
           ? _StepState.active
@@ -79,9 +100,7 @@ class ApplicationStatusTracker extends StatelessWidget {
         submitted,
         (
           title: 'Withdrawn',
-          caption: when == null
-              ? null
-              : 'You withdrew on ${formatShortDate(when)}',
+          date: when == null ? null : formatShortDate(when),
           description: 'You took this application back.',
           state: _StepState.withdrawn,
         ),
@@ -93,7 +112,7 @@ class ApplicationStatusTracker extends StatelessWidget {
         submitted,
         (
           title: 'Not selected',
-          caption: null,
+          date: null,
           description: 'The company did not go ahead with this application.',
           state: _StepState.rejected,
         ),
@@ -112,8 +131,8 @@ class ApplicationStatusTracker extends StatelessWidget {
       for (var i = 0; i < _steps.length; i++)
         (
           title: _steps[i].title,
-          caption: switch (i) {
-            0 => 'Submitted ${formatShortDate(application.appliedAt)}',
+          date: switch (i) {
+            0 => formatShortDate(application.appliedAt),
             2 when interviewAt != null => formatMonthDayTime(interviewAt),
             _ => null,
           },
@@ -125,6 +144,41 @@ class ApplicationStatusTracker extends StatelessWidget {
               : _StepState.upcoming,
         ),
     ];
+  }
+}
+
+/// `Step X of 4 (Y% completed)` caption and progress bar above the steps.
+class _ProgressLine extends StatelessWidget {
+  const _ProgressLine({required this.progress});
+
+  final ({int step, int total, int percent}) progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final label =
+        'Step ${progress.step} of ${progress.total} '
+        '(${progress.percent}% completed)';
+    return Semantics(
+      container: true,
+      label: label,
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: AppSpacing.s8),
+          ClipRRect(
+            borderRadius: AppRadii.smallAll,
+            child: LinearProgressIndicator(
+              value: progress.step / progress.total,
+              minHeight: AppSpacing.s8,
+              color: AppColors.primary,
+              backgroundColor: AppColors.surfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -155,7 +209,7 @@ class _StepRow extends StatelessWidget {
       container: true,
       label: [
         step.title,
-        ?step.caption,
+        ?step.date,
         step.description,
         if (step.state == _StepState.active) 'Active step',
       ].join('. '),
@@ -177,23 +231,26 @@ class _StepRow extends StatelessWidget {
                         style: textTheme.labelLarge?.copyWith(
                           color: muted ? AppColors.textSecondary : null,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (step.state == _StepState.active) ...[
                       const SizedBox(width: AppSpacing.s8),
                       const _ActiveChip(),
                     ],
+                    if (step.date case final date?) ...[
+                      const SizedBox(width: AppSpacing.s8),
+                      Text(
+                        date,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ],
                   ],
                 ),
-                if (step.caption case final caption?) ...[
-                  const SizedBox(height: AppSpacing.s4),
-                  Text(
-                    caption,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
                 const SizedBox(height: AppSpacing.s4),
                 Text(
                   step.description,

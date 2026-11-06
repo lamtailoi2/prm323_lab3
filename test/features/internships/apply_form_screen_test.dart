@@ -8,6 +8,7 @@ import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/widgets/app_button.dart';
 import 'package:internly/features/internships/screens/apply_form_screen.dart';
 import 'package:internly/features/internships/viewmodels/apply_form_viewmodel.dart';
+import 'package:internly/features/profile/widgets/edit_skills_sheet.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
@@ -95,6 +96,17 @@ void main() {
         // form hands the data over (the real screens have their own tests).
         // The form builds `/{tab}/internships/:jobKey/apply/...` from its
         // `source`.
+        GoRoute(
+          path: '/home/internships/:jobKey/apply/match',
+          builder: (context, state) {
+            final session = state.extra;
+            return Text(
+              session is ApplySession
+                  ? 'CV Match step: ${session.cv.file.fileName}'
+                  : 'CV Match step',
+            );
+          },
+        ),
         GoRoute(
           path: '/home/internships/:jobKey/apply/validation',
           builder: (context, state) {
@@ -187,7 +199,7 @@ void main() {
 
       await tester.tap(find.text('Continue to review'));
       await tester.pumpAndSettle();
-      expect(find.text('Validate CV step: Profile_CV.pdf'), findsOneWidget);
+      expect(find.text('CV Match step: Profile_CV.pdf'), findsOneWidget);
     });
 
     testWidgets('empty Profile: tip and field errors at $width dp', (
@@ -221,6 +233,20 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('cv_match_enabled off skips CV Match and opens Validate CV', (
+    tester,
+  ) async {
+    remoteConfig.publish(RemoteConfigKeys.cvMatchEnabled, false);
+    await pumpForm(tester);
+    await scrollTo(tester, find.text('Profile_CV.pdf'));
+
+    await tester.tap(find.text('Continue to review'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Validate CV step: Profile_CV.pdf'), findsOneWidget);
+    expect(find.textContaining('CV Match step'), findsNothing);
+  });
 
   testWidgets('complete details without a CV: the CV section says so', (
     tester,
@@ -471,6 +497,41 @@ void main() {
       expect(find.text('You have 2 of 6 required skills'), findsOneWidget);
     });
   }
+
+  testWidgets(
+    'Add skill keeps the Profile skills when the Profile tab never loaded',
+    (tester) async {
+      // The form is opened straight from a listing, so nothing has loaded
+      // the Profile tab's view model yet: the sheet used to start empty and
+      // `Save changes` replaced every Profile skill with the new one.
+      internships.byKey[listing.key] = testInternship('1');
+      profiles.profile = const UserProfile(
+        details: details,
+        skills: ['Flutter', 'Dart'],
+      );
+      await pumpForm(tester);
+      await scrollTo(tester, find.text('Add skill'));
+
+      await tester.tap(find.text('Add skill'));
+      await tester.pumpAndSettle();
+      expect(find.text('2 chosen'), findsOneWidget);
+
+      final git = find.descendant(
+        of: find.byType(EditSkillsSheet),
+        matching: find.text('Git'),
+      );
+      await tester.ensureVisible(git);
+      await tester.pumpAndSettle();
+      await tester.tap(git);
+      await tester.pumpAndSettle();
+      expect(find.text('3 chosen'), findsOneWidget);
+      await tester.tap(find.text('Save changes'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Select your technical proficiencies'), findsNothing);
+      expect(profiles.profile?.skills, ['Flutter', 'Dart', 'Git']);
+    },
+  );
 
   testWidgets('without Profile skills the section asks to add them', (
     tester,

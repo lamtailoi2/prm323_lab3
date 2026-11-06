@@ -15,14 +15,14 @@ import 'app_top_bar.dart';
 /// There is no brand mark in the leading slot: the logo was dropped from the
 /// tab headers so the title starts at the normal 16 dp text margin (DC-20).
 ///
-/// The bell is the interim entry point to the Notification Center (G-04,
-/// G-13). That screen does not exist yet, so the bell says so instead of
-/// pretending to open it.
+/// The bell opens the Notification Center (G-04, G-13); every tab passes the
+/// same callback so the entry point behaves identically.
 class MainTabAppBar extends StatelessWidget implements PreferredSizeWidget {
   const MainTabAppBar({
     super.key,
     required this.title,
     required this.onProfile,
+    required this.onNotifications,
     this.user,
   });
 
@@ -31,6 +31,9 @@ class MainTabAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   /// Opens Profile; the avatar is the same entry point as the Profile tab.
   final VoidCallback onProfile;
+
+  /// Opens the Notification Center.
+  final VoidCallback onNotifications;
 
   /// Signed-in student, for the avatar photo. Falls back to the person glyph.
   final AppUser? user;
@@ -46,9 +49,7 @@ class MainTabAppBar extends StatelessWidget implements PreferredSizeWidget {
         IconButton(
           tooltip: 'Notifications',
           icon: const Icon(Symbols.notifications_rounded),
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Notifications are coming soon.')),
-          ),
+          onPressed: onNotifications,
         ),
         _ProfileAction(user: user, onPressed: onProfile),
       ],

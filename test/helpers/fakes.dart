@@ -5,6 +5,7 @@ import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/utils/job_key.dart';
 import 'package:internly/features/internships/models/search_history_entry.dart';
 import 'package:internly/models/app_user.dart';
+import 'package:internly/models/cv_match_result.dart';
 import 'package:internly/models/cv_validation_result.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/models/internship_application.dart';
@@ -13,6 +14,7 @@ import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
+import 'package:internly/services/cv_match_service.dart';
 import 'package:internly/services/cv_validation_service.dart';
 import 'package:internly/services/document_picker_service.dart';
 import 'package:internly/services/external_link_service.dart';
@@ -20,7 +22,6 @@ import 'package:internly/services/file_storage_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
 import 'package:internly/services/saved_internship_service.dart';
-import 'package:internly/services/saved_service.dart';
 import 'package:internly/services/search_history_service.dart';
 import 'package:internly/services/user_profile_service.dart';
 
@@ -159,6 +160,7 @@ typedef CreatedApplication = ({
   String cvStoragePath,
   String cvFileName,
   String cvUrl,
+  int cvSizeBytes,
   ApplicationApplicant applicant,
 });
 
@@ -203,6 +205,7 @@ class FakeApplicationService implements ApplicationService {
     required String cvStoragePath,
     required String cvFileName,
     required String cvUrl,
+    required int cvSizeBytes,
     required ApplicationApplicant applicant,
   }) async {
     await createGate?.future;
@@ -215,6 +218,7 @@ class FakeApplicationService implements ApplicationService {
       cvStoragePath: cvStoragePath,
       cvFileName: cvFileName,
       cvUrl: cvUrl,
+      cvSizeBytes: cvSizeBytes,
       applicant: applicant,
     ));
   }
@@ -275,6 +279,9 @@ class FakeRemoteConfigService implements RemoteConfigService {
     RemoteConfigKeys.cvMatchEnabled: true,
   };
 
+  /// Source per key, e.g. `remote`; keys without an entry use `default`.
+  final Map<String, String> sources = <String, String>{};
+
   final StreamController<void> _updates = StreamController<void>.broadcast();
 
   @override
@@ -292,7 +299,10 @@ class FakeRemoteConfigService implements RemoteConfigService {
   @override
   Map<String, ({String value, String source})> snapshot() => {
     for (final entry in values.entries)
-      entry.key: (value: '${entry.value}', source: 'default'),
+      entry.key: (
+        value: '${entry.value}',
+        source: sources[entry.key] ?? 'default',
+      ),
   };
 
   /// Changes [key] and notifies listeners like a console update would.
@@ -377,6 +387,7 @@ class FakeAuthService implements AuthService {
 class FakeCrashlyticsService implements CrashlyticsService {
   final Map<String, Object> customKeys = <String, Object>{};
   final List<Object> recordedErrors = <Object>[];
+  int crashCalls = 0;
   String? userId;
 
   @override
@@ -400,7 +411,7 @@ class FakeCrashlyticsService implements CrashlyticsService {
       customKeys[key] = value;
 
   @override
-  void crashForTesting() {}
+  void crashForTesting() => crashCalls++;
 }
 
 /// In-memory [SearchHistoryService] backed by a broadcast stream, keyed by
@@ -497,42 +508,6 @@ class FakeAnalyticsService implements AnalyticsService {
 
   @override
   Future<void> setUserId(String? uid) async => userIds.add(uid);
-}
-
-/// In-memory [SavedService] for tests.
-class FakeSavedService implements SavedService {
-  final Map<String, Set<String>> savedByUid = <String, Set<String>>{};
-  AppException? error;
-  final StreamController<List<String>> _updates =
-      StreamController<List<String>>.broadcast();
-
-  @override
-  Stream<List<String>> watchSavedIds(String uid) async* {
-    final failure = error;
-    if (failure != null) throw failure;
-    yield (savedByUid[uid] ?? const <String>{}).toList(growable: false);
-    yield* _updates.stream;
-  }
-
-  @override
-  Future<void> save(String uid, String internshipId) async {
-    final failure = error;
-    if (failure != null) throw failure;
-    final set = savedByUid.putIfAbsent(uid, () => <String>{});
-    set.add(internshipId);
-    _updates.add(set.toList(growable: false));
-  }
-
-  @override
-  Future<void> unsave(String uid, String internshipId) async {
-    final failure = error;
-    if (failure != null) throw failure;
-    final set = savedByUid.putIfAbsent(uid, () => <String>{});
-    set.remove(internshipId);
-    _updates.add(set.toList(growable: false));
-  }
-
-  Future<void> dispose() => _updates.close();
 }
 
 /// In-memory [SavedInternshipService] that keeps the saved keys in a map and
@@ -765,6 +740,47 @@ class FakeCvValidationService implements CvValidationService {
   Future<CvValidationResult> validate(String storagePath) async {
     calls++;
     paths.add(storagePath);
+    await gate?.future;
+    final failure = error;
+    if (failure != null) throw failure;
+    return result;
+  }
+}
+
+/// Records CV Match calls instead of reaching Cloud Functions.
+class FakeCvMatchService implements CvMatchService {
+  CvMatchResult result = const CvMatchResult(
+    internshipTitle: 'Flutter Intern',
+    companyName: 'Northstar Labs',
+    percent: 50,
+    matchedCount: 1,
+    totalRequired: 2,
+    matched: <String>['Flutter'],
+    missing: <String>['Dart'],
+    niceToHave: <String>[],
+    suggestions: <CvMatchSuggestion>[
+      CvMatchSuggestion(skill: 'Dart', text: 'Mention your Dart project.'),
+    ],
+    summary: 'A solid start.',
+    cvReadable: true,
+  );
+  AppException? error;
+
+  /// Completes the next check only when the test calls `complete()`.
+  Completer<void>? gate;
+
+  int calls = 0;
+  final List<String> paths = <String>[];
+  final List<String> internshipKeys = <String>[];
+
+  @override
+  Future<CvMatchResult> match({
+    required String storagePath,
+    required String internshipKey,
+  }) async {
+    calls++;
+    paths.add(storagePath);
+    internshipKeys.add(internshipKey);
     await gate?.future;
     final failure = error;
     if (failure != null) throw failure;

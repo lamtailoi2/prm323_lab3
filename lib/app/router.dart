@@ -2,7 +2,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/utils/notification_target.dart' show notificationCenterPath;
 import '../features/applications/screens/application_detail_screen.dart';
+import '../features/applications/screens/cv_match_screen.dart';
 import '../features/applications/screens/cv_validation_screen.dart';
 import '../features/applications/screens/my_applications_screen.dart';
 import '../features/auth/screens/login_screen.dart';
@@ -17,7 +19,9 @@ import '../features/internships/screens/search_results_screen.dart';
 import '../features/internships/screens/search_screen.dart';
 import '../features/internships/viewmodels/apply_form_viewmodel.dart'
     show ApplySession;
+import '../features/notifications/screens/notification_center_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
+import '../features/profile/screens/firebase_demo_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/saved/screens/saved_screen.dart';
 import '../models/app_user.dart';
@@ -40,6 +44,8 @@ abstract final class AppRoutes {
   static const String applications = '/applications';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
+  static const String firebaseDemo = '/profile/firebase';
+  static const String notificationCenter = notificationCenterPath;
 
   /// Internship Detail opened from the [tab] it belongs to, e.g.
   /// `/home/internships/<key>`, so Back returns to that tab.
@@ -51,8 +57,11 @@ abstract final class AppRoutes {
   static String applyForm(String tab, String internshipKey) =>
       '${internshipDetail(tab, internshipKey)}/apply';
 
-  /// Flow 2 after the form: Validate CV → Review → Success, all above the
-  /// Apply Form so Back walks the application back one step.
+  /// Flow 2 after the form: CV Match → Validate CV → Review → Success, all
+  /// above the Apply Form so Back walks the application back one step.
+  static String applyMatch(String tab, String internshipKey) =>
+      '${applyForm(tab, internshipKey)}/match';
+
   static String applyValidation(String tab, String internshipKey) =>
       '${applyForm(tab, internshipKey)}/validation';
 
@@ -173,6 +182,22 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 builder: (context, state) => const EditProfileScreen(),
               ),
+              // Lab 3 demo controls: Remote Config values and Crashlytics
+              // tests (G-06). Above the shell like the other Profile tools.
+              GoRoute(
+                path: 'firebase',
+                name: 'firebase_demo',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => const FirebaseDemoScreen(),
+              ),
+              // The Notification Center opens above the shell, so Back
+              // returns to the tab the bell was tapped on (G-04).
+              GoRoute(
+                path: 'notifications',
+                name: 'notification_center',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => const NotificationCenterScreen(),
+              ),
             ],
           ),
         ],
@@ -243,6 +268,16 @@ GoRoute _internshipDetail(String source) {
           source: source,
         ),
         routes: [
+          GoRoute(
+            path: 'match',
+            name: '${source}_cv_match',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) => CvMatchScreen(
+              internshipKey: state.pathParameters['jobKey']!,
+              source: source,
+              session: _applySession(state),
+            ),
+          ),
           GoRoute(
             path: 'validation',
             name: '${source}_cv_validation',

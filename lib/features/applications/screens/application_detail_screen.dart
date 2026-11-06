@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../app/router.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/display_format.dart';
@@ -11,16 +13,17 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_dialog.dart';
 import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/app_top_bar.dart';
+import '../../../core/widgets/company_logo.dart';
+import '../../../core/widgets/detail_section_card.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
 import '../../../models/internship_application.dart';
-import '../../../services/external_link_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
-import '../../internships/widgets/detail_parts.dart';
+import '../../../theme/app_theme.dart';
 import '../viewmodels/application_detail_viewmodel.dart';
 import '../widgets/applicant_card.dart';
 import '../widgets/application_identity_card.dart';
@@ -43,14 +46,15 @@ class ApplicationDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppTopBar.back(
         title: 'Application Detail',
+        // Always back to My Applications, however this screen was opened
+        // (My Applications or `View application` on Internship Detail) —
+        // `Navigator.maybePop` returned to Internship Detail instead.
+        onBack: () => context.go(AppRoutes.applications),
         actions: [
           IconButton(
             icon: const Icon(Symbols.notifications_rounded),
             tooltip: 'Notifications',
-            // Same honest message as the other app bars until the
-            // Notification Center exists (DC-11).
-            onPressed: () =>
-                _showMessage(context, 'Notifications are coming soon.'),
+            onPressed: () => context.push(AppRoutes.notificationCenter),
           ),
         ],
       ),
@@ -61,10 +65,10 @@ class ApplicationDetailScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(AppSpacing.s16),
             child: StateView.empty(
               icon: Symbols.description_rounded,
-              title: 'This application is not in your list',
-              message: 'It may have been deleted on another device.',
-              actionLabel: 'Back',
-              onAction: () => Navigator.maybePop(context),
+              title: 'Application not found',
+              message: 'It may have been removed from this account.',
+              actionLabel: 'Back to Applications',
+              onAction: () => context.go(AppRoutes.applications),
             ),
           ),
         ),
@@ -90,8 +94,8 @@ class ApplicationDetailScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.section),
               ApplicantCard(
                 application: data.application,
-                onPreview: () =>
-                    unawaited(_preview(context, ref, data.application)),
+                listing: data.listing,
+                onPreview: () => unawaited(_preview(context, ref)),
               ),
             ],
             if (data.listing case final listing?) ...[
@@ -102,14 +106,17 @@ class ApplicationDetailScreen extends ConsumerWidget {
         ),
       },
       bottomNavigationBar: switch (state.detail) {
-        ViewData(:final data) => _WithdrawBar(
-          application: data.application,
-          action: state.action,
-          canUndo: state.canUndoWithdrawal,
-          undoDeadline: state.undoDeadline,
-          onWithdraw: () => unawaited(_withdraw(context, ref)),
-          onUndo: () => unawaited(_undo(ref)),
-        ),
+        ViewData(:final data)
+            when data.application.status.canWithdraw ||
+                data.application.status == ApplicationStatus.withdrawn =>
+          _WithdrawBar(
+            application: data.application,
+            action: state.action,
+            canUndo: state.canUndoWithdrawal,
+            undoDeadline: state.undoDeadline,
+            onWithdraw: () => unawaited(_withdraw(context, ref)),
+            onUndo: () => unawaited(_undo(ref)),
+          ),
         _ => null,
       },
     );
@@ -154,19 +161,12 @@ class ApplicationDetailScreen extends ConsumerWidget {
   }
 
   /// `Preview`: the submitted CV opens in the device's viewer; it can no
-  /// longer be replaced (DC-29).
-  Future<void> _preview(
-    BuildContext context,
-    WidgetRef ref,
-    InternshipApplication application,
-  ) async {
-    final url = application.cvUrl;
-    if (url == null) return;
-    try {
-      await ref.read(externalLinkServiceProvider).open(Uri.parse(url));
-    } on AppException catch (error) {
-      if (context.mounted) _showMessage(context, error.message);
-    }
+  /// longer be replaced (DC-29). The ViewModel owns the service call.
+  Future<void> _preview(BuildContext context, WidgetRef ref) async {
+    final error = await ref
+        .read(applicationDetailViewModelProvider(internshipKey).notifier)
+        .previewCv();
+    if (error != null && context.mounted) _showMessage(context, error.message);
   }
 
   static void _showMessage(BuildContext context, String message) {
@@ -188,11 +188,11 @@ class _CompanyCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     return DetailSectionCard(
       icon: Symbols.apartment_rounded,
-      title: 'About the company',
+      title: 'About ${listing.companyName}',
       children: [
         Row(
           children: [
-            DetailCompanyLogo(
+            CompanyLogo(
               companyName: listing.companyName,
               url: listing.logoUrl,
               size: AppSizes.companyLogo,
@@ -301,18 +301,76 @@ class _WithdrawBar extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.s8),
-                AppButton(
-                  label: 'Withdraw application',
-                  icon: Symbols.block_rounded,
-                  variant: AppButtonVariant.secondary,
+                _DestructiveWithdrawButton(
                   isLoading: action.isLoading,
-                  expand: true,
                   onPressed: onWithdraw,
                 ),
               ],
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// `Withdraw application`: the frame's one destructive action, styled with
+/// `AppColors.error` in place of the shared secondary button's `primary`
+/// color (DC-29). `AppButtonVariant` has no destructive specimen
+/// (design-system.md §2.1), so this overrides the outlined button's theme
+/// locally instead of adding a one-off variant to the shared component.
+class _DestructiveWithdrawButton extends StatelessWidget {
+  const _DestructiveWithdrawButton({
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final baseStyle = theme.outlinedButtonTheme.style;
+    final destructiveStyle = baseStyle?.copyWith(
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) return AppColors.disabled;
+        if (states.contains(WidgetState.pressed)) {
+          return AppColors.error.withValues(alpha: AppTheme.pressedOpacity);
+        }
+        return AppColors.error;
+      }),
+      iconColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) return AppColors.disabled;
+        if (states.contains(WidgetState.pressed)) {
+          return AppColors.error.withValues(alpha: AppTheme.pressedOpacity);
+        }
+        return AppColors.error;
+      }),
+      side: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return const BorderSide(color: AppColors.border);
+        }
+        if (states.contains(WidgetState.pressed)) {
+          return BorderSide(
+            color: AppColors.error.withValues(alpha: AppTheme.pressedOpacity),
+          );
+        }
+        return const BorderSide(color: AppColors.error);
+      }),
+    );
+
+    return Theme(
+      data: theme.copyWith(
+        outlinedButtonTheme: OutlinedButtonThemeData(style: destructiveStyle),
+      ),
+      child: AppButton(
+        label: 'Withdraw application',
+        icon: Symbols.block_rounded,
+        variant: AppButtonVariant.secondary,
+        isLoading: isLoading,
+        expand: true,
+        onPressed: onPressed,
       ),
     );
   }

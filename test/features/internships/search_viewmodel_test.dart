@@ -182,6 +182,32 @@ void main() {
     expect(read().workMode, isNull);
   });
 
+  test('syncQuery keeps the trimmed term and the work mode', () async {
+    final vm = listen();
+    await settle();
+    vm.selectWorkMode(WorkMode.remote);
+
+    vm.syncQuery('  Flutter  ');
+    expect(read().query, 'Flutter');
+    expect(read().workMode, WorkMode.remote);
+
+    vm.syncQuery('');
+    expect(read().query, isEmpty);
+    expect(read().workMode, WorkMode.remote);
+  });
+
+  test('later snapshots keep the synced query', () async {
+    listen().syncQuery('Flutter');
+    await settle();
+
+    expect(read().trending, isNot(isA<ViewLoading<List<SkillCount>>>()));
+    expect(
+      read().recentSearches,
+      isNot(isA<ViewLoading<List<SearchHistoryEntry>>>()),
+    );
+    expect(read().query, 'Flutter');
+  });
+
   test(
     'recordSearch delegates to the service for the signed-in user',
     () async {

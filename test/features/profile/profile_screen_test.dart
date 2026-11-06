@@ -10,6 +10,7 @@ import 'package:internly/core/widgets/app_button.dart';
 import 'package:internly/core/widgets/app_tag.dart';
 import 'package:internly/core/widgets/app_text_field.dart';
 import 'package:internly/features/profile/screens/edit_profile_screen.dart';
+import 'package:internly/features/profile/screens/firebase_demo_screen.dart';
 import 'package:internly/features/profile/screens/profile_screen.dart';
 import 'package:internly/features/profile/viewmodels/edit_profile_viewmodel.dart';
 import 'package:internly/features/profile/widgets/profile_sections.dart';
@@ -17,13 +18,17 @@ import 'package:internly/models/internship.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
+import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/document_picker_service.dart';
 import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/file_storage_service.dart';
+import 'package:internly/services/notification_service.dart';
+import 'package:internly/services/remote_config_service.dart';
 import 'package:internly/services/user_profile_service.dart';
 import 'package:internly/theme/app_theme.dart';
 
 import '../../helpers/fakes.dart';
+import '../../helpers/notification_fakes.dart';
 import '../../helpers/pump.dart';
 
 final _cv = CvFile(
@@ -59,6 +64,9 @@ void main() {
   late FakeDocumentPickerService picker;
   late FakeFileStorageService storage;
   late FakeExternalLinkService links;
+  late FakeCrashlyticsService crashlytics;
+  late FakeNotificationService notificationService;
+  late FakeRemoteConfigService remoteConfig;
 
   setUp(() {
     auth = FakeAuthService(initialUser: testUser);
@@ -67,11 +75,16 @@ void main() {
     picker = FakeDocumentPickerService();
     storage = FakeFileStorageService();
     links = FakeExternalLinkService();
+    crashlytics = FakeCrashlyticsService();
+    notificationService = FakeNotificationService();
+    remoteConfig = FakeRemoteConfigService();
   });
 
   tearDown(() async {
     await profiles.dispose();
     await auth.dispose();
+    await notificationService.dispose();
+    remoteConfig.dispose();
   });
 
   Future<void> pumpProfile(
@@ -92,6 +105,10 @@ void main() {
               path: 'edit',
               builder: (context, state) => const EditProfileScreen(),
             ),
+            GoRoute(
+              path: 'firebase',
+              builder: (context, state) => const FirebaseDemoScreen(),
+            ),
           ],
         ),
       ],
@@ -106,6 +123,9 @@ void main() {
           documentPickerServiceProvider.overrideWithValue(picker),
           fileStorageServiceProvider.overrideWithValue(storage),
           externalLinkServiceProvider.overrideWithValue(links),
+          crashlyticsServiceProvider.overrideWithValue(crashlytics),
+          notificationServiceProvider.overrideWithValue(notificationService),
+          remoteConfigServiceProvider.overrideWithValue(remoteConfig),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light(),
@@ -265,6 +285,19 @@ void main() {
 
     expect(auth.signOutCalls, 1);
     expect(analytics.events, contains('logout'));
+  });
+
+  testWidgets('Diagnostics opens the Firebase demo area', (tester) async {
+    await pumpProfile(tester);
+    await scrollTo(tester, find.text('Firebase demo'));
+
+    await tester.tap(find.text('Firebase demo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Remote Config'), findsOneWidget);
+    expect(find.textContaining('home_recommended_limit'), findsOneWidget);
+    expect(find.text('Send a non-fatal error'), findsOneWidget);
+    expect(find.text('Simulate app crash'), findsOneWidget);
   });
 
   testWidgets('settings rows without a screen say so honestly', (tester) async {

@@ -386,7 +386,12 @@ void main() {
         MaterialApp(
           theme: AppTheme.light(),
           home: Scaffold(
-            appBar: MainTabAppBar(title: 'Saved', user: user, onProfile: () {}),
+            appBar: MainTabAppBar(
+              title: 'Saved',
+              user: user,
+              onProfile: () {},
+              onNotifications: () {},
+            ),
           ),
         ),
       );

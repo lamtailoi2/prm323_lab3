@@ -1,0 +1,65 @@
+{"test_id": "TC-02", "status": "completed", "succeeded": true, "trace_id": "bd33a94b-aec0-45ca-871b-49efaf7641ed", "seconds": 53.0, "error": null, "pytest": "passed"}
+{"test_id": "TC-16", "status": "completed", "succeeded": true, "trace_id": "681590be-2827-49fd-8cee-6b8ae7d0864f", "seconds": 62.8, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'Internship details' == 'Search'\n  \n  - Search\n  + Internship details"}
+{"test_id": "TC-17", "status": "completed", "succeeded": true, "trace_id": "ece6eded-fa6a-46e1-829a-ebb04e3f56ea", "seconds": 132.9, "error": null, "pytest": "passed"}
+{"test_id": "TC-14", "status": "completed", "succeeded": true, "trace_id": "5e93964f-fb9a-4d18-9672-66c8da6befae", "seconds": 48.5, "error": null, "pytest": "failed", "failure": "assert False is True"}
+{"test_id": "TC-01", "status": "completed", "succeeded": true, "trace_id": "931bbeb4-6fb4-496e-aac7-74211e8a96a2", "seconds": 151.5, "error": null, "pytest": "passed"}
+{"test_id": "TC-14", "status": "completed", "succeeded": true, "trace_id": "8931aed1-4bd2-4330-90c9-5fc2282890fe", "seconds": 104.2, "error": null, "pytest": "passed"}
+{"test_id": "TC-02", "status": "completed", "succeeded": true, "trace_id": "07d88fd1-e30b-4af3-8378-a5f4c528a02f", "seconds": 50.5, "error": null, "pytest": "passed"}
+{"test_id": "TC-02", "status": "completed", "succeeded": true, "trace_id": "ac4bb584-3d6d-442a-b495-a8c4ba8237f2", "seconds": 42.5, "error": null, "pytest": "passed"}
+{"test_id": "TC-02", "status": "completed", "succeeded": true, "trace_id": "8198585d-0caf-4cd1-a2e7-1febfc2bd7bc", "seconds": 53.5, "error": null, "pytest": "passed"}
+{"test_id": "TC-16", "status": "completed", "succeeded": true, "trace_id": "e1dd7211-9d62-4217-ae8e-27a2bea25470", "seconds": 33.3, "error": null, "pytest": "passed"}
+{"test_id": "TC-16", "status": "completed", "succeeded": true, "trace_id": "ec6fb253-76dc-4a74-bdbd-7bc6e26d59ae", "seconds": 31.3, "error": null, "pytest": "passed"}
+{"test_id": "TC-16", "status": "completed", "succeeded": true, "trace_id": "4747eea1-add7-412e-8b6c-8a4c0b804843", "seconds": 64.5, "error": null, "pytest": "passed"}
+{"test_id": "TC-17", "status": "completed", "succeeded": true, "trace_id": "01670a2f-0a34-410f-8fc5-fe7299e1ccc5", "seconds": 116.0, "error": null, "pytest": "passed"}
+{"test_id": "TC-17", "status": "completed", "succeeded": true, "trace_id": "0d75120d-3ec7-4b17-8233-af901f2eae58", "seconds": 76.7, "error": null, "pytest": "passed"}
+{"test_id": "TC-17", "status": "completed", "succeeded": true, "trace_id": "30344dfd-9229-42b6-ac37-84a562b22bfe", "seconds": 99.7, "error": null, "pytest": "passed"}
+{"test_id": "TC-14", "status": "completed", "succeeded": true, "trace_id": "a0e01cc7-3cb9-4967-aa02-06b362daf77c", "seconds": 108.8, "error": null, "pytest": "passed"}
+{"test_id": "TC-14", "status": "completed", "succeeded": true, "trace_id": "0ac66774-2696-4f65-aee3-8833e4fe0bc9", "seconds": 172.3, "error": null, "pytest": "passed"}
+{"test_id": "TC-14", "status": "completed", "succeeded": true, "trace_id": "86a6bc0d-e7fa-4847-bf7f-2f30ef24339c", "seconds": 126.1, "error": null, "pytest": "passed"}
+{"test_id": "TC-01", "status": "completed", "succeeded": true, "trace_id": "cebfd52e-367b-4e14-b018-a35c7bfea285", "seconds": 48.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-01", "status": "completed", "succeeded": true, "trace_id": "dd7ba1ab-9866-4366-b674-19fb02fe3e41", "seconds": 77.2, "error": null, "pytest": "passed"}
+{"test_id": "TC-01", "status": "completed", "succeeded": true, "trace_id": "5b765e36-5657-488d-a897-3efa5718d013", "seconds": 66.7, "error": null, "pytest": "passed"}
+{"test_id": "TC-09", "status": "completed", "succeeded": true, "trace_id": "ea708962-ce28-4925-b0fb-7be57e20601d", "seconds": 29.3, "error": null, "pytest": "passed"}
+{"test_id": "TC-07", "status": "completed", "succeeded": true, "trace_id": "b08c12ee-c85d-4b8a-8ef0-d83c3de558a4", "seconds": 65.6, "error": null, "pytest": "passed"}
+{"test_id": "TC-08", "status": "completed", "succeeded": true, "trace_id": "7da3ef7c-92e0-4dc3-90bf-e9320212b5e9", "seconds": 116.8, "error": null, "pytest": "passed"}
+{"test_id": "TC-10", "status": "completed", "succeeded": true, "trace_id": "f1e857a4-3ff2-4b2c-8e48-4ff1d4758170", "seconds": 193.5, "error": null, "pytest": "failed", "failure": "assert False is True"}
+{"test_id": "TC-07", "status": "completed", "succeeded": true, "trace_id": "b3c12d02-994b-4131-bafc-3c47ac30a28e", "seconds": 50.7, "error": null, "pytest": "passed"}
+{"test_id": "TC-07", "status": "completed", "succeeded": true, "trace_id": "c293b71d-7e31-441f-94a5-a1a4cb79fd64", "seconds": 50.5, "error": null, "pytest": "passed"}
+{"test_id": "TC-07", "status": "completed", "succeeded": true, "trace_id": "789431b9-b8e4-45f0-9c7b-dacff39cba5e", "seconds": 57.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-08", "status": "completed", "succeeded": true, "trace_id": "437397d9-7c83-49e6-b88d-b4fe72876936", "seconds": 122.9, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'Intern Agentic Data Engineer' == 'Intern AI Software Engineer'\n  \n  - Intern AI Software Engineer\n  + Intern Agentic Data Engineer"}
+{"test_id": "TC-08", "status": "completed", "succeeded": true, "trace_id": "a3dc0d3b-66bc-4ee7-8816-851ba1dd6ee1", "seconds": 116.7, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'Intern Agentic Data Engineer' == 'Intern AI Software Engineer'\n  \n  - Intern AI Software Engineer\n  + Intern Agentic Data Engineer"}
+{"test_id": "TC-08", "status": "completed", "succeeded": true, "trace_id": "e1d1565d-ece9-48d2-8e8b-a5b565fba74c", "seconds": 102.8, "error": null, "pytest": "failed", "failure": "assert 5 == 7"}
+{"test_id": "TC-09", "status": "completed", "succeeded": true, "trace_id": "58144485-56c3-453a-8330-cc6cfa781e5e", "seconds": 21.2, "error": null, "pytest": "passed"}
+{"test_id": "TC-09", "status": "completed", "succeeded": true, "trace_id": "b44e3547-fd53-4a2d-a70d-97ab55d2e492", "seconds": 23.2, "error": null, "pytest": "passed"}
+{"test_id": "TC-09", "status": "completed", "succeeded": true, "trace_id": "dfe47b1a-00cf-4ce3-9b8d-c9946b9f75d2", "seconds": 27.2, "error": null, "pytest": "passed"}
+{"test_id": "TC-03", "status": "completed", "succeeded": true, "trace_id": "9cb45bff-7672-4044-b482-a2a10d06f69e", "seconds": 104.1, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'Internship' in ['Intern']"}
+{"test_id": "TC-03", "status": "completed", "succeeded": true, "trace_id": "a039c385-834f-4808-bd0c-5faf7283fc14", "seconds": 51.6, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'Internship' in ['Intern']"}
+{"test_id": "TC-03", "status": "completed", "succeeded": true, "trace_id": "bab18c1a-276f-4859-abb1-3439b3d8d123", "seconds": 59.8, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'Internship' in ['Intern']"}
+{"test_id": "TC-04", "status": "completed", "succeeded": true, "trace_id": "c90faf15-c55c-49a8-b35f-af4de7825d05", "seconds": 45.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-04", "status": "completed", "succeeded": true, "trace_id": "a824cd6a-27fc-465d-ab57-975b9ef33e05", "seconds": 37.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-04", "status": "completed", "succeeded": true, "trace_id": "63631ad3-e03d-4f87-b650-c7f356b9b08a", "seconds": 57.5, "error": null, "pytest": "passed"}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "108cf8ac-968b-4596-8a7b-aa04c8bb8007", "seconds": 44.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "e0ada1d5-8e9c-48be-9a74-d11699ad38e6", "seconds": 56.6, "error": null, "pytest": "passed"}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "1ab4c069-ea84-49d1-b537-0530c1823ad2", "seconds": 49.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-18", "status": "completed", "succeeded": true, "trace_id": "51b07205-f814-4b20-aad1-84a82a2d8f43", "seconds": 114.3, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'CV match' == 'Validate CV'\n  \n  - Validate CV\n  + CV match"}
+{"test_id": "TC-18", "status": "completed", "succeeded": true, "trace_id": "25aa5d78-bf8a-489d-a04d-e598c448853c", "seconds": 109.9, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'CV match' == 'Validate CV'\n  \n  - Validate CV\n  + CV match"}
+{"test_id": "TC-18", "status": "completed", "succeeded": true, "trace_id": "1b4ba996-2f0b-4174-a24d-30a375019fe0", "seconds": 107.9, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'CV match' == 'Validate CV'\n  \n  - Validate CV\n  + CV match"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "ec0bf776-924f-4bc4-859a-6a171f23f949", "seconds": 136.2, "error": null, "pytest": "failed", "failure": "AssertionError: assert '2 KB · PDF' == 'Uploaded for this internship'\n  \n  - Uploaded for this internship\n  + 2 KB · PDF"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "964deb59-7b06-492b-a5dc-9537c8273df6", "seconds": 160.5, "error": null, "pytest": "failed", "failure": "AssertionError: assert '2 KB · PDF' == 'Uploaded for this internship'\n  \n  - Uploaded for this internship\n  + 2 KB · PDF"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "eeb2d83d-e86a-461f-92ba-71a3414575e8", "seconds": 171.3, "error": null, "pytest": "failed", "failure": "AssertionError: assert '2 KB · PDF' == 'Uploaded for this internship'\n  \n  - Uploaded for this internship\n  + 2 KB · PDF"}
+{"test_id": "TC-20", "status": "completed", "succeeded": true, "trace_id": "774a3906-7d9d-4e99-9529-896dea860ffe", "seconds": 152.1, "error": null, "pytest": "passed"}
+{"test_id": "TC-20", "status": "completed", "succeeded": true, "trace_id": "32d3c95c-680a-4f06-ae95-789176a760e5", "seconds": 158.6, "error": null, "pytest": "passed"}
+{"test_id": "TC-20", "status": "completed", "succeeded": true, "trace_id": "69f090e2-7602-4c0d-a6ff-b05142b8bf70", "seconds": 103.1, "error": null, "pytest": "passed"}
+{"test_id": "TC-18", "status": "completed", "succeeded": true, "trace_id": "92169173-6920-40c3-97a6-b608aab59028", "seconds": 103.7, "error": null, "pytest": "passed"}
+{"test_id": "TC-18", "status": "completed", "succeeded": true, "trace_id": "5a13af8f-b0a0-43ff-930b-aefb3bac51b9", "seconds": 131.0, "error": null, "pytest": "passed"}
+{"test_id": "TC-18", "status": "completed", "succeeded": true, "trace_id": "655227ed-cd28-48a5-8175-8f6e527026d2", "seconds": 89.8, "error": null, "pytest": "passed"}
+{"test_id": "TC-19", "status": "failed", "succeeded": false, "trace_id": "683d1708-e4dc-40ca-a97c-d37c205a5a79", "seconds": 223.3, "error": null, "pytest": "failed", "failure": "AssertionError: TC-19: failed  (trace 683d1708-e4dc-40ca-a97c-d37c205a5a79)\nassert False\n +  where False = TaskResult(task_id='683d1708-e4dc-40ca-a97c-d37c205a5a79', status='failed', goal='Open the Internly app. If the Login screen with \\'Continue with Google\\' is shown, tap it and choose the Google"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "ba904dd4-f787-4e22-a5d4-7636bbbf6e02", "seconds": 63.6, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'Uploaded for this internship' in ['1 KB · PDF', 'From your Profile']"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "a75cd4e1-b3d3-44b3-8596-104b2f187647", "seconds": 171.9, "error": null, "pytest": "passed"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "7e2b8eb6-0f4b-4648-ae9b-644357875329", "seconds": 68.5, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'Uploaded for this internship' in ['1 KB · PDF', 'From your Profile']"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "a1482888-ec57-452c-b89a-44bd8443ed19", "seconds": 141.1, "error": null, "pytest": "passed"}
+{"test_id": "TC-03", "status": "completed", "succeeded": true, "trace_id": "55c7985d-b854-4b22-a707-c789abeaa33e", "seconds": 102.2, "error": null, "pytest": "passed"}
+{"test_id": "TC-03", "status": "completed", "succeeded": true, "trace_id": "2b271938-b559-4a0a-b56e-7246eeb0645f", "seconds": 49.5, "error": null, "pytest": "passed"}
+{"test_id": "TC-03", "status": "completed", "succeeded": true, "trace_id": "c07e2122-7c80-41c5-b54a-4781a6c3c34c", "seconds": 71.8, "error": null, "pytest": "passed"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "58225e0a-b51f-46cb-9e7b-da1af8d5369f", "seconds": 141.1, "error": null, "pytest": "passed"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "7a1e3528-e7cd-4ce1-bb3f-4548926b53d7", "seconds": 202.8, "error": null, "pytest": "passed"}

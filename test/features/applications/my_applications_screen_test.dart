@@ -62,6 +62,10 @@ void main() {
           path: AppRoutes.search,
           builder: (context, state) => const Text('Search tab'),
         ),
+        GoRoute(
+          path: AppRoutes.notificationCenter,
+          builder: (context, state) => const Text('Notification Center'),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -299,18 +303,22 @@ void main() {
     expect(find.textContaining('Application '), findsOneWidget);
   });
 
-  testWidgets('avatar opens Profile and the bell is honest', (tester) async {
+  testWidgets('avatar opens Profile and the bell opens notifications', (
+    tester,
+  ) async {
     applications.results = page;
     await pumpApplications(tester, height: 1400);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Notifications'));
-    await tester.pump();
-    expect(find.text('Notifications are coming soon.'), findsOneWidget);
-
     await tester.tap(find.byTooltip('Profile'));
     await tester.pumpAndSettle();
     expect(find.text('Profile tab'), findsOneWidget);
+
+    await pumpApplications(tester, height: 1400);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Notifications'));
+    await tester.pumpAndSettle();
+    expect(find.text('Notification Center'), findsOneWidget);
   });
 
   testWidgets('touch targets are at least 48 dp', (tester) async {

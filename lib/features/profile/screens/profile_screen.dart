@@ -95,8 +95,7 @@ class ProfileScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Notifications',
             icon: const Icon(Symbols.notifications_rounded),
-            onPressed: () =>
-                _showMessage(context, 'Notifications are coming soon.'),
+            onPressed: () => context.push(AppRoutes.notificationCenter),
           ),
         ],
       ),
@@ -104,6 +103,10 @@ class ProfileScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
         children: [
           ...content,
+          const SizedBox(height: AppSpacing.section),
+          DiagnosticsSection(
+            onOpenFirebaseDemo: () => context.push(AppRoutes.firebaseDemo),
+          ),
           const SizedBox(height: AppSpacing.section),
           SettingsSection(
             isSigningOut: isSigningOut,

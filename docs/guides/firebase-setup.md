@@ -124,11 +124,38 @@ The app listens for real-time updates, so a published change applies without res
 
 ## 9. Cloud Messaging (FCM)
 
-Set this up together with the notifications feature (G-04, G-13):
+Implemented in `lib/services/notification_service.dart` and
+`lib/app/notification_coordinator.dart` (G-04, G-13):
 
-- **Android 13+:** declare `<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>` and request it at runtime.
-- **iOS:** requires a **paid Apple Developer account**. Create an APNs authentication key (`.p8`) and upload it in Console → Project settings → Cloud Messaging. In Xcode → Runner → Signing & Capabilities, add **Push Notifications** and **Background Modes → Remote notifications**. Never commit the `.p8` file.
-- Test messages: Console → **Messaging → New campaign → Send test message** with a device's FCM token.
+- **Android 13+:** `POST_NOTIFICATIONS` is declared in
+  `android/app/src/main/AndroidManifest.xml` and requested once after sign-in;
+  below API 33 the system grants it automatically.
+- **iOS:** requires a **paid Apple Developer account**. Create an APNs
+  authentication key (`.p8`) and upload it in Console → Project settings →
+  Cloud Messaging. In Xcode → Runner → Signing & Capabilities, add **Push
+  Notifications** and **Background Modes → Remote notifications**. Never
+  commit the `.p8` file.
+- **Token:** after sign-in the app uploads this device's token to
+  `users/{uid}.fcmToken` and keeps it current when Firebase rotates it
+  (`onTokenRefresh`). Profile → Diagnostics → **Copy FCM token** copies it
+  so it can be pasted into the console.
+- **History:** every received message is stored at
+  `users/{uid}/notifications/{messageId}` (document ID = FCM message ID, so no
+  duplicates):
+  - foreground: `onMessage` → in-app SnackBar with **View** + an entry;
+  - background: the entry is written when the notification is tapped
+    (`onMessageOpenedApp`); the background isolate also writes when the runtime
+    calls it;
+  - terminated: written on the next launch from `getInitialMessage()`.
+- **Deep link:** add custom data `route` to the campaign / test message, e.g.
+  `/applications/<jobKey>` or `/home/internships/<jobKey>`. Only paths under a
+  known tab are accepted; anything else opens the Notification Center. Include
+  `uid` too when the message should reach the background isolate without an
+  auth session.
+- **Test message:** Console → **Messaging → New campaign → Send test message**,
+  paste the copied token. Android shows the system notification, and the
+  message appears in the Notification Center (store the three screenshots in
+  `evidence/fcm/`).
 
 ## 10. Cloud Storage (CV upload, PDF report) on Blaze at $0
 
@@ -177,9 +204,11 @@ The app never holds a SerpAPI key. A scheduled Cloud Function mirrors Google Job
 4. Install and deploy:
    ```bash
    cd functions && npm install && cd ..
+   firebase functions:secrets:set GEMINI_API_KEY   # Validate CV (free tier, G-26)
+   firebase functions:secrets:set GROQ_API_KEY     # CV Match commentary (free tier)
    firebase deploy --only functions,firestore:rules
    ```
-   `syncInternshipsJob` runs every 6 hours in `Asia/Ho_Chi_Minh`; the first run backfills five keywords with `location=Vietnam`, then each run refreshes one keyword.
+   `syncInternshipsJob` runs every 6 hours in `Asia/Ho_Chi_Minh`; the first run backfills five keywords with `location=Vietnam`, then each run refreshes one keyword. The same deploy publishes the callables `validateCv` and `matchCv`: `validateCv` reads `GEMINI_API_KEY`, `matchCv` reads `GROQ_API_KEY`, and neither key reaches the app.
 5. Verify: Console → Functions → `syncInternshipsJob` logs `internship sync complete`; Firestore → `internships` has documents and `sync/state` shows the last run. The app reads that pool without a key.
 6. Quota: five backfill searches, then about four per day (~120 per month) on the 250-search free plan. If the quota runs out, `sync/state.lastError` says so; the app keeps the last good listings until they expire after seven days.
 7. Rotating the key: `firebase functions:secrets:set SERPAPI_KEY` again and redeploy the function. Nothing in the app changes.

@@ -5,13 +5,13 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../app/router.dart';
 import '../../../core/utils/display_format.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/company_logo.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../models/internship.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
-import '../widgets/detail_parts.dart';
 
 /// What Review hands to Success through the route `extra`: the recap of the
 /// application that was just recorded.
@@ -155,7 +155,7 @@ class _RecapCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              DetailCompanyLogo(
+              CompanyLogo(
                 companyName: company,
                 size: AppSizes.companyLogoLarge,
                 url: logoUrl,

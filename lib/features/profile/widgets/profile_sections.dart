@@ -275,6 +275,37 @@ class SettingsSection extends StatelessWidget {
   }
 }
 
+/// "Diagnostics": the entry point to the Firebase demo area required by Lab 3
+/// (G-06). It keeps the Profile list short; the values and test controls live
+/// on `/profile/firebase`.
+class DiagnosticsSection extends StatelessWidget {
+  const DiagnosticsSection({super.key, required this.onOpenFirebaseDemo});
+
+  final VoidCallback onOpenFirebaseDemo;
+
+  @override
+  Widget build(BuildContext context) {
+    const chevron = Icon(
+      Symbols.chevron_right_rounded,
+      color: AppColors.textSecondary,
+    );
+    return ProfileSection(
+      icon: Symbols.bug_report_rounded,
+      title: 'Diagnostics',
+      padded: false,
+      child: ListTile(
+        leading: const Icon(Symbols.bug_report_rounded),
+        title: const Text('Firebase demo'),
+        subtitle: const Text(
+          'Remote Config values, crash and non-fatal tests.',
+        ),
+        trailing: chevron,
+        onTap: onOpenFirebaseDemo,
+      ),
+    );
+  }
+}
+
 /// Card-shaped placeholders while the profile loads.
 class ProfileSkeleton extends StatelessWidget {
   const ProfileSkeleton({super.key});

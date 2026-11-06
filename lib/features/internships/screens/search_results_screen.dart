@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,8 +22,11 @@ import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import '../../applications/viewmodels/applied_providers.dart';
+import '../../saved/viewmodels/saved_providers.dart';
+import '../../saved/viewmodels/saved_viewmodel.dart';
 import '../models/search_filter_criteria.dart';
 import '../viewmodels/search_results_viewmodel.dart';
+import '../viewmodels/search_viewmodel.dart';
 import '../widgets/search_results_filter_sheet.dart';
 
 /// Search Results screen (Figma Search Results, `docs/design/screen-spec.md` §Search Results).
@@ -92,11 +97,38 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
     );
   }
 
+  /// Saves or unsaves through the shared Saved feature, so Search writes the
+  /// same `users/{uid}/savedInternships/{key}` copy the Saved screen reads.
+  Future<void> _toggleSaved(Internship internship) async {
+    final viewModel = ref.read(savedViewModelProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+
+    final result = await viewModel.toggleAndReport(
+      internship,
+      source: 'search',
+    );
+    if (!mounted) return;
+
+    if (result.error case final error?) {
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(searchResultsViewModelProvider);
     final viewModel = ref.read(searchResultsViewModelProvider.notifier);
+    // Every way this screen changes the query (submit, the field's clear
+    // button, the query chip, Clear all, Clear filters) reaches the Search
+    // tab's field, which stays alive under this screen.
+    ref.listen(
+      searchResultsViewModelProvider.select((state) => state.query),
+      (_, query) => ref.read(searchViewModelProvider.notifier).syncQuery(query),
+    );
     final user = ref.watch(authStateChangesProvider).value;
+    final savedIds = ref.watch(savedInternshipIdsProvider);
     final appliedJobs =
         ref.watch(appliedJobsProvider).asData?.value ?? const <String>{};
 
@@ -107,8 +139,7 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
           IconButton(
             tooltip: 'Notifications',
             icon: const Icon(Symbols.notifications_rounded),
-            onPressed: () =>
-                _showMessage(context, 'Notifications are coming soon.'),
+            onPressed: () => context.push(AppRoutes.notificationCenter),
           ),
           _ProfileAction(
             user: user,
@@ -180,10 +211,11 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
                   internships: data,
                   query: state.query,
                   sortBy: state.sortBy,
-                  savedIds: state.savedIds,
+                  savedIds: savedIds,
                   appliedJobs: appliedJobs,
                   onSortChanged: viewModel.setSortBy,
-                  onSaveToggle: viewModel.toggleSave,
+                  onSaveToggle: (internship) =>
+                      unawaited(_toggleSaved(internship)),
                 ),
               },
             ],
@@ -191,12 +223,6 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
         ),
       ),
     );
-  }
-
-  static void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -240,6 +266,26 @@ class _ActiveFiltersRow extends StatelessWidget {
               key: const ValueKey('filter_location'),
               label: location,
               onDeleted: viewModel.clearLocation,
+            ),
+            const SizedBox(width: AppSpacing.s8),
+          ],
+          // Every filter the Filters badge counts has a chip, so the
+          // student sees why the list is shorter and can remove it here.
+          if (state.criteria.jobType case final jobType?
+              when jobType != 'Any job type') ...[
+            _ActiveFilterChip(
+              key: const ValueKey('filter_job_type'),
+              label: jobType,
+              onDeleted: viewModel.clearJobType,
+            ),
+            const SizedBox(width: AppSpacing.s8),
+          ],
+          if (state.criteria.allowanceRange case final allowance?
+              when allowance != 'Any allowance') ...[
+            _ActiveFilterChip(
+              key: const ValueKey('filter_allowance'),
+              label: allowance,
+              onDeleted: viewModel.clearAllowanceRange,
             ),
             const SizedBox(width: AppSpacing.s8),
           ],
@@ -341,7 +387,7 @@ class _ResultsListView extends StatelessWidget {
   /// `Applied` badge.
   final Set<String> appliedJobs;
   final ValueChanged<SearchSortBy> onSortChanged;
-  final ValueChanged<String> onSaveToggle;
+  final ValueChanged<Internship> onSaveToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -453,7 +499,7 @@ class _ResultsListView extends StatelessWidget {
             isApplied: appliedJobs.contains(
               jobIdentity(internship.title, internship.companyName),
             ),
-            onSaveToggle: () => onSaveToggle(internship.key),
+            onSaveToggle: () => onSaveToggle(internship),
             // push keeps this results page (query, filters, scroll) under
             // the detail, so Back returns to the same results.
             onTap: () => context.push(

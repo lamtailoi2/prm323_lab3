@@ -380,6 +380,256 @@ Environment: Windows 11 × Flutter 3.47.8 / Dart 3.13.7, Android emulator `sdk g
 
 ---
 
+## Run 24: Flow 3 Application Detail audit (2026-11-04)
+
+Branch `feat/application-detail` on Windows 11. Environment: Flutter 3.47.8 / Dart 3.13.7 (no device or emulator attached).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | **Formatted 186 files (0 changed)** |
+| 2 | `flutter analyze` | **No issues found!** (47.5 s) |
+| 3 | `flutter test test/features/applications/application_detail_viewmodel_test.dart test/features/applications/application_detail_screen_test.dart test/app/router_test.dart` | **33 passed** (ViewModel 7: load + `view_application` once, empty, error + Retry, withdraw keeps the previous status, Undo window, failed withdraw, double tap; screen 10: both widths with tracker/CV/facts, withdraw dialog → Undo, Cancel, Undo, Preview, error, empty, loading skeleton, no applicant snapshot; router 16) |
+| 4 | `flutter test` (full suite) | **583 tests, all passed** |
+| 5 | E2E TC-09/TC-10 (`e2e_test/test_applications.py`) | **Not run**: the cases are written, but this machine has no ARTEMIS daemon or toolchain (`evidence/artemis/e2e-environment-20261031.md`) |
+| 6 | Device screenshots (`evidence/screens/application-*.png`) | **5 captured** on the Android emulator (1080 × 2400) with the real signed-in test account: `application-list`, `application-detail-submitted`, `application-detail-applicant`, `application-detail-withdraw-dialog`, `application-detail-withdrawn`. `empty`, `rejected`, `error` and `loading` were not captured: the account has one application, there is no UI to set another status, and a network error cannot be produced deterministically |
+| 7 | DebugView (`view_application`) | **Not run** |
+
+Notes: the audit found the Flow 3 code already implemented and green; this run covers the documentation/status corrections, the new E2E source and the state screenshots. No product code changed in this run, so the suite count is unchanged from the previous full run on this branch.
+
+---
+
+## Run 25: Flow 3 Application Detail — Figma alignment (2026-11-04)
+
+Branch `feat/application-detail` on Windows 11. Environment: Flutter 3.47.8 / Dart 3.13.7 (no device or emulator attached). Follows Run 24: Option 1 ("Đồng bộ hoàn toàn với Figma") from the P-48 audit, implemented in P-49.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **189 files, 1 changed** (`applicant_card.dart`, then `application_detail_screen_test.dart` on a second pass) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test/models/internship_application_test.dart test/features/applications/ test/app/router_test.dart` | **88 passed** |
+| 4 | `flutter test` (full suite) | **593 tests, all passed** |
+| 5 | E2E TC-09/TC-10 | **Not run** (same as Run 24: no ARTEMIS daemon/toolchain on this machine) |
+| 6 | Device screenshots (`evidence/screens/application-*.png`) | **Not recaptured.** No emulator was run in this session; the 5 screenshots from Run 24 predate this run's UI changes (4-step tracker with progress, destructive withdraw styling, chip facts, new CV tile copy) and no longer match the current build. Recapturing them is open work, not fabricated here |
+| 7 | DebugView (`view_application`) | **Not run** |
+
+Code changed in this run (unlike Run 24, which was docs-only): `application_status_tracker.dart`, `application_identity_card.dart`, `applicant_card.dart`, `application_detail_screen.dart`, `internship_application.dart`, `application_service.dart`, `application_review_viewmodel.dart`, `test/helpers/fakes.dart`, plus the four Flow 3 test files. The suite count rose from 583 (Run 24) to 593: +10 net (new tracker/CV/nav/badge/colour/error-message tests, two new `cvSizeBytes` model-parsing assertions, no tests removed).
+
+---
+
+## Run 26: FCM in all app states + Notification Center (2026-11-05)
+
+Branch `dev`, uncommitted working tree. Environment: Windows 11 · Flutter
+3.47.8 · Dart 3.13.7 · Android emulator `Medium_Phone_API_37.0`
+(Android 17 / API 37, Google Play image, 1080 × 2400) · Firebase project
+`prm-lab3` · signed-in test account.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | 202 files checked; formatted (files changed by the edits, 0 after the final pass) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test/models/app_notification_test.dart test/core/utils/notification_target_test.dart test/core/utils/display_format_test.dart test/services/notification_message_test.dart test/features/notifications test/features/profile/profile_screen_test.dart` | **44 passed** |
+| 4 | `flutter test` (full suite) | **624 tests, all passed** (+30 from 594 on `dev`: notification model, message mapping, target validation, relative time, Notification Center ViewModel + screen, FCM token tile) |
+| 5 | `flutter build apk --debug --dart-define-from-file=.env` | **✓ Built** in 73.7 s; FCM plugin and manifest merge compile |
+| 6 | Install + launch on `emulator-5554` | **Passed**: Home opens signed in; Android 13+ notification permission dialog shown by the coordinator |
+| 7 | Allow the permission | **Passed**: `dumpsys package com.group3.internly` → `POST_NOTIFICATIONS: granted=true` |
+| 8 | Profile → Diagnostics → **Copy FCM token** | **Passed**: SnackBar `FCM token copied.` (token obtained from Firebase Messaging on this device) |
+| 9 | Bell → Notification Center | **Passed**: screen opens with `No notifications yet` and Back returns to Profile |
+| 10 | FCM delivery in foreground / background / terminated + a message in the history | **Not run**: needs test messages sent from the Firebase console and screenshots in `evidence/fcm/`; no message was sent in this session |
+| 11 | DebugView (`notification_center_open`) | **Not run** |
+
+Open work: send the console test message in the three states, capture
+`evidence/fcm/`, and check the event in DebugView.
+
+---
+
+## Run 27: FCM evidence follow-up (2026-11-06)
+
+Branch `dev`, uncommitted working tree. Environment: Windows 11 · Flutter
+3.47.8 · Dart 3.13.7 · Android emulator `Medium_Phone_API_37.0`
+(Android 17 / API 37, Google Play image, 1080 × 2400) · Firebase project
+`prm-lab3` · signed-in test account. Code changes in this run: the Search tab
+now uses `MainTabAppBar` (bell + avatar, per design-system §2.6) and
+`NotificationService.tokenRefreshes()` keeps `users/{uid}.fcmToken` current.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `flutter analyze` | **No issues found!** |
+| 2 | `flutter test test/app/notification_coordinator_test.dart test/features/notifications test/features/profile/profile_screen_test.dart test/features/internships/search_screen_test.dart` | **58 passed** |
+| 3 | `flutter test` (full suite) | **627 tests, all passed** (+3: rotated token stored / ignored when signed out, Search bell opens the Notification Center; the Search header also asserts both actions at 360 and 412 dp) |
+| 4 | Console test messages | **Delivered**: foreground (`Internly foreground test`, in-app SnackBar), background and terminated (both shown in the notification shade). Screenshots in `evidence/fcm/` (6 files). |
+| 5 | Notification Center after the three states | **Passed**: `notification_center_open` screen lists every received message with read / unread state (6 entries; one terminated entry is `Read`, the rest `Unread`) |
+| 6 | Analytics debug mode (`setprop debug.firebase.analytics.app com.group3.internly`, `log.tag.FA`/`FA-SVC` verbose, restart, bell) | **Passed**: `adb logcat -d -s FA:V FA-SVC:V` → `Logging event: ... name=notification_center_open ... unread_count=7` |
+| 7 | Tap a notification → destination screen | **Not captured**: the stored entries were sent without a valid `route` payload, so no screenshot shows the destination |
+| 8 | DebugView console screenshot | **Not captured**: the event is proven in logcat (row 6); the browser capture is still open |
+
+Open work: send one message per state with a valid `route` (`/saved`,
+`/applications`), capture the destination screen after the tap, and save the
+DebugView screenshot showing `notification_center_open`.
+
+---
+
+## Run 28: Local admin dashboard (2026-11-06)
+
+Branch `dev`, uncommitted working tree. Environment: Windows 11 · Node 24.22.1
+· npm 11.19.1 · Firebase project `prm-lab3` · Android emulator
+`Medium_Phone_API_37.0` (API 37, 1080 × 2400) · signed-in test account.
+Service-account key stored at `%USERPROFILE%\.internly-admin\service-account.json`
+(outside the repository).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `npm test` (dashboard) | **7 passed** (route validation, chunking, required text, timestamps, send summary, message-ID normalisation) |
+| 2 | `node --check server.js lib/admin.js public/app.js` | clean |
+| 3 | `node server.js` (port 4318 for the check; the developer's 4317 instance kept running) | UI, CSS and `app.js` return **200**; `/api/status` → `project=prm-lab3 ready=True found=True` |
+| 4 | `GET /api/users` with the real key | **8 users**; Firebase Auth join returns names and emails; one user has a device token |
+| 5 | `POST /api/send` (one user, title `Dashboard test 2`, route `/saved`, history on) | **`requested=1 success=1 failure=0 historyWritten=1`**; the app showed the foreground SnackBar with **View** |
+| 6 | Tap **View** on the SnackBar | **Passed**: the app opened the **Saved** tab — screenshot `evidence/fcm/fcm-notification-tap-saved-20261106.png` |
+| 7 | `GET /api/notifications?uid=…` | the entry is stored with the FCM message ID, `route=/saved`, `read=false` |
+| 8 | `DELETE /api/notifications/:uid/:id` for the two test entries | **2 deleted**, the list went from 10 to 9 (the query is capped at 10) |
+
+Finding and fix in this run: the first send stored no history document — Firebase Admin returns `messageId` as
+`projects/prm-lab3/messages/<id>`, and Firestore rejects a document path with an odd number of components.
+`normaliseMessageId()` now takes the trailing ID (the value `RemoteMessage.messageId` carries), so the
+server-side entry merges with the one the app writes. The send response now reports `historyError` instead of
+failing a message that was already delivered.
+
+---
+
+## Run 29: CV Match Check (G-24 / DC-09) — 2026-11-06
+
+Branch `dev`, uncommitted working tree. Environment: Windows 11 · Flutter
+3.47.8 · Dart 3.13.7 · Node 24.22.1 · Firebase project `prm-lab3` (Functions
+not deployed in this run).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | 212 files; 0 changed after the edits |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test/services/cv_match_service_test.dart test/features/applications/cv_match_viewmodel_test.dart test/features/applications/cv_match_step_test.dart test/features/applications/cv_match_screen_test.dart test/features/internships/apply_form_screen_test.dart` | **38 passed** |
+| 4 | `flutter test` (full suite) | **649 tests, all passed** (+22: model/service parsing and error mapping, ViewModel success/gaps/all-matched/no-requirements/failure/double-tap/signed-out, step widget states and 360/412 dp, screen route guard + `Continue`, Apply Form flag on/off) |
+| 5 | `cd functions && npm test` | **41 tests, all passed** (+23: score/requirement split, commentary parsing and fallback, message-ID-independent match handler cases, skill-vocabulary parity with Dart). The 18 existing `validateCv` tests still pass after the shared-helper refactor |
+| 6 | `cd functions && npm run build` | `tsc` passed |
+| 7 | Deploy `matchCv` + device walk (Apply → CV Match → Validate CV → Review → Submit) | **Not run**: needs an owner deploy with `GEMINI_API_KEY` and a signed-in emulator session |
+| 8 | DebugView (`cv_match_check`) | **Not run** |
+| 9 | ARTEMIS TC-06 (`e2e_test/test_apply.py`) | **Written, not run** (no ARTEMIS host on this machine) |
+
+Open work: deploy the function, walk the flow on the emulator with the flag on
+and off, capture the gaps / all-matched / error screens, and check
+`cv_match_check` in DebugView.
+
+---
+
+## Run 30: CV Match Check on device (Groq commentary) — 2026-11-06
+
+Branch `dev`, uncommitted working tree. Environment: Windows 11 · Node 24.22.1
+· Flutter 3.47.8 · Firebase project `prm-lab3` · Android emulator
+`Medium_Phone_API_37.0` (API 37, 1080 × 2400) · signed-in test account
+`Mai Duy Lập` (has a Profile CV, no Profile skills). `validateCv` stays on
+Gemini; the advisory commentary uses Groq with `GROQ_API_KEY`.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd functions && npm test` | **45 tests, all passed** (+4 over Run 29: Groq client request/JSON mode, HTTP error without key leak, empty content/blank key, real Firestore shape parsing) |
+| 2 | `cd functions && npm run build` | `tsc` passed |
+| 3 | `firebase deploy --only functions` | `matchCv`, `validateCv`, `syncInternshipsJob` updated successfully (secret `GROQ_API_KEY` attached to `matchCv`) |
+| 4 | Groq model probe (`/openai/v1/models`, JSON-mode request) | `llama-3.3-70b-versatile` → **404** (retired from this project); `openai/gpt-oss-20b` → **200** with valid JSON |
+| 5 | Device walk with the vocabulary fallback (before extraction worked) | **Passed**: `50% match`, `1 of 2 requirements matched`; `PostgreSQL` matched, `SQL` a gap |
+| 6 | Device walk with model extraction enabled | **Passed**: `17% match`, `Low match`, `1 of 6 requirements matched`; `PostgreSQL` matched; gaps `SQL`, `Data Studio`, `Metabase`, `Power BI`, `Looker Studio` (all named in the JD). Summary: `Your CV shows strong backend and PostgreSQL experience, but lacks explicit evidence of SQL, Data Studio, Metabase, Power BI, and Looker Studio skills.` |
+| 7 | `Continue` from CV Match | **Passed**: Validate CV ran on Gemini and continued to **Review application** (`Step 2 of 2`, `Ready to submit`); submission not tapped |
+| 8 | Flutter suite | Not re-run: no client file changed. Run 29 remains valid (649 passed) |
+| 9 | DebugView (`cv_match_check`) | **Not run** |
+
+Findings and fixes during this run:
+
+1. **Firestore shape.** The sync function stores the raw SerpAPI object under
+   `raw` and no parsed `title` / `skills` fields. `matchCv` first read the root,
+   so it saw no requirements; it now parses `raw` exactly like
+   `Internship.fromFirestore` (title, company, `job_highlights`, description;
+   skills via `findKnownSkills`). A unit test covers the real shape.
+2. **Groq model retired.** `llama-3.3-70b-versatile` answers 404 on this key;
+   the model is now `openai/gpt-oss-20b`. Error logging was improved to keep
+   the actual message (`{}` before).
+3. **Suggestion truncation.** Long suggestions were cut mid-word at 160 chars;
+   `clip()` now cuts at a word boundary and adds a single ellipsis.
+4. **Extraction call used the commentary rubric.** The extraction request sent
+   the commentary system prompt, so Groq returned a summary and parsing fell
+   back. `askExtraction` now uses `SKILL_EXTRACTION_RUBRIC`.
+5. **Empty `content` in JSON mode.** `gpt-oss-20b` spent its default completion
+   budget on hidden reasoning and returned an empty `content`, so Groq replied
+   `400 json_validate_failed`. Fixed with `reasoning_effort: low` and
+   `max_completion_tokens: 4096`; verified directly: status 200 with the three
+   skill lists.
+
+Evidence: `evidence/screens/cv-match-extraction-20261106.png` (model
+extraction), `evidence/screens/cv-match-groq-20261106.png` (vocabulary
+fallback), `evidence/screens/cv-match-gaps-20261106.png`.
+
+## Run 31: Search — empty query and the field after Search Results (2026-11-06)
+
+Branch `fix/search-empty-query` from `dev` `1255677`, uncommitted working tree.
+Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable · Android emulator
+`Pixel_API_36`. AI log P-69. Device screenshots show the signed-in account, so
+they are not committed (results read from `uiautomator dump`).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | 211 files, 0 changed |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` (full suite) | **654 tests, all passed**; 6 new: `Find Internships` disabled without a query or a work mode, a work mode alone enables it, `syncQuery` keeps the trimmed term and the work mode, later snapshots keep the query, a query cleared on Results is not back on Search (Home → Home's search bar), a new query on Results shows on Search |
+| 4 | Negative check: field update in `SearchScreen` switched off | Both new router tests **fail** (`Expected: empty` / `'Dart'`, `Actual: 'inter'`), so they catch the reported bug; code restored afterwards |
+| 5 | `flutter build apk --profile --dart-define-from-file=.env` + `adb install -r` on emulator `Pixel_API_36` (API 36, 1080 × 2400), signed-in test account | Built (107.8 MB), installed |
+| 6 | Device: Search tab with an empty field | **Passed**: `Find Internships` shown disabled (`enabled=false` in the UI dump); tapping it stays on Search |
+| 7 | Device: type `inter` | **Passed**: the button turns blue (enabled); tapping it opens Search Results (`54 internships found`) |
+| 8 | Device, reported path: `Clear search` on Results → Home → Home's search bar | **Passed**: Search opens with an empty field (`Search role, company, skill` hint) and `Find Internships` disabled; before the fix it showed `inter` |
+| 9 | Device: recent search `Developer` → type `Python` on Results + Enter → tap the Search tab | **Passed**: Results `27 internships found`; the Search field shows `Python` |
+
+Findings:
+
+1. One router test and one Search test typed and tapped `Find Internships` in
+   the same frame; the button only enables after a rebuild, so they now pump
+   one frame in between. The two other router failures in the first run only
+   followed that one and pass unchanged.
+2. After a failing router test, `flutter test` waited instead of exiting;
+   passing runs exit normally. Not investigated in this change.
+
+## Run 32: Job type / allowance chips; Edit skills from the Apply Form (2026-11-06)
+
+Branch `fix/filter-chips-and-skills-sheet` from `dev` `b08b47f`, uncommitted
+working tree. Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable ·
+Android emulator `Pixel_API_36`. AI log P-70.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | 211 files, 0 changed |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` (full suite) | **660 tests, all passed** (+6: Results VM clears job type / allowance alone; Results widget chips shown and removable, none for `Any …`; Edit skills opened before the profile loaded waits, ignores edits and save, then seeds; later snapshots keep the draft; Apply Form `Add skill` keeps the Profile skills) |
+| 4 | Negative check: old `edit_skills_viewmodel.dart` / `edit_skills_sheet.dart` from `dev` | The new Apply Form test **fails** (`Found 0 widgets with text "2 chosen"`); code restored afterwards |
+| 5 | Probe on the old code (temporary test, deleted) | Profile `[Flutter, Dart, Git]`, sheet opened before the profile loaded: selected `[]`; saving `Python` left `[Python]` |
+| 6 | Profile build installed on the emulator | The first launch after install showed "internly isn't responding": the host was short of memory (emulator about 7 GB, Gradle daemon 1.4 GB on an 8 GB Mac). After `./gradlew --stop` the app started in 3.6 s |
+| 7 | Device: cold start, Profile tab not opened → Search `Recruitment` → card → `Apply now` → `Add skill` | **Passed**: the sheet shows the 4 Profile skills (`4 chosen`: Git, React, Next.js, JavaScript); before the fix it opened empty. Closed with `Cancel`, nothing saved |
+| 8 | Device: Search `Intern` → Filters → `Job type: Internship` → `Show 23 results` | **Passed**: chips `Internship` and `Intern`, Filters badge `2`, `23 internships found`; removing the `Internship` chip → `54 internships found` |
+
+---
+
+## Run 31: Firebase demo area (G-06) — 2026-11-06
+
+Branch `feat/fcm-notification-center`, working tree with the Firebase demo screen. Environment: Windows 11 · Flutter 3.47.8.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib/features/profile lib/app/router.dart test/features/profile` | 1 file reformatted, the rest already formatted |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test/features/profile/firebase_demo_viewmodel_test.dart test/features/profile/firebase_demo_screen_test.dart test/features/profile/profile_screen_test.dart` | **39 passed** |
+| 4 | `flutter test` | **663 passed** |
+| 5 | Device walk on `emulator-5554` after `adb install`: `/profile/firebase` | **Passed** after the source fix: `cv_match_enabled = true`, `home_recent_limit = 10`, `home_recommended_limit = 6`, all **`From Firebase`**; `Send a non-fatal error` showed the confirmation SnackBar. Test crash **not tapped** in this run |
+| 6 | Evidence screenshots | App states saved as `evidence/remote-config/remote-config-app-from-firebase-20261106.png` and `evidence/crashlytics/crashlytics-nonfatal-sent-20261106.png`. Console before/after and the Crashlytics dashboard are **not captured** |
+
+Fix found during the device walk: `RemoteConfigValue.source.name` returns `valueRemote` / `valueDefault` / `valueStatic`, not `remote` / `default` / `static`, so the demo screen labelled remote values `In-app default`. `FirebaseRemoteConfigService.snapshot()` now maps the enum through `sourceName()`, with a unit test and a widget test for the `From Firebase` label.
+
+Follow-ups: capture `evidence/crashlytics/` (dashboard with fatal + non-fatal, user ID and custom keys) and the Console side of `evidence/remote-config/` (values before/after a change) as described in [`evidence/README.md`](../evidence/README.md). Test crash not run yet. Figma updates for DC-24, DC-25 and DC-26 remain open.
+
+---
+
 ## Run template
 
 ```markdown
