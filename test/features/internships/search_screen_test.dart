@@ -180,10 +180,61 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'Backend intern');
+    // A frame passes between typing and tapping, which enables the button.
+    await tester.pump();
     await tester.tap(find.text('Find Internships'));
     await tester.pumpAndSettle();
 
     expect(find.text('Results: Backend intern'), findsOneWidget);
+  });
+
+  bool findInternshipsEnabled(WidgetTester tester) => tester
+      .widget<ButtonStyleButton>(
+        find.ancestor(
+          of: find.text('Find Internships'),
+          matching: find.bySubtype<ButtonStyleButton>(),
+        ),
+      )
+      .enabled;
+
+  testWidgets('Find Internships is disabled without a query or a work mode', (
+    tester,
+  ) async {
+    await pumpSearch(tester);
+    await tester.pumpAndSettle();
+
+    expect(findInternshipsEnabled(tester), isFalse);
+    await tester.tap(find.text('Find Internships'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Results:'), findsNothing);
+
+    // Whitespace is not a query.
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.pump();
+    expect(findInternshipsEnabled(tester), isFalse);
+
+    await tester.enterText(find.byType(TextField), 'Backend');
+    await tester.pump();
+    expect(findInternshipsEnabled(tester), isTrue);
+
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pump();
+    expect(findInternshipsEnabled(tester), isFalse);
+  });
+
+  testWidgets('a work mode alone enables Find Internships and opens results', (
+    tester,
+  ) async {
+    await pumpSearch(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilterChip, 'Remote'));
+    await tester.pumpAndSettle();
+    expect(findInternshipsEnabled(tester), isTrue);
+
+    await tester.tap(find.text('Find Internships'));
+    await tester.pumpAndSettle();
+    expect(find.text('Results: '), findsOneWidget);
   });
 
   testWidgets('tapping a trending skill records it and navigates to results', (
