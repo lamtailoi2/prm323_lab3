@@ -300,6 +300,28 @@ void main() {
     expect(find.text('Simulate app crash'), findsOneWidget);
   });
 
+  testWidgets('crash test control asks first, then forces the crash', (
+    tester,
+  ) async {
+    await pumpProfile(tester);
+    await scrollTo(tester, find.text('Simulate app crash'));
+    expect(find.text('Diagnostics'), findsOneWidget);
+
+    await tester.tap(find.text('Simulate app crash'));
+    await tester.pumpAndSettle();
+    expect(find.text('Simulate a crash?'), findsOneWidget);
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(crashlytics.crashCalls, 0);
+
+    await tester.tap(find.text('Simulate app crash'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Crash now'));
+    await tester.pumpAndSettle();
+    expect(crashlytics.crashCalls, 1);
+  });
+
   testWidgets('settings rows without a screen say so honestly', (tester) async {
     await pumpProfile(tester);
     await scrollTo(tester, find.text('Language'));
