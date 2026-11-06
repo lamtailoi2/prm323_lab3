@@ -39,17 +39,12 @@ class ApplicationIdentityCard extends StatelessWidget {
         (icon: Symbols.payments_rounded, text: formatAllowance(salary)),
       if (listing?.workMode case final mode?)
         (icon: Symbols.home_work_rounded, text: 'Work mode ${mode.label}'),
-      if (listing?.location case final location?)
-        (icon: Symbols.location_on_rounded, text: location),
       if (listing?.scheduleType case final type?)
         (icon: Symbols.work_history_rounded, text: type),
-      (
-        icon: Symbols.event_available_rounded,
-        text: 'Submitted ${formatShortDate(application.appliedAt)}',
-      ),
       if (listing?.postedText case final posted?)
         (icon: Symbols.schedule_rounded, text: 'Posted $posted'),
     ];
+    final location = listing?.location;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.s16),
@@ -84,12 +79,16 @@ class ApplicationIdentityCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.s4),
+                    // The city joins the company line (Figma Application
+                    // Detail v2, DC-31) instead of taking a chip.
                     Text(
-                      application.companyName,
+                      location == null
+                          ? application.companyName
+                          : '${application.companyName} · $location',
                       style: textTheme.bodyMedium?.copyWith(
                         color: AppColors.textSecondary,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -97,12 +96,34 @@ class ApplicationIdentityCard extends StatelessWidget {
               ),
             ],
           ),
+          if (facts.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.s12),
+            Wrap(
+              spacing: AppSpacing.s8,
+              runSpacing: AppSpacing.s8,
+              children: [
+                for (final fact in facts)
+                  _Fact(icon: fact.icon, text: fact.text),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.s12),
-          Wrap(
-            spacing: AppSpacing.s8,
-            runSpacing: AppSpacing.s8,
+          Row(
             children: [
-              for (final fact in facts) _Fact(icon: fact.icon, text: fact.text),
+              const Icon(
+                Symbols.event_available_rounded,
+                size: AppSizes.iconSmall,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: AppSpacing.s4),
+              Expanded(
+                child: Text(
+                  'Submitted ${formatShortDate(application.appliedAt)}',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
             ],
           ),
         ],
@@ -128,11 +149,11 @@ class _Fact extends StatelessWidget {
       child: DecoratedBox(
         decoration: const BoxDecoration(
           color: AppColors.surfaceVariant,
-          borderRadius: AppRadii.smallAll,
+          borderRadius: AppRadii.fullAll,
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.s8,
+            horizontal: AppSpacing.s12,
             vertical: AppSpacing.s4,
           ),
           child: Row(

@@ -130,11 +130,11 @@ void main() {
 
       expect(find.text('Application Detail'), findsOneWidget);
       expect(find.text('Flutter Developer Intern'), findsOneWidget);
-      expect(find.text('FPT Software'), findsOneWidget);
+      // The city joins the company line (DC-31).
+      expect(find.text('FPT Software · Ho Chi Minh City'), findsOneWidget);
       expect(find.text('Submitted Oct 11, 2026'), findsWidgets);
       expect(find.text('5-7M VND / mo'), findsOneWidget);
       expect(find.text('Work mode Remote'), findsOneWidget);
-      expect(find.text('Ho Chi Minh City'), findsOneWidget);
 
       // Status tracker, from the status the student set: 4 steps, with
       // progress (`underReview` = step 2 of 4, 50%).
