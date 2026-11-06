@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../app/router.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/widgets/app_sheet.dart';
-import '../../../core/widgets/app_top_bar.dart';
+import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../theme/app_spacing.dart';
 import '../../auth/viewmodels/sign_out_viewmodel.dart';
@@ -89,15 +88,10 @@ class ProfileScreen extends ConsumerWidget {
     };
 
     return Scaffold(
-      appBar: AppTopBar.main(
+      // Bell only, no avatar: this tab is the profile (DC-15, DC-31).
+      appBar: MainTabAppBar(
         title: 'Profile',
-        actions: [
-          IconButton(
-            tooltip: 'Notifications',
-            icon: const Icon(Symbols.notifications_rounded),
-            onPressed: () => context.push(AppRoutes.notificationCenter),
-          ),
-        ],
+        onNotifications: () => context.push(AppRoutes.notificationCenter),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.screenHorizontal),

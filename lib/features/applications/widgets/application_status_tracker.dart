@@ -205,69 +205,85 @@ class _StepRow extends StatelessWidget {
     };
     final muted = step.state == _StepState.upcoming;
 
+    final active = step.state == _StepState.active;
+    final row = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: AppSizes.icon, color: color),
+        const SizedBox(width: AppSpacing.s12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      step.title,
+                      style: textTheme.labelLarge?.copyWith(
+                        color: muted ? AppColors.textSecondary : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (step.state == _StepState.active) ...[
+                    const SizedBox(width: AppSpacing.s8),
+                    const _ActiveChip(),
+                  ],
+                  if (step.date case final date?) ...[
+                    const SizedBox(width: AppSpacing.s8),
+                    Text(
+                      date,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: AppSpacing.s4),
+              Text(
+                step.description,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: muted ? AppColors.textSecondary : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
     return Semantics(
       container: true,
       label: [
         step.title,
         ?step.date,
         step.description,
-        if (step.state == _StepState.active) 'Active step',
+        if (active) 'Active step',
       ].join('. '),
       excludeSemantics: true,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: AppSizes.icon, color: color),
-          const SizedBox(width: AppSpacing.s12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        step.title,
-                        style: textTheme.labelLarge?.copyWith(
-                          color: muted ? AppColors.textSecondary : null,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (step.state == _StepState.active) ...[
-                      const SizedBox(width: AppSpacing.s8),
-                      const _ActiveChip(),
-                    ],
-                    if (step.date case final date?) ...[
-                      const SizedBox(width: AppSpacing.s8),
-                      Text(
-                        date,
-                        style: textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                        textAlign: TextAlign.right,
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.s4),
-                Text(
-                  step.description,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: muted ? AppColors.textSecondary : null,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      // The current step is tinted so it stands out (Application Detail v2,
+      // DC-31).
+      child: active
+          ? DecoratedBox(
+              decoration: const BoxDecoration(
+                color: AppColors.primaryContainer,
+                borderRadius: AppRadii.mediumAll,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.s8),
+                child: row,
+              ),
+            )
+          : row,
     );
   }
 }
 
-/// `Active step` pill of the frame, in the primary container.
+/// `Active step` pill of the frame, white on the tinted step row.
 class _ActiveChip extends StatelessWidget {
   const _ActiveChip();
 
@@ -275,7 +291,7 @@ class _ActiveChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: const BoxDecoration(
-        color: AppColors.primaryContainer,
+        color: AppColors.surface,
         borderRadius: AppRadii.fullAll,
       ),
       child: Padding(

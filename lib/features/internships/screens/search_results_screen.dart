@@ -10,11 +10,10 @@ import '../../../core/state/view_state.dart';
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/distinct_listings.dart';
 import '../../../core/widgets/app_search_field.dart';
-import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/internship_card.dart';
+import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/state_view.dart';
-import '../../../models/app_user.dart';
 import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_colors.dart';
@@ -133,19 +132,12 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
         ref.watch(appliedJobsProvider).asData?.value ?? const <String>{};
 
     return Scaffold(
-      appBar: AppTopBar.main(
+      // Results stay in the Search tab, so they keep its header (DC-31).
+      appBar: MainTabAppBar(
         title: 'Search',
-        actions: [
-          IconButton(
-            tooltip: 'Notifications',
-            icon: const Icon(Symbols.notifications_rounded),
-            onPressed: () => context.push(AppRoutes.notificationCenter),
-          ),
-          _ProfileAction(
-            user: user,
-            onPressed: () => context.go(AppRoutes.profile),
-          ),
-        ],
+        user: user,
+        onProfile: () => context.go(AppRoutes.profile),
+        onNotifications: () => context.push(AppRoutes.notificationCenter),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -562,45 +554,6 @@ class _LoadingView extends StatelessWidget {
         SizedBox(height: AppSpacing.betweenCards),
         InternshipCardSkeleton(),
       ],
-    );
-  }
-}
-
-class _ProfileAction extends StatelessWidget {
-  const _ProfileAction({required this.user, required this.onPressed});
-
-  final AppUser? user;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final photoUrl = user?.photoUrl;
-    return IconButton(
-      tooltip: 'Profile',
-      onPressed: onPressed,
-      icon: ClipOval(
-        child: SizedBox.square(
-          dimension: AppSizes.profileAvatar,
-          child: ColoredBox(
-            color: AppColors.primaryContainer,
-            child: photoUrl == null
-                ? const Icon(
-                    Symbols.person_rounded,
-                    size: AppSizes.iconSmall,
-                    color: AppColors.primary,
-                  )
-                : Image.network(
-                    photoUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const Icon(
-                      Symbols.person_rounded,
-                      size: AppSizes.iconSmall,
-                      color: AppColors.primary,
-                    ),
-                  ),
-          ),
-        ),
-      ),
     );
   }
 }

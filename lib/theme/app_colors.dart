@@ -46,4 +46,9 @@ abstract final class AppColors {
 
   /// `color/disabled` — disabled text, icons and controls.
   static const Color disabled = Color(0xFF94A3B8);
+
+  /// `color/inverse-surface` (Figma helper color, G-07) — the dark scrim
+  /// over the tab header photo, used with an alpha so white text stays
+  /// readable (Header v2, DC-31).
+  static const Color inverseSurface = Color(0xFF0F172A);
 }

@@ -7,9 +7,6 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../app/router.dart';
 import '../../../core/state/view_state.dart';
-import '../../../core/utils/allowance.dart';
-import '../../../core/utils/display_format.dart';
-import '../../../core/utils/posted_age.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/company_logo.dart';
 import '../../../core/widgets/detail_section_card.dart';
@@ -24,6 +21,7 @@ import '../viewmodels/internship_detail_viewmodel.dart';
 import '../widgets/detail_bottom_bar.dart';
 import '../widgets/detail_parts.dart';
 import '../widgets/detail_skeleton.dart';
+import '../widgets/job_hero_card.dart';
 import '../widgets/skill_match_card.dart';
 
 /// Internship Detail (Lab 2 screen 4, Flow 1 end / Flow 2 start).
@@ -181,17 +179,8 @@ class _DetailContent extends StatelessWidget {
     final application = detail.application;
 
     final sections = <Widget>[
-      if (application != null)
-        DetailAppliedBanner(
-          title: 'You applied on ${formatShortDate(application.appliedAt)}',
-          // Students update the status themselves (G-25 #6), so the banner
-          // points there instead of promising a notification.
-          message:
-              'Status: ${application.status.label}. Update it in My '
-              'Applications when the company replies.',
-        ),
-      _JobHeader(internship: internship),
-      _KeyFacts(internship: internship),
+      // Header, key facts and the applied state in one card (DC-31).
+      JobHeroCard(internship: internship, application: application),
       if (match != null)
         SkillMatchCard(
           match: match,
@@ -228,138 +217,6 @@ class _DetailContent extends StatelessWidget {
       separatorBuilder: (context, index) =>
           const SizedBox(height: AppSpacing.section),
       itemBuilder: (context, index) => sections[index],
-    );
-  }
-}
-
-class _JobHeader extends StatelessWidget {
-  const _JobHeader({required this.internship});
-
-  final Internship internship;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final postedAt = internship.postedAt;
-    final posted = postedAt != null
-        ? formatPostedAgeLong(postedAt)
-        : internship.postedText;
-    final via = internship.via;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            CompanyLogo(
-              companyName: internship.companyName,
-              url: internship.logoUrl,
-              size: AppSizes.companyLogoLarge,
-            ),
-            const SizedBox(width: AppSpacing.s12),
-            Expanded(
-              child: Text(internship.companyName, style: textTheme.labelLarge),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.s12),
-        Semantics(
-          header: true,
-          child: Text(internship.title, style: textTheme.headlineSmall),
-        ),
-        if (posted != null || via != null) ...[
-          const SizedBox(height: AppSpacing.s8),
-          Wrap(
-            spacing: AppSpacing.s12,
-            runSpacing: AppSpacing.s4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              if (posted != null)
-                _IconText(
-                  icon: Symbols.schedule_rounded,
-                  text: 'Posted $posted',
-                ),
-              if (via != null)
-                _IconText(icon: Symbols.link_rounded, text: 'via $via'),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _IconText extends StatelessWidget {
-  const _IconText({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: AppSizes.iconSmall, color: AppColors.textSecondary),
-        const SizedBox(width: AppSpacing.s4),
-        Text(
-          text,
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: AppColors.textSecondary),
-        ),
-      ],
-    );
-  }
-}
-
-/// Figma "Key facts": a 2 × 2 grid of Meta Tiles. Google Jobs states no
-/// duration, so the fourth tile shows the job type instead (DC-24).
-class _KeyFacts extends StatelessWidget {
-  const _KeyFacts({required this.internship});
-
-  final Internship internship;
-
-  static const String notDisclosed = 'Not disclosed';
-
-  @override
-  Widget build(BuildContext context) {
-    final tiles = [
-      DetailMetaTile(
-        icon: Symbols.payments_rounded,
-        label: 'Allowance',
-        value: formatAllowance(internship.salary),
-      ),
-      DetailMetaTile(
-        icon: Symbols.home_work_rounded,
-        label: 'Work mode',
-        value: internship.workMode?.label ?? notDisclosed,
-      ),
-      DetailMetaTile(
-        icon: Symbols.location_on_rounded,
-        label: 'Location',
-        value: internship.location ?? notDisclosed,
-      ),
-      DetailMetaTile(
-        icon: Symbols.work_history_rounded,
-        label: 'Job type',
-        value: internship.scheduleType ?? notDisclosed,
-      ),
-    ];
-    return Column(
-      children: [
-        for (var row = 0; row < 2; row++) ...[
-          if (row > 0) const SizedBox(height: AppSpacing.s8),
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: tiles[row * 2]),
-                const SizedBox(width: AppSpacing.s8),
-                Expanded(child: tiles[row * 2 + 1]),
-              ],
-            ),
-          ),
-        ],
-      ],
     );
   }
 }

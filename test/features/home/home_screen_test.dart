@@ -137,7 +137,9 @@ void main() {
       await pumpHome(tester, width: width);
       await tester.pumpAndSettle();
 
-      expect(find.text('Home'), findsOneWidget);
+      // Header v2 greets the student by name (DC-31).
+      expect(find.text('Test Student'), findsOneWidget);
+      expect(find.textContaining('Good '), findsOneWidget);
       expect(find.byTooltip('Notifications'), findsOneWidget);
       expect(find.byTooltip('Profile'), findsOneWidget);
       expect(find.text('Find your next internship'), findsOneWidget);

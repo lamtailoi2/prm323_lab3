@@ -24,6 +24,13 @@ abstract final class AppSizes {
   /// Company logo in the Internship Detail header (Figma 202:243, 48 × 48).
   static const double companyLogoLarge = 48;
 
+  /// Logo that overlaps the cover of the Job Hero Card (Figma "Job Hero
+  /// Card", DC-31).
+  static const double companyLogoHero = 64;
+
+  /// Cover band at the top of the Job Hero Card (Figma "Job Hero Card").
+  static const double jobCoverHeight = 112;
+
   /// Home app-bar brand mark and the profile avatar (Home screenshot).
   static const double brandMark = 32;
   static const double profileAvatar = 32;
