@@ -175,6 +175,20 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
     _filterAndEmit();
   }
 
+  void clearJobType() {
+    state = state.copyWith(
+      criteria: state.criteria.copyWith(clearJobType: true),
+    );
+    _filterAndEmit();
+  }
+
+  void clearAllowanceRange() {
+    state = state.copyWith(
+      criteria: state.criteria.copyWith(clearAllowanceRange: true),
+    );
+    _filterAndEmit();
+  }
+
   void clearFilters() {
     state = state.copyWith(query: '', criteria: const SearchFilterCriteria());
     _filterAndEmit();

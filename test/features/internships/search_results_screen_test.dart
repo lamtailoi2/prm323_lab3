@@ -203,6 +203,62 @@ void main() {
     expect(find.byKey(const ValueKey('filter_mode_remote')), findsNothing);
   });
 
+  testWidgets('Job type and allowance filters show chips that remove them', (
+    tester,
+  ) async {
+    internships.results = sampleListings;
+    await pumpSearchResults(
+      tester,
+      initialCriteria: const SearchFilterCriteria(
+        jobType: 'Internship',
+        allowanceRange: 'Paid only',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('filter_job_type')),
+        matching: find.text('Internship'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('filter_allowance')),
+        matching: find.text('Paid only'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('filter_job_type')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('filter_job_type')), findsNothing);
+    expect(find.byKey(const ValueKey('filter_allowance')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('filter_allowance')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('filter_allowance')), findsNothing);
+    expect(find.text('Clear filters'), findsNothing);
+  });
+
+  testWidgets('"Any" job type and allowance show no chip', (tester) async {
+    internships.results = sampleListings;
+    await pumpSearchResults(
+      tester,
+      initialQuery: 'Flutter',
+      initialCriteria: const SearchFilterCriteria(
+        jobType: 'Any job type',
+        allowanceRange: 'Any allowance',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('filter_query')), findsOneWidget);
+    expect(find.byKey(const ValueKey('filter_job_type')), findsNothing);
+    expect(find.byKey(const ValueKey('filter_allowance')), findsNothing);
+  });
+
   testWidgets('tapping Clear filters shows all listings', (tester) async {
     internships.results = sampleListings;
     await pumpSearchResults(
