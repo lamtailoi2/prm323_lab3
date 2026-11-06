@@ -65,6 +65,20 @@ String formatReplyBy(DateTime deadline, {DateTime? now}) {
 DateTime _dateOnly(DateTime date) =>
     DateTime.utc(date.year, date.month, date.day);
 
+/// When a notification arrived: `Just now`, `5 min ago`, `2 h ago`,
+/// `Yesterday`, `3 days ago`, then the date.
+///
+/// [now] is injectable so the relative form is testable.
+String formatRelativeTime(DateTime date, {DateTime? now}) {
+  final difference = (now ?? DateTime.now()).difference(date);
+  if (difference.inSeconds < 60) return 'Just now';
+  if (difference.inMinutes < 60) return '${difference.inMinutes} min ago';
+  if (difference.inHours < 24) return '${difference.inHours} h ago';
+  if (difference.inDays == 1) return 'Yesterday';
+  if (difference.inDays < 7) return '${difference.inDays} days ago';
+  return formatShortDate(date);
+}
+
 /// File size for file cards: `420 KB`, `1.2 MB`. Sizes under 1 KB round up
 /// to `1 KB` so a real file never reads as empty.
 String formatFileSize(int bytes) {

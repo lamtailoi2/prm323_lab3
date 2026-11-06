@@ -11,6 +11,7 @@ import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/remote_config_service.dart';
 import '../../../theme/app_spacing.dart';
 import '../../profile/widgets/edit_skills_sheet.dart';
 import '../viewmodels/apply_form_viewmodel.dart';
@@ -126,10 +127,7 @@ class _ApplyFormScreenState extends ConsumerState<ApplyFormScreen> {
           IconButton(
             icon: const Icon(Symbols.notifications_rounded),
             tooltip: 'Notifications',
-            // Same honest message as the other app bars until the
-            // Notification Center exists (DC-11).
-            onPressed: () =>
-                _showMessage(context, 'Notifications are coming soon.'),
+            onPressed: () => context.push(AppRoutes.notificationCenter),
           ),
         ],
       ),
@@ -257,8 +255,18 @@ class _ApplyFormScreenState extends ConsumerState<ApplyFormScreen> {
     }
 
     if (valid && session != null) {
+      // `cv_match_enabled` skips the advisory step (G-24); the blocking
+      // Validate CV gate always runs.
+      final matchEnabled = ref
+          .read(remoteConfigServiceProvider)
+          .getBool(RemoteConfigKeys.cvMatchEnabled);
       context.push(
-        AppRoutes.applyValidation('/${widget.source}', widget.internshipKey),
+        matchEnabled
+            ? AppRoutes.applyMatch('/${widget.source}', widget.internshipKey)
+            : AppRoutes.applyValidation(
+                '/${widget.source}',
+                widget.internshipKey,
+              ),
         extra: session,
       );
     } else if (session == null &&

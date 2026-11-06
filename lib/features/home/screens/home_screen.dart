@@ -55,6 +55,7 @@ class HomeScreen extends ConsumerWidget {
         title: 'Home',
         user: user,
         onProfile: () => context.go(AppRoutes.profile),
+        onNotifications: () => context.push(AppRoutes.notificationCenter),
       ),
       body: CustomScrollView(
         slivers: [

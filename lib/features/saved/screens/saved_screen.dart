@@ -144,6 +144,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
 
     return Scaffold(
       appBar: MainTabAppBar(
+        onNotifications: () => context.push(AppRoutes.notificationCenter),
         title: 'Saved',
         user: ref.watch(authStateChangesProvider).value,
         onProfile: () => context.go(AppRoutes.profile),

@@ -81,7 +81,7 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 ## 3. State management and dependency injection (Riverpod 3)
 
 - **Riverpod only.** No Provider, Bloc, GetX, or `setState` for shared state. No singletons accessed from widgets.
-- **Services** are `Provider<Interface>` next to their interface (e.g. `serpApiClientProvider`). Tests override them with fakes (`overrideWithValue`).
+- **Services** are `Provider<Interface>` next to their interface (e.g. `internshipServiceProvider`). Tests override them with fakes (`overrideWithValue`).
 - **Data screens** expose a `ViewState<T>` (`core/state/view_state.dart`): `ViewLoading`, `ViewEmpty`, `ViewError(AppException)`, `ViewData(T)`. Views switch over it exhaustively and render the shared skeleton / `StateView.empty` / `StateView.error` + Retry.
 - **One-shot actions** (sign in, submit, save) use `AsyncValue<void>`; `AsyncError` carries an `AppException` whose message is safe to show.
 - **Async rules:** read every provider before the first `await`; check `ref.mounted` before setting state after an `await`; ignore repeated taps while loading.
@@ -100,6 +100,7 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `SavedViewModel` | Saved Internships | `SavedInternshipService`, `AnalyticsService` | Planned |
 | `ApplyFormViewModel` | Application Form (CV pick/upload, profile prefill) | `UserProfileService`, `FileStorageService`, `DocumentPickerService`, `ExternalLinkService`, `InternshipService`, `RemoteConfigService`, `AnalyticsService` | Done |
 | `CvValidationViewModel` | Validate CV step (Apply, pre-submit) | `CvValidationService`, `AnalyticsService` | Done (service, ViewModel, step widget, tests) |
+| `CvMatchViewModel` | CV Match Check step (Apply, advisory) | `CvMatchService`, `AnalyticsService` | Done (model, service, ViewModel, step + screen, tests) |
 | `ApplicationReviewViewModel` | Application Review → Success | `ApplicationService`, `InternshipService`, `UserProfileService`, `AnalyticsService`, `CrashlyticsService` | Done (Application Success is a stateless recap screen, no ViewModel) |
 | `MyApplicationsViewModel` | My Applications | `ApplicationService` | Done (list, status filter, retry; no writes, no detail) |
 | `ApplicationDetailViewModel` | Application Detail | `ApplicationService`, `InternshipService`, `ExternalLinkService`, `AnalyticsService` | Done (load, tracker, withdraw/undo, preview, tests) |
@@ -109,10 +110,10 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `UpdateCvViewModel` | Update CV sheet | `DocumentPickerService`, `FileStorageService`, `UserProfileService`, `AnalyticsService` | Done |
 | `OpenCvViewModel` | Profile (View CV) | `ExternalLinkService` | Done |
 | `FirebaseDemoViewModel` | Firebase demo area | `RemoteConfigService`, `CrashlyticsService`, `NotificationService` | Planned |
-| `NotificationCenterViewModel` | Notification Center | `NotificationService`, `AnalyticsService` | Planned |
+| `NotificationCenterViewModel` | Notification Center | `NotificationService`, `AnalyticsService` | Done (history, read state, deep link, `notification_center_open`, tests) |
 | `ReportExportViewModel` | Report export | `ReportExportService`, `FileStorageService`, `ApplicationService`, `AnalyticsService` | Planned |
 
-Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `ApplicationService` (Firestore `users/{uid}/applications` listener, read-only), `UserProfileService` (Firestore `users/{uid}` listener + merge writes per section), `FileStorageService` (Cloud Storage for Firebase), `DocumentPickerService` (system file picker, `file_selector`), `ExternalLinkService` (opens a URL in another app, `url_launcher`), `CvValidationService` (callable `validateCv`), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`; Gemini is called only by the callable `validateCv` function.
+Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `ApplicationService` (Firestore `users/{uid}/applications` listener, read-only), `UserProfileService` (Firestore `users/{uid}` listener + merge writes per section), `FileStorageService` (Cloud Storage for Firebase), `DocumentPickerService` (system file picker, `file_selector`), `ExternalLinkService` (opens a URL in another app, `url_launcher`), `CvValidationService` (callable `validateCv`), `CvMatchService` (callable `matchCv`: Groq extracts CV/JD technologies, rule-based score + commentary), `NotificationService` (Cloud Messaging, permission, token + refresh and `users/{uid}/notifications` history), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`; Gemini is called only by the callable `validateCv`, and Groq only by `matchCv`.
 
 ## 4. Sequence: Home feed (shared Firestore pool)
 
@@ -133,7 +134,7 @@ sequenceDiagram
         FS-->>IS: snapshot of active documents
         IS-->>VM: List<Internship> (malformed docs skipped + logged)
         VM->>VM: split into Recommended / Recently Posted (Remote Config limits)
-        VM->>A: logEvent("search", {search_term, result_count, elapsed_sec})
+        VM->>A: logEvent("search", {search_term, result_count, elapsed_sec, source: home})
         VM-->>V: ViewData → InternshipCard list
     else empty pool
         IS-->>VM: []
@@ -161,6 +162,7 @@ The pool itself is filled by `syncInternshipsJob` every six hours (Plan → back
 | Profile, saved internships, applications, notifications, report metadata | **Cloud Firestore** under `users/{uid}/…` | The signed-in user | Owner only: `users/{uid}/**` (`firebase/firestore.rules`, final) |
 | CVs, generated PDF reports | **Cloud Storage for Firebase** `cvs/{uid}/…`, `reports/{uid}/…` (Blaze, US bucket, no-cost quota); metadata in Firestore `users/{uid}/…` | The signed-in user | `firebase/storage.rules`: owner only, PDF ≤ 10 MB; the service checks the same before uploading (G-12) |
 | CV text for the quality gate | Read server-side from `cvs/{uid}/…` by the callable `validateCv`, then sent to Gemini as plain text | Callable Cloud Function (Admin SDK) | Only the caller's own `cvs/${request.auth.uid}/…` path; the key is a Secret Manager secret (`GEMINI_API_KEY`), never in the app |
+| CV match check | Read server-side from `cvs/{uid}/…` by the callable `matchCv`, combined with `internships/{jobKey}` and `users/{uid}.skills`; CV text and the job description are sent to Groq to extract technology lists (the local vocabulary is unioned in) | Callable Cloud Function (Admin SDK) | Caller's own CV path only; no match result is stored; separate `GROQ_API_KEY` secret, never in the app |
 | Feature switches, limits | **Remote Config** (defaults in `firebase/remote-config-defaults.json`) | App team | Read-only in the app; real-time updates |
 
 Rules for feature owners:
@@ -208,6 +210,7 @@ Application Detail subscribes to `ApplicationService.watchApplications()` and pi
 | Auth (Google) | `services/auth_service.dart` | Cancelled picker → info message; network / config → error message |
 | SerpAPI sync | `functions/src/sync.ts` (scheduled) | Missing secret / quota / network → logged + `sync/state.lastError`; the app keeps serving the last good pool |
 | CV validation (Gemini) | `functions/src/validate-cv.ts` (callable) + `services/cv_validation_service.dart` | Wrong/other user's path → `permission-denied`; unreadable PDF or < 50 extracted characters → invalid result (no Gemini call); model output that is not JSON → fail open; download / Gemini failure → `HttpsError` with a safe message, mapped to `AppException` + Retry in the app |
+| CV match (Groq) | `functions/src/match-cv.ts` (callable) + `services/cv_match_service.dart` | Wrong/other user's CV path → `permission-denied`; missing listing → `not-found`; model extraction unparseable → local `knownSkills` vocabulary; unreadable PDF or < 50 characters → Profile skills only (`cvReadable: false`); commentary failure → deterministic suggestions (never blocks); `Continue` stays enabled in every app state |
 | Listings | `services/internship_service.dart` | permission denied / offline → `AppException` with Retry; malformed documents skipped and logged |
 | Applications | `services/application_service.dart` | permission denied / offline → `AppException` with Retry on My Applications; malformed documents (missing fields, unknown status) skipped and logged |
 | File storage | `services/file_storage_service.dart` | Signed out → permission denied; not a PDF / too large → invalid input; `unauthorized` / `quota-exceeded` / `retry-limit-exceeded` → message; progress reported |
@@ -222,7 +225,8 @@ Application Detail subscribes to `ApplicationService.watchApplications()` and pi
 
 - Firebase config files are app configuration and are committed (Lab 3 §9).
 - The SerpAPI key lives in **Secret Manager** as `SERPAPI_KEY` and is read only by the scheduled function. It is not part of the APK or the Flutter `.env` (G-25).
-- The Gemini key lives in **Secret Manager** as `GEMINI_API_KEY`, bound only to the `validateCv` function (least privilege). It is the same free-tier Google AI Studio key as ARTEMIS (G-26) but a separate secret binding. Set it with `firebase functions:secrets:set GEMINI_API_KEY`.
+- The Gemini key lives in **Secret Manager** as `GEMINI_API_KEY`, bound only to the `validateCv` function (least privilege). It is the same free-tier Google AI Studio key as ARTEMIS (G-26). Set it with `firebase functions:secrets:set GEMINI_API_KEY`.
+- The Groq key lives in **Secret Manager** as `GROQ_API_KEY`, bound only to `matchCv`. Groq extracts technology lists from the CV and the job description and writes the match commentary with `openai/gpt-oss-20b` in JSON mode (`reasoning_effort: low`, 4096 completion tokens); extraction failures fall back to the local vocabulary and commentary failures to deterministic suggestions, so an outage never blocks applying. Set it with `firebase functions:secrets:set GROQ_API_KEY`.
 - Never commit service-account JSON, keystores, `.p8` keys, model API keys or test-account credentials.
 
 ## 9. Testing

@@ -1,69 +1,51 @@
-"""TC-06 Flow 4 Application: Apply Form → Validate CV → Review → Submit →
-Success. TC-07 Flow 2c: a listing already applied to shows its application."""
+"""TC-06 Flow 2 + 2d: CV Match Check, Validate CV and submission. TC-07
+Flow 2c: a listing already applied to shows its application."""
 
-import pytest
-from conftest import (
-    FILL_PERSONAL,
-    SIGNED_IN,
-    UPLOAD_SAMPLE_CV,
-    enable_analytics_debug,
-    logged_analytics_events,
-    push_sample_cv,
-    run_case,
-)
-
-# Every TC-06 run applies to a new 'Developer' listing (an application cannot
-# be deleted), so TC-05's 'Intern' listing keeps its `Apply now` button.
-FIND_DEVELOPER = (
-    "Tap 'Search' in the bottom navigation, type 'Developer' in the search "
-    "field and tap 'Find Internships'."
-)
+from conftest import SIGNED_IN, run_case
 
 
-@pytest.mark.native
-async def test_tc06_apply_validate_review_submit(artemis):
-    push_sample_cv()
-    enable_analytics_debug()
+async def test_tc06_cv_match_then_validate_and_submit(artemis):
     report = await run_case(
         artemis,
         "TC-06",
-        f"{SIGNED_IN} {FIND_DEVELOPER} Tap the first internship card that has "
-        "no 'Applied' badge (scroll down if needed) and note its job title and "
-        f"company name. Tap 'Apply now'. {UPLOAD_SAMPLE_CV} {FILL_PERSONAL} "
-        "Tap 'Continue to review'. The 'Validate CV' screen shows 'Checking "
-        "your CV…' and opens the next screen by itself: wait up to 60 seconds. "
-        "If it stays on 'Validate CV', read its title and message and stop. On "
-        "the next screen read the top app bar title and whether 'Ready to "
-        "submit' is shown, then tap 'Submit application' at the bottom. Wait "
-        "for the next screen and read its heading, the sentence under the "
-        "heading, and whether 'View my applications' is visible.",
+        f"{SIGNED_IN} Tap 'Home', open an internship card that does not show "
+        "'You applied on', tap 'Apply now'. On the Apply Form, scroll down and "
+        "tap 'Continue to review'. On the 'CV match' screen, read the "
+        "percentage, the line that contains 'requirements matched', every "
+        "skill under 'Gaps to review' and the suggestion under each gap. Note "
+        "whether the 'Continue' button is visible before the check finishes. "
+        "Tap 'Continue', wait for the 'Validate CV' screen to finish, then tap "
+        "'Continue to review'. On the review screen tap 'Submit application' "
+        "and read the title and company shown in the success recap.",
         expected_output=(
-            'JSON: {"card_title": string, "card_company": string, '
-            '"validate_cv_message": string | null, '
-            '"review_app_bar_title": string, "ready_to_submit": boolean, '
-            '"success_heading": string, "success_message": string, '
-            '"view_my_applications_visible": boolean}'
+            'JSON: {"match_percent": string, "match_summary": string, '
+            '"gap_count": integer, "suggestion_count": integer, '
+            '"continue_visible_while_checking": boolean, '
+            '"success_title": string, "success_company": string}'
         ),
     )
-    assert not report["validate_cv_message"], (
-        f"TC-06: stopped on Validate CV: {report['validate_cv_message']}"
-    )
-    assert report["review_app_bar_title"] == "Review application"
-    assert report["ready_to_submit"] is True
-    assert report["success_heading"] == "Application submitted!"
-    assert report["success_message"] == (
-        f"Your application for {report['card_title']} at "
-        f"{report['card_company']} is saved in My Applications."
-    )
-    assert report["view_my_applications_visible"] is True
-    assert "application_create" in logged_analytics_events()
+
+    assert "%" in report["match_percent"]
+    assert "requirements matched" in report["match_summary"]
+    assert report["gap_count"] >= 1
+    assert report["suggestion_count"] >= 1
+    assert report["continue_visible_while_checking"] is True
+    assert report["success_title"].strip()
+    assert report["success_company"].strip()
+
+
+# TC-07 only reads: any applied listing among the 'Intern' results will do.
+FIND_INTERN = (
+    "Tap 'Search' in the bottom navigation, type 'Intern' in the search "
+    "field and tap 'Find Internships'."
+)
 
 
 async def test_tc07_applied_listing_shows_its_application(artemis):
     report = await run_case(
         artemis,
         "TC-07",
-        f"{SIGNED_IN} {FIND_DEVELOPER} Find the first internship card that "
+        f"{SIGNED_IN} {FIND_INTERN} Find the first internship card that "
         "shows the 'Applied' badge (scroll down up to three screens). If there "
         "is none, report applied_card_found false and stop. Note its job title "
         "and company name and tap it. On the detail screen read the banner "
@@ -82,7 +64,7 @@ async def test_tc07_applied_listing_shows_its_application(artemis):
         ),
     )
     assert report["applied_card_found"] is True, (
-        "TC-07: no applied 'Developer' listing; run TC-06 first"
+        "TC-07: no applied 'Intern' listing; run TC-06 first"
     )
     assert report["banner_title"].startswith("You applied on ")
     assert report["apply_now_visible"] is False

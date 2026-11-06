@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Android 13+ runtime notification permission (G-04, G-13). Below
+         API 33 the system grants it automatically. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="internly"
         android:name="${applicationName}"

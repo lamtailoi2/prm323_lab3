@@ -83,6 +83,10 @@ __pycache__/
 functions/node_modules/
 functions/lib/
 
+# Local admin dashboard (tools/admin-dashboard)
+tools/admin-dashboard/node_modules/
+tools/admin-dashboard/.env
+
 # Firebase Functions emulator secrets (real keys; use Secret Manager when deployed)
 functions/.secret.local
 functions/.env.local

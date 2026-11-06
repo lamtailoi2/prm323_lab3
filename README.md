@@ -149,15 +149,16 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 | [`docs/guides/firebase-setup.md`](docs/guides/firebase-setup.md) | Firebase, Google Sign-In, Storage, Remote Config, SerpAPI sync secret |
 | [`docs/records/handoff-gaps.md`](docs/records/handoff-gaps.md) | Missing / conflicting requirements and decisions |
 | [`docs/records/implementation-ai-log.md`](docs/records/implementation-ai-log.md) | Prompts, outputs, verification and decisions for AI-assisted work |
+| [`tools/admin-dashboard/README.md`](tools/admin-dashboard/README.md) | Local admin dashboard: send FCM notifications, find device tokens, inspect/delete notification history |
 
 ## AI tools used
 
 | Tool | Purpose |
 |---|---|
 | Google Stitch | Lab 2 screen generation (design phase) |
-| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements; Profile feature (P-21); Login screen from the Login frame (P-31); Saved empty state opens Search (P-33); Internship Detail, Search filters and analytics, Apply Form, Job type and Applied badge (P-34 – P-43); fixes from the AI review (P-44); ARTEMIS host setup, E2E harness fixes and the run guide (P-50) ([log](docs/records/implementation-ai-log.md)) |
-| OpenCode (`deepseek-v4.1-flash-free`) | Home UI, scheduled SerpAPI → Firestore sync, rules and docs for the Home slice; Saved list, the Home Save Toggle, unsave with Undo and the Saved loading state; Search bookmark merged onto the Saved write path (P-51) ([log](docs/records/implementation-ai-log.md)) |
-| Command Code | CV validation vertical slice: callable `validateCv` + Gemini free tier, `CvValidationService`, ViewModel, step widget, tests and docs (P-32); work mode read from the listing text so the Search filter no longer returns an empty list (P-45); Filter Skills from the current pool instead of a fixed list (P-46); Flow 2 completion: Validate CV screen, Application Review, Success, `ApplicationService.createApplication()` and `application_create` (P-47) ([log](docs/records/implementation-ai-log.md)) |
+| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements; Profile feature (P-21); Login screen from the Login frame (P-31); Saved empty state opens Search (P-33); Internship Detail, Search filters and analytics, Apply Form, Job type and Applied badge (P-34 – P-43); fixes from the AI review (P-44); ARTEMIS host setup, E2E harness fixes, the run guide and ARTEMIS cases (P-57, P-59 – P-61) ([log](docs/records/implementation-ai-log.md)) |
+| OpenCode (`deepseek-v4.1-flash-free`) | Home UI, scheduled SerpAPI → Firestore sync, rules and docs for the Home slice; Saved list, the Home Save Toggle, unsave with Undo and the Saved loading state; Search bookmark merged onto the Saved write path (P-58) ([log](docs/records/implementation-ai-log.md)) |
+| Command Code | CV validation vertical slice: callable `validateCv` + Gemini free tier, `CvValidationService`, ViewModel, step widget, tests and docs (P-32); work mode read from the listing text so the Search filter no longer returns an empty list (P-45); Filter Skills from the current pool instead of a fixed list (P-46); Flow 2 completion: Validate CV screen, Application Review, Success, `ApplicationService.createApplication()` and `application_create` (P-47); FCM in all three app states and the Notification Center (P-50, P-51); local admin dashboard for FCM, users and notification history (P-52) ([log](docs/records/implementation-ai-log.md)) |
 | Google ARTEMIS + Gemini (free tier) | End-to-end tests and the exploratory session |
 | Claude Code review subagents (Opus 5.5) | AI code review R1 of PRs #11–#15: 20 findings, decisions and fixes ([`code-review.md`](docs/code-review.md), raw output in `evidence/code-review/`) |
 

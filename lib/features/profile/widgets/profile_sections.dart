@@ -275,6 +275,52 @@ class SettingsSection extends StatelessWidget {
   }
 }
 
+/// "Diagnostics": the explicit Crashlytics test control required by Lab 3
+/// (G-06). It only ever runs after the student confirms the dialog; no
+/// startup or automated flow calls it.
+class DiagnosticsSection extends StatelessWidget {
+  const DiagnosticsSection({
+    super.key,
+    required this.onTestCrash,
+    required this.onCopyFcmToken,
+  });
+
+  final VoidCallback onTestCrash;
+  final VoidCallback onCopyFcmToken;
+
+  @override
+  Widget build(BuildContext context) {
+    const chevron = Icon(
+      Symbols.chevron_right_rounded,
+      color: AppColors.textSecondary,
+    );
+    return ProfileSection(
+      icon: Symbols.bug_report_rounded,
+      title: 'Diagnostics',
+      padded: false,
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Symbols.bug_report_rounded),
+            title: const Text('Simulate app crash'),
+            subtitle: const Text('Closes the app and sends a crash report.'),
+            trailing: chevron,
+            onTap: onTestCrash,
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Symbols.key_rounded),
+            title: const Text('Copy FCM token'),
+            subtitle: const Text('For Firebase Console → Send test message.'),
+            trailing: chevron,
+            onTap: onCopyFcmToken,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Card-shaped placeholders while the profile loads.
 class ProfileSkeleton extends StatelessWidget {
   const ProfileSkeleton({super.key});
