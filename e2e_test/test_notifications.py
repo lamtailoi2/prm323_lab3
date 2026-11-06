@@ -32,7 +32,8 @@ async def test_tc13_open_notification_from_shade(artemis, capsys):
             f"\nTC-13: send one FCM message to the test account now, with route "
             f"'{TC13_ROUTE}' (tools/admin-dashboard → Send notification, or "
             "Firebase console → test message to the token from Profile → "
-            f"Diagnostics → Copy FCM token). Waiting up to {TC13_WAIT_SECONDS} s…",
+            "Firebase demo → Copy FCM token). Waiting up to "
+            f"{TC13_WAIT_SECONDS} s…",
             flush=True,
         )
     deadline = time.monotonic() + TC13_WAIT_SECONDS
@@ -73,11 +74,12 @@ async def test_tc15_notification_permission_dialog(artemis):
         report = await run_case(
             artemis,
             "TC-15",
-            f"{SIGNED_IN} The app now asks for the notification permission "
-            "with an Android dialog (wait up to 10 seconds if it is not visible "
-            "yet). Before tapping anything in it, note the question text of "
-            "the dialog and the labels of its two buttons. Then tap 'Allow' and "
-            "note the title of the screen shown after the dialog closes.",
+            f"{SIGNED_IN} Once signed in, the app asks for the notification "
+            "permission with an Android dialog (wait up to 10 seconds if it is "
+            "not visible yet; do not reopen the app). Before tapping anything "
+            "in it, note the question text of the dialog and the labels of its "
+            "two buttons. Then tap 'Allow' and note the title of the screen "
+            "shown after the dialog closes.",
             expected_output=(
                 'JSON: {"dialog_visible": boolean, "dialog_text": string, '
                 '"buttons": [string], "screen_after": string}'
