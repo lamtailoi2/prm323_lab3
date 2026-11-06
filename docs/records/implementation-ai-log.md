@@ -698,6 +698,18 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-71: Flow 1 ARTEMIS runs; TC-18 and TC-19 reworded
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Run Flow 1", then "Fix and rerun" for TC-18 / TC-19, "Switch to 3.1" and "ok làm nốt đi".
+- **Output:**
+  - `e2e_test/test_apply_form.py` TC-18: `Continue to review` may open `CV match` (Remote Config `cv_match_enabled` on) or `Validate CV`.
+  - TC-19: reports every line under the CV file name after `Update CV` and the sheet has closed; asserts `… · PDF` and `Uploaded for this internship` among them.
+  - `e2e_test/conftest.py` `UPLOAD_SAMPLE_CV` (also used by TC-06): replace the CV even if the Profile CV is shown.
+  - `docs/test-plan.md` TC-03 – TC-05, TC-18 – TC-20 rows, §4 results and causes; `evidence/artemis/e2e-environment-20261106.md` Flow 1 section; runs 35–65 appended to `evidence/artemis/runs-20261106.jsonl`.
+- **Verification:** 31 ARTEMIS runs, 10:30–12:29. Each Flow 1 case has 3 counted passes: TC-03 after the P-70 app fix, TC-18 and TC-19 on the new wording. The failed runs are listed with their causes in the evidence file: an app bug, a wrong expectation, ambiguous wording, and one quota timeout.
+- **Decision:** Accepted. The TC-03 failure was a real app bug and was fixed in the app (P-70), not in the test.
+
+---
+
 ## Entry template
 
 ```markdown

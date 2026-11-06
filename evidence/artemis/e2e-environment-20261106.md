@@ -1,6 +1,6 @@
-# ARTEMIS runs — 2026-11-06 (TC-01, TC-02, TC-07 – TC-10, TC-14, TC-16, TC-17)
+# ARTEMIS runs — 2026-11-06 (TC-01 – TC-05, TC-07 – TC-10, TC-14, TC-16 – TC-20)
 
-Status: **TC-01, TC-02, TC-07, TC-09, TC-14, TC-16 and TC-17 each passed 3 of 3** on the final setup. **TC-08 passed 0 of 3 and TC-10 failed its exploratory run**: both expectations were wrong, and both cases were rewritten in `f9b5f43` but not run again yet (see [Flow 2 and Flow 3](#flow-2-and-flow-3-0804--0830)).
+Status: **TC-01, TC-02, TC-07, TC-09, TC-14, TC-16 and TC-17 each passed 3 of 3** on the final setup. **Flow 1 (TC-03, TC-04, TC-05, TC-18, TC-19, TC-20) passed 3 of 3 each** from 10:30, after one app fix and two case fixes (see [Flow 1](#flow-1-1030--1229)). **TC-08 passed 0 of 3 and TC-10 failed its exploratory run**: both expectations were wrong, and both cases were rewritten in `f9b5f43` but not run again yet (see [Flow 2 and Flow 3](#flow-2-and-flow-3-0804--0830)).
 
 - TC-02, TC-16, TC-17 ran 07:12–07:24 +07 on `gemini-3.1-flash-lite`.
 - TC-14 and TC-01 ran 07:35–07:47 on `gemini-3.5-flash-lite`, because 3.1 had used up its daily quota.
@@ -143,3 +143,79 @@ Rewritten in `f9b5f43`:
 Model use for this block was about 250 calls (13 runs).
 
 Replays and step screenshots of every trace are on the ARTEMIS host in `~/artemis/traces/`. They are not committed because they show the signed-in account.
+
+## Flow 1 (10:30 – 12:29)
+
+Runs 35–65 in [`runs-20261106.jsonl`](runs-20261106.jsonl). Runs and records were done with Claude Code (P-70).
+
+### Environment
+
+| Item | Value |
+|---|---|
+| App | Profile build of `dev` `b08b47f` (PR #27: Search empty query and the field after Search Results), installed about 10:04. From 12:12, a profile build of `fix/filter-chips-and-skills-sheet` (P-70: `Job type` / allowance chips, Edit skills waits for the profile). |
+| Suite | `test/e2e-flow1` at `b08b47f`, plus the TC-18 / TC-19 / `UPLOAD_SAMPLE_CV` wording changes below (uncommitted during the runs) |
+| Device | `emulator-5554`, Android API 36; notification permission granted with `adb` before the runs |
+| API key | A free-tier key from another team member's own AI Studio project (no billing), shared privately with their consent and kept only in `~/artemis/.env`. The owner's key had used its 3.1 quota for the day. |
+| Model | 10:30–11:12 `gemini-3.5-flash-lite` (fallback 3.1). That key's 3.5 quota (500 per day) ran out at 11:12; from 11:17 the host config was switched back to the team patch: primary `gemini-3.1-flash-lite`, fallback 3.5. |
+
+The 31 runs used 735 model calls (9–43 per run). The Apply Form cases cost the most: 22–43 calls, against 9–22 for Search and Detail.
+
+### Runs
+
+| # | Start (+07) | Test | Trace | pytest | Time (s) | Model calls | Build / model | Note |
+|---|---|---|---|---|---|---|---|---|
+| 35 | 10:31 | TC-03 | `9cb45bff` | **failed** | 104.1 | 20 | dev `b08b47f` / 3.5 | app bug: no `Job type` chip → `'Internship' in ['Intern']` |
+| 36 | 10:33 | TC-03 | `a039c385` | **failed** | 51.6 | 17 | dev `b08b47f` / 3.5 | same |
+| 37 | 10:34 | TC-03 | `bab18c1a` | **failed** | 59.8 | 15 | dev `b08b47f` / 3.5 | same |
+| 38 | 10:35 | TC-04 | `c90faf15` | passed | 45.4 | 11 | dev `b08b47f` / 3.5 |  |
+| 39 | 10:36 | TC-04 | `a824cd6a` | passed | 37.4 | 9 | dev `b08b47f` / 3.5 |  |
+| 40 | 10:37 | TC-04 | `63631ad3` | passed | 57.5 | 11 | dev `b08b47f` / 3.5 |  |
+| 41 | 10:39 | TC-05 | `108cf8ac` | passed | 44.4 | 13 | dev `b08b47f` / 3.5 |  |
+| 42 | 10:40 | TC-05 | `e0ada1d5` | passed | 56.6 | 13 | dev `b08b47f` / 3.5 |  |
+| 43 | 10:41 | TC-05 | `1ab4c069` | passed | 49.4 | 13 | dev `b08b47f` / 3.5 |  |
+| 44 | 10:43 | TC-18 | `51b07205` | **failed** | 114.3 | 26 | dev `b08b47f` / 3.5 | wrong expectation: next screen `CV match` |
+| 45 | 10:45 | TC-18 | `25aa5d78` | **failed** | 109.9 | 26 | dev `b08b47f` / 3.5 | same |
+| 46 | 10:47 | TC-18 | `1b4ba996` | **failed** | 107.9 | 28 | dev `b08b47f` / 3.5 | same |
+| 47 | 10:49 | TC-19 | `ec0bf776` | **failed** | 136.2 | 30 | dev `b08b47f` / 3.5 | ambiguous: reported the size line `2 KB · PDF` |
+| 48 | 10:52 | TC-19 | `964deb59` | **failed** | 160.5 | 33 | dev `b08b47f` / 3.5 | same |
+| 49 | 10:55 | TC-19 | `eeb2d83d` | **failed** | 171.3 | 43 | dev `b08b47f` / 3.5 | same |
+| 50 | 10:58 | TC-20 | `774a3906` | passed | 152.1 | 33 | dev `b08b47f` / 3.5 |  |
+| 51 | 11:00 | TC-20 | `32d3c95c` | passed | 158.6 | 35 | dev `b08b47f` / 3.5 |  |
+| 52 | 11:03 | TC-20 | `69f090e2` | passed | 103.1 | 31 | dev `b08b47f` / 3.5 |  |
+| 53 | 11:06 | TC-18 | `92169173` | passed | 103.7 | 31 | dev `b08b47f` / 3.5 | rewritten case |
+| 54 | 11:08 | TC-18 | `5a13af8f` | passed | 131.0 | 30 | dev `b08b47f` / 3.5 | rewritten case |
+| 55 | 11:10 | TC-18 | `655227ed` | passed | 89.8 | 22 | dev `b08b47f` / 3.5 | rewritten case |
+| 56 | 11:12 | TC-19 | `683d1708` | **failed** | 223.3 | 9 | dev `b08b47f` / 3.5 | environment: 3.5 daily quota (500) used at 11:12, LLM call timed out after 180 s |
+| 57 | 11:18 | TC-19 | `ba904dd4` | **failed** | 63.6 | 15 | dev `b08b47f` / 3.1 | ambiguous: reported the Profile CV without uploading |
+| 58 | 11:20 | TC-19 | `a75cd4e1` | passed | 171.9 | 43 | dev `b08b47f` / 3.1 | second wording, not counted |
+| 59 | 11:23 | TC-19 | `7e2b8eb6` | **failed** | 68.5 | 15 | dev `b08b47f` / 3.1 | ambiguous: reported the Profile CV without uploading |
+| 60 | 11:25 | TC-19 | `a1482888` | passed | 141.1 | 34 | dev `b08b47f` / 3.1 | final wording |
+| 61 | 12:16 | TC-03 | `55c7985d` | passed | 102.2 | 22 | fix `filter-chips` / 3.1 | after the chip fix |
+| 62 | 12:18 | TC-03 | `2b271938` | passed | 49.5 | 15 | fix `filter-chips` / 3.1 | after the chip fix |
+| 63 | 12:19 | TC-03 | `c07e2122` | passed | 71.8 | 15 | fix `filter-chips` / 3.1 | after the chip fix |
+| 64 | 12:23 | TC-19 | `58225e0a` | passed | 141.1 | 42 | fix `filter-chips` / 3.1 | final wording |
+| 65 | 12:25 | TC-19 | `7a1e3528` | passed | 202.8 | 35 | fix `filter-chips` / 3.1 | final wording |
+Not in `runs.jsonl`: session `b6763c92` (11:16, TC-19), cancelled by stopping the daemon after the quota ran out; session `2f5ac78e` (11:27, TC-19), cancelled at the operator's request to use the emulator by hand.
+
+### Result (counted runs)
+
+| Test | Passed | Average time (s) | Counted traces |
+|---|---|---|---|
+| TC-03 | 3/3 | 74.5 | `55c7985d`, `2b271938`, `c07e2122` (after the chip fix) |
+| TC-04 | 3/3 | 46.8 | `c90faf15`, `a824cd6a`, `63631ad3` |
+| TC-05 | 3/3 | 50.1 | `108cf8ac`, `e0ada1d5`, `1ab4c069` (case that skips applied / saved cards) |
+| TC-18 | 3/3 | 108.2 | `92169173`, `5a13af8f`, `655227ed` (rewritten case) |
+| TC-19 | 3/3 | 161.7 | `a1482888`, `58225e0a`, `7a1e3528` (final wording) |
+| TC-20 | 3/3 | 137.9 | `774a3906`, `32d3c95c`, `69f090e2` |
+
+TC-03 also checked the `search` and `search_filter_apply` events in Logcat, and TC-18 `apply_start`. TC-19 and TC-20 upload the fictional `Sample_CV.pdf` to `cvs/{uid}/` for the chosen listing; no application is submitted in Flow 1.
+
+### Why runs failed
+
+- **TC-03, app bug (0/3).** The agent chose `Job type: Internship` and the list went from 54 to 23 results, but the only chip shown was `Intern`. The Filters badge counted the job type, yet `_ActiveFiltersRow` had no chip for job type or allowance. Fixed in the app (P-70, test-report Run 32); the reruns passed 3/3.
+- **TC-18, wrong expectation (0/3).** Since CV Match (PR #24, DC-30), `Continue to review` opens `CV match` while Remote Config `cv_match_enabled` is on. The case expected `Validate CV` and now accepts either.
+- **TC-19, ambiguous instruction (0/3).** The upload worked each time, but the CV card now shows two lines under the file name (`2 KB · PDF`, then `Uploaded for this internship`), and the agent reported the first one for "the line under it". The case now asks for every line and checks that the source line is among them.
+- **TC-19, environment (run 56, `683d1708`).** Every call returned 429 for the 3.5 daily quota; ARTEMIS timed out after 180 s instead of using its fallback. Not counted.
+- **TC-19, ambiguous instruction (runs 57 and 59).** On 3.1 the agent saw the CV from the Profile and reported it without replacing it. `UPLOAD_SAMPLE_CV` now says to replace the CV even if one is shown, and the case asks for the report only after `Update CV`. Run 58 passed on that intermediate wording and is not counted.
+
+Also seen: `Choose file` often needed a second tap before the Android picker opened (in runs on both models). Not investigated; it did not fail a run.
