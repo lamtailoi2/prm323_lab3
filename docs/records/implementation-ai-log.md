@@ -583,6 +583,39 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-64: One shared application, Flow 2 / Flow 3 runs and their records (2026-11-06)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) run Flow 2 and Flow 3 once each, then three times while the quota lasted. "Tạo 1 cái trước để tui xem trước": create one application first, which the cases share.
+- **Output:**
+  - Application **Client Success Intern — Wegrow** submitted by hand with `adb` taps (no model calls). The Profile CV (609 B, 2026-11-02) is unreadable to `validateCv`, so for this application only it was replaced with the full fictional `Sample_CV.pdf`.
+  - Four exploratory runs: TC-09, TC-07, TC-08 passed; TC-10 failed.
+  - Counted runs: TC-07 3/3, TC-09 3/3, TC-08 0/3.
+  - `evidence/artemis/e2e-environment-20261106.md` §Flow 2 and Flow 3, 13 more lines in `runs-20261106.jsonl`.
+  - `docs/test-plan.md`: TC-07 and TC-09 Done (3/3, 2026-11-06), TC-08 and TC-10 rows rewritten, §4 rows, failure rows.
+- **Verification:**
+  - `pdf-parse` 2.4.5 (the library the function uses) read 522 characters from the full sample CV locally.
+  - Counted command: 6 passed, 3 failed in 703.80 s.
+  - Causes were checked against step screenshots: the Saved order (`saved_screen.dart`) and the offline Applications screen showing the cached list.
+  - Saved screenshots from before and after the TC-08 runs show the account's SENZU BASE listing unsaved and Nexlab "Intern AI Software Engineer" added.
+- **Decision:**
+  - TC-08 and TC-10 failures are recorded as wrong expectations plus one timing miss, not as app bugs. Their fixes are P-65.
+  - The account's Saved list was left as it is (the owner's choice).
+  - Raised for the owners: the Saved `Recent` label orders by posting date; Lập's TC-06 will stop at Validate CV while the Profile CV is the old sample.
+
+---
+
+### P-65: TC-08 finds its card by title; TC-10 runs offline with `adb`
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Làm luôn", after the TC-08 and TC-10 failures in P-64.
+- **Output:**
+  - `e2e_test/test_saved.py` TC-08 finds the saved listing by its title, reports `saved_card_found` instead of the first card, and may unsave only that card, with `Undo` as one quick sequence.
+  - `e2e_test/test_applications.py` TC-10 (now `test_tc10_application_list_stays_visible_offline`) turns Wi-Fi and data off with `set_network(False)` and back on in `finally`. It asserts a visible card, a position, the `N application(s)` line, no error and no `Retry`.
+  - Commit `f9b5f43`.
+- **Verification:** `python -m py_compile` → OK; `pytest --collect-only` → 16 tests. **Not run on a device yet**: there was no model quota left before the 15:00 reset.
+- **Decision:**
+  - Accepted. TC-10 now checks what the app does offline (Firestore cache). An error with `Retry` would appear only when the stream itself fails.
+  - TC-10 loses its "Native" part, because the native sign-in case TC-01 already covers native UI.
+
+---
+
 ## Entry template
 
 ```markdown

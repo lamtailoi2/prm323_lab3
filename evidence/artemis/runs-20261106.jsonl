@@ -19,3 +19,16 @@
 {"test_id": "TC-01", "status": "completed", "succeeded": true, "trace_id": "cebfd52e-367b-4e14-b018-a35c7bfea285", "seconds": 48.4, "error": null, "pytest": "passed"}
 {"test_id": "TC-01", "status": "completed", "succeeded": true, "trace_id": "dd7ba1ab-9866-4366-b674-19fb02fe3e41", "seconds": 77.2, "error": null, "pytest": "passed"}
 {"test_id": "TC-01", "status": "completed", "succeeded": true, "trace_id": "5b765e36-5657-488d-a897-3efa5718d013", "seconds": 66.7, "error": null, "pytest": "passed"}
+{"test_id": "TC-09", "status": "completed", "succeeded": true, "trace_id": "ea708962-ce28-4925-b0fb-7be57e20601d", "seconds": 29.3, "error": null, "pytest": "passed"}
+{"test_id": "TC-07", "status": "completed", "succeeded": true, "trace_id": "b08c12ee-c85d-4b8a-8ef0-d83c3de558a4", "seconds": 65.6, "error": null, "pytest": "passed"}
+{"test_id": "TC-08", "status": "completed", "succeeded": true, "trace_id": "7da3ef7c-92e0-4dc3-90bf-e9320212b5e9", "seconds": 116.8, "error": null, "pytest": "passed"}
+{"test_id": "TC-10", "status": "completed", "succeeded": true, "trace_id": "f1e857a4-3ff2-4b2c-8e48-4ff1d4758170", "seconds": 193.5, "error": null, "pytest": "failed", "failure": "assert False is True"}
+{"test_id": "TC-07", "status": "completed", "succeeded": true, "trace_id": "b3c12d02-994b-4131-bafc-3c47ac30a28e", "seconds": 50.7, "error": null, "pytest": "passed"}
+{"test_id": "TC-07", "status": "completed", "succeeded": true, "trace_id": "c293b71d-7e31-441f-94a5-a1a4cb79fd64", "seconds": 50.5, "error": null, "pytest": "passed"}
+{"test_id": "TC-07", "status": "completed", "succeeded": true, "trace_id": "789431b9-b8e4-45f0-9c7b-dacff39cba5e", "seconds": 57.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-08", "status": "completed", "succeeded": true, "trace_id": "437397d9-7c83-49e6-b88d-b4fe72876936", "seconds": 122.9, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'Intern Agentic Data Engineer' == 'Intern AI Software Engineer'\n  \n  - Intern AI Software Engineer\n  + Intern Agentic Data Engineer"}
+{"test_id": "TC-08", "status": "completed", "succeeded": true, "trace_id": "a3dc0d3b-66bc-4ee7-8816-851ba1dd6ee1", "seconds": 116.7, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'Intern Agentic Data Engineer' == 'Intern AI Software Engineer'\n  \n  - Intern AI Software Engineer\n  + Intern Agentic Data Engineer"}
+{"test_id": "TC-08", "status": "completed", "succeeded": true, "trace_id": "e1d1565d-ece9-48d2-8e8b-a5b565fba74c", "seconds": 102.8, "error": null, "pytest": "failed", "failure": "assert 5 == 7"}
+{"test_id": "TC-09", "status": "completed", "succeeded": true, "trace_id": "58144485-56c3-453a-8330-cc6cfa781e5e", "seconds": 21.2, "error": null, "pytest": "passed"}
+{"test_id": "TC-09", "status": "completed", "succeeded": true, "trace_id": "b44e3547-fd53-4a2d-a70d-97ab55d2e492", "seconds": 23.2, "error": null, "pytest": "passed"}
+{"test_id": "TC-09", "status": "completed", "succeeded": true, "trace_id": "dfe47b1a-00cf-4ce3-9b8d-c9946b9f75d2", "seconds": 27.2, "error": null, "pytest": "passed"}
