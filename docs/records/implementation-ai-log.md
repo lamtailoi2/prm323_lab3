@@ -664,6 +664,24 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-69: Search — `Find Internships` disabled when empty; the field follows Search Results
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "valid lại màn search khi search input trống nhưng button find intership vẫn bấm được", then "sao tôi search inter xong bấm x ở ô search rồi qua về home rồi bấm lại thanh search thì nó chưa clear input "inter" nữa".
+- **Output:**
+  - `search_screen.dart`: `Find Internships` gets `onPressed: null` (the design-system Primary disabled state) while the trimmed query is empty and no work mode is selected; a `ValueListenableBuilder` on the field's controller re-enables it as soon as the student types. Before, the tap did nothing.
+  - Stale query: Search and Search Results each own a text field, and the Search tab stays alive under Search Results (`StatefulShellRoute.indexedStack`). Clearing on Results (the `Clear search` button, the query chip, `Clear all`, `Clear filters`) left the old term on Search, where Home's search bar or the Search tab brings it back.
+  - `search_viewmodel.dart`: `SearchState.query` (the term last searched from this tab) and `syncQuery()`. Search sets it on submit and on `Show N results`; Search Results reports every query change through one `ref.listen`; Search writes the value into its field with `ref.listen`. Every existing state rebuild carries `query`.
+  - Tests: `search_screen_test.dart` (disabled without a query or work mode, `'   '` stays disabled, a work mode alone enables it and opens Results), `search_viewmodel_test.dart` (`syncQuery` trims and keeps the work mode; later snapshots keep the query), `router_test.dart` group "the Search field follows Search Results" (the reported path: clear on Results → Home → Home's search bar → empty field; a new query on Results shows on Search). Existing tests that type and tap at once now pump one frame in between, because the button only enables after a rebuild.
+  - `docs/design-traceability.md` Search row.
+- **Verification:**
+  - `dart format --output=none --set-exit-if-changed lib test` → 0 changed; `flutter analyze` → No issues found.
+  - Search tests (`router_test`, `search_viewmodel_test`, `search_screen_test`, `search_results_screen_test`) → 64 passed.
+  - With the field update in `SearchScreen` switched off, both new router tests fail (`Actual: 'inter'`), so they catch the reported bug. After a failure, `flutter test` waited instead of exiting (a passing run exits normally); not investigated here.
+  - Full suite → 654 passed (test-report Run 31).
+  - Device (profile build, emulator `Pixel_API_36`): empty field → button disabled; `inter` → enabled → Results; `Clear search` on Results → Home → Home's search bar → empty Search field; a new query `Python` on Results → Search tab shows `Python` (Run 31 #5–9).
+- **Decision:** Accepted. No design change: the disabled state is the Primary button's documented state, and screen-spec §Search opens results only after a query or filters.
+
+---
+
 ## Entry template
 
 ```markdown
