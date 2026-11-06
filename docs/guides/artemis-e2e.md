@@ -75,9 +75,13 @@ Use a separate terminal for each long-running step.
    flutter emulators --launch Pixel_API_36
    ```
    Check it is listed with `adb devices`.
-2. If the app code changed since the last install, rebuild and reinstall the app:
+2. If the app code changed since the last install, rebuild and reinstall the app. Use a **profile** build: under ARTEMIS the debug build froze on Home ("isn't responding") and made TC-16 fail, while the profile build had no freeze in 15 runs (2026-11-06). It is signed with the same shared debug key, so Google Sign-In works and the sign-in session survives the reinstall.
    ```bash
-   flutter build apk --debug --dart-define-from-file=.env && adb install -r build/app/outputs/flutter-apk/app-debug.apk
+   flutter build apk --profile --dart-define-from-file=.env && adb install -r build/app/outputs/flutter-apk/app-profile.apk
+   ```
+   Then grant the notification permission, which the app asks for after sign-in. Otherwise its system dialog can cover the screen in the middle of a case. TC-15 tests that dialog on a fresh install instead.
+   ```bash
+   adb shell pm grant com.group3.internly android.permission.POST_NOTIFICATIONS
    ```
 3. Start the ARTEMIS daemon and leave it running. It reads `~/artemis/.env` and the config only at startup, so restart it after changing either.
    ```bash
@@ -127,17 +131,18 @@ What `conftest.py` does for every test:
 
 - Limits apply **per AI Studio project**, not per key. See AI Studio → **Rate Limit**. On 2026-11-05 `gemini-3.5-flash-lite` allowed 15 requests per minute and 250K tokens per minute.
 - Daily quotas reset at **midnight Pacific time**: 15:00 in Vietnam in winter, 14:00 in summer. Afternoons in Vietnam are night in the US, so 503 overloads were less likely then.
-- One TC-05 run used 11–15 model calls (up to 39 while it was recovering from dialogs). Run the suite file by file rather than all at once.
+- Each Flash-Lite model allows **500 requests per day** on the free tier (429 `GenerateRequestsPerDayPerProjectPerModel-FreeTier`, `quotaValue: 500`), counted per model. When `gemini-3.1-flash-lite` runs out, swap primary and fallback in `~/artemis/config/artemis.jsonc` for the rest of the day and restart the daemon. Note in the evidence which model each run used.
+- One run used 5–29 model calls (up to 39 while recovering from dialogs), so about 25 runs fit in one model's daily quota. Run the suite file by file rather than all at once.
 
 ## 7. Troubleshooting
 
 | Symptom | Cause | What to do |
 |---|---|---|
 | `LLM call timed out after 180 seconds`; `503 UNAVAILABLE … high demand` in the daemon output | The primary model is overloaded | Wait, or put a model that answers first in `config/artemis.jsonc` and restart the daemon |
-| `429 RESOURCE_EXHAUSTED … limit: N` | Daily or per-minute quota used up | Wait for the reset (§6); do not enable billing |
+| `429 RESOURCE_EXHAUSTED … limit: N` | Daily or per-minute quota used up (`…PerDay…` with `quotaValue: 500` is the daily one) | Per minute: ARTEMIS waits and retries by itself. Per day: swap to the other Flash-Lite model (§6) or wait for the reset; do not enable billing |
 | `no structured output (trace …)` | The model wrote a sentence instead of the JSON | Look at the report through `/steps`. If the flow was right, it is a reporting miss: rerun and record it as flaky |
 | The agent "typed" but the field stays empty | The patch in §1.1 is not applied | `git -C ~/artemis diff --stat` must list `adb_driver.py`; restart the daemon |
-| "internly isn't responding" on the device | Debug-build cold start on a busy machine | Close other apps (browser tabs); the fixture already waits 10 s |
+| "internly isn't responding" on the device | A debug build on a busy machine | Install the profile build (§3, step 2); close other apps (browser tabs) |
 | `NetworkError` / connection refused | The daemon is not running | Start it (§3, step 3) |
 | `FileNotFoundError: 'adb'` | `adb` is not on `PATH` for pytest | Add `$ANDROID_HOME/platform-tools` to `PATH` |
 | The emulator closes with "hanging thread" | Not enough free memory | Close other apps and start the emulator again |

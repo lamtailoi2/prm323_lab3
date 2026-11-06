@@ -568,6 +568,21 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-63: ARTEMIS evidence for TC-01, TC-02, TC-14, TC-16, TC-17 (2026-11-06)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "giờ chạy lấy evidence ik để làm doc", then "Đổi sang 3.5 ngay" when `gemini-3.1-flash-lite` ran out of daily quota.
+- **Output:**
+  - A profile APK built from `origin/dev` `a5d1e4a`, installed on `emulator-5554`, with notifications granted by `adb`.
+  - Three counted runs each of TC-02, TC-16, TC-17 (`gemini-3.1-flash-lite`) and TC-14, TC-01 (`gemini-3.5-flash-lite`, swapped on the host for the day).
+  - `evidence/artemis/e2e-environment-20261106.md` and `runs-20261106.jsonl`: all 21 runs, six of them exploratory, plus the cancelled attempt `0a061c60`.
+  - `docs/test-plan.md`: header model and app-build rows; §1 builds a profile APK and grants notifications; §3 marks the five cases Done (3/3, 2026-11-06); §4 adds a results row for each case and the failures with their causes.
+  - `docs/guides/artemis-e2e.md`: profile build, the notification grant, the 500-requests-per-day limit and what to do when a model runs out.
+- **Verification:** both `uv run pytest … --count 3 -v` runs are logged in the evidence file: 9 passed in 724.66 s and 6 passed in 717.43 s. Every number comes from `runs.jsonl` (now with the `pytest` field) and from the daemon's `/api/sessions/{id}`, `/steps` and `/usage`. The 429 message gave the daily limit (`quotaValue: 500`) and the reset (about 7.4 h, 15:00 in Vietnam).
+- **Decision:**
+  - The exploratory runs are recorded, not dropped. The TC-16 freeze on the debug build is recorded as timing and fixed by the profile build. The old TC-14 failure is recorded as a wrong expectation, fixed in `512c8f4`.
+  - The day's model swap stays local to the ARTEMIS host: the committed `artemis-local.patch` keeps `gemini-3.1-flash-lite` as primary.
+
+---
+
 ## Entry template
 
 ```markdown
