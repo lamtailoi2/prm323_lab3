@@ -4,15 +4,20 @@ from conftest import SIGNED_IN, run_case
 
 
 async def test_tc05_first_result_opens_its_detail(artemis):
+    # Other cases apply to and save listings, and an application cannot be
+    # deleted, so the case takes the first card that is still neither applied
+    # to nor saved: its detail must show `Apply now` and `Save`.
     report = await run_case(
         artemis,
         "TC-05",
         f"{SIGNED_IN} Tap 'Search' in the bottom navigation, type 'Intern' in "
-        "the search field and tap 'Find Internships'. Note the job title and "
-        "the company of the first internship card, then tap that card. On the "
-        "next screen report the top app bar title, the job title, the company "
-        "name and whether the 'Apply now' and 'Save' buttons are visible. "
-        "Then tap the Back arrow and report the text in the search field.",
+        "the search field and tap 'Find Internships'. Find the first internship "
+        "card that has no 'Applied' badge and whose bookmark is not filled "
+        "(scroll down if needed). Note its job title and company, then tap "
+        "that card. On the next screen report the top app bar title, the job "
+        "title, the company name and whether the 'Apply now' and 'Save' "
+        "buttons are visible. Then tap the Back arrow and report the text in "
+        "the search field.",
         expected_output=(
             'JSON: {"card_title": string, "card_company": string, '
             '"detail_app_bar_title": string, "detail_title": string, '

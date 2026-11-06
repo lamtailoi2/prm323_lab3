@@ -10,8 +10,7 @@ SAVED_COUNT = (
 
 async def test_tc08_save_then_unsave_with_undo(artemis):
     # Counts are compared before / after instead of emptying Saved first, so
-    # the account keeps its saved listings. 'Python' keeps TC-05's 'Intern'
-    # listing out of it (TC-05 asserts its `Save` button).
+    # the account keeps its saved listings.
     # Saved is ordered by posting date, not by when it was saved, so the
     # listing is found by its title. Only that card is ever unsaved: a missed
     # Undo (the Snackbar lasts about 4 s) then removes only what the test added.
