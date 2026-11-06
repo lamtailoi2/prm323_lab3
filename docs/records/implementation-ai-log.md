@@ -710,6 +710,22 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-72: TC-08 without Undo, TC-15 single launch, TC-13 hint; TC-08 / TC-10 / TC-15 runs
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Run them now" (TC-08, TC-10, TC-15), "Rewrite TC-08" → "Yes, fix them", "Switch to 3.5", then "done giờ viết docs và commit đi". The operator's teacher asked for a recording of each ARTEMIS batch with its terminal command.
+- **Output:**
+  - `e2e_test/test_saved.py` TC-08 (`test_tc08_save_then_unsave`): numbered steps; no `Undo` and no `Saved to your list` (ARTEMIS needs 5–15 s per step, the Snackbar lasts 4 s; widget tests cover both); reports the title of the detail opened from Saved; button label checked with `startswith("Saved")` (the agent may read the accessibility label); the case unsaves the card it saved.
+  - `e2e_test/conftest.py` `reset_notification_permission()` no longer starts the app: with the case's own launch the app opened twice and the system dialog closed.
+  - `e2e_test/test_notifications.py`: TC-15 wording ("do not reopen the app"); TC-13 prompt says Profile → Firebase demo → Copy FCM token (PR #30 moved it); same in `docs/guides/artemis-e2e.md`.
+  - `docs/test-plan.md` TC-08 / TC-10 Done, TC-15 Ready (fixed), §4 rows and causes; `evidence/artemis/e2e-environment-20261106.md` section "TC-08, TC-10, TC-15"; runs 66–87 appended to `runs-20261106.jsonl`.
+- **Verification:**
+  - TC-10 3/3 on `dev` `d4674ee`.
+  - TC-08 3/3 on `gemini-3.5-flash-lite`. Each counted run was checked against its ARTEMIS step history, because on 3.1 one run (`049a9ddd`) passed in pytest with an invented report.
+  - TC-15 not run again after the fix.
+  - `py_compile` and `pytest --collect-only` (18 tests) OK.
+- **Decision:** Accepted. Two API keys borrowed from team members' free-tier projects; a third, prepaid one was refused (G-26).
+
+---
+
 ## Entry template
 
 ```markdown

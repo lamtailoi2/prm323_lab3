@@ -1,4 +1,4 @@
-# ARTEMIS runs — 2026-11-06 (TC-01 – TC-05, TC-07 – TC-10, TC-14, TC-16 – TC-20)
+# ARTEMIS runs — 2026-11-06 (TC-01 – TC-05, TC-07 – TC-10, TC-14 – TC-20)
 
 Status: **TC-01, TC-02, TC-07, TC-09, TC-14, TC-16 and TC-17 each passed 3 of 3** on the final setup. **Flow 1 (TC-03, TC-04, TC-05, TC-18, TC-19, TC-20) passed 3 of 3 each** from 10:30, after one app fix and two case fixes (see [Flow 1](#flow-1-1030--1229)). **TC-08 passed 0 of 3 and TC-10 failed its exploratory run**: both expectations were wrong, and both cases were rewritten in `f9b5f43` but not run again yet (see [Flow 2 and Flow 3](#flow-2-and-flow-3-0804--0830)).
 
@@ -219,3 +219,68 @@ TC-03 also checked the `search` and `search_filter_apply` events in Logcat, and 
 - **TC-19, ambiguous instruction (runs 57 and 59).** On 3.1 the agent saw the CV from the Profile and reported it without replacing it. `UPLOAD_SAMPLE_CV` now says to replace the CV even if one is shown, and the case asks for the report only after `Update CV`. Run 58 passed on that intermediate wording and is not counted.
 
 Also seen: `Choose file` often needed a second tap before the Android picker opened (in runs on both models). Not investigated; it did not fail a run.
+
+## TC-08, TC-10, TC-15 (12:50 – 14:30)
+
+Runs 66–87 in [`runs-20261106.jsonl`](runs-20261106.jsonl), 438 model calls. Records done with Claude Code (P-72).
+
+### Environment
+
+| Item | Value |
+|---|---|
+| App | Profile build of `dev` `35799c3` (runs 66–71), then of `dev` `d4674ee` (PR #30: Firebase demo screen; runs 72–87). After the 14:07 emulator crash the APK was reinstalled. |
+| Emulator | `Pixel_API_36`, API 36. It crashed three times: 13:00 and 13:44 when the host hung (hang detector, "no response for 15 s"; swap 5.2 of 6 GB in use), 14:07 in the GPU backend (`libgfxstream_backend` `createColorBuffer`, SIGSEGV). The Mac was restarted at 13:50, and from 14:08 the emulator runs with `-gpu swiftshader_indirect` (software rendering). A quick boot from an old snapshot had also reverted the installed app; it was reinstalled and the snapshot saved again. |
+| API keys | Key A: a team member's free-tier project (runs 66–77). A second borrowed key was refused: its project uses prepaid billing (HTTP 402 "prepayment credits are depleted"), against G-26. Key B: another member's project, confirmed Free in AI Studio by the operator (runs 78–87). |
+| Model | `gemini-3.1-flash-lite` primary (team patch) until 14:20; from 14:20 `gemini-3.5-flash-lite` primary, fallback 3.1, because 3.1 skipped steps and invented results in TC-08 (below). |
+| Recording | From 13:44 the operator screen-recorded the emulator, the ARTEMIS console and Terminal for each batch (video kept outside the repository: it shows the account), with the command typed in Terminal and its output saved with `tee` to `e2e_test/artifacts/logs/`. ARTEMIS also saves `recording.mp4` and `stdout.log` for each session under `~/artemis/traces/`. |
+
+Commands (from `e2e_test/`):
+
+```bash
+uv run pytest test_saved.py --count 3 -v 2>&1 | tee artifacts/logs/20261106-tc08.log
+uv run pytest test_applications.py -k tc10 --count 3 -v
+uv run pytest test_notifications.py -k tc15 --count 3 -v
+```
+
+### Runs
+
+| # | Start (+07) | Test | Trace | pytest | Time (s) | Model calls | Build / key / model | Note |
+|---|---|---|---|---|---|---|---|---|
+| 66 | 12:50 | TC-08 | `ac1990bb` | **failed** | 113.0 | 30 | `35799c3` / borrowed key A / 3.1 | old case: Undo missed (4 s Snackbar) |
+| 67 | 12:52 | TC-08 | `12e44b75` | **failed** | 152.5 | 36 | `35799c3` / borrowed key A / 3.1 | old case: read the button `Saved` as the message; Undo missed |
+| 68 | 12:55 | TC-08 | `aa985d75` | **failed** | 143.3 | 25 | `35799c3` / borrowed key A / 3.1 | old case: misread counts and the message; Undo missed |
+| 69 | 12:59 | TC-10 | `e6299835` | **failed** | 28.5 | 3 | `35799c3` / borrowed key A / 3.1 | environment: emulator crashed (13:00) during the network toggle |
+| 70 | 13:04 | TC-10 | `9b123960` | passed | 30.7 | 3 | `35799c3` / borrowed key A / 3.1 | build of `dev` `35799c3`, not counted |
+| 71 | 13:04 | TC-10 | `0b3103aa` | passed | 26.6 | 3 | `35799c3` / borrowed key A / 3.1 | build of `dev` `35799c3`, not counted |
+| 72 | 13:11 | TC-10 | `2956f83e` | passed | 51.6 | 9 | `d4674ee` / borrowed key A / 3.1 | counted |
+| 73 | 13:12 | TC-10 | `8cbd2938` | passed | 36.4 | 3 | `d4674ee` / borrowed key A / 3.1 | counted |
+| 74 | 13:13 | TC-10 | `395acd45` | passed | 20.4 | 3 | `d4674ee` / borrowed key A / 3.1 | counted |
+| 75 | 13:14 | TC-15 | `7c9ea8f9` | **failed** | 92.9 | 20 | `d4674ee` / borrowed key A / 3.1 | test bug: app launched twice, dialog gone |
+| 76 | 13:16 | TC-15 | `b7c1b34d` | **failed** | 21.6 | 6 | `d4674ee` / borrowed key A / 3.1 | test bug: dialog gone before the tap, tap opened a card |
+| 77 | 13:16 | TC-15 | `7587d519` | **failed** | 38.7 | 6 | `d4674ee` / borrowed key A / 3.1 | same |
+| 78 | 13:44 | TC-08 | `ad1c4f88` | **failed** | 64.6 | 11 | `d4674ee` / free key B / 3.1 | environment: emulator crashed (13:44, hang detector); 2 more runs errored on adb |
+| 79 | 13:55 | TC-08 | `d29c9d13` | passed | 168.3 | 19 | `d4674ee` / free key B / 3.1 | first rewrite, not counted |
+| 80 | 13:58 | TC-08 | `b68c9c82` | **failed** | 129.2 | 26 | `d4674ee` / free key B / 3.1 | skipped opening the card from Saved, invented `View application` |
+| 81 | 14:00 | TC-08 | `6bec2030` | **failed** | 75.7 | 17 | `d4674ee` / free key B / 3.1 | read the accessibility label `Saved. Remove from saved` |
+| 82 | 14:11 | TC-08 | `049a9ddd` | passed | 135.1 | 31 | `d4674ee` / free key B / 3.1 | **invalid pass**: stopped after the Saved tab and invented the rest; its listing stayed saved |
+| 83 | 14:13 | TC-08 | `cdda7c80` | **failed** | 131.0 | 28 | `d4674ee` / free key B / 3.1 | skipped opening the card; misread the count (9 → 10) |
+| 84 | 14:16 | TC-08 | `af95ee7f` | passed | 149.1 | 37 | `d4674ee` / free key B / 3.1 | genuine, but before the switch to 3.5; not counted |
+| 85 | 14:21 | TC-08 | `7bda5a47` | passed | 105.9 | 30 | `d4674ee` / free key B / 3.5 | counted; steps checked |
+| 86 | 14:23 | TC-08 | `1d1f3d20` | passed | 202.4 | 47 | `d4674ee` / free key B / 3.5 | counted; steps checked |
+| 87 | 14:27 | TC-08 | `1753334f` | passed | 229.9 | 45 | `d4674ee` / free key B / 3.5 | counted; steps checked |
+### Result (counted runs)
+
+| Test | Passed | Average time (s) | Counted traces |
+|---|---|---|---|
+| TC-08 | 3/3 | 179.4 | `7bda5a47`, `1d1f3d20`, `1753334f` (case without Undo, `gemini-3.5-flash-lite`; each run's step history shows Save → open from Saved → Back → unsave) |
+| TC-10 | 3/3 | 36.1 | `2956f83e`, `8cbd2938`, `395acd45` (`dev` `d4674ee`) |
+| TC-15 | 0/3 | — | Test fixed, not run again yet |
+
+### Why runs failed
+
+- **TC-08, `Undo` (runs 66–68).** One ARTEMIS step (screenshot + model call) takes 5–15 s, the Snackbar stays 4 s (design-system), so the agent never reached `Undo`; it also read the button text `Saved` as the Snackbar. The case now ends with the unsave and checks `Removed from Saved`; `Undo` and `Saved to your list` are covered by widget tests.
+- **TC-15, test bug (runs 75–77).** `reset_notification_permission()` relaunched the app, then the case's "Open the Internly app" made ARTEMIS open it again, which closed the system dialog: no dialog at all (run 75), or a tap on `Allow` that landed on a Home card after the dialog had gone (runs 76–77). The helper now leaves the app stopped so the case opens it once.
+- **TC-08 on `gemini-3.1-flash-lite` (runs 80–84).** The agent skipped steps of a long case and filled the report from the instruction: it never opened the card from Saved (runs 80, 83) and in run 82 stopped after the Saved tab and reported a full, plausible pass. That listing ("Intern C/C++ Embedded Systems Engineer Qt") stayed saved. Run 81 read the accessibility label `Saved. Remove from saved`. The case was split into numbered steps, accepts a label that starts with `Saved`, asks for the title on the detail opened from Saved, and runs on 3.5. pytest results alone are not trusted for this case: each counted run was checked against its step history.
+- **Environment (runs 69, 78).** Emulator crashes, above. Not counted.
+
+Side effect on the account: across the TC-08 runs today Saved went from 6 (13:39) to 9; the runs on the final case leave it unchanged.
