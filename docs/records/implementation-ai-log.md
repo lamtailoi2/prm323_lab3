@@ -479,11 +479,234 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
-### P-57: Firebase demo area (G-06)
-- **Request:** "kiểm tra xem tôi đã làm những tính năng hay task này chưa, nếu chưa hướng dẫn tôi từng bước" then "làm hoàn thiện luôn từng bước giúp tôi": build the `/profile/firebase` demo area, wire the Notification Center and Export links, and prepare the evidence and Figma follow-ups.
-- **Output:** `features/profile/screens/firebase_demo_screen.dart` and `viewmodels/firebase_demo_viewmodel.dart`: Remote Config values with key, value and source, refreshed from `onUpdated`; `Send a non-fatal error` (one `recordError` per tap) and `Simulate app crash` (confirmation first); `Copy FCM token`; Notification Center link; Report export row disabled (`Coming soon.`) until G-05. Route `/profile/firebase` (`firebase_demo`, root navigator) and `AppRoutes.firebaseDemo`. `DiagnosticsSection` on Profile now opens the screen instead of duplicating the crash and FCM tiles. Tests: `firebase_demo_viewmodel_test.dart` (defaults, live update, non-fatal, repeated taps, crash) and `firebase_demo_screen_test.dart` (360/412 dp, live update, non-fatal, crash confirmation, Notification Center, FCM token, tap targets); the Profile test now checks the entry point. Docs: `design-traceability` row, `architecture`, `handoff-gaps` G-06, Run 31, `evidence/crashlytics/` and `evidence/remote-config/` directories.
-- **Verification:** `dart format` → 1 file reformatted; `flutter analyze` → **No issues found!**; targeted tests → **17 passed** after the fix; `flutter test` → **663 passed**. Device walk on `emulator-5554` after `adb install`: Remote Config template version 2 activated, `/profile/firebase` shows `cv_match_enabled = true`, `home_recent_limit = 10`, `home_recommended_limit = 6`, all `From Firebase`; `Send a non-fatal error` produced the confirmation SnackBar. A real bug surfaced there: the Flutter SDK enum names are `valueRemote` / `valueDefault` / `valueStatic`, so `source.name` never matched `remote` and every value rendered `In-app default`; `FirebaseRemoteConfigService.snapshot()` now maps them through `sourceName()`, covered by `remote_config_defaults_test.dart` and a widget test. Evidence saved: `evidence/remote-config/remote-config-app-from-firebase-20261106.png`, `evidence/crashlytics/crashlytics-nonfatal-sent-20261106.png`. The test crash, the Crashlytics dashboard and the Console before/after screenshots are **not run**; Figma was not touched (no access).
-- **Decision:** Accepted. The demo area reuses the existing services and shared Profile components, so it adds no new visual language. Export stays a disabled row rather than a link to a screen that does not exist (G-05); the Notification Center link is live. The crash and FCM controls moved from Profile to the demo screen so there is one place for them, and the crash still requires confirmation. The source mapping lives in the service (not the screen) so the SDK enum cannot leak into UI code.
+### P-57: ARTEMIS host setup, first TC-05 runs and E2E harness fixes
+- **Request:** (Claude Code, Opus 5.5, session 2026-11-05; operator Phạm Nguyễn Hoàng Anh) "guide me to install and run ARTEMIS for Lab 3". Then, step by step at the operator's choice: wait for the overloaded model, switch to Flash-Lite, find why TC-05 fails, fix `conftest.py` (approved by Lâm Tài Lợi, its author), patch ARTEMIS's text input, run TC-05 three times, write the run guide, record and commit.
+- **Output:**
+  - Host setup: ARTEMIS host on macOS (`~/artemis` at `351ca84`, `uv` via Homebrew, `scrcpy`, daemon without `start.sh`). The operator created the Gemini key (free tier) and entered it themself.
+  - Diagnosis, each step checked against the daemon log, the session API or the device:
+    - the default model is capped at 20 requests per day and was overloaded, and the fallback never triggers before the 180 s timeout;
+    - nothing calls the Outputter, so runs return no `output`;
+    - `KEYCODE_PASTE` is ignored by Flutter text fields;
+    - leftover text and the cold-start ANR affected runs.
+  - `e2e_test/conftest.py` (`6fe33a9`): `REPORT_AS_JSON` + `final_report()` (reads `report_task_status` from `/api/sessions/{id}/steps`), and the `cold_start_app` fixture (force-stop, `am start -W`, 10 s).
+  - `e2e_test/artemis-local.patch`: Flash-Lite models and `adb input text` for ASCII.
+  - `docs/guides/artemis-e2e.md`.
+  - `docs/test-plan.md`: model row, §1, TC-05 Done, §4 row and the flaky / failed table.
+  - `evidence/artemis/e2e-environment-20261105.md` with `runs-20261105.jsonl` and three screenshots.
+  - README and disclosure rows.
+- **Verification:**
+  - `artemis doctor` all ✔.
+  - Direct API calls per model (HTTP codes in the evidence file).
+  - Manual input check on the emulator (`keyevent 279` leaves the field empty, `adb shell input text` types).
+  - `git apply --check` of the patch on a clean `351ca84` → applies.
+  - `python -m py_compile conftest.py` → OK.
+  - 11 real TC-05 runs, all recorded with their causes. The final `uv run pytest test_detail.py --count 3 -v` → **3 passed** (traces `505846be`, `045c4d16`, `ebe3d568`, average 65.7 s).
+  - No Flutter code changed, so `flutter analyze` / `flutter test` were not run for this entry.
+- **Decision:**
+  - Modified. The default `gemini-3.8-flash` was replaced, because its free tier (20 requests per day) cannot carry the suite.
+  - ARTEMIS is patched locally instead of changing the app: the paste behaviour is the tool's, and the app's Search code was checked and is correct.
+  - The report is read through the daemon's step API with the client's private `_request` (the pinned client has no public call). Revisit if ARTEMIS is upgraded.
+  - Run 3 passed but is not counted, because it did not type.
+  - Replays stay on the host, because they show the signed-in account.
+
+---
+
+### P-58: Search bookmark uses the Saved feature's write path
+- **Request:** "bấm bookmark saved bên search lại kh lưu đc qua bên saved internship, fix" — tapping the bookmark on a Search Results card showed no item on the Saved screen.
+- **Output:** **Cause:** Search wrote through the legacy `SavedService` (`lib/services/saved_service.dart`), which stored only `{savedAt}` in `users/{uid}/savedInternships/{key}`; `SavedInternshipService.watchSaved` reads the copied listing from the `internship` field and skipped those documents, so the bookmark looked saved on Search but the Saved list stayed empty. Removed the second write path: `SearchResultsViewModel` no longer owns saved state or subscriptions; `SearchResultsScreen` watches `savedInternshipIdsProvider` for the bookmark and calls `SavedViewModel.toggleAndReport(..., source: 'search')`, like Home and Internship Detail, showing a failure in its own SnackBar. Deleted `SavedService`, `savedServiceProvider` and `FakeSavedService`; updated the Search ViewModel/screen/router tests to `FakeSavedInternshipService`, and the bookmark widget test now asserts the shared saved collection receives the key and the card flips to `Remove from saved`.
+- **Verification:** `dart format lib test` → **188 files, 0 changed**; `flutter analyze` → **No issues found!** (74.1 s); `flutter test` → **592 tests, all passed**. On the Android 17 (API 37) emulator (`flutter run -d emulator-5554 --dart-define-from-file=.env`, signed in with the test account): bookmarking `Recruitment Intern` on Search Results filled the icon and the Saved tab changed from 3 to 4 saved items with that listing on top; unbookmarking it on Search returned Saved to 3 and removed the card. Screenshots: `evidence/screens/search-bookmark-saved-20261105.png`, `saved-after-search-bookmark-20261105.png`, `saved-after-search-unsave-20261105.png`.
+- **Decision:** Accepted. This performs the merge that P-44 left to the Search owner: one saved service and one document shape for Home, Search, Detail and Saved, so the same bookmark is readable everywhere.
+
+---
+
+### P-59: runs.jsonl records the pytest result
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) after P-57, write the pytest outcome of each ARTEMIS run into `runs.jsonl`. The pass/fail of TC-05 runs had to be looked up in the daemon log, because `succeeded` is ARTEMIS's own status and stayed `true` when the report check failed.
+- **Output:** `e2e_test/conftest.py`: `_record()` keeps the run in `_pending_run`; a `pytest_runtest_makereport` hook writes it when the test's call phase ends, adding `pytest` (`passed` / `failed`) and `failure` (the assertion or exception message). A test that fails before ARTEMIS runs still gets a line, keyed by the test name. `docs/guides/artemis-e2e.md` §5 and `docs/test-plan.md` §1 describe the new fields.
+- **Verification:** `python -m py_compile conftest.py` → OK. A throwaway test file (fixture overridden, no ARTEMIS call, no device) produced three lines: a pass (`"pytest": "passed"`), a failure after a run (`"succeeded": true`, `"pytest": "failed"`, `"failure": "AssertionError: … no structured output …"`) and a failure before a run (`"failure": "FileNotFoundError: adb"`). The file was deleted and `runs.jsonl` restored to its 11 lines. Not yet seen on a real ARTEMIS run.
+- **Decision:** Accepted. Lines written before this change keep their old shape; nothing in `evidence/` was rewritten.
+
+---
+
+### P-60: ARTEMIS cases for Save (TC-08) and Apply → Success (TC-06, TC-07)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "viết test cho flow 2 và flow 4": task sheet items 8 (Flow 2 Save: TC-07, TC-08) and 9 (Flow 4 Application: TC-06).
+- **Output:**
+  - `e2e_test/test_saved.py` TC-08: Save from Detail, Saved list, open the saved card, unsave, Undo.
+  - `e2e_test/test_apply.py` TC-06: Apply Form → Validate CV → Review → Submit → Success, plus the `application_create` Logcat check. TC-07: an applied listing shows the `You applied on` banner, `View application` and Application Detail.
+  - Every asserted string was read from the screens first: `internship_detail_screen.dart`, `detail_bottom_bar.dart`, `saved_screen.dart`, `cv_validation_step.dart`, `application_review_screen.dart`, `application_success_screen.dart`, `application_detail_screen.dart`.
+  - `FILL_PERSONAL` and a new `UPLOAD_SAMPLE_CV` moved to `conftest.py`. TC-19's instruction text is unchanged (compared as strings).
+  - `docs/test-plan.md` §3: TC-06/07/08 rewritten to the built flow, Ready (not run).
+- **Verification:** `python -m py_compile` on the changed files → OK; `uv run pytest --collect-only -q` → 16 tests collected, including the three new ones. **Not run on a device**: the operator runs them.
+- **Decision:**
+  - Modified from the old plan rows. TC-06 follows the flow the app has (Validate CV → Review → Success), because CV Match Check (2d) is not built (DC-09, task 5).
+  - TC-08 compares Saved counts instead of emptying Saved first, so the account's saved listings stay.
+  - TC-06 / TC-07 use `Developer` listings and TC-08 uses `Python` listings. Applying to or saving TC-05's `Intern` listing would remove the `Apply now` / `Save` buttons it asserts.
+  - TC-06 uses the fictional `Sample_CV.pdf`, so the account's own CV is not sent to `validateCv`.
+  - Superseded on 2026-11-06: when `dev` (PR #24, CV Match) was merged in, TC-06 became Lập's version (CV Match → Validate CV → Submit) and TC-07 searches `Intern` instead of `Developer` (see P-62).
+  - TC-11 (export), TC-13 and TC-15 (notifications) were not written: those screens do not exist yet (tasks 1–3), and writing them now would mean guessing UI (AGENTS.md rule 1).
+
+---
+
+### P-61: TC-14 accepts Back closing the app after sign-out
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Sửa TC-14" after a first exploratory run failed with `assert False is True` on `login_button_visible`.
+- **Output:**
+  - Cause, from the run's steps and its last screenshot (trace `5e93964f`): sign-out reached Login. Back from Login then closed the app to the Android home screen. That is correct (Login is the root after sign-out, and no signed-in screen came back), but the test required Login to stay on screen.
+  - `e2e_test/test_auth.py` TC-14 now reports `login_after_sign_out`, `after_back` (`login` / `android_home` / `other_app_screen`), `bottom_nav_visible_after_back` and, after reopening the app if Back closed it, `login_after_reopen`. It asserts Login after sign-out, `after_back` in (`login`, `android_home`), no bottom navigation, and Login again after reopening (still signed out).
+  - `docs/test-plan.md` §3 TC-14 row updated to match.
+- **Verification:** `python -m py_compile test_auth.py` → OK; `uv run pytest test_auth.py --collect-only -q` → 2 tests collected. The new TC-14 has **not been run on a device yet**.
+- **Decision:** Accepted. The app behaviour is right and the expectation was wrong. Back closing the app after sign-out is standard Android behaviour, and the security check (no way back into signed-in screens) is kept and made stronger by reopening the app.
+
+---
+
+### P-62: Merge `dev` (PR #24) into `test/e2e-flow1`, each owner's version kept
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) merge `dev` before the evidence runs; the operator's rule: "nào liên quan đến tôi thì lấy của tôi, nào của thành viên khác thì lấy của họ, ví dụ TC-06 lấy của Lập".
+- **Output:**
+  - `docs/test-plan.md` §3: TC-03/04/05/07/08 rows from this branch (PR #24 had put back older `Planned` rows, including TC-05 `Done (3/3, 2026-11-05)`); TC-06 row from `dev` (Lập, CV Match).
+  - `e2e_test/test_apply.py`: Lập's TC-06 unchanged, plus this branch's TC-07, which now searches `Intern` for an applied listing (Lập's TC-06 applies to a Home card, not a `Developer` one).
+  - AI log: PR #24 had dropped two entries and reused their numbers. Lập's P-50 – P-56 are kept as they are. The dropped entries are restored with new numbers: the ARTEMIS setup (was P-50) → P-57, Hảo's Search bookmark fix (was P-51) → P-58. This branch's P-52 – P-54 → P-59 – P-61. The README and `code-review.md` rows that PR #24 lost are restored with the new numbers; the 2026-11-05 evidence file points at P-57.
+- **Verification:** `git show b23c144:…` vs `origin/dev` confirmed what PR #24 removed; `pytest --collect-only` after the merge → 16 tests; no conflict markers left; the only duplicate IDs left are the older P-21 – P-27.
+- **Decision:** Applied the operator's ownership rule. Not changed: Lập's TC-06 itself, although it applies to the first unapplied Home card (it may be TC-05's `Intern` listing) and uses the account's own CV — raised with the operator to pass on to Lập.
+
+---
+
+### P-63: ARTEMIS evidence for TC-01, TC-02, TC-14, TC-16, TC-17 (2026-11-06)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "giờ chạy lấy evidence ik để làm doc", then "Đổi sang 3.5 ngay" when `gemini-3.1-flash-lite` ran out of daily quota.
+- **Output:**
+  - A profile APK built from `origin/dev` `a5d1e4a`, installed on `emulator-5554`, with notifications granted by `adb`.
+  - Three counted runs each of TC-02, TC-16, TC-17 (`gemini-3.1-flash-lite`) and TC-14, TC-01 (`gemini-3.5-flash-lite`, swapped on the host for the day).
+  - `evidence/artemis/e2e-environment-20261106.md` and `runs-20261106.jsonl`: all 21 runs, six of them exploratory, plus the cancelled attempt `0a061c60`.
+  - `docs/test-plan.md`: header model and app-build rows; §1 builds a profile APK and grants notifications; §3 marks the five cases Done (3/3, 2026-11-06); §4 adds a results row for each case and the failures with their causes.
+  - `docs/guides/artemis-e2e.md`: profile build, the notification grant, the 500-requests-per-day limit and what to do when a model runs out.
+- **Verification:** both `uv run pytest … --count 3 -v` runs are logged in the evidence file: 9 passed in 724.66 s and 6 passed in 717.43 s. Every number comes from `runs.jsonl` (now with the `pytest` field) and from the daemon's `/api/sessions/{id}`, `/steps` and `/usage`. The 429 message gave the daily limit (`quotaValue: 500`) and the reset (about 7.4 h, 15:00 in Vietnam).
+- **Decision:**
+  - The exploratory runs are recorded, not dropped. The TC-16 freeze on the debug build is recorded as timing and fixed by the profile build. The old TC-14 failure is recorded as a wrong expectation, fixed in `512c8f4`.
+  - The day's model swap stays local to the ARTEMIS host: the committed `artemis-local.patch` keeps `gemini-3.1-flash-lite` as primary.
+
+---
+
+### P-64: One shared application, Flow 2 / Flow 3 runs and their records (2026-11-06)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) run Flow 2 and Flow 3 once each, then three times while the quota lasted. "Tạo 1 cái trước để tui xem trước": create one application first, which the cases share.
+- **Output:**
+  - Application **Client Success Intern — Wegrow** submitted by hand with `adb` taps (no model calls). The Profile CV (609 B, 2026-11-02) is unreadable to `validateCv`, so for this application only it was replaced with the full fictional `Sample_CV.pdf`.
+  - Four exploratory runs: TC-09, TC-07, TC-08 passed; TC-10 failed.
+  - Counted runs: TC-07 3/3, TC-09 3/3, TC-08 0/3.
+  - `evidence/artemis/e2e-environment-20261106.md` §Flow 2 and Flow 3, 13 more lines in `runs-20261106.jsonl`.
+  - `docs/test-plan.md`: TC-07 and TC-09 Done (3/3, 2026-11-06), TC-08 and TC-10 rows rewritten, §4 rows, failure rows.
+- **Verification:**
+  - `pdf-parse` 2.4.5 (the library the function uses) read 522 characters from the full sample CV locally.
+  - Counted command: 6 passed, 3 failed in 703.80 s.
+  - Causes were checked against step screenshots: the Saved order (`saved_screen.dart`) and the offline Applications screen showing the cached list.
+  - Saved screenshots from before and after the TC-08 runs show the account's SENZU BASE listing unsaved and Nexlab "Intern AI Software Engineer" added.
+- **Decision:**
+  - TC-08 and TC-10 failures are recorded as wrong expectations plus one timing miss, not as app bugs. Their fixes are P-65.
+  - The account's Saved list was left as it is (the owner's choice).
+  - Raised for the owners: the Saved `Recent` label orders by posting date; Lập's TC-06 will stop at Validate CV while the Profile CV is the old sample.
+
+---
+
+### P-65: TC-08 finds its card by title; TC-10 runs offline with `adb`
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Làm luôn", after the TC-08 and TC-10 failures in P-64.
+- **Output:**
+  - `e2e_test/test_saved.py` TC-08 finds the saved listing by its title, reports `saved_card_found` instead of the first card, and may unsave only that card, with `Undo` as one quick sequence.
+  - `e2e_test/test_applications.py` TC-10 (now `test_tc10_application_list_stays_visible_offline`) turns Wi-Fi and data off with `set_network(False)` and back on in `finally`. It asserts a visible card, a position, the `N application(s)` line, no error and no `Retry`.
+  - Commit `f9b5f43`.
+- **Verification:** `python -m py_compile` → OK; `pytest --collect-only` → 16 tests. **Not run on a device yet**: there was no model quota left before the 15:00 reset.
+- **Decision:**
+  - Accepted. TC-10 now checks what the app does offline (Firestore cache). An error with `Retry` would appear only when the stream itself fails.
+  - TC-10 loses its "Native" part, because the native sign-in case TC-01 already covers native UI.
+
+---
+
+### P-66: ARTEMIS cases TC-13 (open a notification) and TC-15 (permission dialog)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Viết TC-13, TC-15". These became possible once PR #24 (FCM, Notification Center) was merged.
+- **Output:**
+  - `e2e_test/test_notifications.py`:
+    - TC-13 sends the app to the background, waits up to 180 s for the operator to send one FCM message with route `/saved`, then has the agent open it from the shade. It checks the `Saved` screen and that the Notifications screen lists the same title as `Read`.
+    - TC-15 revokes `POST_NOTIFICATIONS`, clears its flags, relaunches the app, and has the agent read the dialog and tap `Allow`. It checks `Home` and the granted permission, and always grants the permission back in `finally`.
+  - `conftest.py` helpers: `reset_notification_permission`, `grant_notification_permission`, `notification_permission_granted`, `app_notification_titles` (parses `dumpsys notification --noredact`), `send_app_to_background`.
+  - `docs/test-plan.md` §3 TC-13/TC-15 rows, now Ready (not run); the guide explains TC-13's manual send.
+- **Verification:**
+  - Every asserted string was read from the code: route handling in `notification_target.dart`; `NotificationCoordinator.signedIn` asks for the permission and `_open` marks a notification read; the `Notifications` title and `Read`/`Unread` labels.
+  - By hand on the emulator: `pm revoke` + `pm clear-permission-flags` + relaunch showed "Allow internly to send you notifications?" with `Allow` / `Don't allow`. `Allow` granted it again.
+  - The helpers ran on the device (permission `True`, no internly notification in the shade).
+  - `py_compile` → OK; `pytest --collect-only` → 18 tests.
+  - **Not run with ARTEMIS yet.**
+- **Decision:**
+  - TC-13 is semi-manual, because the suite must not hold a service-account key.
+  - TC-15 replaces "fresh install" with a permission reset that leaves the sign-in in place; the old "Firebase demo area shows permission granted" check became an `adb` check, because that area is not built (task 4).
+
+---
+
+### P-67: TC-06 (Lập's) made runnable
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "sửa lại tc 06 giúp Lập đi". The fix was asked for on Lập's behalf. The case stays Lập's: his CV match assertions are unchanged.
+- **Output:** `e2e_test/test_apply.py` TC-06:
+  - **CV.** `push_sample_cv()` and `UPLOAD_SAMPLE_CV` replace the Profile CV for the application. The 2026-11-02 Profile sample is too short for `validateCv` (P-64), and no personal CV is sent to the functions.
+  - **Listing.** `CHOOSE_LISTING` searches `Developer` and takes the first card with no `Applied` badge and at least three skill tags. A Home card without skills shows "Nothing to compare yet" with no gaps. A first draft also skipped `Recruitment Intern` by name to protect TC-05; P-68 removed that and made TC-05 itself skip applied listings.
+  - **Validate CV.** Its extra "tap 'Continue to review'" is gone, because the app moves to `Review application` by itself (`cv_validation_screen.dart` `onValid`).
+  - **Assertions.** `FILL_PERSONAL` added; the success recap must now equal the chosen card's title and company.
+  - `docs/test-plan.md` TC-06 row updated to match.
+- **Verification:**
+  - Copy checked in `cv_match_step.dart`: `% match`, `N of M requirements matched`, `Gaps to review`, and `Continue` enabled while loading. The CV match → Validate CV → Review → `Application submitted!` path was walked by hand on 2026-11-06 (P-64).
+  - `py_compile` → OK; `pytest --collect-only` → TC-06 and TC-07 collected.
+  - **Not run with ARTEMIS yet.**
+- **Decision:** Applied at the operator's request; to be confirmed with Lập. Each run still submits a real application, as the flow requires.
+
+---
+
+### P-68: TC-05 takes the first unapplied, unsaved card
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "ok sửa đi". The request asked to stop protecting TC-05 by a hard-coded listing title in TC-06 and to make TC-05 itself robust.
+- **Output:**
+  - `e2e_test/test_detail.py` TC-05 searches `Intern` and opens the first card with no `Applied` badge whose bookmark is not filled. TC-06 and TC-08 apply to and save listings, applications cannot be deleted, and the case asserts `Apply now` and `Save`.
+  - `test_apply.py` `CHOOSE_LISTING` no longer names `Recruitment Intern`: listings come from the sync and expire after about 7 days, so a title in a test goes stale.
+  - The `test_saved.py` comment no longer mentions TC-05.
+  - `docs/test-plan.md` TC-05 row changed to Ready, to rerun. Its 2026-11-05 result (3/3) was obtained with the earlier "first card" wording, and the §4 row keeps it as history. TC-06 row updated to match.
+- **Verification:** `py_compile` → OK; `pytest --collect-only` → 18 tests. **Not run on a device yet**: TC-05 needs three new runs.
+- **Decision:** Accepted. TC-05 still checks the same behaviour (Detail opens the tapped card; `Apply now`, `Save`; Back keeps the query) but no longer depends on which listing is first.
+
+---
+
+### P-69: Search — `Find Internships` disabled when empty; the field follows Search Results
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "valid lại màn search khi search input trống nhưng button find intership vẫn bấm được", then "sao tôi search inter xong bấm x ở ô search rồi qua về home rồi bấm lại thanh search thì nó chưa clear input "inter" nữa".
+- **Output:**
+  - `search_screen.dart`: `Find Internships` gets `onPressed: null` (the design-system Primary disabled state) while the trimmed query is empty and no work mode is selected; a `ValueListenableBuilder` on the field's controller re-enables it as soon as the student types. Before, the tap did nothing.
+  - Stale query: Search and Search Results each own a text field, and the Search tab stays alive under Search Results (`StatefulShellRoute.indexedStack`). Clearing on Results (the `Clear search` button, the query chip, `Clear all`, `Clear filters`) left the old term on Search, where Home's search bar or the Search tab brings it back.
+  - `search_viewmodel.dart`: `SearchState.query` (the term last searched from this tab) and `syncQuery()`. Search sets it on submit and on `Show N results`; Search Results reports every query change through one `ref.listen`; Search writes the value into its field with `ref.listen`. Every existing state rebuild carries `query`.
+  - Tests: `search_screen_test.dart` (disabled without a query or work mode, `'   '` stays disabled, a work mode alone enables it and opens Results), `search_viewmodel_test.dart` (`syncQuery` trims and keeps the work mode; later snapshots keep the query), `router_test.dart` group "the Search field follows Search Results" (the reported path: clear on Results → Home → Home's search bar → empty field; a new query on Results shows on Search). Existing tests that type and tap at once now pump one frame in between, because the button only enables after a rebuild.
+  - `docs/design-traceability.md` Search row.
+- **Verification:**
+  - `dart format --output=none --set-exit-if-changed lib test` → 0 changed; `flutter analyze` → No issues found.
+  - Search tests (`router_test`, `search_viewmodel_test`, `search_screen_test`, `search_results_screen_test`) → 64 passed.
+  - With the field update in `SearchScreen` switched off, both new router tests fail (`Actual: 'inter'`), so they catch the reported bug. After a failure, `flutter test` waited instead of exiting (a passing run exits normally); not investigated here.
+  - Full suite → 654 passed (test-report Run 31).
+  - Device (profile build, emulator `Pixel_API_36`): empty field → button disabled; `inter` → enabled → Results; `Clear search` on Results → Home → Home's search bar → empty Search field; a new query `Python` on Results → Search tab shows `Python` (Run 31 #5–9).
+- **Decision:** Accepted. No design change: the disabled state is the Primary button's documented state, and screen-spec §Search opens results only after a query or filters.
+
+---
+
+### P-70: Job type / allowance chips on Search Results; Edit skills no longer wipes Profile skills
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "mình sửa lun ik sửa sao cho nó chạy đúng logic và thuận tiện để test tiếp tục", after ARTEMIS TC-03 failed 0/3 and the operator reported "add skill ở application form … refresh hết skill lấy từ profile và đổi luôn ở profile".
+- **Output:**
+  - **Filter chips.** `SearchFilterCriteria.criteriaCount` (the Filters badge) counted `jobType` and `allowanceRange`, but `_ActiveFiltersRow` had no chip for them, so after `Job type: Internship` the list shrank (54 → 23) with only the query chip shown. `search_results_screen.dart` now shows `filter_job_type` and `filter_allowance` chips (not for `Any …`); `SearchResultsViewModel.clearJobType()` / `clearAllowanceRange()` remove them.
+  - **Edit skills.** `EditSkillsViewModel.build()` read `profileViewModelProvider` once. That provider is auto-dispose and only the Profile screens watch it, so from the Apply Form `Add skill` (CR-16) on a fresh start it was still `ViewLoading`: the draft started empty and `Save changes` stored `[new skill]`, replacing the Profile skills. The view model now listens to the profile (which also keeps it alive), seeds the draft from the first snapshot, and has `ready`; `toggle`, `clearAll` and `save` do nothing and `Save changes` is disabled until then. Later snapshots still do not reset the draft.
+  - Tests: Results VM (`clearJobType` / `clearAllowanceRange` keep the other filters), Results widget (both chips shown and removable; `Any …` shows none), profile VM (opened before the profile loaded: not ready, edits and save ignored, then seeded; later snapshots keep the draft), Apply Form widget (`Add skill` → `2 chosen` → add `Git` → `Save changes` → Profile skills `[Flutter, Dart, Git]`).
+  - `docs/design-traceability.md` Search Results and Profile rows.
+  - Not changed: `EditProfileViewModel` and `EditPreferencesViewModel` read the profile the same way, but they open only from the Profile tab, where it has loaded.
+- **Verification:**
+  - A temporary probe test on the old code: opened before the profile loaded, selected `[]`; saving `Python` left the Profile with `[Python]` (`Flutter`, `Dart`, `Git` lost). Probe deleted.
+  - The new Apply Form test fails on the old code (`Found 0 widgets with text "2 chosen"`) and passes on the new one.
+  - Format, analyze and the full suite: test-report Run 32.
+- **Decision:** Accepted. No design change: chips use the existing active filter chip, and the disabled `Save changes` is the Primary button's documented state.
+
+---
+
+### P-71: Flow 1 ARTEMIS runs; TC-18 and TC-19 reworded
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Run Flow 1", then "Fix and rerun" for TC-18 / TC-19, "Switch to 3.1" and "ok làm nốt đi".
+- **Output:**
+  - `e2e_test/test_apply_form.py` TC-18: `Continue to review` may open `CV match` (Remote Config `cv_match_enabled` on) or `Validate CV`.
+  - TC-19: reports every line under the CV file name after `Update CV` and the sheet has closed; asserts `… · PDF` and `Uploaded for this internship` among them.
+  - `e2e_test/conftest.py` `UPLOAD_SAMPLE_CV` (also used by TC-06): replace the CV even if the Profile CV is shown.
+  - `docs/test-plan.md` TC-03 – TC-05, TC-18 – TC-20 rows, §4 results and causes; `evidence/artemis/e2e-environment-20261106.md` Flow 1 section; runs 35–65 appended to `evidence/artemis/runs-20261106.jsonl`.
+- **Verification:** 31 ARTEMIS runs, 10:30–12:29. Each Flow 1 case has 3 counted passes: TC-03 after the P-70 app fix, TC-18 and TC-19 on the new wording. The failed runs are listed with their causes in the evidence file: an app bug, a wrong expectation, ambiguous wording, and one quota timeout.
+- **Decision:** Accepted. The TC-03 failure was a real app bug and was fixed in the app (P-70), not in the test.
 
 ---
 

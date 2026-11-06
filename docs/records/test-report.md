@@ -564,6 +564,51 @@ Evidence: `evidence/screens/cv-match-extraction-20261106.png` (model
 extraction), `evidence/screens/cv-match-groq-20261106.png` (vocabulary
 fallback), `evidence/screens/cv-match-gaps-20261106.png`.
 
+## Run 31: Search — empty query and the field after Search Results (2026-11-06)
+
+Branch `fix/search-empty-query` from `dev` `1255677`, uncommitted working tree.
+Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable · Android emulator
+`Pixel_API_36`. AI log P-69. Device screenshots show the signed-in account, so
+they are not committed (results read from `uiautomator dump`).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | 211 files, 0 changed |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` (full suite) | **654 tests, all passed**; 6 new: `Find Internships` disabled without a query or a work mode, a work mode alone enables it, `syncQuery` keeps the trimmed term and the work mode, later snapshots keep the query, a query cleared on Results is not back on Search (Home → Home's search bar), a new query on Results shows on Search |
+| 4 | Negative check: field update in `SearchScreen` switched off | Both new router tests **fail** (`Expected: empty` / `'Dart'`, `Actual: 'inter'`), so they catch the reported bug; code restored afterwards |
+| 5 | `flutter build apk --profile --dart-define-from-file=.env` + `adb install -r` on emulator `Pixel_API_36` (API 36, 1080 × 2400), signed-in test account | Built (107.8 MB), installed |
+| 6 | Device: Search tab with an empty field | **Passed**: `Find Internships` shown disabled (`enabled=false` in the UI dump); tapping it stays on Search |
+| 7 | Device: type `inter` | **Passed**: the button turns blue (enabled); tapping it opens Search Results (`54 internships found`) |
+| 8 | Device, reported path: `Clear search` on Results → Home → Home's search bar | **Passed**: Search opens with an empty field (`Search role, company, skill` hint) and `Find Internships` disabled; before the fix it showed `inter` |
+| 9 | Device: recent search `Developer` → type `Python` on Results + Enter → tap the Search tab | **Passed**: Results `27 internships found`; the Search field shows `Python` |
+
+Findings:
+
+1. One router test and one Search test typed and tapped `Find Internships` in
+   the same frame; the button only enables after a rebuild, so they now pump
+   one frame in between. The two other router failures in the first run only
+   followed that one and pass unchanged.
+2. After a failing router test, `flutter test` waited instead of exiting;
+   passing runs exit normally. Not investigated in this change.
+
+## Run 32: Job type / allowance chips; Edit skills from the Apply Form (2026-11-06)
+
+Branch `fix/filter-chips-and-skills-sheet` from `dev` `b08b47f`, uncommitted
+working tree. Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable ·
+Android emulator `Pixel_API_36`. AI log P-70.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | 211 files, 0 changed |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` (full suite) | **660 tests, all passed** (+6: Results VM clears job type / allowance alone; Results widget chips shown and removable, none for `Any …`; Edit skills opened before the profile loaded waits, ignores edits and save, then seeds; later snapshots keep the draft; Apply Form `Add skill` keeps the Profile skills) |
+| 4 | Negative check: old `edit_skills_viewmodel.dart` / `edit_skills_sheet.dart` from `dev` | The new Apply Form test **fails** (`Found 0 widgets with text "2 chosen"`); code restored afterwards |
+| 5 | Probe on the old code (temporary test, deleted) | Profile `[Flutter, Dart, Git]`, sheet opened before the profile loaded: selected `[]`; saving `Python` left `[Python]` |
+| 6 | Profile build installed on the emulator | The first launch after install showed "internly isn't responding": the host was short of memory (emulator about 7 GB, Gradle daemon 1.4 GB on an 8 GB Mac). After `./gradlew --stop` the app started in 3.6 s |
+| 7 | Device: cold start, Profile tab not opened → Search `Recruitment` → card → `Apply now` → `Add skill` | **Passed**: the sheet shows the 4 Profile skills (`4 chosen`: Git, React, Next.js, JavaScript); before the fix it opened empty. Closed with `Cancel`, nothing saved |
+| 8 | Device: Search `Intern` → Filters → `Job type: Internship` → `Show 23 results` | **Passed**: chips `Internship` and `Intern`, Filters badge `2`, `23 internships found`; removing the `Internship` chip → `54 internships found` |
+
 ---
 
 ## Run 31: Firebase demo area (G-06) — 2026-11-06

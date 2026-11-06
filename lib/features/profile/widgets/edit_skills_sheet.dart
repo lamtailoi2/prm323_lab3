@@ -35,11 +35,15 @@ class EditSkillsSheet extends ConsumerWidget {
         final AppException error => error,
         _ => null,
       },
-      onPrimary: () async {
-        if (await viewModel.save() && context.mounted) {
-          Navigator.of(context).pop();
-        }
-      },
+      // Disabled until the profile has loaded: saving the empty draft would
+      // replace the student's skills.
+      onPrimary: state.ready
+          ? () async {
+              if (await viewModel.save() && context.mounted) {
+                Navigator.of(context).pop();
+              }
+            }
+          : null,
       children: [
         AppSearchField(
           hintText: 'Search skills (e.g. Flutter, SQL, Python)',

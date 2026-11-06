@@ -14,7 +14,6 @@ import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
 import 'package:internly/services/saved_internship_service.dart';
-import 'package:internly/services/saved_service.dart';
 import 'package:internly/services/search_history_service.dart';
 import 'package:internly/services/user_profile_service.dart';
 
@@ -113,8 +112,6 @@ void main() {
       final internships = listings ?? FakeInternshipService();
       final saved = FakeSavedInternshipService()..seed(savedListings);
       addTearDown(saved.dispose);
-      final savedIds = FakeSavedService();
-      addTearDown(savedIds.dispose);
       final remoteConfig = FakeRemoteConfigService();
       final searchHistory = FakeSearchHistoryService();
       final profiles = FakeUserProfileService();
@@ -137,7 +134,6 @@ void main() {
             userProfileServiceProvider.overrideWithValue(profiles),
             applicationServiceProvider.overrideWithValue(applications),
             savedInternshipServiceProvider.overrideWithValue(saved),
-            savedServiceProvider.overrideWithValue(savedIds),
           ],
           child: const InternlyApp(),
         ),
@@ -202,6 +198,8 @@ void main() {
         );
         await tester.pumpAndSettle();
         await tester.enterText(find.byType(TextField), 'Flutter');
+        // A frame passes between typing and tapping, which enables the button.
+        await tester.pump();
         await tester.tap(find.text('Find Internships'));
         await tester.pumpAndSettle();
         expect(find.text('1 internship found'), findsOneWidget);
@@ -218,6 +216,76 @@ void main() {
         expect(find.widgetWithText(TextField, 'Flutter'), findsOneWidget);
       },
     );
+
+    group('the Search field follows Search Results', () {
+      Future<void> searchFromSearchTab(WidgetTester tester, String term) async {
+        final listing = testInternship('1', title: 'Flutter Developer Intern');
+        final listings = FakeInternshipService()
+          ..results = [listing]
+          ..byKey[listing.key] = listing;
+        await pumpApp(tester, user: testUser, listings: listings);
+
+        await tester.tap(
+          find.descendant(
+            of: find.byType(NavigationBar),
+            matching: find.text('Search'),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), term);
+        await tester.pump();
+        await tester.tap(find.text('Find Internships'));
+        await tester.pumpAndSettle();
+        expect(find.widgetWithText(TextField, term), findsOneWidget);
+      }
+
+      String searchFieldText(WidgetTester tester) {
+        expect(find.text('Find Internships'), findsOneWidget);
+        return tester
+            .widget<TextField>(find.byType(TextField))
+            .controller!
+            .text;
+      }
+
+      testWidgets('a query cleared on Results is not back on Search', (
+        tester,
+      ) async {
+        await searchFromSearchTab(tester, 'inter');
+
+        await tester.tap(find.byTooltip('Clear search'));
+        await tester.pumpAndSettle();
+        // The reported path: Home, then Home's search bar.
+        await tester.tap(
+          find.descendant(
+            of: find.byType(NavigationBar),
+            matching: find.text('Home'),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(TextField, 'Search internships'));
+        await tester.pumpAndSettle();
+
+        expect(searchFieldText(tester), isEmpty);
+      });
+
+      testWidgets('a new query on Results shows on Search', (tester) async {
+        await searchFromSearchTab(tester, 'inter');
+
+        await tester.enterText(find.byType(TextField), 'Dart');
+        await tester.testTextInput.receiveAction(TextInputAction.search);
+        await tester.pumpAndSettle();
+        // Tapping the current tab opens its first screen, Search.
+        await tester.tap(
+          find.descendant(
+            of: find.byType(NavigationBar),
+            matching: find.text('Search'),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(searchFieldText(tester), 'Dart');
+      });
+    });
 
     testWidgets('a Saved card opens Detail; Back returns to Saved', (
       tester,

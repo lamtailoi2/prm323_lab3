@@ -81,7 +81,7 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 ## 3. State management and dependency injection (Riverpod 3)
 
 - **Riverpod only.** No Provider, Bloc, GetX, or `setState` for shared state. No singletons accessed from widgets.
-- **Services** are `Provider<Interface>` next to their interface (e.g. `serpApiClientProvider`). Tests override them with fakes (`overrideWithValue`).
+- **Services** are `Provider<Interface>` next to their interface (e.g. `internshipServiceProvider`). Tests override them with fakes (`overrideWithValue`).
 - **Data screens** expose a `ViewState<T>` (`core/state/view_state.dart`): `ViewLoading`, `ViewEmpty`, `ViewError(AppException)`, `ViewData(T)`. Views switch over it exhaustively and render the shared skeleton / `StateView.empty` / `StateView.error` + Retry.
 - **One-shot actions** (sign in, submit, save) use `AsyncValue<void>`; `AsyncError` carries an `AppException` whose message is safe to show.
 - **Async rules:** read every provider before the first `await`; check `ref.mounted` before setting state after an `await`; ignore repeated taps while loading.
@@ -134,7 +134,7 @@ sequenceDiagram
         FS-->>IS: snapshot of active documents
         IS-->>VM: List<Internship> (malformed docs skipped + logged)
         VM->>VM: split into Recommended / Recently Posted (Remote Config limits)
-        VM->>A: logEvent("search", {search_term, result_count, elapsed_sec})
+        VM->>A: logEvent("search", {search_term, result_count, elapsed_sec, source: home})
         VM-->>V: ViewData → InternshipCard list
     else empty pool
         IS-->>VM: []

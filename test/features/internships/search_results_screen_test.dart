@@ -14,7 +14,7 @@ import 'package:internly/models/internship.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/internship_service.dart';
-import 'package:internly/services/saved_service.dart';
+import 'package:internly/services/saved_internship_service.dart';
 import 'package:internly/services/search_history_service.dart';
 import 'package:internly/theme/app_theme.dart';
 
@@ -23,14 +23,14 @@ import '../../helpers/pump.dart';
 
 void main() {
   late FakeInternshipService internships;
-  late FakeSavedService saved;
+  late FakeSavedInternshipService saved;
   late FakeSearchHistoryService history;
   late FakeAnalyticsService analytics;
   late Set<String> appliedKeys;
 
   setUp(() {
     internships = FakeInternshipService();
-    saved = FakeSavedService();
+    saved = FakeSavedInternshipService();
     history = FakeSearchHistoryService();
     analytics = FakeAnalyticsService();
     appliedKeys = <String>{};
@@ -54,7 +54,7 @@ void main() {
       ProviderScope(
         overrides: [
           internshipServiceProvider.overrideWithValue(internships),
-          savedServiceProvider.overrideWithValue(saved),
+          savedInternshipServiceProvider.overrideWithValue(saved),
           searchHistoryServiceProvider.overrideWithValue(history),
           analyticsServiceProvider.overrideWithValue(analytics),
           appliedJobsProvider.overrideWith((ref) => Stream.value(appliedKeys)),
@@ -203,6 +203,62 @@ void main() {
     expect(find.byKey(const ValueKey('filter_mode_remote')), findsNothing);
   });
 
+  testWidgets('Job type and allowance filters show chips that remove them', (
+    tester,
+  ) async {
+    internships.results = sampleListings;
+    await pumpSearchResults(
+      tester,
+      initialCriteria: const SearchFilterCriteria(
+        jobType: 'Internship',
+        allowanceRange: 'Paid only',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('filter_job_type')),
+        matching: find.text('Internship'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('filter_allowance')),
+        matching: find.text('Paid only'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('filter_job_type')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('filter_job_type')), findsNothing);
+    expect(find.byKey(const ValueKey('filter_allowance')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('filter_allowance')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('filter_allowance')), findsNothing);
+    expect(find.text('Clear filters'), findsNothing);
+  });
+
+  testWidgets('"Any" job type and allowance show no chip', (tester) async {
+    internships.results = sampleListings;
+    await pumpSearchResults(
+      tester,
+      initialQuery: 'Flutter',
+      initialCriteria: const SearchFilterCriteria(
+        jobType: 'Any job type',
+        allowanceRange: 'Any allowance',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('filter_query')), findsOneWidget);
+    expect(find.byKey(const ValueKey('filter_job_type')), findsNothing);
+    expect(find.byKey(const ValueKey('filter_allowance')), findsNothing);
+  });
+
   testWidgets('tapping Clear filters shows all listings', (tester) async {
     internships.results = sampleListings;
     await pumpSearchResults(
@@ -273,7 +329,10 @@ void main() {
     await tester.tap(bookmarkButtons.first);
     await tester.pumpAndSettle();
 
-    expect(saved.savedByUid[testUser.uid], contains(sampleListings[1].key));
+    // The write goes to the shared saved collection the Saved screen reads,
+    // and the card flips to the saved state.
+    expect(saved.savedKeys, contains(sampleListings[1].key));
+    expect(find.byTooltip('Remove from saved'), findsOneWidget);
   });
 
   testWidgets('opens filter sheet and displays all sections', (tester) async {

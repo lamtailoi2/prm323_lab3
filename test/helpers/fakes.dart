@@ -22,7 +22,6 @@ import 'package:internly/services/file_storage_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
 import 'package:internly/services/saved_internship_service.dart';
-import 'package:internly/services/saved_service.dart';
 import 'package:internly/services/search_history_service.dart';
 import 'package:internly/services/user_profile_service.dart';
 
@@ -509,42 +508,6 @@ class FakeAnalyticsService implements AnalyticsService {
 
   @override
   Future<void> setUserId(String? uid) async => userIds.add(uid);
-}
-
-/// In-memory [SavedService] for tests.
-class FakeSavedService implements SavedService {
-  final Map<String, Set<String>> savedByUid = <String, Set<String>>{};
-  AppException? error;
-  final StreamController<List<String>> _updates =
-      StreamController<List<String>>.broadcast();
-
-  @override
-  Stream<List<String>> watchSavedIds(String uid) async* {
-    final failure = error;
-    if (failure != null) throw failure;
-    yield (savedByUid[uid] ?? const <String>{}).toList(growable: false);
-    yield* _updates.stream;
-  }
-
-  @override
-  Future<void> save(String uid, String internshipId) async {
-    final failure = error;
-    if (failure != null) throw failure;
-    final set = savedByUid.putIfAbsent(uid, () => <String>{});
-    set.add(internshipId);
-    _updates.add(set.toList(growable: false));
-  }
-
-  @override
-  Future<void> unsave(String uid, String internshipId) async {
-    final failure = error;
-    if (failure != null) throw failure;
-    final set = savedByUid.putIfAbsent(uid, () => <String>{});
-    set.remove(internshipId);
-    _updates.add(set.toList(growable: false));
-  }
-
-  Future<void> dispose() => _updates.close();
 }
 
 /// In-memory [SavedInternshipService] that keeps the saved keys in a map and
