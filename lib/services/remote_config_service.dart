@@ -124,10 +124,21 @@ class FirebaseRemoteConfigService implements RemoteConfigService {
   @override
   Map<String, ({String value, String source})> snapshot() {
     return _config.getAll().map(
-      (key, value) =>
-          MapEntry(key, (value: value.asString(), source: value.source.name)),
+      (key, value) => MapEntry(key, (
+        value: value.asString(),
+        source: sourceName(value.source),
+      )),
     );
   }
+
+  /// Stable source names for the UI. The SDK enum is `valueRemote` /
+  /// `valueDefault` / `valueStatic`, which must not leak into the screen.
+  @visibleForTesting
+  static String sourceName(ValueSource source) => switch (source) {
+    ValueSource.valueRemote => 'remote',
+    ValueSource.valueStatic => 'static',
+    ValueSource.valueDefault => 'default',
+  };
 
   @override
   Stream<void> get onUpdated => _updates.stream;

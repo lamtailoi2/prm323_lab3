@@ -611,6 +611,25 @@ Android emulator `Pixel_API_36`. AI log P-70.
 
 ---
 
+## Run 31: Firebase demo area (G-06) — 2026-11-06
+
+Branch `feat/fcm-notification-center`, working tree with the Firebase demo screen. Environment: Windows 11 · Flutter 3.47.8.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib/features/profile lib/app/router.dart test/features/profile` | 1 file reformatted, the rest already formatted |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test/features/profile/firebase_demo_viewmodel_test.dart test/features/profile/firebase_demo_screen_test.dart test/features/profile/profile_screen_test.dart` | **39 passed** |
+| 4 | `flutter test` | **663 passed** |
+| 5 | Device walk on `emulator-5554` after `adb install`: `/profile/firebase` | **Passed** after the source fix: `cv_match_enabled = true`, `home_recent_limit = 10`, `home_recommended_limit = 6`, all **`From Firebase`**; `Send a non-fatal error` showed the confirmation SnackBar. Test crash **not tapped** in this run |
+| 6 | Evidence screenshots | App states saved as `evidence/remote-config/remote-config-app-from-firebase-20261106.png` and `evidence/crashlytics/crashlytics-nonfatal-sent-20261106.png`. Console before/after and the Crashlytics dashboard are **not captured** |
+
+Fix found during the device walk: `RemoteConfigValue.source.name` returns `valueRemote` / `valueDefault` / `valueStatic`, not `remote` / `default` / `static`, so the demo screen labelled remote values `In-app default`. `FirebaseRemoteConfigService.snapshot()` now maps the enum through `sourceName()`, with a unit test and a widget test for the `From Firebase` label.
+
+Follow-ups: capture `evidence/crashlytics/` (dashboard with fatal + non-fatal, user ID and custom keys) and the Console side of `evidence/remote-config/` (values before/after a change) as described in [`evidence/README.md`](../evidence/README.md). Test crash not run yet. Figma updates for DC-24, DC-25 and DC-26 remain open.
+
+---
+
 ## Run template
 
 ```markdown

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +10,7 @@ import 'package:internly/core/widgets/app_button.dart';
 import 'package:internly/core/widgets/app_tag.dart';
 import 'package:internly/core/widgets/app_text_field.dart';
 import 'package:internly/features/profile/screens/edit_profile_screen.dart';
+import 'package:internly/features/profile/screens/firebase_demo_screen.dart';
 import 'package:internly/features/profile/screens/profile_screen.dart';
 import 'package:internly/features/profile/viewmodels/edit_profile_viewmodel.dart';
 import 'package:internly/features/profile/widgets/profile_sections.dart';
@@ -23,6 +23,7 @@ import 'package:internly/services/document_picker_service.dart';
 import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/file_storage_service.dart';
 import 'package:internly/services/notification_service.dart';
+import 'package:internly/services/remote_config_service.dart';
 import 'package:internly/services/user_profile_service.dart';
 import 'package:internly/theme/app_theme.dart';
 
@@ -65,6 +66,7 @@ void main() {
   late FakeExternalLinkService links;
   late FakeCrashlyticsService crashlytics;
   late FakeNotificationService notificationService;
+  late FakeRemoteConfigService remoteConfig;
 
   setUp(() {
     auth = FakeAuthService(initialUser: testUser);
@@ -75,12 +77,14 @@ void main() {
     links = FakeExternalLinkService();
     crashlytics = FakeCrashlyticsService();
     notificationService = FakeNotificationService();
+    remoteConfig = FakeRemoteConfigService();
   });
 
   tearDown(() async {
     await profiles.dispose();
     await auth.dispose();
     await notificationService.dispose();
+    remoteConfig.dispose();
   });
 
   Future<void> pumpProfile(
@@ -101,6 +105,10 @@ void main() {
               path: 'edit',
               builder: (context, state) => const EditProfileScreen(),
             ),
+            GoRoute(
+              path: 'firebase',
+              builder: (context, state) => const FirebaseDemoScreen(),
+            ),
           ],
         ),
       ],
@@ -117,6 +125,7 @@ void main() {
           externalLinkServiceProvider.overrideWithValue(links),
           crashlyticsServiceProvider.overrideWithValue(crashlytics),
           notificationServiceProvider.overrideWithValue(notificationService),
+          remoteConfigServiceProvider.overrideWithValue(remoteConfig),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light(),
@@ -278,51 +287,17 @@ void main() {
     expect(analytics.events, contains('logout'));
   });
 
-  testWidgets('crash test control asks first, then forces the crash', (
-    tester,
-  ) async {
+  testWidgets('Diagnostics opens the Firebase demo area', (tester) async {
     await pumpProfile(tester);
-    await scrollTo(tester, find.text('Simulate app crash'));
-    expect(find.text('Diagnostics'), findsOneWidget);
+    await scrollTo(tester, find.text('Firebase demo'));
 
-    await tester.tap(find.text('Simulate app crash'));
-    await tester.pumpAndSettle();
-    expect(find.text('Simulate a crash?'), findsOneWidget);
-
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-    expect(crashlytics.crashCalls, 0);
-
-    await tester.tap(find.text('Simulate app crash'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Crash now'));
-    await tester.pumpAndSettle();
-    expect(crashlytics.crashCalls, 1);
-  });
-
-  testWidgets('FCM token tile copies the device token', (tester) async {
-    final copied = <String?>[];
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-          if (call.method == 'Clipboard.setData') {
-            copied.add(
-              (call.arguments as Map<Object?, Object?>)['text'] as String?,
-            );
-          }
-          return null;
-        });
-    addTearDown(
-      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(SystemChannels.platform, null),
-    );
-
-    await pumpProfile(tester);
-    await scrollTo(tester, find.text('Copy FCM token'));
-    await tester.tap(find.text('Copy FCM token'));
+    await tester.tap(find.text('Firebase demo'));
     await tester.pumpAndSettle();
 
-    expect(copied, ['fcm-test-token']);
-    expect(find.text('FCM token copied.'), findsOneWidget);
+    expect(find.text('Remote Config'), findsOneWidget);
+    expect(find.textContaining('home_recommended_limit'), findsOneWidget);
+    expect(find.text('Send a non-fatal error'), findsOneWidget);
+    expect(find.text('Simulate app crash'), findsOneWidget);
   });
 
   testWidgets('settings rows without a screen say so honestly', (tester) async {

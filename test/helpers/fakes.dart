@@ -279,6 +279,9 @@ class FakeRemoteConfigService implements RemoteConfigService {
     RemoteConfigKeys.cvMatchEnabled: true,
   };
 
+  /// Source per key, e.g. `remote`; keys without an entry use `default`.
+  final Map<String, String> sources = <String, String>{};
+
   final StreamController<void> _updates = StreamController<void>.broadcast();
 
   @override
@@ -296,7 +299,10 @@ class FakeRemoteConfigService implements RemoteConfigService {
   @override
   Map<String, ({String value, String source})> snapshot() => {
     for (final entry in values.entries)
-      entry.key: (value: '${entry.value}', source: 'default'),
+      entry.key: (
+        value: '${entry.value}',
+        source: sources[entry.key] ?? 'default',
+      ),
   };
 
   /// Changes [key] and notifies listeners like a console update would.
