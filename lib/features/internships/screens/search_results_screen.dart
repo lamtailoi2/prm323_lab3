@@ -269,6 +269,26 @@ class _ActiveFiltersRow extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.s8),
           ],
+          // Every filter the Filters badge counts has a chip, so the
+          // student sees why the list is shorter and can remove it here.
+          if (state.criteria.jobType case final jobType?
+              when jobType != 'Any job type') ...[
+            _ActiveFilterChip(
+              key: const ValueKey('filter_job_type'),
+              label: jobType,
+              onDeleted: viewModel.clearJobType,
+            ),
+            const SizedBox(width: AppSpacing.s8),
+          ],
+          if (state.criteria.allowanceRange case final allowance?
+              when allowance != 'Any allowance') ...[
+            _ActiveFilterChip(
+              key: const ValueKey('filter_allowance'),
+              label: allowance,
+              onDeleted: viewModel.clearAllowanceRange,
+            ),
+            const SizedBox(width: AppSpacing.s8),
+          ],
           if (state.query.trim().isNotEmpty) ...[
             _ActiveFilterChip(
               key: const ValueKey('filter_query'),

@@ -202,6 +202,34 @@ void main() {
     expect(state.activeFilterCount, 0);
   });
 
+  test('clearing the job type or allowance drops only that filter', () async {
+    internships.results = sampleListings;
+    final container = createContainer();
+    final notifier = listen(container);
+    await settle();
+
+    notifier.setCriteria(
+      const SearchFilterCriteria(
+        workModes: {WorkMode.remote},
+        jobType: 'Internship',
+        allowanceRange: 'Paid only',
+      ),
+    );
+    expect(container.read(searchResultsViewModelProvider).activeFilterCount, 3);
+
+    notifier.clearJobType();
+    var criteria = container.read(searchResultsViewModelProvider).criteria;
+    expect(criteria.jobType, isNull);
+    expect(criteria.allowanceRange, 'Paid only');
+    expect(criteria.workModes, {WorkMode.remote});
+
+    notifier.clearAllowanceRange();
+    criteria = container.read(searchResultsViewModelProvider).criteria;
+    expect(criteria.allowanceRange, isNull);
+    expect(criteria.workModes, {WorkMode.remote});
+    expect(container.read(searchResultsViewModelProvider).activeFilterCount, 1);
+  });
+
   test('sorts by most recent first', () async {
     internships.results = sampleListings;
     final container = createContainer();

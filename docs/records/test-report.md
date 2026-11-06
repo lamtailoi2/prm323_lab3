@@ -592,6 +592,23 @@ Findings:
 2. After a failing router test, `flutter test` waited instead of exiting;
    passing runs exit normally. Not investigated in this change.
 
+## Run 32: Job type / allowance chips; Edit skills from the Apply Form (2026-11-06)
+
+Branch `fix/filter-chips-and-skills-sheet` from `dev` `b08b47f`, uncommitted
+working tree. Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable ·
+Android emulator `Pixel_API_36`. AI log P-70.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | 211 files, 0 changed |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` (full suite) | **660 tests, all passed** (+6: Results VM clears job type / allowance alone; Results widget chips shown and removable, none for `Any …`; Edit skills opened before the profile loaded waits, ignores edits and save, then seeds; later snapshots keep the draft; Apply Form `Add skill` keeps the Profile skills) |
+| 4 | Negative check: old `edit_skills_viewmodel.dart` / `edit_skills_sheet.dart` from `dev` | The new Apply Form test **fails** (`Found 0 widgets with text "2 chosen"`); code restored afterwards |
+| 5 | Probe on the old code (temporary test, deleted) | Profile `[Flutter, Dart, Git]`, sheet opened before the profile loaded: selected `[]`; saving `Python` left `[Python]` |
+| 6 | Profile build installed on the emulator | The first launch after install showed "internly isn't responding": the host was short of memory (emulator about 7 GB, Gradle daemon 1.4 GB on an 8 GB Mac). After `./gradlew --stop` the app started in 3.6 s |
+| 7 | Device: cold start, Profile tab not opened → Search `Recruitment` → card → `Apply now` → `Add skill` | **Passed**: the sheet shows the 4 Profile skills (`4 chosen`: Git, React, Next.js, JavaScript); before the fix it opened empty. Closed with `Cancel`, nothing saved |
+| 8 | Device: Search `Intern` → Filters → `Job type: Internship` → `Show 23 results` | **Passed**: chips `Internship` and `Intern`, Filters badge `2`, `23 internships found`; removing the `Internship` chip → `54 internships found` |
+
 ---
 
 ## Run template
