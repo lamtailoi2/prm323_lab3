@@ -16,6 +16,7 @@ class EditSkillsState {
     required this.suggestions,
     this.query = '',
     this.save = const AsyncData(null),
+    this.ready = true,
   });
 
   /// In the order the student added them.
@@ -26,6 +27,12 @@ class EditSkillsState {
   final List<String> suggestions;
   final String query;
   final AsyncValue<void> save;
+
+  /// `false` until the profile has loaded. The draft starts from the
+  /// profile's skills, so editing or saving before then would replace them
+  /// with an empty list (the sheet also opens from the Apply Form, where the
+  /// Profile tab may not have loaded yet).
+  final bool ready;
 }
 
 final editSkillsViewModelProvider =
@@ -45,12 +52,28 @@ class EditSkillsViewModel extends Notifier<EditSkillsState> {
 
   @override
   EditSkillsState build() {
-    // Seeded once from the profile the sheet was opened on; later profile
-    // updates must not reset the student's draft.
-    final skills = switch (ref.read(profileViewModelProvider)) {
-      ViewData(:final data) => data.profile.skills,
-      _ => const <String>[],
+    // Seeded once from the profile; later profile updates must not reset
+    // the student's draft. Opened from the Apply Form before the Profile tab
+    // ever loaded, the profile is still loading: the sheet then waits for
+    // its first snapshot instead of starting from an empty list. Listening
+    // also keeps the auto-dispose profile alive while the sheet is open.
+    ref.listen(profileViewModelProvider, (_, next) {
+      if (state.ready) return;
+      if (next case ViewData(:final data)) {
+        state = _seeded(data.profile.skills);
+      }
+    });
+    return switch (ref.read(profileViewModelProvider)) {
+      ViewData(:final data) => _seeded(data.profile.skills),
+      _ => const EditSkillsState(
+        selected: <String>[],
+        suggestions: knownSkills,
+        ready: false,
+      ),
     };
+  }
+
+  EditSkillsState _seeded(List<String> skills) {
     _vocabulary = List.unmodifiable([
       ...skills.where(knownSkills.contains),
       ...knownSkills.where((skill) => !skills.contains(skill)),
@@ -62,13 +85,17 @@ class EditSkillsViewModel extends Notifier<EditSkillsState> {
   }
 
   void toggle(String skill) {
+    if (!state.ready) return;
     final selected = state.selected.contains(skill)
         ? state.selected.where((item) => item != skill)
         : [...state.selected, skill];
     _update(selected: List.unmodifiable(selected));
   }
 
-  void clearAll() => _update(selected: const <String>[]);
+  void clearAll() {
+    if (!state.ready) return;
+    _update(selected: const <String>[]);
+  }
 
   void search(String query) {
     final needle = query.trim().toLowerCase();
@@ -86,7 +113,7 @@ class EditSkillsViewModel extends Notifier<EditSkillsState> {
 
   /// Returns `true` once the skills are stored.
   Future<bool> save() async {
-    if (state.save.isLoading) return false;
+    if (state.save.isLoading || !state.ready) return false;
     final service = ref.read(userProfileServiceProvider);
     final analytics = ref.read(analyticsServiceProvider);
     final uid = ref.read(currentUserIdProvider);
@@ -119,6 +146,7 @@ class EditSkillsViewModel extends Notifier<EditSkillsState> {
       suggestions: suggestions ?? state.suggestions,
       query: query ?? state.query,
       save: save ?? state.save,
+      ready: state.ready,
     );
   }
 }
