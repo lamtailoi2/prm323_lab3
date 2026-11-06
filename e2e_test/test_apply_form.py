@@ -46,8 +46,10 @@ async def test_tc18_apply_form_checks_the_cv_before_continue(artemis):
     assert report["step_text"].startswith("Step 1 of 2")
     assert "Your details" in report["step_text"]
     if report["cv_state"] == "file":
-        # Pre-submit Complete: the form hands the CV to Validate CV (Flow 4).
-        assert report["next_app_bar_title"] == "Validate CV"
+        # Pre-submit Complete: the form hands the CV on. CV match comes first
+        # while Remote Config `cv_match_enabled` is on (default), Validate CV
+        # (Flow 4) when it is off.
+        assert report["next_app_bar_title"] in ("CV match", "Validate CV")
     else:
         assert report["next_app_bar_title"] == "Apply Form"
         assert report["cv_error"] == NO_CV
@@ -60,14 +62,18 @@ async def test_tc19_upload_a_cv_for_this_internship(artemis):
     report = await run_case(
         artemis,
         "TC-19",
-        f"{SIGNED_IN} {OPEN_APPLY_FORM} {UPLOAD_SAMPLE_CV} Report the file "
-        "name and the line under it in the 'CV / Resume' section.",
+        f"{SIGNED_IN} {OPEN_APPLY_FORM} {UPLOAD_SAMPLE_CV} Only after you "
+        "have tapped 'Update CV' (or 'Upload CV') and the sheet has closed, "
+        "report the file name and every line of text under it in the 'CV / "
+        "Resume' section, top to bottom.",
         expected_output=(
-            'JSON: {"cv_file_name": string, "cv_source_line": string}'
+            'JSON: {"cv_file_name": string, "cv_lines": [string]}'
         ),
     )
     assert report["cv_file_name"].lower().endswith(".pdf")
-    assert report["cv_source_line"] == "Uploaded for this internship"
+    # Two lines under the name: size + type, then where the CV comes from.
+    assert any(line.endswith("· PDF") for line in report["cv_lines"])
+    assert "Uploaded for this internship" in report["cv_lines"]
 
 
 @pytest.mark.native

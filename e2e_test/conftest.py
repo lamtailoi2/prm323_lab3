@@ -286,8 +286,9 @@ FILL_PERSONAL = (
 # Needs `push_sample_cv()` first. The fictional CV passes Validate CV, and the
 # account's own CV is never sent to the `validateCv` function.
 UPLOAD_SAMPLE_CV = (
-    "In the 'CV / Resume' section tap 'Replace' (or 'Upload CV' if there is "
-    "no file). In the sheet tap 'Choose file'. In the Android file picker "
+    "The 'CV / Resume' section may already show a CV; replace it anyway with "
+    "the sample file. Tap 'Replace' (or 'Upload CV' if there is no file). In "
+    "the sheet tap 'Choose file'. In the Android file picker "
     f"choose '{SAMPLE_CV_NAME}' (open Downloads if it is not listed). Back in "
     "the sheet tap the blue 'Update CV' (or 'Upload CV') button and wait "
     "until the sheet closes."
