@@ -107,6 +107,8 @@ uv run pytest -k tc05 --count 3 -v           # one case by name
 uv run pytest --count 3 -v                   # whole suite: mind the daily quota (§6)
 ```
 
+TC-13 needs you during the run: when it prints *"send one FCM message…"*, send a message with route `/saved` to the test account, from `tools/admin-dashboard` or the Firebase console (Profile → Diagnostics → Copy FCM token). The case waits up to 180 s, so run it with `-s` to see the prompt: `uv run pytest test_notifications.py -k tc13 -s -v`.
+
 What `conftest.py` does for every test:
 
 1. **Cold start.** Before each run it force-stops the app, launches it and waits 10 s. Text or screens left by the previous run then cannot make a case pass. The wait also avoids the "isn't responding" dialog that a debug build shows when input arrives during its splash.

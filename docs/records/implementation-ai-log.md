@@ -616,6 +616,54 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-66: ARTEMIS cases TC-13 (open a notification) and TC-15 (permission dialog)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Viết TC-13, TC-15". These became possible once PR #24 (FCM, Notification Center) was merged.
+- **Output:**
+  - `e2e_test/test_notifications.py`:
+    - TC-13 sends the app to the background, waits up to 180 s for the operator to send one FCM message with route `/saved`, then has the agent open it from the shade. It checks the `Saved` screen and that the Notifications screen lists the same title as `Read`.
+    - TC-15 revokes `POST_NOTIFICATIONS`, clears its flags, relaunches the app, and has the agent read the dialog and tap `Allow`. It checks `Home` and the granted permission, and always grants the permission back in `finally`.
+  - `conftest.py` helpers: `reset_notification_permission`, `grant_notification_permission`, `notification_permission_granted`, `app_notification_titles` (parses `dumpsys notification --noredact`), `send_app_to_background`.
+  - `docs/test-plan.md` §3 TC-13/TC-15 rows, now Ready (not run); the guide explains TC-13's manual send.
+- **Verification:**
+  - Every asserted string was read from the code: route handling in `notification_target.dart`; `NotificationCoordinator.signedIn` asks for the permission and `_open` marks a notification read; the `Notifications` title and `Read`/`Unread` labels.
+  - By hand on the emulator: `pm revoke` + `pm clear-permission-flags` + relaunch showed "Allow internly to send you notifications?" with `Allow` / `Don't allow`. `Allow` granted it again.
+  - The helpers ran on the device (permission `True`, no internly notification in the shade).
+  - `py_compile` → OK; `pytest --collect-only` → 18 tests.
+  - **Not run with ARTEMIS yet.**
+- **Decision:**
+  - TC-13 is semi-manual, because the suite must not hold a service-account key.
+  - TC-15 replaces "fresh install" with a permission reset that leaves the sign-in in place; the old "Firebase demo area shows permission granted" check became an `adb` check, because that area is not built (task 4).
+
+---
+
+### P-67: TC-06 (Lập's) made runnable
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "sửa lại tc 06 giúp Lập đi". The fix was asked for on Lập's behalf. The case stays Lập's: his CV match assertions are unchanged.
+- **Output:** `e2e_test/test_apply.py` TC-06:
+  - **CV.** `push_sample_cv()` and `UPLOAD_SAMPLE_CV` replace the Profile CV for the application. The 2026-11-02 Profile sample is too short for `validateCv` (P-64), and no personal CV is sent to the functions.
+  - **Listing.** `CHOOSE_LISTING` searches `Developer` and takes the first card with no `Applied` badge and at least three skill tags. A Home card without skills shows "Nothing to compare yet" with no gaps. A first draft also skipped `Recruitment Intern` by name to protect TC-05; P-68 removed that and made TC-05 itself skip applied listings.
+  - **Validate CV.** Its extra "tap 'Continue to review'" is gone, because the app moves to `Review application` by itself (`cv_validation_screen.dart` `onValid`).
+  - **Assertions.** `FILL_PERSONAL` added; the success recap must now equal the chosen card's title and company.
+  - `docs/test-plan.md` TC-06 row updated to match.
+- **Verification:**
+  - Copy checked in `cv_match_step.dart`: `% match`, `N of M requirements matched`, `Gaps to review`, and `Continue` enabled while loading. The CV match → Validate CV → Review → `Application submitted!` path was walked by hand on 2026-11-06 (P-64).
+  - `py_compile` → OK; `pytest --collect-only` → TC-06 and TC-07 collected.
+  - **Not run with ARTEMIS yet.**
+- **Decision:** Applied at the operator's request; to be confirmed with Lập. Each run still submits a real application, as the flow requires.
+
+---
+
+### P-68: TC-05 takes the first unapplied, unsaved card
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "ok sửa đi". The request asked to stop protecting TC-05 by a hard-coded listing title in TC-06 and to make TC-05 itself robust.
+- **Output:**
+  - `e2e_test/test_detail.py` TC-05 searches `Intern` and opens the first card with no `Applied` badge whose bookmark is not filled. TC-06 and TC-08 apply to and save listings, applications cannot be deleted, and the case asserts `Apply now` and `Save`.
+  - `test_apply.py` `CHOOSE_LISTING` no longer names `Recruitment Intern`: listings come from the sync and expire after about 7 days, so a title in a test goes stale.
+  - The `test_saved.py` comment no longer mentions TC-05.
+  - `docs/test-plan.md` TC-05 row changed to Ready, to rerun. Its 2026-11-05 result (3/3) was obtained with the earlier "first card" wording, and the §4 row keeps it as history. TC-06 row updated to match.
+- **Verification:** `py_compile` → OK; `pytest --collect-only` → 18 tests. **Not run on a device yet**: TC-05 needs three new runs.
+- **Decision:** Accepted. TC-05 still checks the same behaviour (Detail opens the tapped card; `Apply now`, `Save`; Back keeps the query) but no longer depends on which listing is first.
+
+---
+
 ## Entry template
 
 ```markdown
