@@ -44,12 +44,25 @@ async def test_tc14_sign_out_returns_to_login(artemis):
         artemis,
         "TC-14",
         f"{SIGNED_IN} Tap 'Profile' in the bottom navigation, scroll down to "
-        "'Settings & support' and tap 'Sign out'. After the Login screen "
-        "appears, press the Android Back button once. Report what is visible.",
+        "'Settings & support' and tap 'Sign out'. Note whether the Login "
+        "screen with 'Continue with Google' appears. Press the Android Back "
+        "button once and note what is on screen now: the Internly Login "
+        "screen, the Android home screen with app icons, or another Internly "
+        "screen; and whether a bottom navigation bar is visible. If the "
+        "Internly app is no longer on screen, open the Internly app again. "
+        "Finally note whether the Login screen with 'Continue with Google' "
+        "is shown.",
         expected_output=(
-            'JSON: {"login_button_visible": boolean, '
-            '"bottom_nav_visible": boolean, "app_still_open": boolean}'
+            'JSON: {"login_after_sign_out": boolean, '
+            '"after_back": "login" | "android_home" | "other_app_screen", '
+            '"bottom_nav_visible_after_back": boolean, '
+            '"login_after_reopen": boolean}'
         ),
     )
-    assert report["login_button_visible"] is True
-    assert report["bottom_nav_visible"] is False
+    assert report["login_after_sign_out"] is True
+    # Login is the root after sign-out: Back may close the app (Android
+    # behaviour), but must never reveal a signed-in screen.
+    assert report["after_back"] in ("login", "android_home")
+    assert report["bottom_nav_visible_after_back"] is False
+    # Signed out for real: the next launch starts on Login, not Home.
+    assert report["login_after_reopen"] is True

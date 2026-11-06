@@ -479,6 +479,110 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-57: ARTEMIS host setup, first TC-05 runs and E2E harness fixes
+- **Request:** (Claude Code, Opus 5.5, session 2026-11-05; operator Phạm Nguyễn Hoàng Anh) "guide me to install and run ARTEMIS for Lab 3". Then, step by step at the operator's choice: wait for the overloaded model, switch to Flash-Lite, find why TC-05 fails, fix `conftest.py` (approved by Lâm Tài Lợi, its author), patch ARTEMIS's text input, run TC-05 three times, write the run guide, record and commit.
+- **Output:**
+  - Host setup: ARTEMIS host on macOS (`~/artemis` at `351ca84`, `uv` via Homebrew, `scrcpy`, daemon without `start.sh`). The operator created the Gemini key (free tier) and entered it themself.
+  - Diagnosis, each step checked against the daemon log, the session API or the device:
+    - the default model is capped at 20 requests per day and was overloaded, and the fallback never triggers before the 180 s timeout;
+    - nothing calls the Outputter, so runs return no `output`;
+    - `KEYCODE_PASTE` is ignored by Flutter text fields;
+    - leftover text and the cold-start ANR affected runs.
+  - `e2e_test/conftest.py` (`6fe33a9`): `REPORT_AS_JSON` + `final_report()` (reads `report_task_status` from `/api/sessions/{id}/steps`), and the `cold_start_app` fixture (force-stop, `am start -W`, 10 s).
+  - `e2e_test/artemis-local.patch`: Flash-Lite models and `adb input text` for ASCII.
+  - `docs/guides/artemis-e2e.md`.
+  - `docs/test-plan.md`: model row, §1, TC-05 Done, §4 row and the flaky / failed table.
+  - `evidence/artemis/e2e-environment-20261105.md` with `runs-20261105.jsonl` and three screenshots.
+  - README and disclosure rows.
+- **Verification:**
+  - `artemis doctor` all ✔.
+  - Direct API calls per model (HTTP codes in the evidence file).
+  - Manual input check on the emulator (`keyevent 279` leaves the field empty, `adb shell input text` types).
+  - `git apply --check` of the patch on a clean `351ca84` → applies.
+  - `python -m py_compile conftest.py` → OK.
+  - 11 real TC-05 runs, all recorded with their causes. The final `uv run pytest test_detail.py --count 3 -v` → **3 passed** (traces `505846be`, `045c4d16`, `ebe3d568`, average 65.7 s).
+  - No Flutter code changed, so `flutter analyze` / `flutter test` were not run for this entry.
+- **Decision:**
+  - Modified. The default `gemini-3.8-flash` was replaced, because its free tier (20 requests per day) cannot carry the suite.
+  - ARTEMIS is patched locally instead of changing the app: the paste behaviour is the tool's, and the app's Search code was checked and is correct.
+  - The report is read through the daemon's step API with the client's private `_request` (the pinned client has no public call). Revisit if ARTEMIS is upgraded.
+  - Run 3 passed but is not counted, because it did not type.
+  - Replays stay on the host, because they show the signed-in account.
+
+---
+
+### P-58: Search bookmark uses the Saved feature's write path
+- **Request:** "bấm bookmark saved bên search lại kh lưu đc qua bên saved internship, fix" — tapping the bookmark on a Search Results card showed no item on the Saved screen.
+- **Output:** **Cause:** Search wrote through the legacy `SavedService` (`lib/services/saved_service.dart`), which stored only `{savedAt}` in `users/{uid}/savedInternships/{key}`; `SavedInternshipService.watchSaved` reads the copied listing from the `internship` field and skipped those documents, so the bookmark looked saved on Search but the Saved list stayed empty. Removed the second write path: `SearchResultsViewModel` no longer owns saved state or subscriptions; `SearchResultsScreen` watches `savedInternshipIdsProvider` for the bookmark and calls `SavedViewModel.toggleAndReport(..., source: 'search')`, like Home and Internship Detail, showing a failure in its own SnackBar. Deleted `SavedService`, `savedServiceProvider` and `FakeSavedService`; updated the Search ViewModel/screen/router tests to `FakeSavedInternshipService`, and the bookmark widget test now asserts the shared saved collection receives the key and the card flips to `Remove from saved`.
+- **Verification:** `dart format lib test` → **188 files, 0 changed**; `flutter analyze` → **No issues found!** (74.1 s); `flutter test` → **592 tests, all passed**. On the Android 17 (API 37) emulator (`flutter run -d emulator-5554 --dart-define-from-file=.env`, signed in with the test account): bookmarking `Recruitment Intern` on Search Results filled the icon and the Saved tab changed from 3 to 4 saved items with that listing on top; unbookmarking it on Search returned Saved to 3 and removed the card. Screenshots: `evidence/screens/search-bookmark-saved-20261105.png`, `saved-after-search-bookmark-20261105.png`, `saved-after-search-unsave-20261105.png`.
+- **Decision:** Accepted. This performs the merge that P-44 left to the Search owner: one saved service and one document shape for Home, Search, Detail and Saved, so the same bookmark is readable everywhere.
+
+---
+
+### P-59: runs.jsonl records the pytest result
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) after P-57, write the pytest outcome of each ARTEMIS run into `runs.jsonl`. The pass/fail of TC-05 runs had to be looked up in the daemon log, because `succeeded` is ARTEMIS's own status and stayed `true` when the report check failed.
+- **Output:** `e2e_test/conftest.py`: `_record()` keeps the run in `_pending_run`; a `pytest_runtest_makereport` hook writes it when the test's call phase ends, adding `pytest` (`passed` / `failed`) and `failure` (the assertion or exception message). A test that fails before ARTEMIS runs still gets a line, keyed by the test name. `docs/guides/artemis-e2e.md` §5 and `docs/test-plan.md` §1 describe the new fields.
+- **Verification:** `python -m py_compile conftest.py` → OK. A throwaway test file (fixture overridden, no ARTEMIS call, no device) produced three lines: a pass (`"pytest": "passed"`), a failure after a run (`"succeeded": true`, `"pytest": "failed"`, `"failure": "AssertionError: … no structured output …"`) and a failure before a run (`"failure": "FileNotFoundError: adb"`). The file was deleted and `runs.jsonl` restored to its 11 lines. Not yet seen on a real ARTEMIS run.
+- **Decision:** Accepted. Lines written before this change keep their old shape; nothing in `evidence/` was rewritten.
+
+---
+
+### P-60: ARTEMIS cases for Save (TC-08) and Apply → Success (TC-06, TC-07)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "viết test cho flow 2 và flow 4": task sheet items 8 (Flow 2 Save: TC-07, TC-08) and 9 (Flow 4 Application: TC-06).
+- **Output:**
+  - `e2e_test/test_saved.py` TC-08: Save from Detail, Saved list, open the saved card, unsave, Undo.
+  - `e2e_test/test_apply.py` TC-06: Apply Form → Validate CV → Review → Submit → Success, plus the `application_create` Logcat check. TC-07: an applied listing shows the `You applied on` banner, `View application` and Application Detail.
+  - Every asserted string was read from the screens first: `internship_detail_screen.dart`, `detail_bottom_bar.dart`, `saved_screen.dart`, `cv_validation_step.dart`, `application_review_screen.dart`, `application_success_screen.dart`, `application_detail_screen.dart`.
+  - `FILL_PERSONAL` and a new `UPLOAD_SAMPLE_CV` moved to `conftest.py`. TC-19's instruction text is unchanged (compared as strings).
+  - `docs/test-plan.md` §3: TC-06/07/08 rewritten to the built flow, Ready (not run).
+- **Verification:** `python -m py_compile` on the changed files → OK; `uv run pytest --collect-only -q` → 16 tests collected, including the three new ones. **Not run on a device**: the operator runs them.
+- **Decision:**
+  - Modified from the old plan rows. TC-06 follows the flow the app has (Validate CV → Review → Success), because CV Match Check (2d) is not built (DC-09, task 5).
+  - TC-08 compares Saved counts instead of emptying Saved first, so the account's saved listings stay.
+  - TC-06 / TC-07 use `Developer` listings and TC-08 uses `Python` listings. Applying to or saving TC-05's `Intern` listing would remove the `Apply now` / `Save` buttons it asserts.
+  - TC-06 uses the fictional `Sample_CV.pdf`, so the account's own CV is not sent to `validateCv`.
+  - Superseded on 2026-11-06: when `dev` (PR #24, CV Match) was merged in, TC-06 became Lập's version (CV Match → Validate CV → Submit) and TC-07 searches `Intern` instead of `Developer` (see P-62).
+  - TC-11 (export), TC-13 and TC-15 (notifications) were not written: those screens do not exist yet (tasks 1–3), and writing them now would mean guessing UI (AGENTS.md rule 1).
+
+---
+
+### P-61: TC-14 accepts Back closing the app after sign-out
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Sửa TC-14" after a first exploratory run failed with `assert False is True` on `login_button_visible`.
+- **Output:**
+  - Cause, from the run's steps and its last screenshot (trace `5e93964f`): sign-out reached Login. Back from Login then closed the app to the Android home screen. That is correct (Login is the root after sign-out, and no signed-in screen came back), but the test required Login to stay on screen.
+  - `e2e_test/test_auth.py` TC-14 now reports `login_after_sign_out`, `after_back` (`login` / `android_home` / `other_app_screen`), `bottom_nav_visible_after_back` and, after reopening the app if Back closed it, `login_after_reopen`. It asserts Login after sign-out, `after_back` in (`login`, `android_home`), no bottom navigation, and Login again after reopening (still signed out).
+  - `docs/test-plan.md` §3 TC-14 row updated to match.
+- **Verification:** `python -m py_compile test_auth.py` → OK; `uv run pytest test_auth.py --collect-only -q` → 2 tests collected. The new TC-14 has **not been run on a device yet**.
+- **Decision:** Accepted. The app behaviour is right and the expectation was wrong. Back closing the app after sign-out is standard Android behaviour, and the security check (no way back into signed-in screens) is kept and made stronger by reopening the app.
+
+---
+
+### P-62: Merge `dev` (PR #24) into `test/e2e-flow1`, each owner's version kept
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) merge `dev` before the evidence runs; the operator's rule: "nào liên quan đến tôi thì lấy của tôi, nào của thành viên khác thì lấy của họ, ví dụ TC-06 lấy của Lập".
+- **Output:**
+  - `docs/test-plan.md` §3: TC-03/04/05/07/08 rows from this branch (PR #24 had put back older `Planned` rows, including TC-05 `Done (3/3, 2026-11-05)`); TC-06 row from `dev` (Lập, CV Match).
+  - `e2e_test/test_apply.py`: Lập's TC-06 unchanged, plus this branch's TC-07, which now searches `Intern` for an applied listing (Lập's TC-06 applies to a Home card, not a `Developer` one).
+  - AI log: PR #24 had dropped two entries and reused their numbers. Lập's P-50 – P-56 are kept as they are. The dropped entries are restored with new numbers: the ARTEMIS setup (was P-50) → P-57, Hảo's Search bookmark fix (was P-51) → P-58. This branch's P-52 – P-54 → P-59 – P-61. The README and `code-review.md` rows that PR #24 lost are restored with the new numbers; the 2026-11-05 evidence file points at P-57.
+- **Verification:** `git show b23c144:…` vs `origin/dev` confirmed what PR #24 removed; `pytest --collect-only` after the merge → 16 tests; no conflict markers left; the only duplicate IDs left are the older P-21 – P-27.
+- **Decision:** Applied the operator's ownership rule. Not changed: Lập's TC-06 itself, although it applies to the first unapplied Home card (it may be TC-05's `Intern` listing) and uses the account's own CV — raised with the operator to pass on to Lập.
+
+---
+
+### P-63: ARTEMIS evidence for TC-01, TC-02, TC-14, TC-16, TC-17 (2026-11-06)
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "giờ chạy lấy evidence ik để làm doc", then "Đổi sang 3.5 ngay" when `gemini-3.1-flash-lite` ran out of daily quota.
+- **Output:**
+  - A profile APK built from `origin/dev` `a5d1e4a`, installed on `emulator-5554`, with notifications granted by `adb`.
+  - Three counted runs each of TC-02, TC-16, TC-17 (`gemini-3.1-flash-lite`) and TC-14, TC-01 (`gemini-3.5-flash-lite`, swapped on the host for the day).
+  - `evidence/artemis/e2e-environment-20261106.md` and `runs-20261106.jsonl`: all 21 runs, six of them exploratory, plus the cancelled attempt `0a061c60`.
+  - `docs/test-plan.md`: header model and app-build rows; §1 builds a profile APK and grants notifications; §3 marks the five cases Done (3/3, 2026-11-06); §4 adds a results row for each case and the failures with their causes.
+  - `docs/guides/artemis-e2e.md`: profile build, the notification grant, the 500-requests-per-day limit and what to do when a model runs out.
+- **Verification:** both `uv run pytest … --count 3 -v` runs are logged in the evidence file: 9 passed in 724.66 s and 6 passed in 717.43 s. Every number comes from `runs.jsonl` (now with the `pytest` field) and from the daemon's `/api/sessions/{id}`, `/steps` and `/usage`. The 429 message gave the daily limit (`quotaValue: 500`) and the reset (about 7.4 h, 15:00 in Vietnam).
+- **Decision:**
+  - The exploratory runs are recorded, not dropped. The TC-16 freeze on the debug build is recorded as timing and fixed by the profile build. The old TC-14 failure is recorded as a wrong expectation, fixed in `512c8f4`.
+  - The day's model swap stays local to the ARTEMIS host: the committed `artemis-local.patch` keeps `gemini-3.1-flash-lite` as primary.
+
+---
+
 ## Entry template
 
 ```markdown
