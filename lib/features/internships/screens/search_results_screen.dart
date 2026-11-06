@@ -26,6 +26,7 @@ import '../../saved/viewmodels/saved_providers.dart';
 import '../../saved/viewmodels/saved_viewmodel.dart';
 import '../models/search_filter_criteria.dart';
 import '../viewmodels/search_results_viewmodel.dart';
+import '../viewmodels/search_viewmodel.dart';
 import '../widgets/search_results_filter_sheet.dart';
 
 /// Search Results screen (Figma Search Results, `docs/design/screen-spec.md` §Search Results).
@@ -119,6 +120,13 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(searchResultsViewModelProvider);
     final viewModel = ref.read(searchResultsViewModelProvider.notifier);
+    // Every way this screen changes the query (submit, the field's clear
+    // button, the query chip, Clear all, Clear filters) reaches the Search
+    // tab's field, which stays alive under this screen.
+    ref.listen(
+      searchResultsViewModelProvider.select((state) => state.query),
+      (_, query) => ref.read(searchViewModelProvider.notifier).syncQuery(query),
+    );
     final user = ref.watch(authStateChangesProvider).value;
     final savedIds = ref.watch(savedInternshipIdsProvider);
     final appliedJobs =
