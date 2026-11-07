@@ -1,11 +1,11 @@
 /**
  * Search configuration for the scheduled SerpAPI sync.
  *
- * These five queries gave 40 distinct jobs for `location=Vietnam` in testing
- * (10 + 10 + 7 + 9 + 4), while `thực tập mobile` / `thực tập devops` returned
- * nothing. Keep the list at 3–5 searches: the first backfill is one search
- * per keyword, then one keyword per 6-hour run (~120/month), inside the
- * SerpAPI free plan (250/month).
+ * Eight queries cover interns, freshers and juniors for `location=Vietnam`:
+ * the six intern queries plus one query per early-career level. The
+ * first backfill is one search per keyword (8); after that one keyword per
+ * 6-hour run (~120/month) refreshes each keyword every ~2 days, inside the
+ * SerpAPI free plan (250/month) and the 7-day listing expiry.
  */
 export const KEYWORDS: readonly string[] = [
   'IT internship Vietnam',
@@ -14,6 +14,8 @@ export const KEYWORDS: readonly string[] = [
   'thực tập frontend',
   'thực tập data',
   'thực tập tester',
+  'IT fresher Vietnam',
+  'IT junior Vietnam',
 ] as const;
 
 /**

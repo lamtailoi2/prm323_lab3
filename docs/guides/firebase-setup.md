@@ -208,9 +208,9 @@ The app never holds a SerpAPI key. A scheduled Cloud Function mirrors Google Job
    firebase functions:secrets:set GROQ_API_KEY     # CV Match commentary (free tier)
    firebase deploy --only functions,firestore:rules
    ```
-   `syncInternshipsJob` runs every 6 hours in `Asia/Ho_Chi_Minh`; the first run backfills five keywords with `location=Vietnam`, then each run refreshes one keyword. The same deploy publishes the callables `validateCv` and `matchCv`: `validateCv` reads `GEMINI_API_KEY`, `matchCv` reads `GROQ_API_KEY`, and neither key reaches the app.
+   `syncInternshipsJob` runs every 6 hours in `Asia/Ho_Chi_Minh`; the first run backfills eight keywords (intern, fresher and junior) with `location=Vietnam`, then each run refreshes one keyword. The same deploy publishes the callables `validateCv` and `matchCv`: `validateCv` reads `GEMINI_API_KEY`, `matchCv` reads `GROQ_API_KEY`, and neither key reaches the app.
 5. Verify: Console → Functions → `syncInternshipsJob` logs `internship sync complete`; Firestore → `internships` has documents and `sync/state` shows the last run. The app reads that pool without a key.
-6. Quota: five backfill searches, then about four per day (~120 per month) on the 250-search free plan. If the quota runs out, `sync/state.lastError` says so; the app keeps the last good listings until they expire after seven days.
+6. Quota: eight backfill searches, then about four per day (~120 per month) on the 250-search free plan. If the quota runs out, `sync/state.lastError` says so; the app keeps the last good listings until they expire after seven days.
 7. Rotating the key: `firebase functions:secrets:set SERPAPI_KEY` again and redeploy the function. Nothing in the app changes.
 
 ## 14. End-to-end tests (ARTEMIS)

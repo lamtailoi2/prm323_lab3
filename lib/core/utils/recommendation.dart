@@ -1,3 +1,4 @@
+import 'job_level.dart';
 import 'job_role.dart';
 
 /// Points for a listing whose role is one the student targets.
@@ -15,6 +16,9 @@ const int maxSkillScore = 3;
 /// (G-23): the role first, then the shared skills. `0` when nothing in the
 /// profile matches; listings with equal scores keep their sync order.
 ///
+/// Experience is not added to this score: it only breaks ties in Home, so a
+/// level match cannot lift a listing above a better role/skill match.
+///
 /// Work mode is not scored: Google Jobs almost never states it for the
 /// Vietnamese pool (288 of 289 IT listings on 2026-10-28).
 int recommendationScore({
@@ -25,6 +29,14 @@ int recommendationScore({
 }) {
   return _roleScore(role, wantedRoles) +
       _skillScore(listingSkills, profileSkills);
+}
+
+/// Whether [level] is one the student's experience band applies to.
+///
+/// A `null` level (title states none, or states a more senior level) never
+/// matches.
+bool matchesWantedLevel(JobLevel? level, Set<JobLevel> wantedLevels) {
+  return level != null && wantedLevels.contains(level);
 }
 
 int _roleScore(JobRole? role, Set<JobRole> wanted) {

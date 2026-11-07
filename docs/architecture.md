@@ -144,7 +144,7 @@ sequenceDiagram
     end
 ```
 
-The pool itself is filled by `syncInternshipsJob` every six hours (Plan → backfill all keywords once, then one keyword per run). The function writes `/internships/{jobKey}` with the raw SerpAPI job, `searchKeyword`, `searchRank`, `syncedAt` and `expiresAt`; clients can read but never write it.
+The pool itself is filled by `syncInternshipsJob` every six hours (Plan → backfill all keywords once, then one keyword per run). The keywords cover IT interns, freshers and juniors in Vietnam, so the pool holds early-career roles beyond the internship contract. The function writes `/internships/{jobKey}` with the raw SerpAPI job, `searchKeyword`, `searchRank`, `syncedAt` and `expiresAt`; clients can read but never write it.
 
 ## 5. Navigation
 
@@ -172,14 +172,14 @@ Rules for feature owners:
 4. Parse defensively with `FirestoreReader`; skip and log (Crashlytics non-fatal) malformed documents instead of failing a list.
 5. Read server timestamps in listeners with `ServerTimestampBehavior.estimate`.
 
-**Profile document `users/{uid}`** (`UserProfile`, `lib/models/user_profile.dart`; every field optional, the document exists only after the first save). Apply reads it for prefill, the CV from Profile and the skills used by CV Match Check.
+**Profile document `users/{uid}`** (`UserProfile`, `lib/models/user_profile.dart`; every field optional, the document exists only after the first save). Apply reads it for CV selection and its `storagePath` for Validate CV; Internship Detail reads its skills for the Skill match; Home reads its preferences for the location filter and the role, skill and experience ranking (G-23).
 
 | Field | Type | Written by |
 |---|---|---|
 | `fullName`, `headline`, `university`, `major`, `phone`, `city`, `bio` (≤ 300) | string or null | Edit profile |
 | `yearOfStudy` (1–6), `graduationYear` | int or null | Edit profile (Academic standing picker) |
 | `skills` | string[] (values from `knownSkills`) | Edit skills sheet |
-| `preferences` | map: `targetRoles` (`software_engineer` / `mobile` / `frontend` / `backend` / `qa_tester`, the frame's roles), `workModes` (`hybrid` / `remote` / `on_site`), `location` (string or null) | Update preferences sheet |
+| `preferences` | map: `targetRoles` (`software_engineer` / `mobile` / `frontend` / `backend` / `qa_tester` / `data_ai` / `dev_ops`, the sheet's roles), `experience` (`none` / `under_one` / `one_to_two` / `two_plus`, or null when not set), `workModes` (`hybrid` / `remote` / `on_site`), `location` (string or null) | Update preferences sheet |
 | `cv` | map: `fileName`, `url`, `storagePath`, `sizeBytes`, `uploadedAt` (only from a real `FileStorageService` upload) | Update CV sheet |
 | `updatedAt` | server timestamp | every write (merge per section) |
 
@@ -214,7 +214,7 @@ Application Detail subscribes to `ApplicationService.watchApplications()` and pi
 | CV match (Groq, optional from Compose) | `functions/src/match-cv.ts` (callable) + `services/cv_match_service.dart` | Wrong/other user's CV path → `permission-denied`; missing listing → `not-found`; model extraction unparseable → local `knownSkills` vocabulary; unreadable PDF or < 50 characters → Profile skills only (`cvReadable: false`); commentary failure → deterministic suggestions (never blocks); `Continue` stays enabled in every app state |
 | Apply email draft (Groq) | `functions/src/compose-cover-letter.ts` (callable) + `services/cover_letter_service.dart` + `core/utils/contact_email.dart` + `core/utils/mailto.dart` | Wrong/other user's CV path → `permission-denied`; missing listing → `not-found`; Profile or CV read failure → the letter is still drafted from the listing; blank key / model failure / unparseable JSON → deterministic template in the listing's language (`source: template`); a bad typed address is rejected before `mailto:` opens; no mail app → message (the student can copy the letter); the recipient is parsed from the JD and is never invented |
 | Listings | `services/internship_service.dart` | permission denied / offline → `AppException` with Retry; malformed documents skipped and logged |
-| Applications | `services/application_service.dart` | permission denied / offline → `AppException` with Retry on My Applications; malformed documents (missing fields, unknown status) skipped and logged |
+| Applications | `services/application_service.dart` | permission denied / offline → `AppException` with Retry on My Applications and on Confirm Application; malformed documents (missing fields, unknown status) skipped and logged |
 | File storage | `services/file_storage_service.dart` | Signed out → permission denied; not a PDF / too large → invalid input; `unauthorized` / `quota-exceeded` / `retry-limit-exceeded` → message; progress reported |
 | Analytics | `services/analytics_service.dart` | Failures swallowed; names validated in debug |
 | Crashlytics | `services/crashlytics_service.dart` | Global handlers at bootstrap; user ID + `last_screen` key; `crashForTesting()` only from explicit test controls (Profile → Diagnostics, Firebase demo, and the local admin dashboard's data-only FCM command) |

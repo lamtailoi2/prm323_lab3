@@ -26,6 +26,8 @@ void main() {
     );
     expect(jobRoleFor(title: 'DevOps Intern'), JobRole.devOps);
     expect(jobRoleFor(title: 'IT Specialist Intern'), JobRole.otherIt);
+    expect(jobRoleFor(title: 'Fresher Backend Developer'), JobRole.backend);
+    expect(jobRoleFor(title: 'Junior Data Analyst'), JobRole.dataAi);
   });
 
   test('rejects non-IT listings before matching data or mobile words', () {
@@ -36,6 +38,9 @@ void main() {
     expect(jobRoleFor(title: 'CSKH LỚP STEM/ROBOT'), isNull);
     expect(jobRoleFor(title: 'Sales Intern'), isNull);
     expect(jobRoleFor(title: 'Cho thuê chuyên gia Lập Trình Mobile'), isNull);
+    expect(jobRoleFor(title: 'Junior Accountant'), isNull);
+    expect(jobRoleFor(title: 'Junior Accountants Data Entry'), isNull);
+    expect(jobRoleFor(title: 'Accountancy Intern'), isNull);
   });
 
   test('uses the sync keyword when the title is generic', () {
@@ -45,6 +50,10 @@ void main() {
         searchKeyword: 'thực tập backend',
       ),
       JobRole.backend,
+    );
+    expect(
+      jobRoleFor(title: 'IT Program', searchKeyword: 'IT fresher Vietnam'),
+      JobRole.otherIt,
     );
   });
 

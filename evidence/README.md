@@ -13,5 +13,6 @@ Screenshots, exports and traces that prove each Lab 3 requirement (§6, §7, §8
 | `artemis/` | `runs.jsonl`, results table, trace IDs, screenshots / replays, exploratory session report |
 | `code-review/` | Raw output of the AI review tool for each PR |
 | `screens/` | App screenshots next to their Figma frames at 360 and 412 dp |
+| `ranking/` | Ranking and tiebreaker checks (Home Recommended, experience bands) that do not need a screenshot |
 
 Name files `<area>-<what>-<yyyymmdd>.png` (e.g. `analytics-login-20261105.png`). Never include personal data or secrets in screenshots.

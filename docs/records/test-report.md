@@ -728,6 +728,33 @@ Notes: the compose screen replaces the six-field Application Form and the Review
 
 ---
 
+## Run 36: SerpAPI fresher/junior keywords + Detail role/level badges (2026-11-07)
+
+Environment: Windows 11 · Flutter 3.47.6 / Dart 3.13.5 · Node 24.6.0 (functions declare Node 22) · merge of `dev` (UI v2, compose apply flow) into the feature branch. Changes: P-79, DC-28.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd functions && npm test` | **20 tests, all passed** (config keywords, rotation and quota) |
+| 2 | `dart format lib test` | **222 files formatted, 0 changed** |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **687 tests, all passed** (full suite after the merge; includes the level parser, `Internship.level` and the Detail badge assertions at 360 / 412 dp) |
+| 5 | Deployed `syncInternshipsJob` + manual Cloud Scheduler run (2026-11-07) | **Real backfill passed**: `sync/state` → `backfill=true`, `fetched=65`, `written=65`, `expiredDeleted=0`, all eight keywords, no `lastError`; Firestore shows 10 `IT fresher Vietnam` and 10 `IT junior Vietnam` listings; the Pixel 6 emulator shows the `DevOps/Cloud` + `Intern` badges on Detail. Evidence: `evidence/sync/2026-11-07-p46-sync.md` + screenshot (files keep the original P-46 label) |
+
+---
+
+## Run 37: Experience band + ranking tiebreaker (2026-11-07)
+
+Environment: Windows 11 · Flutter 3.47.6 / Dart 3.13.5 · no device or Firebase project on this machine. Changes: P-80, DC-32, DC-33.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **222 files formatted, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **687 tests, all passed** (full suite after the merge). Coverage: `user_profile_test.dart` (parse/store, legacy profile without `experience`, band → level mapping, equality/hashCode by experience); `profile_viewmodels_test.dart` (seeded band, single-select + clear, other fields keep the draft, save with `item_count`, unanswered experience stored null and not counted, failed save keeps the draft); `recommendation_test.dart` (level matrix incl. `null`, experience does not change the score); `home_viewmodel_test.dart` (level match beats sync rank, no experience keeps sync order, level cannot outrank a better role/skill score); `profile_screen_test.dart` (the Update preferences sheet runs at 360 and 412 dp and saves an experience chip; Profile asserts the `1–2 years` tag and four "Not set" groups) |
+| 4 | Not run | On-device sheet/tag screenshots, Firestore round trip on a real project, DebugView for the new `profile_update.item_count` (no device / Firebase project here) |
+
+---
+
 ## Run template
 
 ```markdown

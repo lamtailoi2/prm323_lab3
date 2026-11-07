@@ -11,8 +11,8 @@ import '../../../theme/app_spacing.dart';
 import '../viewmodels/edit_preferences_viewmodel.dart';
 
 /// Update preferences sheet (Lab 2 `profile-preferences.png`): target roles
-/// and work modes (multi-select chips with a check and outline) and a
-/// location field with quick-select cities.
+/// and work modes (multi-select chips with a check and outline), experience
+/// (single-select) and a location field with quick-select cities.
 class EditPreferencesSheet extends ConsumerStatefulWidget {
   const EditPreferencesSheet({super.key});
 
@@ -45,7 +45,9 @@ class _EditPreferencesSheetState extends ConsumerState<EditPreferencesSheet> {
 
     return AppSheet(
       title: 'Update preferences',
-      subtitle: 'Customize roles, work mode, and location for tailored matches',
+      subtitle:
+          'Customize roles, experience, work mode, and location for tailored '
+          'matches',
       primaryLabel: 'Save preferences',
       isLoading: state.save.isLoading,
       error: switch (state.save.error) {
@@ -71,6 +73,24 @@ class _EditPreferencesSheetState extends ConsumerState<EditPreferencesSheet> {
                 label: role.label,
                 selected: state.targetRoles.contains(role),
                 onSelected: () => viewModel.toggleRole(role),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.section),
+        const SheetGroupHeader(
+          title: 'Experience',
+          helper:
+              'Choose one; used to rank internships, never to hide listings',
+        ),
+        Wrap(
+          spacing: AppSpacing.s8,
+          runSpacing: AppSpacing.s4,
+          children: [
+            for (final range in ExperienceRange.values)
+              SheetChip(
+                label: range.label,
+                selected: state.experience == range,
+                onSelected: () => viewModel.selectExperience(range),
               ),
           ],
         ),

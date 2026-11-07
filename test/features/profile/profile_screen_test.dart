@@ -51,6 +51,7 @@ final _complete = UserProfile(
   skills: const ['Flutter', 'React', 'NestJS', 'MongoDB'],
   preferences: const InternshipPreferences(
     targetRoles: [TargetRole.softwareEngineer, TargetRole.mobile],
+    experience: ExperienceRange.oneToTwo,
     workModes: [WorkMode.remote, WorkMode.hybrid],
     location: 'Ho Chi Minh City',
   ),
@@ -183,8 +184,9 @@ void main() {
       expect(find.text('Internship preferences'), findsOneWidget);
       expect(find.text('Update'), findsOneWidget);
       for (final tag in [
-        'Software Engineer Intern',
-        'Mobile Intern',
+        'Software Engineer',
+        'Mobile',
+        '1–2 years',
         'Remote',
         'Hybrid',
       ]) {
@@ -230,7 +232,7 @@ void main() {
           find.text('Add the skills you have, such as Flutter or SQL.'),
         );
         await scrollTo(tester, find.text('Sign out'));
-        expect(find.text('Not set'), findsNWidgets(3));
+        expect(find.text('Not set'), findsNWidgets(4));
         expect(tester.takeException(), isNull);
       },
     );
@@ -416,78 +418,85 @@ void main() {
     });
   });
 
-  testWidgets('Update preferences sheet saves chips and a quick location', (
-    tester,
-  ) async {
-    await pumpProfile(tester);
-    await scrollTo(tester, find.text('Update'));
-    await tester.tap(find.text('Update'));
-    await tester.pumpAndSettle();
+  for (final width in checkWidths) {
+    testWidgets('Update preferences sheet saves chips, experience and a quick '
+        'location at $width dp', (tester) async {
+      await pumpProfile(tester, width: width);
+      await scrollTo(tester, find.text('Update'));
+      await tester.tap(find.text('Update'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Update preferences'), findsOneWidget);
-    expect(find.text('TARGET ROLES'), findsOneWidget);
-    expect(
-      find.widgetWithText(FilterChip, 'QA / Tester Intern'),
-      findsOneWidget,
-    );
-    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
-    for (final chip in ['Frontend Intern', 'Hybrid']) {
+      expect(find.text('Update preferences'), findsOneWidget);
+      expect(find.text('TARGET ROLES'), findsOneWidget);
+      expect(find.widgetWithText(FilterChip, 'QA / Tester'), findsOneWidget);
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      for (final chip in ['Frontend', 'Hybrid']) {
+        expect(
+          tester
+              .getSize(
+                find
+                    .descendant(
+                      of: find.widgetWithText(FilterChip, chip),
+                      matching: find.byType(Material),
+                    )
+                    .first,
+              )
+              .height,
+          44,
+          reason: chip,
+        );
+      }
+      Future<void> tapChip(String label) async {
+        final chip = find.widgetWithText(FilterChip, label);
+        await tester.ensureVisible(chip);
+        await tester.pumpAndSettle();
+        await tester.tap(chip);
+        await tester.pumpAndSettle();
+      }
+
+      await tapChip('Mobile');
+      await tapChip('Remote');
+      await tapChip('1–2 years');
+      await tapChip('Da Nang');
+      expect(find.widgetWithText(TextField, 'Da Nang'), findsOneWidget);
+      // Quick select: 36 dp, outline without a check (the field shows the
+      // city).
+      final quick = tester.widget<FilterChip>(
+        find.widgetWithText(FilterChip, 'Da Nang'),
+      );
+      expect(quick.selected, isTrue);
+      expect(quick.showCheckmark, isFalse);
       expect(
         tester
             .getSize(
               find
                   .descendant(
-                    of: find.widgetWithText(FilterChip, chip),
+                    of: find.widgetWithText(FilterChip, 'Da Nang'),
                     matching: find.byType(Material),
                   )
                   .first,
             )
             .height,
-        44,
-        reason: chip,
+        36,
       );
-    }
-    await tester.tap(find.widgetWithText(FilterChip, 'Mobile Intern'));
-    await tester.tap(find.widgetWithText(FilterChip, 'Remote'));
-    await tester.ensureVisible(find.widgetWithText(FilterChip, 'Da Nang'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilterChip, 'Da Nang'));
-    await tester.pumpAndSettle();
-    expect(find.widgetWithText(TextField, 'Da Nang'), findsOneWidget);
-    // Quick select: 36 dp, outline without a check (the field shows the city).
-    final quick = tester.widget<FilterChip>(
-      find.widgetWithText(FilterChip, 'Da Nang'),
-    );
-    expect(quick.selected, isTrue);
-    expect(quick.showCheckmark, isFalse);
-    expect(
-      tester
-          .getSize(
-            find
-                .descendant(
-                  of: find.widgetWithText(FilterChip, 'Da Nang'),
-                  matching: find.byType(Material),
-                )
-                .first,
-          )
-          .height,
-      36,
-    );
 
-    await tester.tap(find.text('Save preferences'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Save preferences'));
+      await tester.pumpAndSettle();
 
-    expect(
-      profiles.profile?.preferences,
-      const InternshipPreferences(
-        targetRoles: [TargetRole.mobile],
-        workModes: [WorkMode.remote],
-        location: 'Da Nang',
-      ),
-    );
-    await scrollTo(tester, find.text('Da Nang'));
-    expect(find.widgetWithText(AppTag, 'Mobile Intern'), findsOneWidget);
-  });
+      expect(
+        profiles.profile?.preferences,
+        const InternshipPreferences(
+          targetRoles: [TargetRole.mobile],
+          experience: ExperienceRange.oneToTwo,
+          workModes: [WorkMode.remote],
+          location: 'Da Nang',
+        ),
+      );
+      await scrollTo(tester, find.text('Da Nang'));
+      expect(find.widgetWithText(AppTag, 'Mobile'), findsOneWidget);
+      expect(find.widgetWithText(AppTag, '1–2 years'), findsOneWidget);
+    });
+  }
 
   group('Update CV sheet', () {
     testWidgets('first upload: choose a PDF, upload, CV card appears', (

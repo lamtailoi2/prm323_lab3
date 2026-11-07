@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/display_format.dart';
 import '../../../core/utils/posted_age.dart';
+import '../../../core/widgets/app_tag.dart';
 import '../../../core/widgets/company_logo.dart';
 import '../../../models/internship.dart';
 import '../../../models/internship_application.dart';
@@ -48,6 +49,8 @@ class JobHeroCard extends StatelessWidget {
         : internship.postedText;
     final via = internship.via;
     final location = internship.location;
+    final role = internship.role;
+    final level = internship.level;
     const logoOverlap = AppSizes.companyLogoHero / 2;
 
     return DecoratedBox(
@@ -111,6 +114,24 @@ class JobHeroCard extends StatelessWidget {
                           style: textTheme.headlineSmall,
                         ),
                       ),
+                      if (role != null) ...[
+                        const SizedBox(height: AppSpacing.s8),
+                        Wrap(
+                          spacing: AppSpacing.s8,
+                          runSpacing: AppSpacing.s4,
+                          children: [
+                            _DetailBadge(
+                              label: role.label,
+                              semanticsLabel: 'Role: ${role.label}',
+                            ),
+                            if (level != null)
+                              _DetailBadge(
+                                label: level.label,
+                                semanticsLabel: 'Experience: ${level.label}',
+                              ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: AppSpacing.s4),
                       Text.rich(
                         TextSpan(
@@ -258,6 +279,25 @@ class _MetaChip extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Job family / experience level tag under the title (DC-28). Reuses the
+/// compact [AppTag] and labels it for assistive technology.
+class _DetailBadge extends StatelessWidget {
+  const _DetailBadge({required this.label, required this.semanticsLabel});
+
+  final String label;
+  final String semanticsLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: semanticsLabel,
+      excludeSemantics: true,
+      child: AppTag(label: label),
     );
   }
 }

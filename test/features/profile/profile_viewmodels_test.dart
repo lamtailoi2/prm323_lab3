@@ -409,13 +409,38 @@ void main() {
       await open(
         const InternshipPreferences(
           targetRoles: [TargetRole.mobile],
+          experience: ExperienceRange.underOne,
           workModes: [WorkMode.remote],
           location: 'Hanoi',
         ),
       );
       expect(prefsState().targetRoles, {TargetRole.mobile});
+      expect(prefsState().experience, ExperienceRange.underOne);
       expect(prefsState().workModes, {WorkMode.remote});
       expect(prefsState().location, 'Hanoi');
+    });
+
+    test('experience is single-select and can be cleared', () async {
+      final vm = await open();
+
+      vm.selectExperience(ExperienceRange.oneToTwo);
+      expect(prefsState().experience, ExperienceRange.oneToTwo);
+
+      vm.selectExperience(ExperienceRange.twoPlus);
+      expect(prefsState().experience, ExperienceRange.twoPlus);
+
+      vm.selectExperience(ExperienceRange.twoPlus);
+      expect(prefsState().experience, isNull);
+    });
+
+    test('changing another field keeps the experience draft', () async {
+      final vm = await open();
+      vm
+        ..selectExperience(ExperienceRange.none)
+        ..toggleRole(TargetRole.mobile)
+        ..setLocation('Da Nang');
+
+      expect(prefsState().experience, ExperienceRange.none);
     });
 
     test('work modes follow the frame order', () {
@@ -433,6 +458,7 @@ void main() {
         ..toggleRole(TargetRole.mobile)
         ..toggleWorkMode(WorkMode.onSite)
         ..toggleWorkMode(WorkMode.hybrid)
+        ..selectExperience(ExperienceRange.oneToTwo)
         ..setLocation('  Da Nang ');
 
       expect(await vm.save(), isTrue);
@@ -440,15 +466,33 @@ void main() {
         profiles.profile?.preferences,
         const InternshipPreferences(
           targetRoles: [TargetRole.mobile, TargetRole.qaTester],
+          experience: ExperienceRange.oneToTwo,
           workModes: [WorkMode.hybrid, WorkMode.onSite],
           location: 'Da Nang',
         ),
       );
       expect(analytics.parameters['profile_update'], {
         'section': 'preferences',
-        'item_count': 5,
+        'item_count': 6,
       });
     });
+
+    test(
+      'an unanswered experience is stored as null and not counted',
+      () async {
+        final vm = await open();
+        vm
+          ..toggleRole(TargetRole.mobile)
+          ..toggleWorkMode(WorkMode.remote);
+
+        expect(await vm.save(), isTrue);
+        expect(profiles.profile?.preferences.experience, isNull);
+        expect(analytics.parameters['profile_update'], {
+          'section': 'preferences',
+          'item_count': 2,
+        });
+      },
+    );
 
     test('an empty location starts from the current city', () async {
       profiles.profile = const UserProfile(
@@ -475,6 +519,16 @@ void main() {
       vm.setLocation('   ');
       expect(await vm.save(), isTrue);
       expect(profiles.profile?.preferences.location, isNull);
+    });
+
+    test('a failed save keeps the experience draft', () async {
+      final vm = await open();
+      profiles.saveError = _network;
+      vm.selectExperience(ExperienceRange.twoPlus);
+
+      expect(await vm.save(), isFalse);
+      expect(prefsState().save.error, _network);
+      expect(prefsState().experience, ExperienceRange.twoPlus);
     });
 
     test('a too-long location is a validation error', () async {
