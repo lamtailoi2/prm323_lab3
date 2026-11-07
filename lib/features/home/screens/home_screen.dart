@@ -21,6 +21,7 @@ import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_spacing.dart';
 import '../../applications/viewmodels/applied_providers.dart';
+import '../../notifications/viewmodels/unread_notifications_provider.dart';
 import '../../saved/viewmodels/saved_providers.dart';
 import '../../saved/viewmodels/saved_viewmodel.dart';
 import '../viewmodels/greeting_name_provider.dart';
@@ -64,6 +65,8 @@ class HomeScreen extends ConsumerWidget {
         user: user,
         onProfile: () => context.go(AppRoutes.profile),
         onNotifications: () => context.push(AppRoutes.notificationCenter),
+        unreadNotifications:
+            ref.watch(unreadNotificationCountProvider).value ?? 0,
       ),
       body: CustomScrollView(
         slivers: [

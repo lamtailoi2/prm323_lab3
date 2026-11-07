@@ -21,6 +21,7 @@ import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import '../../applications/viewmodels/applied_providers.dart';
+import '../../notifications/viewmodels/unread_notifications_provider.dart';
 import '../../saved/viewmodels/saved_providers.dart';
 import '../../saved/viewmodels/saved_viewmodel.dart';
 import '../models/search_filter_criteria.dart';
@@ -138,6 +139,8 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
         user: user,
         onProfile: () => context.go(AppRoutes.profile),
         onNotifications: () => context.push(AppRoutes.notificationCenter),
+        unreadNotifications:
+            ref.watch(unreadNotificationCountProvider).value ?? 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(

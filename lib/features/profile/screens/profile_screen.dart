@@ -12,6 +12,7 @@ import '../../../core/widgets/state_view.dart';
 import '../../../services/crashlytics_service.dart';
 import '../../../theme/app_spacing.dart';
 import '../../auth/viewmodels/sign_out_viewmodel.dart';
+import '../../notifications/viewmodels/unread_notifications_provider.dart';
 import '../viewmodels/open_cv_viewmodel.dart';
 import '../viewmodels/profile_viewmodel.dart';
 import '../widgets/edit_preferences_sheet.dart';
@@ -94,6 +95,8 @@ class ProfileScreen extends ConsumerWidget {
       appBar: MainTabAppBar(
         title: 'Profile',
         onNotifications: () => context.push(AppRoutes.notificationCenter),
+        unreadNotifications:
+            ref.watch(unreadNotificationCountProvider).value ?? 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.screenHorizontal),

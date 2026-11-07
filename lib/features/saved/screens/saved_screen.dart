@@ -14,6 +14,7 @@ import '../../../services/auth_service.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import '../../applications/viewmodels/applied_providers.dart';
+import '../../notifications/viewmodels/unread_notifications_provider.dart';
 import '../viewmodels/saved_providers.dart';
 import '../viewmodels/saved_viewmodel.dart';
 
@@ -145,6 +146,8 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
     return Scaffold(
       appBar: MainTabAppBar(
         onNotifications: () => context.push(AppRoutes.notificationCenter),
+        unreadNotifications:
+            ref.watch(unreadNotificationCountProvider).value ?? 0,
         title: 'Saved',
         user: ref.watch(authStateChangesProvider).value,
         onProfile: () => context.go(AppRoutes.profile),

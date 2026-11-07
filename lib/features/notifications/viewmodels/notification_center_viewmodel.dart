@@ -64,6 +64,30 @@ class NotificationCenterViewModel
     }
   }
 
+  /// `Mark all as read`: clears every unread dot in one batch. The stream
+  /// brings the read state back; a failure leaves the dots and lets a later
+  /// tap try again.
+  Future<void> markAllRead() async {
+    final items = switch (state) {
+      ViewData(:final data) => data,
+      _ => const <AppNotification>[],
+    };
+    final ids = [
+      for (final item in items)
+        if (item.isUnread && !_markedRead.contains(item.id)) item.id,
+    ];
+    if (ids.isEmpty) return;
+    final uid = ref.read(currentUserIdProvider);
+    if (uid == null) return;
+    _markedRead.addAll(ids);
+    try {
+      await ref.read(notificationServiceProvider).markAllRead(uid, ids);
+    } on AppException catch (error) {
+      _markedRead.removeAll(ids);
+      debugPrint('Could not mark the notifications read: ${error.message}');
+    }
+  }
+
   void _subscribe(NotificationService service, String uid) {
     unawaited(_subscription?.cancel());
     _subscription = service

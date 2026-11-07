@@ -415,6 +415,48 @@ void main() {
       });
     }
 
+    for (final (count, label) in [(3, '3'), (12, '9+')]) {
+      testWidgets('$count unread shows a red badge with $label', (
+        tester,
+      ) async {
+        setScreenSize(tester);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light(),
+            home: Scaffold(
+              appBar: MainTabAppBar(
+                title: 'Saved',
+                user: testUser,
+                onProfile: () {},
+                onNotifications: () {},
+                unreadNotifications: count,
+              ),
+            ),
+          ),
+        );
+
+        final badge = tester.widget<Badge>(find.byType(Badge));
+        expect(badge.isLabelVisible, isTrue);
+        expect(badge.backgroundColor, AppColors.error);
+        expect(find.text(label), findsOneWidget);
+        // The tooltip is unchanged; the count is the button's value.
+        expect(find.byTooltip('Notifications'), findsOneWidget);
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics &&
+                widget.properties.value == '$count unread',
+          ),
+          findsOneWidget,
+        );
+      });
+    }
+
+    testWidgets('no unread notifications shows no badge', (tester) async {
+      await pumpBar(tester, user: testUser);
+      expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isFalse);
+    });
+
     testWidgets('touch targets are at least 48 dp', (tester) async {
       await pumpBar(tester, user: testUser);
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
