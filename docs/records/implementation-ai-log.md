@@ -749,6 +749,40 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-75: ARTEMIS cases reviewed against UI v2 and the email apply flow; TC-12 written
+- **Request:** (Claude Code, Opus 5.5, 2026-11-07; operator Phạm Nguyễn Hoàng Anh) "rà lại toàn bộ project để xem test case và test artemis viết đúng chưa", after PR #33 (UI v2, DC-31) and PR #34 (email apply flow) reached `dev` `b5d1209`.
+- **Output:**
+  - Every UI label quoted in `e2e_test/*.py` was checked against `lib/`, and each flow and assertion was read against the screens.
+  - `test_auth.py` TC-01: asserts the highlighted tab `Home`; the Home header now shows a greeting and the name, not "Home".
+  - `test_navigation.py` TC-02: app bar title == tab except for Home.
+  - `test_applications.py` TC-09: no longer creates an application through the removed Apply Form/Review screens; it reports `has_application` and stops if there is none (TC-06 creates one).
+  - `test_apply_form.py` TC-18 / TC-19: open the first card with no `Applied` badge, so an applied listing cannot show `View application`.
+  - `conftest.py`: removed `FILL_PERSONAL` and `UPLOAD_SAMPLE_CV`, which named Apply Form fields that no longer exist; the sample CV helper is kept for the coming CV library.
+  - New `test_profile.py` TC-12: reads `home_recommended_limit` (`N · source`) on Profile → Firebase demo and checks Home shows N recommended cards.
+  - `docs/test-plan.md`: rows TC-01, TC-02, TC-09, TC-12, TC-18; the 2026-11-06 TC-18/19/20 results are marked as the old Apply Form.
+  - The other cases (TC-03, 04, 05, 07, 08, 10, 13, 14, 15, 16, 17) still match the labels in `lib/`.
+- **Verification:** `py_compile` OK; `pytest --collect-only` → 18 tests. Not run on a device yet.
+- **Decision:** Accepted.
+
+---
+
+### P-76: TC-08 without Undo, TC-15 single launch, TC-13 hint; TC-08 / TC-10 / TC-15 runs
+- **Note:** first recorded as P-72 in `9ec4978` (PR #31); the PR #34 merge kept another P-72, so it is restored here under a new ID.
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Run them now" (TC-08, TC-10, TC-15), "Rewrite TC-08" → "Yes, fix them", "Switch to 3.5", then "done giờ viết docs và commit đi". The operator's teacher asked for a recording of each ARTEMIS batch with its terminal command.
+- **Output:**
+  - `e2e_test/test_saved.py` TC-08 (`test_tc08_save_then_unsave`): numbered steps; no `Undo` and no `Saved to your list` (ARTEMIS needs 5–15 s per step, the Snackbar lasts 4 s; widget tests cover both); reports the title of the detail opened from Saved; button label checked with `startswith("Saved")` (the agent may read the accessibility label); the case unsaves the card it saved.
+  - `e2e_test/conftest.py` `reset_notification_permission()` no longer starts the app: with the case's own launch the app opened twice and the system dialog closed.
+  - `e2e_test/test_notifications.py`: TC-15 wording ("do not reopen the app"); TC-13 prompt says Profile → Firebase demo → Copy FCM token (PR #30 moved it); same in `docs/guides/artemis-e2e.md`.
+  - `docs/test-plan.md` TC-08 / TC-10 Done, TC-15 Ready (fixed), §4 rows and causes; `evidence/artemis/e2e-environment-20261106.md` section "TC-08, TC-10, TC-15"; runs 66–87 appended to `runs-20261106.jsonl`.
+- **Verification:**
+  - TC-10 3/3 on `dev` `d4674ee`.
+  - TC-08 3/3 on `gemini-3.5-flash-lite`. Each counted run was checked against its ARTEMIS step history, because on 3.1 one run (`049a9ddd`) passed in pytest with an invented report.
+  - TC-15 not run again after the fix.
+  - `py_compile` and `pytest --collect-only` (18 tests) OK.
+- **Decision:** Accepted. Two API keys borrowed from team members' free-tier projects; a third, prepaid one was refused (G-26).
+
+---
+
 ## Entry template
 
 ```markdown
