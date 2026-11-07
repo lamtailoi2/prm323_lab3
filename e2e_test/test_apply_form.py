@@ -15,8 +15,9 @@ from conftest import (
 
 OPEN_COMPOSE = (
     "Tap 'Search' in the bottom navigation, type 'Intern' in the search field "
-    "and tap 'Find Internships'. Tap the first internship card, then tap "
-    "'Apply now' at the bottom."
+    "and tap 'Find Internships'. Tap the first internship card that has no "
+    "'Applied' badge (an applied listing shows 'View application' instead), "
+    "then tap 'Apply now' at the bottom."
 )
 
 

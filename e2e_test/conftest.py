@@ -191,14 +191,15 @@ def logged_analytics_events() -> list[str]:
     return re.findall(r"Logging event: origin=app,name=([a-z0-9_]+)", dump)
 
 
-# ---- Device setup for the Apply Form cases (Flow 1 pre-submit) ------------
+# ---- Sample CV on the device ------------------------------------------------
 
 SAMPLE_CV_NAME = "Sample_CV.pdf"
 
 # Fictional details only. The structure (contact, education, skills,
 # projects) is what the `validateCv` Gemini rubric accepts as a CV, and the
-# text is well over its 50-character minimum, so a case that continues past
-# the Apply Form reaches Review instead of "We could not use this CV".
+# text is well over its 50-character minimum, so `Validate CV` accepts it.
+# Unused since the Apply Form was removed (DC-31); kept for the CV library
+# cases that will pick a file from the device.
 SAMPLE_CV_LINES = [
     "Test Student - Software Engineering Intern",
     "Email: test.student@example.com | Phone: 0900 000 000 | Ho Chi Minh City",
@@ -270,29 +271,6 @@ def push_sample_cv() -> None:
         "-d",
         f"file:///sdcard/Download/{SAMPLE_CV_NAME}",
     )
-
-
-# Instruction parts shared by the cases that go through the Apply Form.
-
-# Fills only what the test account's Profile left empty, so `Continue to
-# review` is decided by the CV alone.
-FILL_PERSONAL = (
-    "In 'Personal information' fill only the fields that are empty: "
-    "'Full name' type 'Test Student', 'Phone number' type '0908123456', "
-    "'University' tap it and choose 'FPT University', 'Year of study' tap it "
-    "and choose 'Year 3'."
-)
-
-# Needs `push_sample_cv()` first. The fictional CV passes Validate CV, and the
-# account's own CV is never sent to the `validateCv` function.
-UPLOAD_SAMPLE_CV = (
-    "The 'CV / Resume' section may already show a CV; replace it anyway with "
-    "the sample file. Tap 'Replace' (or 'Upload CV' if there is no file). In "
-    "the sheet tap 'Choose file'. In the Android file picker "
-    f"choose '{SAMPLE_CV_NAME}' (open Downloads if it is not listed). Back in "
-    "the sheet tap the blue 'Update CV' (or 'Upload CV') button and wait "
-    "until the sheet closes."
-)
 
 
 def set_network(enabled: bool) -> None:
