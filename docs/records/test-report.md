@@ -755,6 +755,23 @@ Environment: Windows 11 · Flutter 3.47.6 / Dart 3.13.5 · no device or Firebase
 
 ---
 
+## Run 38: Unread badge on the bell + Mark all as read (2026-11-08)
+
+Branch `feat/notification-unread-badge` from `dev` `88b3382`, uncommitted
+working tree. Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable.
+AI log P-81.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | 0 changed |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` (full suite) | **697 tests, all passed** (+10: header badge with 3 and `9+`, none at 0; unread count follows snapshots and is 0 signed out; `markAllRead` marks only the unread, ignores loading / all read, retries after a failure; Notification Center shows `Mark all as read` only while something is unread and hides it after the snapshot) |
+| 4 | Profile build of this branch on emulator `Pixel_API_36`, 1 unread notification | **Passed**: red badge `1` on the bell of Home, Saved and Profile |
+| 5 | Device: bell → Notifications | **Passed**: `Mark all as read` shown in the app bar; the unread item has its dot |
+| 6 | Device: tap `Mark all as read` | **Passed**: the item reads `Read`, the action disappears; Back to Profile shows the bell without a badge |
+
+---
+
 ## Run template
 
 ```markdown
