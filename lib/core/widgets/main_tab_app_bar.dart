@@ -30,6 +30,7 @@ class MainTabAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.user,
     this.greeting,
     this.summary,
+    this.unreadNotifications = 0,
   });
 
   /// The header photo. It is decoration only: replace the file to change it.
@@ -55,6 +56,10 @@ class MainTabAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   /// Optional line under the title, built from data the tab already has.
   final String? summary;
+
+  /// Unread notifications; above 0 the bell shows a red count badge
+  /// ("9+" above nine) until they are read.
+  final int unreadNotifications;
 
   static double _lineHeight(TextStyle style) => style.fontSize! * style.height!;
 
@@ -132,16 +137,34 @@ class MainTabAppBar extends StatelessWidget implements PreferredSizeWidget {
                         ],
                       ),
                     ),
-                    IconButton(
-                      tooltip: 'Notifications',
-                      icon: const Icon(Symbols.notifications_rounded),
-                      style: IconButton.styleFrom(
-                        backgroundColor: AppColors.onPrimary.withValues(
-                          alpha: 0.2,
+                    // The tooltip stays "Notifications" so finders and
+                    // ARTEMIS cases keep working; the count is read out as
+                    // the button's value instead.
+                    Semantics(
+                      value: unreadNotifications > 0
+                          ? '$unreadNotifications unread'
+                          : null,
+                      child: IconButton(
+                        tooltip: 'Notifications',
+                        icon: Badge(
+                          isLabelVisible: unreadNotifications > 0,
+                          label: Text(
+                            unreadNotifications > 9
+                                ? '9+'
+                                : '$unreadNotifications',
+                          ),
+                          backgroundColor: AppColors.error,
+                          textColor: AppColors.onPrimary,
+                          child: const Icon(Symbols.notifications_rounded),
                         ),
-                        foregroundColor: AppColors.onPrimary,
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.onPrimary.withValues(
+                            alpha: 0.2,
+                          ),
+                          foregroundColor: AppColors.onPrimary,
+                        ),
+                        onPressed: onNotifications,
                       ),
-                      onPressed: onNotifications,
                     ),
                     // The other tabs keep the avatar as their Profile entry
                     // point (DC-20); Profile itself passes no callback.

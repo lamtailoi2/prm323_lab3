@@ -175,6 +175,40 @@ void main() {
     expect(find.text('Application job-1'), findsOneWidget);
   });
 
+  testWidgets('Mark all as read clears every unread notification', (
+    tester,
+  ) async {
+    notifications.results = page;
+    await pumpCenter(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mark all as read'), findsOneWidget);
+    await tester.tap(find.text('Mark all as read'));
+    await tester.pumpAndSettle();
+
+    final unread = [
+      for (final item in page)
+        if (item.isUnread) item.id,
+    ];
+    expect(notifications.readIds, unread);
+    expect(tester.takeException(), isNull);
+
+    // The stream brings the read state back and the action disappears.
+    notifications.emit([
+      for (final item in page) testNotification(item.id, isRead: true),
+    ]);
+    await tester.pumpAndSettle();
+    expect(find.text('Mark all as read'), findsNothing);
+  });
+
+  testWidgets('no unread notifications: no Mark all as read', (tester) async {
+    notifications.results = [testNotification('1', isRead: true)];
+    await pumpCenter(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mark all as read'), findsNothing);
+  });
+
   testWidgets('a notification without a route stays on the list', (
     tester,
   ) async {

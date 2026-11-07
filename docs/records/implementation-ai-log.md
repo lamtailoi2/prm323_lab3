@@ -827,6 +827,19 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-81: Unread count badge on the bell; Mark all as read
+- **Request:** (Claude Code, Opus 5.5, 2026-11-08; operator Phạm Nguyễn Hoàng Anh) "sao khi có thông báo icon chuông ở header hông hiện nút đỏ or tag nhỏ số thông báo", then "tôi làm luôn và thêm marked read all btn nữa đi". The Notification Center belongs to Lập's area; the operator chose to build it.
+- **Output:**
+  - `NotificationService.markAllRead(uid, ids)`: one Firestore batch setting `read: true`, at most the 50 shown.
+  - `unreadNotificationCountProvider` (`features/notifications/viewmodels/unread_notifications_provider.dart`): counts unread items from the same history stream as the list. It is user-scoped and 0 when signed out.
+  - `MainTabAppBar.unreadNotifications`: Material `Badge` on the bell (`color/error`, `9+` above nine). The tooltip stays `Notifications`, so existing finders and ARTEMIS cases still match; the count is the button's semantics value. All six tab screens pass the count.
+  - `NotificationCenterViewModel.markAllRead()` plus a `Mark all as read` text button in the app bar, shown only while something is unread. A failure leaves the dots and allows a retry.
+  - Docs: DC-34 and the Notification Center row in `design-traceability.md`; G-04 updated; design-system header note; test-report Run 38.
+- **Verification:** format 0 changed; `flutter analyze` clean; `flutter test` 697 passed (+10). On the emulator (profile build): badge `1` on Home, Saved and Profile; `Mark all as read` cleared the dot, hid itself and removed the badge (test-report Run 38).
+- **Decision:** Accepted; Figma frames still to update (DC-34).
+
+---
+
 ## Entry template
 
 ```markdown

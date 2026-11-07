@@ -14,7 +14,7 @@ class FakeNotificationService implements NotificationService {
   Completer<void>? gate;
   int watchCalls = 0;
 
-  /// Thrown by [save] / [markRead].
+  /// Thrown by [save] / [markRead] / [markAllRead].
   AppException? writeError;
 
   final List<AppNotification> saved = <AppNotification>[];
@@ -92,6 +92,12 @@ class FakeNotificationService implements NotificationService {
   Future<void> markRead(String uid, String id) async {
     if (writeError case final failure?) throw failure;
     readIds.add(id);
+  }
+
+  @override
+  Future<void> markAllRead(String uid, Iterable<String> ids) async {
+    if (writeError case final failure?) throw failure;
+    readIds.addAll(ids);
   }
 
   /// Pushes a new snapshot, as Firestore would.

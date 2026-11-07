@@ -30,7 +30,18 @@ class NotificationCenterScreen extends ConsumerWidget {
     final viewModel = ref.read(notificationCenterViewModelProvider.notifier);
 
     return Scaffold(
-      appBar: const AppTopBar.back(title: 'Notifications'),
+      appBar: AppTopBar.back(
+        title: 'Notifications',
+        actions: [
+          // Only while something is unread, so the action never does nothing.
+          if (state case ViewData<List<AppNotification>>(:final data)
+              when data.any((item) => item.isUnread))
+            TextButton(
+              onPressed: () => unawaited(viewModel.markAllRead()),
+              child: const Text('Mark all as read'),
+            ),
+        ],
+      ),
       body: switch (state) {
         ViewLoading<List<AppNotification>>() => const _NotificationsSkeleton(),
         ViewEmpty<List<AppNotification>>() => StateView.empty(

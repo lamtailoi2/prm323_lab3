@@ -72,6 +72,9 @@ abstract interface class NotificationService {
 
   /// Marks one notification as read.
   Future<void> markRead(String uid, String id);
+
+  /// Marks the given notifications read in one batch (`Mark all as read`).
+  Future<void> markAllRead(String uid, Iterable<String> ids);
 }
 
 final notificationServiceProvider = Provider<NotificationService>(
@@ -244,6 +247,26 @@ class FirebaseNotificationService implements NotificationService {
   Future<void> markRead(String uid, String id) async {
     try {
       await _notifications(uid).doc(id).update(<String, Object?>{'read': true});
+    } on FirebaseException catch (error) {
+      throw _toAppException(error);
+    }
+  }
+
+  @override
+  Future<void> markAllRead(String uid, Iterable<String> ids) async {
+    // One batch: at most the 50 shown in the history, under Firestore's
+    // 500-write limit, and either every dot clears or none does.
+    final batch = _firestore.batch();
+    var writes = 0;
+    for (final id in ids) {
+      batch.update(_notifications(uid).doc(id), <String, Object?>{
+        'read': true,
+      });
+      writes++;
+    }
+    if (writes == 0) return;
+    try {
+      await batch.commit();
     } on FirebaseException catch (error) {
       throw _toAppException(error);
     }

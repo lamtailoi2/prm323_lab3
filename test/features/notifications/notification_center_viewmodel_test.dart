@@ -135,4 +135,59 @@ void main() {
 
     expect(notifications.readIds, ['1']);
   });
+
+  group('markAllRead', () {
+    test('marks every unread notification read in one call', () async {
+      notifications.results = [
+        testNotification('1'),
+        testNotification('2', isRead: true),
+        testNotification('3'),
+      ];
+      final container = build();
+      await settle();
+      await settle();
+
+      await container
+          .read(notificationCenterViewModelProvider.notifier)
+          .markAllRead();
+
+      expect(notifications.readIds, ['1', '3']);
+    });
+
+    test('does nothing when everything is read or still loading', () async {
+      notifications.results = [testNotification('1', isRead: true)];
+      final container = build();
+      final viewModel = container.read(
+        notificationCenterViewModelProvider.notifier,
+      );
+      // Still loading: nothing to mark.
+      await viewModel.markAllRead();
+      await settle();
+      await settle();
+      await viewModel.markAllRead();
+
+      expect(notifications.readIds, isEmpty);
+    });
+
+    test('a failed write can be retried', () async {
+      notifications.results = [testNotification('1')];
+      final container = build();
+      await settle();
+      await settle();
+      final viewModel = container.read(
+        notificationCenterViewModelProvider.notifier,
+      );
+
+      notifications.writeError = const AppException(
+        AppErrorKind.network,
+        'We could not update your notifications.',
+      );
+      await viewModel.markAllRead();
+      expect(notifications.readIds, isEmpty);
+
+      notifications.writeError = null;
+      await viewModel.markAllRead();
+      expect(notifications.readIds, ['1']);
+    });
+  });
 }
