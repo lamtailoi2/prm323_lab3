@@ -47,7 +47,9 @@ class CvValidationViewModel extends Notifier<ViewState<CvValidationResult>> {
     try {
       final result = await service.validate(storagePath);
       await analytics.logEvent('cv_validation_result', <String, Object>{
-        'is_valid': result.isValid,
+        // GA4 accepts strings and numbers only: a bool parameter asserts in
+        // debug and is dropped in release, so the verdict is logged as 1 / 0.
+        'is_valid': result.isValid ? 1 : 0,
       });
       if (!ref.mounted) return result;
       state = ViewData(result);

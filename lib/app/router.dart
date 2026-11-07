@@ -2,18 +2,24 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/utils/notification_target.dart' show notificationCenterPath;
+import '../features/applications/screens/application_detail_screen.dart';
+import '../features/applications/screens/cv_match_screen.dart';
+import '../features/applications/screens/cv_validation_screen.dart';
 import '../features/applications/screens/my_applications_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/home/screens/home_screen.dart';
+import '../features/internships/models/apply_session.dart';
 import '../features/internships/models/search_filter_criteria.dart';
-import '../features/internships/screens/apply_confirm_screen.dart';
-import '../features/internships/screens/apply_form_screen.dart';
-import '../features/internships/screens/apply_validate_screen.dart';
+import '../features/internships/screens/application_success_screen.dart';
+import '../features/internships/screens/apply_compose_screen.dart';
 import '../features/internships/screens/internship_detail_screen.dart';
 import '../features/internships/screens/search_results_screen.dart';
 import '../features/internships/screens/search_screen.dart';
+import '../features/notifications/screens/notification_center_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
+import '../features/profile/screens/firebase_demo_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/saved/screens/saved_screen.dart';
 import '../models/app_user.dart';
@@ -36,6 +42,8 @@ abstract final class AppRoutes {
   static const String applications = '/applications';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
+  static const String firebaseDemo = '/profile/firebase';
+  static const String notificationCenter = notificationCenterPath;
 
   /// Internship Detail opened from the [tab] it belongs to, e.g.
   /// `/home/internships/<key>`, so Back returns to that tab.
@@ -47,13 +55,20 @@ abstract final class AppRoutes {
   static String applyForm(String tab, String internshipKey) =>
       '${internshipDetail(tab, internshipKey)}/apply';
 
-  /// Validate CV step above the Apply Form (Flow 4).
-  static String applyValidate(String tab, String internshipKey) =>
-      '${applyForm(tab, internshipKey)}/validate';
+  /// Flow 2 after the form: CV Match → Validate CV → Review → Success, all
+  /// above the Apply Form so Back walks the application back one step.
+  static String applyMatch(String tab, String internshipKey) =>
+      '${applyForm(tab, internshipKey)}/match';
 
-  /// Confirm Application step, reached only after the CV passed.
-  static String applyConfirm(String tab, String internshipKey) =>
-      '${applyForm(tab, internshipKey)}/confirm';
+  static String applyValidation(String tab, String internshipKey) =>
+      '${applyForm(tab, internshipKey)}/validation';
+
+  static String applicationSuccess(String tab, String internshipKey) =>
+      '${applyForm(tab, internshipKey)}/success';
+
+  /// One application, from My Applications or `View application`.
+  static String applicationDetail(String internshipKey) =>
+      '$applications/$internshipKey';
 }
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
@@ -139,6 +154,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             AppRoutes.applications,
             'my_applications',
             const MyApplicationsScreen(),
+            routes: [
+              GoRoute(
+                path: ':jobKey',
+                name: 'application_detail',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => ApplicationDetailScreen(
+                  internshipKey: state.pathParameters['jobKey']!,
+                ),
+              ),
+            ],
           ),
           _tab(
             AppRoutes.profile,
@@ -151,6 +176,22 @@ final routerProvider = Provider<GoRouter>((ref) {
                 name: 'edit_profile',
                 parentNavigatorKey: rootNavigatorKey,
                 builder: (context, state) => const EditProfileScreen(),
+              ),
+              // Lab 3 demo controls: Remote Config values and Crashlytics
+              // tests (G-06). Above the shell like the other Profile tools.
+              GoRoute(
+                path: 'firebase',
+                name: 'firebase_demo',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => const FirebaseDemoScreen(),
+              ),
+              // The Notification Center opens above the shell, so Back
+              // returns to the tab the bell was tapped on (G-04).
+              GoRoute(
+                path: 'notifications',
+                name: 'notification_center',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => const NotificationCenterScreen(),
               ),
             ],
           ),
@@ -215,35 +256,64 @@ GoRoute _internshipDetail(String source) {
     routes: [
       GoRoute(
         path: 'apply',
-        name: '${source}_apply_form',
+        name: '${source}_apply_email',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => ApplyFormScreen(
+        builder: (context, state) => ApplyComposeScreen(
           internshipKey: state.pathParameters['jobKey']!,
           source: source,
         ),
         routes: [
+          // Optional, advisory CV checks: they pop back to the compose
+          // screen and never block sending the email.
           GoRoute(
-            path: 'validate',
-            name: '${source}_apply_validate_cv',
+            path: 'match',
+            name: '${source}_cv_match',
             parentNavigatorKey: rootNavigatorKey,
-            builder: (context, state) => ApplyValidateScreen(
+            builder: (context, state) => CvMatchScreen(
               internshipKey: state.pathParameters['jobKey']!,
               source: source,
+              session: _applySession(state),
             ),
           ),
           GoRoute(
-            path: 'confirm',
-            name: '${source}_apply_confirm',
+            path: 'validation',
+            name: '${source}_cv_validation',
             parentNavigatorKey: rootNavigatorKey,
-            builder: (context, state) => ApplyConfirmScreen(
+            builder: (context, state) => CvValidationScreen(
               internshipKey: state.pathParameters['jobKey']!,
               source: source,
+              session: _applySession(state),
+            ),
+          ),
+          GoRoute(
+            path: 'success',
+            name: '${source}_application_success',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) => ApplicationSuccessScreen(
+              internshipTitle: _successArgs(state)?.internshipTitle,
+              companyName: _successArgs(state)?.companyName,
+              workMode: _successArgs(state)?.workMode,
+              logoUrl: _successArgs(state)?.logoUrl,
+              submittedAt: _successArgs(state)?.submittedAt,
             ),
           ),
         ],
       ),
     ],
   );
+}
+
+/// The CV and `apply_start` time handed from the compose screen to the
+/// optional CV Match / Validate steps; `null` when opened directly.
+ApplySession? _applySession(GoRouterState state) {
+  final extra = state.extra;
+  return extra is ApplySession ? extra : null;
+}
+
+/// The recap handed from the compose screen to Success.
+ApplicationSuccessArgs? _successArgs(GoRouterState state) {
+  final extra = state.extra;
+  return extra is ApplicationSuccessArgs ? extra : null;
 }
 
 /// Authenticated routing: signed-out users can reach only Login; signed-in

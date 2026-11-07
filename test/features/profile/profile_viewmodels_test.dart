@@ -306,6 +306,46 @@ void main() {
       expect(skillsState().suggestions.toSet(), knownSkills.toSet());
     });
 
+    test(
+      'opened before the profile loaded: waits, then starts from it',
+      () async {
+        // The Apply Form opens the sheet without the Profile tab (CR-16).
+        profiles.profile = const UserProfile(skills: ['Flutter', 'Dart']);
+        await signedIn();
+        container.listen(editSkillsViewModelProvider, (_, _) {});
+        final vm = container.read(editSkillsViewModelProvider.notifier);
+
+        expect(skillsState().ready, isFalse);
+        expect(skillsState().selected, isEmpty);
+        // Nothing can be edited or saved over the profile yet.
+        vm
+          ..toggle('SQL')
+          ..clearAll();
+        expect(skillsState().selected, isEmpty);
+        expect(await vm.save(), isFalse);
+        expect(profiles.writes, isEmpty);
+
+        await pumpEventQueue();
+        expect(skillsState().ready, isTrue);
+        expect(skillsState().selected, ['Flutter', 'Dart']);
+        expect(skillsState().suggestions.take(2), ['Flutter', 'Dart']);
+
+        vm.toggle('SQL');
+        expect(await vm.save(), isTrue);
+        expect(profiles.profile?.skills, ['Flutter', 'Dart', 'SQL']);
+      },
+    );
+
+    test('later profile snapshots do not reset the draft', () async {
+      final vm = await open(['Flutter']);
+      vm.toggle('SQL');
+
+      await profiles.updateSkills(testUser.uid, ['Kotlin']);
+      await pumpEventQueue();
+
+      expect(skillsState().selected, ['Flutter', 'SQL']);
+    });
+
     test('toggle adds and removes; clear all empties the list', () async {
       final vm = await open(['Flutter']);
       vm

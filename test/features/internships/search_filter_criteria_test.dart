@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/features/internships/models/search_filter_criteria.dart';
+import 'package:internly/models/internship.dart';
 
 import '../../helpers/fakes.dart';
 
@@ -29,6 +30,34 @@ void main() {
     test('Any location (or none) keeps every listing', () {
       expect(matches('Việt Nam', 'Any location'), isTrue);
       expect(matches('Hà Nội', null), isTrue);
+    });
+  });
+
+  group('work mode filter', () {
+    bool matches(WorkMode? mode, Set<WorkMode> filter) =>
+        SearchFilterCriteria(workModes: filter)
+            .matches(testInternship('1', workMode: mode));
+
+    test('keeps only the selected arrangements', () {
+      expect(matches(WorkMode.remote, {WorkMode.remote}), isTrue);
+      expect(matches(WorkMode.onSite, {WorkMode.remote}), isFalse);
+      expect(
+        matches(WorkMode.hybrid, {WorkMode.remote, WorkMode.hybrid}),
+        isTrue,
+      );
+      expect(
+        matches(WorkMode.onSite, {WorkMode.remote, WorkMode.hybrid}),
+        isFalse,
+      );
+    });
+
+    test('a listing that does not state its arrangement is left out', () {
+      expect(matches(null, {WorkMode.remote}), isFalse);
+    });
+
+    test('no arrangement selected keeps every listing', () {
+      expect(matches(null, const {}), isTrue);
+      expect(matches(WorkMode.remote, const {}), isTrue);
     });
   });
 

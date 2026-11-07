@@ -107,6 +107,76 @@ void main() {
     expect(internship.workMode, WorkMode.onSite);
   });
 
+  group('work mode stated only in the listing text (G-25 #9)', () {
+    WorkMode? mode({
+      String title = 'Backend Intern',
+      String? location,
+      String? description,
+      List<String> extensions = const ['Full-time'],
+    }) {
+      return Internship.fromSerpApi(
+        job({
+          'title': title,
+          'location': location,
+          'description': description,
+          'extensions': extensions,
+          'detected_extensions': null,
+        }),
+      ).workMode;
+    }
+
+    test('title, chips and location are read first', () {
+      expect(mode(title: 'Remote Flutter Intern'), WorkMode.remote);
+      expect(mode(location: 'Remote, Vietnam'), WorkMode.remote);
+      expect(
+        mode(extensions: ['Làm việc tại nhà', 'Thực tập']),
+        WorkMode.remote,
+      );
+      expect(mode(extensions: ['Từ xa', 'Thực tập']), WorkMode.remote);
+    });
+
+    test('explicit Vietnamese and English wording in the description', () {
+      expect(
+        mode(description: 'Hình thức làm việc: Remote (toàn thời gian).'),
+        WorkMode.remote,
+      );
+      expect(
+        mode(description: 'Bạn sẽ làm việc từ xa 3 ngày mỗi tuần.'),
+        WorkMode.remote,
+      );
+      expect(
+        mode(description: 'Mô hình làm việc hybrid, 2 ngày tại văn phòng.'),
+        WorkMode.hybrid,
+      );
+      expect(
+        mode(description: 'Địa điểm làm việc tại văn phòng Quận 1.'),
+        WorkMode.onSite,
+      );
+    });
+
+    test('office and home in the same listing mean hybrid', () {
+      expect(
+        mode(
+          description:
+              'You may work at the office or work from home, whichever fits.',
+        ),
+        WorkMode.hybrid,
+      );
+    });
+
+    test('a bare "hybrid" in the description is not a work mode', () {
+      expect(
+        mode(description: 'We build hybrid mobile apps with Flutter.'),
+        isNull,
+      );
+      expect(mode(description: 'Deploy the app to a remote server.'), isNull);
+    });
+
+    test('a description that never states the arrangement stays null', () {
+      expect(mode(description: 'You will work with Firebase and Git.'), isNull);
+    });
+  });
+
   test('fromFirestore reads the raw job and anchors postedAt to syncedAt', () {
     final syncedAt = DateTime.utc(2026, 10, 20, 12);
     final internship = Internship.fromFirestore('abc123', {

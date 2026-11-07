@@ -1,0 +1,11 @@
+{"test_id": "TC-05", "status": "failed", "succeeded": false, "trace_id": "1d8523a8-09d3-4af2-8fc0-ab07dc982611", "seconds": 359.3, "error": null}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "ea95f1be-acc3-44d9-9806-a599a0c5bba0", "seconds": 64.8, "error": null}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "56300b5c-a602-4014-9c42-91d7982dc137", "seconds": 65.7, "error": null}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "d3b8a433-65a7-4887-93dd-0e18cef3a801", "seconds": 225.5, "error": null}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "d589c61d-4d49-458a-964a-dc523e3d2373", "seconds": 196.8, "error": null}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "a0ee4316-2d4e-45ac-bf9c-b167c8e6a71b", "seconds": 49.7, "error": null}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "a96423d9-70b4-4325-b714-42e780ba8378", "seconds": 53.4, "error": null}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "fced7607-82f5-4674-8d2a-323b11bc1289", "seconds": 125.8, "error": null}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "505846be-9090-42f9-9958-e01a71e2cd74", "seconds": 66.8, "error": null}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "045c4d16-d867-4f14-b0d5-cc43c1500f61", "seconds": 62.8, "error": null}
+{"test_id": "TC-05", "status": "completed", "succeeded": true, "trace_id": "ebe3d568-66c7-4098-b166-be2a493c3cba", "seconds": 67.5, "error": null}

@@ -94,7 +94,17 @@ class FirebaseAuthService implements AuthService {
           'We could not sign you in. Please try again.',
         );
       }
-      return user;
+      // The Google profile (with `given_name`) is only available here.
+      final given = result.additionalUserInfo?.profile?['given_name'];
+      return given is String && given.trim().isNotEmpty
+          ? AppUser(
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoUrl: user.photoUrl,
+              givenName: given.trim(),
+            )
+          : user;
     } on GoogleSignInException catch (e) {
       throw _fromGoogle(e);
     } on FirebaseAuthException catch (e) {

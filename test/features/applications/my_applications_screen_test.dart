@@ -50,12 +50,21 @@ void main() {
           builder: (context, state) => const MyApplicationsScreen(),
         ),
         GoRoute(
+          path: '${AppRoutes.applications}/:jobKey',
+          builder: (context, state) =>
+              Text('Application ${state.pathParameters['jobKey']}'),
+        ),
+        GoRoute(
           path: AppRoutes.profile,
           builder: (context, state) => const Text('Profile tab'),
         ),
         GoRoute(
           path: AppRoutes.search,
           builder: (context, state) => const Text('Search tab'),
+        ),
+        GoRoute(
+          path: AppRoutes.notificationCenter,
+          builder: (context, state) => const Text('Notification Center'),
         ),
       ],
     );
@@ -152,7 +161,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(InternshipCardSkeleton), findsNothing);
-      expect(find.byType(ApplicationCard), findsNWidgets(5));
+      // The photo header leaves room for fewer cards than the list holds;
+      // the count line confirms all five loaded.
+      expect(find.byType(ApplicationCard), findsWidgets);
       expect(find.text('5 applications'), findsOneWidget);
     });
   }
@@ -269,11 +280,11 @@ void main() {
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ApplicationCard), findsNWidgets(5));
+    expect(find.byType(ApplicationCard), findsWidgets);
     expect(find.text('5 applications'), findsOneWidget);
   });
 
-  testWidgets('opening an application and Review offer are honest for now', (
+  testWidgets('a card and Review offer open Application Detail', (
     tester,
   ) async {
     applications.results = page;
@@ -283,27 +294,33 @@ void main() {
     await tester.tap(find.text(ApplicationCard.reviewOfferLabel));
     await tester.pumpAndSettle();
 
-    // Application Detail is not built yet, so the screen does not fake it.
-    expect(find.text('Application details are coming soon.'), findsOneWidget);
+    expect(find.textContaining('Application '), findsOneWidget);
 
+    // A card tap opens the same screen.
+    await pumpApplications(tester, height: 1400);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('QA Engineer Intern'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Application details are coming soon.'), findsOneWidget);
+    expect(find.textContaining('Application '), findsOneWidget);
   });
 
-  testWidgets('avatar opens Profile and the bell is honest', (tester) async {
+  testWidgets('avatar opens Profile and the bell opens notifications', (
+    tester,
+  ) async {
     applications.results = page;
     await pumpApplications(tester, height: 1400);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Notifications'));
-    await tester.pump();
-    expect(find.text('Notifications are coming soon.'), findsOneWidget);
-
     await tester.tap(find.byTooltip('Profile'));
     await tester.pumpAndSettle();
     expect(find.text('Profile tab'), findsOneWidget);
+
+    await pumpApplications(tester, height: 1400);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Notifications'));
+    await tester.pumpAndSettle();
+    expect(find.text('Notification Center'), findsOneWidget);
   });
 
   testWidgets('touch targets are at least 48 dp', (tester) async {

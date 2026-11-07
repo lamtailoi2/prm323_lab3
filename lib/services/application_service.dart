@@ -8,26 +8,39 @@ import '../models/internship_application.dart';
 import 'auth_service.dart';
 import 'crashlytics_service.dart';
 
-/// Reads the signed-in student's tracked applications and records a new one.
+/// Reads and records the signed-in student's tracked applications.
 ///
 /// Documents live under `users/{uid}/applications/{jobKey}` (rule 9 in
-/// AGENTS.md); the Apply flow owns the writes, My Applications only reads
-/// them.
+/// AGENTS.md).
 abstract interface class ApplicationService {
   /// Emits the applications of the current user, newest first; empty when
   /// signed out.
   Stream<List<InternshipApplication>> watchApplications();
 
-  /// Records that the student applied to [jobKey] on the employer's website
-  /// (Flow 4 ends outside Internly, G-25 #6).
-  ///
-  /// The write merges, so submitting the same listing again updates the date
-  /// and status instead of creating a duplicate document.
-  Future<void> markSubmitted({
-    required String jobKey,
+  /// Records a submitted application (Flow 2 end). Writing the same listing
+  /// again overwrites its document instead of creating a duplicate.
+  Future<void> createApplication({
+    required String internshipKey,
     required String title,
     required String companyName,
+    String? cvStoragePath,
+    String? cvFileName,
+    String? cvUrl,
+    int? cvSizeBytes,
+    required ApplicationApplicant applicant,
+    String? recipientEmail,
+    required ApplicationChannel appliedVia,
   });
+
+  /// Withdraws an application (Flow 3d): keeps the status it had so
+  /// `undoWithdrawal` can restore it, and stamps when it happened.
+  Future<void> withdraw(
+    String internshipKey, {
+    required ApplicationStatus previous,
+  });
+
+  /// Restores the status the application had before it was withdrawn.
+  Future<void> undoWithdrawal(String internshipKey);
 }
 
 final applicationServiceProvider = Provider<ApplicationService>((ref) {
@@ -86,39 +99,137 @@ class FirestoreApplicationService implements ApplicationService {
   }
 
   @override
-  Future<void> markSubmitted({
-    required String jobKey,
+  Future<void> createApplication({
+    required String internshipKey,
     required String title,
     required String companyName,
+    String? cvStoragePath,
+    String? cvFileName,
+    String? cvUrl,
+    int? cvSizeBytes,
+    required ApplicationApplicant applicant,
+    String? recipientEmail,
+    required ApplicationChannel appliedVia,
   }) async {
     final uid = _uid;
     if (uid == null || uid.isEmpty) {
       throw const AppException(
         AppErrorKind.permissionDenied,
-        'Sign in to save your application.',
+        'Sign in again and try once more.',
       );
     }
+
+    final recipient = recipientEmail?.trim();
+    final fields = <String, Object?>{
+      // Snapshot of what the list shows: listings expire from the shared
+      // pool (G-25 #5).
+      'title': title,
+      'companyName': companyName,
+      'appliedAt': FieldValue.serverTimestamp(),
+      'status': ApplicationStatus.submitted.storageValue,
+      'appliedVia': appliedVia.storageValue,
+      if (recipient != null && recipient.isNotEmpty)
+        'recipientEmail': recipient,
+      // Only written when a CV was sent, so older-style documents never gain
+      // empty CV keys.
+      'cvStoragePath': ?cvStoragePath,
+      'cvFileName': ?cvFileName,
+      'cvUrl': ?cvUrl,
+      'cvSizeBytes': ?cvSizeBytes,
+      // What the student sent: the profile can change later.
+      'applicant': applicant.toFirestore(),
+    };
 
     try {
       await _firestore
           .collection('users')
           .doc(uid)
           .collection('applications')
-          .doc(jobKey)
-          .set(<String, Object?>{
-            'title': title,
-            'companyName': companyName,
-            'appliedAt': FieldValue.serverTimestamp(),
-            'status': ApplicationStatus.submitted.storageValue,
-          }, SetOptions(merge: true));
+          .doc(internshipKey)
+          .set(fields);
     } on FirebaseException catch (error) {
-      throw _toWriteException(error);
+      throw _toWriteAppException(error, action: 'submit your application');
     } on Exception catch (error) {
       throw AppException(
         AppErrorKind.unknown,
-        'We could not save your application. Try again in a moment.',
+        'We could not submit your application. Try again in a moment.',
         cause: error,
       );
+    }
+  }
+
+  @override
+  Future<void> withdraw(
+    String internshipKey, {
+    required ApplicationStatus previous,
+  }) => _updateApplication(internshipKey, <String, Object?>{
+    'status': ApplicationStatus.withdrawn.storageValue,
+    'withdrawnAt': FieldValue.serverTimestamp(),
+    'previousStatus': previous.storageValue,
+  }, action: 'withdraw this application');
+
+  @override
+  Future<void> undoWithdrawal(String internshipKey) async {
+    final status = await _previousStatus(internshipKey);
+    await _updateApplication(internshipKey, <String, Object?>{
+      'status': status.storageValue,
+      'withdrawnAt': FieldValue.delete(),
+      'previousStatus': FieldValue.delete(),
+    }, action: 'undo this withdrawal');
+  }
+
+  /// Reads the stored status a withdrawal replaced; `submitted` when the
+  /// document does not have one.
+  Future<ApplicationStatus> _previousStatus(String internshipKey) async {
+    final uid = _uid;
+    if (uid == null || uid.isEmpty) {
+      throw const AppException(
+        AppErrorKind.permissionDenied,
+        'Sign in again and try once more.',
+      );
+    }
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('applications')
+          .doc(internshipKey)
+          .get();
+      final data = snapshot.data();
+      final raw = data?['previousStatus'];
+      return raw is String
+          ? ApplicationStatus.fromStorage(raw) ?? ApplicationStatus.submitted
+          : ApplicationStatus.submitted;
+    } on FirebaseException catch (error) {
+      throw _toWriteAppException(error, action: 'undo this withdrawal');
+    }
+  }
+
+  /// Merge write of the fields an update changes; the rest of the document,
+  /// including the applicant snapshot, is kept. [action] names what the
+  /// student was doing, so a failure reads e.g. "withdraw this application"
+  /// instead of the generic submit-application message.
+  Future<void> _updateApplication(
+    String internshipKey,
+    Map<String, Object?> fields, {
+    required String action,
+  }) async {
+    final uid = _uid;
+    if (uid == null || uid.isEmpty) {
+      throw const AppException(
+        AppErrorKind.permissionDenied,
+        'Sign in again and try once more.',
+      );
+    }
+    try {
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('applications')
+          .doc(internshipKey)
+          .set(fields, SetOptions(merge: true));
+    } on FirebaseException catch (error) {
+      throw _toWriteAppException(error, action: action);
     }
   }
 
@@ -170,24 +281,29 @@ class FirestoreApplicationService implements ApplicationService {
     };
   }
 
-  static AppException _toWriteException(FirebaseException error) {
+  /// The write fails for the same reasons a read does, but the message names
+  /// the action the student just took (e.g. "withdraw this application"),
+  /// instead of always reading as a failed submission.
+  static AppException _toWriteAppException(
+    FirebaseException error, {
+    required String action,
+  }) {
     return switch (error.code) {
       'permission-denied' || 'unauthenticated' => AppException(
         AppErrorKind.permissionDenied,
-        'Your applications are not available for this account.',
+        'Sign in again and try once more.',
         cause: error,
       ),
       'unavailable' ||
       'deadline-exceeded' ||
       'network-request-failed' => AppException(
         AppErrorKind.network,
-        'We could not save your application. Check your connection and try '
-        'again.',
+        'We could not $action. Check your connection and try again.',
         cause: error,
       ),
       _ => AppException(
         AppErrorKind.unknown,
-        'We could not save your application. Try again in a moment.',
+        'We could not $action. Try again in a moment.',
         cause: error,
       ),
     };

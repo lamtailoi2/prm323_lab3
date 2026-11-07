@@ -7,6 +7,7 @@ import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/distinct_listings.dart';
 import '../../../core/utils/skill_matcher.dart';
+import '../../../core/utils/skill_suggestions.dart';
 import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/internship_service.dart';
@@ -40,10 +41,15 @@ class SkillCount {
 @immutable
 class SearchState {
   const SearchState({
+    this.query = '',
     this.workMode,
     this.trending = const ViewLoading(),
     this.recentSearches = const ViewLoading(),
   });
+
+  /// The term last searched from this tab, on Search or on Search Results,
+  /// so the Search field never shows a query the student already cleared.
+  final String query;
 
   /// The "Work mode" chip in use; `null` means "All".
   final WorkMode? workMode;
@@ -87,10 +93,24 @@ class SearchViewModel extends Notifier<SearchState> {
     return const SearchState();
   }
 
+  /// Keeps [query] in step with the term last searched or cleared, on this
+  /// screen or on Search Results (both share the Search tab's field).
+  void syncQuery(String term) {
+    final trimmed = term.trim();
+    if (trimmed == state.query) return;
+    state = SearchState(
+      query: trimmed,
+      workMode: state.workMode,
+      trending: state.trending,
+      recentSearches: state.recentSearches,
+    );
+  }
+
   /// Selects [mode], or clears it (back to "All") when already selected.
   void selectWorkMode(WorkMode? mode) {
     final next = state.workMode == mode ? null : mode;
     state = SearchState(
+      query: state.query,
       workMode: next,
       trending: state.trending,
       recentSearches: state.recentSearches,
@@ -105,6 +125,10 @@ class SearchViewModel extends Notifier<SearchState> {
       _pool.where((internship) => criteria.matches(internship, query: query)),
     ).length;
   }
+
+  /// Skills the current pool mentions, for the Filter sheet's chips.
+  List<String> get suggestedSkills =>
+      suggestedFilterSkills(distinctListings(_pool));
 
   /// Records [term] in this student's search history. Called when the
   /// student submits the search field or picks a recent/trending term, so
@@ -136,6 +160,7 @@ class SearchViewModel extends Notifier<SearchState> {
   Future<void> retryTrending() async {
     if (state.trending.isLoading) return;
     state = SearchState(
+      query: state.query,
       workMode: state.workMode,
       recentSearches: state.recentSearches,
     );
@@ -145,6 +170,7 @@ class SearchViewModel extends Notifier<SearchState> {
   Future<void> retryRecentSearches() async {
     if (state.recentSearches.isLoading) return;
     state = SearchState(
+      query: state.query,
       workMode: state.workMode,
       trending: state.trending,
       recentSearches: const ViewLoading(),
@@ -162,6 +188,7 @@ class SearchViewModel extends Notifier<SearchState> {
         if (!ref.mounted) return;
         _pool = internships;
         state = SearchState(
+          query: state.query,
           workMode: state.workMode,
           trending: ViewState.fromData(
             _topSkills(distinctListings(internships)),
@@ -173,6 +200,7 @@ class SearchViewModel extends Notifier<SearchState> {
       onError: (Object error, StackTrace stack) {
         if (!ref.mounted) return;
         state = SearchState(
+          query: state.query,
           workMode: state.workMode,
           trending: ViewError(_toAppException(error)),
           recentSearches: state.recentSearches,
@@ -185,6 +213,7 @@ class SearchViewModel extends Notifier<SearchState> {
     unawaited(_historySubscription?.cancel());
     if (uid == null) {
       state = SearchState(
+        query: state.query,
         workMode: state.workMode,
         trending: state.trending,
         recentSearches: const ViewEmpty(),
@@ -197,6 +226,7 @@ class SearchViewModel extends Notifier<SearchState> {
           (entries) {
             if (!ref.mounted) return;
             state = SearchState(
+              query: state.query,
               workMode: state.workMode,
               trending: state.trending,
               recentSearches: ViewState.fromData(
@@ -208,6 +238,7 @@ class SearchViewModel extends Notifier<SearchState> {
           onError: (Object error, StackTrace stack) {
             if (!ref.mounted) return;
             state = SearchState(
+              query: state.query,
               workMode: state.workMode,
               trending: state.trending,
               recentSearches: ViewError(_toAppException(error)),

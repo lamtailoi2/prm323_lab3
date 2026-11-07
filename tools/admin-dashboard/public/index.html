@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Internly Ops · Admin</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace">Skip to workspace</a>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">I.</span>
+        <div class="brand-copy">
+          <p class="eyebrow">Operations desk</p>
+          <h1>Internly Ops</h1>
+        </div>
+      </div>
+      <div class="topbar-meta">
+        <p id="project-line" class="project-line">Connecting…</p>
+        <div class="status" id="status" role="status" aria-live="polite">
+          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+          <span id="status-text">Checking credentials…</span>
+        </div>
+      </div>
+    </header>
+
+    <div id="banner" class="banner" role="alert" hidden></div>
+
+    <main id="workspace">
+      <aside class="rail" aria-labelledby="users-heading">
+        <div class="rail-head">
+          <div>
+            <p class="eyebrow">Audience</p>
+            <h2 id="users-heading">Recipients</h2>
+          </div>
+          <button id="refresh-users" class="button ghost small" type="button">
+            Reload
+          </button>
+        </div>
+
+        <label class="field">
+          <span class="label">Filter</span>
+          <input
+            id="user-search"
+            type="search"
+            placeholder="Name, email or uid"
+            autocomplete="off"
+          />
+        </label>
+
+        <p class="meta-line" id="users-summary" role="status" aria-live="polite">
+          Loading users…
+        </p>
+        <ul id="user-list" class="user-list" aria-label="Users"></ul>
+      </aside>
+
+      <div class="workspace">
+        <section class="surface compose" aria-labelledby="compose-heading">
+          <div class="surface-head">
+            <div>
+              <p class="eyebrow">Compose</p>
+              <h2 id="compose-heading">Send a notification</h2>
+            </div>
+            <span class="recipient-chip" id="target-pill">No recipient</span>
+          </div>
+
+          <form id="send-form" novalidate>
+            <div class="form-grid">
+              <label class="field span-2">
+                <span class="label">Recipient</span>
+                <select id="recipient" required>
+                  <option value="">Choose a recipient…</option>
+                </select>
+                <span class="hint" id="recipient-hint">
+                  Pick one student or everyone with a device token.
+                </span>
+              </label>
+
+              <label class="field span-2">
+                <span class="label">Title</span>
+                <input
+                  id="title"
+                  maxlength="200"
+                  required
+                  placeholder="New internship for you"
+                />
+              </label>
+
+              <label class="field span-2">
+                <span class="label">Body <span class="optional">optional</span></span>
+                <textarea
+                  id="body"
+                  rows="3"
+                  maxlength="1000"
+                  placeholder="A Flutter internship just matched your preferences."
+                ></textarea>
+              </label>
+
+              <label class="field">
+                <span class="label">
+                  Open route <span class="optional">optional</span>
+                </span>
+                <input id="route" list="route-suggestions" placeholder="/saved" />
+                <datalist id="route-suggestions">
+                  <option value="/home"></option>
+                  <option value="/search"></option>
+                  <option value="/saved"></option>
+                  <option value="/applications"></option>
+                  <option value="/profile"></option>
+                </datalist>
+              </label>
+
+              <label class="check-field">
+                <input type="checkbox" id="save-history" checked />
+                <span>Write to the user's notification history</span>
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <button id="send-button" class="button primary" type="submit" disabled>
+                Send notification
+              </button>
+              <button id="clear-recipient" class="button text" type="button">
+                Clear recipient
+              </button>
+            </div>
+            <div
+              id="send-result"
+              class="result"
+              role="status"
+              aria-live="polite"
+              hidden
+            ></div>
+          </form>
+        </section>
+
+        <section class="surface crash" aria-labelledby="crash-heading">
+          <div class="surface-head">
+            <div>
+              <p class="eyebrow">Crashlytics test</p>
+              <h2 id="crash-heading">Force a test crash</h2>
+            </div>
+            <span class="tag danger-tag">Destructive</span>
+          </div>
+          <p class="body-copy">
+            Sends a data-only command to the selected app(s). Each app closes
+            immediately and uploads a fatal report on its next launch. Choose
+            <strong>Everyone with a token</strong> above to hit the whole app.
+          </p>
+          <label class="check-field danger-check">
+            <input type="checkbox" id="crash-ack" />
+            <span>I understand the selected app(s) will close immediately.</span>
+          </label>
+          <div class="form-actions">
+            <button
+              id="crash-button"
+              class="button danger"
+              type="button"
+              disabled
+            >
+              Send test crash
+            </button>
+          </div>
+          <div
+            id="crash-result"
+            class="result"
+            role="status"
+            aria-live="polite"
+            hidden
+          ></div>
+        </section>
+
+        <div class="activity-grid">
+          <section class="surface" aria-labelledby="delivery-heading">
+            <div class="surface-head">
+              <div>
+                <p class="eyebrow">Last run</p>
+                <h2 id="delivery-heading">Delivery</h2>
+              </div>
+            </div>
+            <p class="meta-line" id="delivery-summary">No sends yet.</p>
+            <ul id="delivery-list" class="delivery-list"></ul>
+          </section>
+
+          <section class="surface" aria-labelledby="history-heading">
+            <div class="surface-head">
+              <div>
+                <p class="eyebrow">Audit</p>
+                <h2 id="history-heading">Notification history</h2>
+              </div>
+              <div class="actions">
+                <button
+                  id="refresh-history"
+                  class="button ghost small"
+                  type="button"
+                >
+                  Reload
+                </button>
+                <button
+                  id="clear-history"
+                  class="button ghost small danger-text"
+                  type="button"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+            <p class="meta-line" id="history-summary">
+              Select a recipient to see their history.
+            </p>
+            <ul id="history-list" class="history-list"></ul>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      Local tool · binds to 127.0.0.1 · the service-account key never enters the
+      repository.
+    </footer>
+
+    <dialog id="crash-dialog" class="dialog" aria-labelledby="crash-dialog-title">
+      <form method="dialog">
+        <p class="eyebrow">Confirm crash</p>
+        <h2 id="crash-dialog-title">Close Internly on the selected app(s)?</h2>
+        <p id="crash-dialog-copy" class="body-copy"></p>
+        <div class="dialog-actions">
+          <button value="cancel" class="button ghost">Cancel</button>
+          <button id="crash-confirm" value="confirm" class="button danger">
+            Crash now
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>

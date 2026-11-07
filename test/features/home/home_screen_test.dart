@@ -68,6 +68,10 @@ void main() {
           path: AppRoutes.profile,
           builder: (context, state) => const Text('Profile tab'),
         ),
+        GoRoute(
+          path: AppRoutes.notificationCenter,
+          builder: (context, state) => const Text('Notification Center'),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -133,7 +137,9 @@ void main() {
       await pumpHome(tester, width: width);
       await tester.pumpAndSettle();
 
-      expect(find.text('Home'), findsOneWidget);
+      // Header v2 greets the student by name (DC-31).
+      expect(find.text('Test Student'), findsOneWidget);
+      expect(find.textContaining('Good '), findsOneWidget);
       expect(find.byTooltip('Notifications'), findsOneWidget);
       expect(find.byTooltip('Profile'), findsOneWidget);
       expect(find.text('Find your next internship'), findsOneWidget);
@@ -255,14 +261,14 @@ void main() {
     expect(find.text('Search tab'), findsOneWidget);
   });
 
-  testWidgets('bell shows an honest coming-soon message', (tester) async {
+  testWidgets('bell opens the Notification Center', (tester) async {
     internships.results = page;
     await pumpHome(tester);
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Notifications'));
-    await tester.pump();
-    expect(find.text('Notifications are coming soon.'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Notification Center'), findsOneWidget);
   });
 
   testWidgets('avatar opens Profile', (tester) async {

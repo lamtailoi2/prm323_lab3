@@ -22,7 +22,11 @@
       "Bash(./sdkmanager.bat \"ndk;28.2.13676358\")",
       "Bash(./sdkmanager.bat --list)",
       "Bash(./sdkmanager.bat \"ndk/28.2.13676358\")",
-      "Bash(sed -n '/## G-26/,/^## G-27/p' docs/records/handoff-gaps.md)"
+      "Bash(sed -n '/## G-26/,/^## G-27/p' docs/records/handoff-gaps.md)",
+      "Bash(npm -v)",
+      "Bash(npx -v)",
+      "Bash(npx -y @mermaid-js/mermaid-cli -i docs/records/diagrams/apply-flow-mvvm-layers.mmd -o docs/records/diagrams/apply-flow-mvvm-layers.png -b white -s 2)",
+      "Bash(npx -y @mermaid-js/mermaid-cli -i docs/records/diagrams/apply-flow-mvvm-sequence.mmd -o docs/records/diagrams/apply-flow-mvvm-sequence.png -b white -s 2)"
     ],
     "additionalDirectories": [
       "D:\\PRM\\prm323_lab3\\docs\\records"

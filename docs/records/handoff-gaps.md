@@ -13,7 +13,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-01 | `handoff/flutter-handoff.md` does not exist | Team | Assumed |
 | G-02 | Product name: "Internship Finder" (Lab 2) vs "Internly" (Lab 3) | Team | Assumed |
 | G-03 | No Login screen in Lab 2 | Auth owner | Resolved (Login frame received 2026-10-28; DC-18) |
-| G-04 | No Notification Center screen in Lab 2 | Notifications owner | Assumed (Firebase demo area on Profile, per Lab 3 §3) |
+| G-04 | No Notification Center screen in Lab 2 | Notifications owner | Resolved (built 2026-11-05 from shared components: `/profile/notifications`, bell on every app bar) |
 | G-05 | No PDF report export in Lab 2 | Report owner | Assumed (Firebase demo area on Profile, per Lab 3 §3) |
 | G-06 | No place in the UI for Remote Config values and Crashlytics test controls | Profile owner | Resolved (Firebase demo area on Profile, Lab 3 §3) |
 | G-07 | Component values not documented (estimated from screenshots) | Design owner | Open (verify in Figma) |
@@ -22,18 +22,18 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-10 | Nobody can change an application's status (no employer side) | Applications owner | Open |
 | G-11 | Remote Config parameters not chosen | Profile owner | Assumed (2 defaults in `firebase/remote-config-defaults.json`) |
 | G-12 | CV / PDF storage provider and privacy of uploaded files | Team | Resolved (Firebase Storage on Blaze, $0 within no-cost quota) |
-| G-13 | Notification data source (who sends FCM, where history is stored) | Notifications owner | Assumed (console sends; client stores history) |
+| G-13 | Notification data source (who sends FCM, where history is stored) | Notifications owner | Resolved (console / backend sends; the client stores history and the token) |
 | G-14 | No seed / demo data for internship listings | Search owner | Resolved (SerpAPI, no seeding) |
 | G-15 | iOS added to scope; Lab 2 designed for Android only | Team | Resolved (Material on both) |
 | G-16 | Figma pages available only as screenshots; 19 of 31 components not covered | Design owner | Open |
 | G-17 | Allowance format: `$1,200/month` (Figma) vs VND per month (Stitch / AI log) | Home / Search owner | Resolved (VND format; allowance read from the description, 2026-10-28) |
-| G-18 | No "Withdrawn" status badge specimen | Applications owner | Open |
+| G-18 | No "Withdrawn" status badge specimen | Applications owner | Resolved (2026-11-04; page-05 specimen still needs the sixth status added) |
 | G-19 | Two Figma color pairs fail WCAG AA contrast | Design owner | Open (proposals DC-04, DC-05) |
 | G-20 | iOS: SPM cannot resolve Firebase 13 + GoogleSignIn 9 | Tech lead | Resolved (CocoaPods; see note) |
 | G-21 | App ID / bundle ID and repository naming not confirmed | Team | Resolved (keep `prm323_lab3`, user decision) |
 | G-22 | Keyword search strategy (Firestore has no full-text search) | Search owner | Resolved (SerpAPI query) |
 | G-23 | "Recommended for you" logic not specified | Home owner | Resolved (preferred location, then target roles and skills, then sync rank + recency) |
-| G-24 | CV Match Check (new Apply step): matching rules, data source, Figma frame | Apply owner + design owner | Open (separate generic CV gate built 2026-11-01) |
+| G-24 | CV Match Check (new Apply step): matching rules, data source, Figma frame | Apply owner + design owner | Resolved (advisory `CvMatchScreen` built 2026-11-06; rule-based score + Gemini commentary; frame still open, DC-30) |
 | G-25 | Consequences of using SerpAPI (Google Jobs) as the data source | Search + Apply owners | Resolved (shared Firestore mirror) |
 | G-26 | Zero-cost constraint: every service and tool must run at $0 | Team | Resolved (plan below) |
 | G-27 | No Lab 2 frame for Edit profile (target of the Profile primary action) | Profile owner | Resolved (Edit Profile frame received 2026-10-28, DC-14) |
@@ -42,6 +42,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-29 | Edit Profile `Change Photo` / `Remove` (JPG, PNG ≤ 5 MB) has no storage path: `storage.rules` allows only PDFs in `cvs/` and `reports/` | Profile owner | Resolved for now (Google photo only, user decision; DC-14) |
 | G-31 | Login "Terms" and "Privacy" links have no content or URL | Auth owner + team | Assumed (honest coming-soon message, DC-18) |
 | G-32 | Open items from the AI code review (CR-07 Saved part, CR-11, CR-17) | Saved owner, Search owner, Apply owner + rules owner | Open |
+| G-33 | Apply is email-based; Google Jobs provides no recruiter email | Apply owner | Resolved (user decision 2026-11-06; DC-31) |
 
 ---
 
@@ -61,6 +62,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 - **Resolved (2026-10-28):** the design owner provided a Login frame: a campus photo under a dark scrim, the `Internly.` wordmark (blue dot), "Khởi đầu sự nghiệp IT", a one-line pitch, a white "Tiếp tục với Google" button with the Google "G", and "Bằng việc tiếp tục, bạn đồng ý với Điều khoản & Bảo mật." The app follows it with the differences in DC-18 (English copy per G-28, the Terms / Privacy links per G-31, the sign-in message). The photo is `assets/images/login_background.jpg` (supplied by the design owner with the frame; its source and license are still to be confirmed). The "G" is Google's own asset from the [Sign in with Google branding guidelines](https://developers.google.com/identity/branding-guidelines) (`signin-assets.zip`, light, icon only), cropped to the mark, as the guidelines require for a custom button.
 
 ### G-04: Notification Center
+- **Resolved (2026-11-05):** `NotificationCenterScreen` at `/profile/notifications`, opened from the bell on every app bar. Built from the shared App Bar, Card, Skeleton, `StateView.empty` and `StateView.error`; unread uses a dot plus a Semantics label and a stronger title weight.
 - **Found:** not in the Lab 2 screen inventory. The only hint is a bell action in the Home app bar (Stitch final) and the App Bar "Main" specimen with a notification action (Figma 05).
 - **Needed:** list layout, empty/error states, read/unread treatment, and navigation target per notification type. Build it from existing components and log it in the change log.
 
@@ -71,6 +73,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 ### G-06: Remote Config display and Crashlytics controls
 - **Found:** Lab 3 requires displaying current Remote Config values, a handled-exception demo and an explicit test-crash control. Lab 2 has no place for them.
 - **Proposal:** a "Diagnostics" group in Profile → "Settings & Support" (the Stitch Profile final already has this section). Never trigger a crash at startup.
+- **Resolved (2026-11-06):** `FirebaseDemoScreen` at `/profile/firebase`, opened from Profile → Diagnostics → `Firebase demo`. It shows every Remote Config parameter with its value and source, refreshes on live updates, and offers `Send a non-fatal error` and `Simulate app crash` (confirmation first). It links to the Notification Center; the Report export row is disabled (`Coming soon.`) until G-05.
 
 ### G-07: Values not documented in the handoff
 Values below are **estimated from the Figma screenshots** or left at Material defaults. Verify each in Figma inspect mode and update the code and [`design-system.md`](../design/design-system.md).
@@ -126,6 +129,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 - **Needed (historical):** choose the provider. If Cloudinary: a dedicated unsigned preset restricted to PDF, a folder per purpose, client-side size limit (verify which server-side limits the preset can enforce), no API secret in the app, and a documented privacy trade-off. Alternatively, signed uploads via a backend.
 
 ### G-13: Notification data source
+- **Decision (2026-11-05):** the Firebase console (or a future backend) is the sender. The client stores every received message in `users/{uid}/notifications/{messageId}` (foreground `onMessage`, background `onMessageOpenedApp`, terminated `getInitialMessage`; the background isolate also writes when it runs). The document ID is the FCM message ID, so the handlers cannot duplicate an entry. The token is stored at `users/{uid}.fcmToken` and shown in Profile → Diagnostics → `Copy FCM token` for console test messages.
 - **Found:** FCM needs a sender (Firebase console for demos, or a backend). The Notification Center needs history, but no backend is planned.
 - **Options:** the client stores received messages in `users/{uid}/notifications` (foreground, opened-app and background handlers), or a server writes them. Also decide where FCM tokens are stored.
 
@@ -151,6 +155,7 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 ### G-18: Withdrawn badge
 - **Found:** Flow 3d sets the status to Withdrawn, but Figma 05 "Application Status" has only five specimens (Submitted, Under review, Interview, Accepted, Rejected).
 - **Needed:** icon and color for Withdrawn (likely the neutral treatment). Check the Application Detail "withdrawn" frame on Figma page 03.
+- **Resolved (2026-11-04):** the Application Detail withdrawn frame supplies the neutral treatment — `undo` icon + `textSecondary` on `surfaceVariant` — implemented in `ApplicationStatusBadge` and recorded as DC-29. The page-05 specimen still needs the sixth status added.
 
 ### G-19: Contrast failures
 - **Found (computed):** Rejected badge `#DC2626` on `#F1F5F9` = 4.41:1; selected filter chip `#2563EB` on `#DBEAFE` = 4.24:1. Both are below the 4.5:1 that DESIGN.md §13 requires for 14 sp text. Details in [`design-system.md` §3](../design/design-system.md#3-contrast-check-computed).
@@ -182,8 +187,9 @@ Values below are **estimated from the Figma screenshots** or left at Material de
 - **Decided so far:** the step sits between Application Form and Application Review; it never blocks applying (`Continue to review` always available); suggestions are honest (never ask the student to claim skills they lack); status per requirement uses label + icon (see `user-flow.md` Flow 2d and `screen-spec.md` › CV Match Check).
 - **Update (2026-11-01):** a **separate generic CV quality gate** is built for the pre-submit step: "is this PDF a usable CV?" It sits before Confirm Application and **can** block (`CV Invalid → Update CV → Retry`), unlike this match check. The callable `validateCv` (`functions/src/validate-cv.ts`) reads `cvs/{uid}/…` server-side, extracts text with `pdf-parse` and asks Gemini with a fixed, non-job-specific rubric; `GEMINI_API_KEY` is a Secret Manager secret bound only to that function (free tier, G-26). The app calls it through `CvValidationService`; the step widget is `CvValidationStep` and the state is `CvValidationViewModel` (`is_valid` → `cv_validation_result` analytics event). This resolves item 3's backend requirement for the **generic** check only; job-matching suggestions remain open.
 - **Update (2026-11-02):** Internship Detail now shows the Figma Match Card as a **Skill match** (DC-24): item 1's baseline rule (Profile skills vs the skills the listing mentions, case-insensitive, `knownSkills` from `skill_matcher.dart`), item 2 answered for this card as "declared skills only, the CV file is not read", and Remote Config `cv_match_enabled` hides the card. Whether a separate CV Match Check step is still needed in Apply is open for the team.
-- **Update (2026-11-03):** decided — the Apply flow uses only the generic gate: Pre-submit Complete → **Validate CV** (`/{tab}/internships/:jobKey/apply/validate`, embeds `CvValidationStep`) → **Confirm Application** → employer website → return + confirm → My Applications. The separate CV Match Check / Application Review / Application Success screens are dropped (DC-27). The step can block submission and sends the CV text to the callable only. Job-specific matching suggestions stay out of the flow; the Detail Skill match (DC-24) is the only matching UI.
-- **Open:**
+- **Update (2026-11-03):** the generic gate is now part of Flow 2: `Continue to review` opens `/{tab}/…/apply/validation` (`CvValidationScreen`) with the chosen CV, a valid CV continues to Application Review on its own, and a rejected CV or a failed check returns to the form or retries. Review and Success (`ApplicationReviewScreen`, `ApplicationSuccessScreen`, `application_create`) close the flow with the application stored at `users/{uid}/applications/{jobKey}`; both screens have no frame yet (DC-27). The **CV Match Check** itself (job-specific gaps) is still not built.
+- **Resolved (2026-11-06):** `CvMatchScreen` at `/{tab}/internships/:jobKey/apply/match`, between the Apply Form and Validate CV, gated by `cv_match_enabled` and never blocking (`Continue` is enabled in every state). Groq extracts three technology lists from the job description and the CV (`cvSkills`, `jobSkills`, `jobNiceToHave`); the local `knownSkills` vocabulary is unioned in as a safety net. A skill counts as matched when it is in the extracted CV list or in `users/{uid}.skills`; required = `jobSkills` minus nice-to-have; the percentage is `matched / total`. The same callable writes the summary and one suggestion per gap on a second Groq call; an extraction failure, a commentary failure or a blank key falls back to the vocabulary plus deterministic suggestions, so the advisory step never fails on the model. A direct probe on the current free key showed `llama-3.3-70b-versatile` is retired (404), so the model is `openai/gpt-oss-20b`. Analytics: `cv_match_check` with `internship_id`, `result` (`all_matched` / `gaps` / `failed`), `matched_count`, `missing_count`. The frame is still missing (DC-30).
+- **Open (resolved 2026-11-06; kept for history):**
   1. **Matching rules.** Baseline proposal: compare the internship's `skills` and "Must have" items with the profile / form skills, case-insensitively, with a small synonym list (e.g. "REST" ↔ "REST API"). "Nice to have" items are informational only.
   2. **CV content.** The generic gate now reads CV text server-side; whether the job-matching check also reads the PDF or relies on declared skills is still undecided. Reading the PDF adds accuracy limits and sends CV text to Gemini (the step must tell the user).
   3. **AI-generated suggestions.** Generic validation now runs behind a backend with no API key in the app (done). Any LLM used for job-matching suggestions must use the same pattern, and the user must be told that CV text leaves the device.
@@ -201,7 +207,8 @@ Values below are **estimated from the Figma screenshots** or left at Material de
   6. **Applying is external.** Google Jobs gives `apply_options` links to employer sites; the app cannot submit to the employer. **Implemented (2026-11-03):** `Internship.employerApplyUrl` reads the first https `apply_options[].link` (with `share_link` as the Google Jobs fallback); Confirm Application opens it in the device browser, and after the student returns and taps `I've submitted my application`, `ApplicationService.markSubmitted` writes `users/{uid}/applications/{jobKey}` with `status = submitted` (title/company snapshot, `appliedAt = serverTimestamp`). A listing without a link can still be recorded (`Mark as applied`). Statuses (Under review, Interview, …) stay student-updated, which also gives the main entity its update (G-08, G-10). Recorded as DC-27.
   7. **Missing fields.** Salary, company size, logo and office location are often absent: show "Not disclosed" or hide the row; the Map Preview Card cannot be built (DC-10). Salary is read from the description when the text states it (G-17).
   8. **Vietnamese results have no `detected_extensions` (found 2026-11-02).** The sync asks Google in Vietnamese (`hl=vi`); none of 28 listings checked in the Firestore console had `detected_extensions`, so `posted_at` and `schedule_type` were always empty (no `Posted …` on cards and Detail, `Job type` always `Not disclosed`, the Job type filter and `Most recent` sort had nothing to use). The same facts are in the `extensions` chips (`3 ngày trước`, `Toàn thời gian và Thực tập`); `Internship.fromSerpApi` now reads them (`listing_extensions.dart`, Vietnamese ages in `parsePostedAge`) and shows the schedule in English. Some chips also carry the pay (`3 Tr ₫–5 Tr ₫ một tháng`), which the allowance parser (G-17) does not read yet. About half the listings state no posted age; none states an application deadline (`Apply by`).
-  8. **CV Match Check input:** `job_highlights` (Qualifications) and the description text vs the profile skills (G-24).
+  9. **Work mode is rarely stated (found 2026-11-02).** The `hl=vi` sync stores no `detected_extensions` and the chips hold only the schedule and posted age, so 288 of 289 IT listings had no work mode and every Work mode selection in the Filter sheet hid them all (`Show 0 results`). `Internship.fromSerpApi` now also reads the location, description and highlights, but only for explicit wording (`remote work`, `work from home`, `làm việc từ xa`, `làm việc tại nhà`, `hybrid working`, `on-site`, `làm việc tại văn phòng`); a listing that offers both office and home is hybrid, and a bare "hybrid" in a description is not used because it usually means a hybrid app (Flutter, React Native). A listing that still does not state its arrangement stays unknown and is left out by the filter rather than guessed (rule 7).
+  10. **CV Match Check input:** `job_highlights` (Qualifications) and the description text vs the profile skills (G-24).
 
 ### G-26: Zero-cost plan
 The user wants **no spending at all**, including AI models. Every requirement can be met at $0:
@@ -245,4 +252,15 @@ The user wants **no spending at all**, including AI models. Every requirement ca
 ### G-32: Open items from the AI code review (2026-11-02)
 - **CR-07 (Saved part):** lists show one synced copy per job (`distinctListings`), but Saved documents are keyed per copy, so when a re-sync keeps another copy the bookmark looks empty and the job can be saved twice. Options: let `distinctListings` prefer a saved copy, or match Saved by `jobIdentity`. Owner: Saved feature.
 - **CR-11:** the Search tab Filter sheet counts `Show N results` from the pool streamed for Trending; opened before the first snapshot it shows 0 until the next selection. A live count needs the sheet to watch a provider instead of a callback. Owner: Search.
-- **CR-17:** a CV uploaded on the Apply Form for one internship stays in `cvs/{uid}` when it is replaced, dropped or the form is left. Deleting it needs `allow delete` for the owner in `firebase/storage.rules` (rules change, owner-deployed, rule 9) and a retention rule agreed with Flow 4, which reads that CV's `storagePath` for Validate CV. Owner: Apply + rules owner. **Update (2026-11-03):** Validate CV now reads exactly that `storagePath`, and a job-specific CV is still left in `cvs/{uid}` after the flow ends; deletion (rules change) remains open.
+- **CR-17:** a CV uploaded on the Apply Form for one internship stays in `cvs/{uid}` when it is replaced, dropped or the form is left. Deleting it needs `allow delete` for the owner in `firebase/storage.rules` (rules change, owner-deployed, rule 9) and a retention rule agreed with Flow 4, which reads that CV's `storagePath` for Validate CV. Owner: Apply + rules owner.
+
+### G-33: Apply is email-based; Google Jobs has no recruiter email
+- **Found (2026-11-06):** Flow 2 asked the student to fill a six-field form, but the app cannot submit to the employer: SerpAPI Google Jobs only gives `apply_options` links to the employer's site and stores no recruiter address. A student applying by email must copy the JD into a message themselves.
+- **Decision (user, 2026-11-06, final):**
+  1. `Apply now` opens a **Compose application** screen instead of the form. The recipient address is read from the JD text (`hr@`, `tuyendung@`, `career@` preferred) and stays editable; when the post has none the field is empty and the mail app opens with an empty `To`.
+  2. The subject and cover letter are drafted by the callable `composeCoverLetter` (Groq, `openai/gpt-oss-20b`, free tier) from the JD + Profile (+ CV text when available). The model failure path returns a deterministic template in the JD's language, so the flow never dead-ends. The letter is editable and can be regenerated.
+  3. `Open email app` opens the draft with `mailto:` (RFC 6068, `%20`/`%0A` encoding). The CV is attached manually in the mail app because `mailto:` cannot attach files; the screen says so.
+  4. After sending, `I've sent it` records the application at `users/{uid}/applications/{jobKey}` with `appliedVia: email`, `recipientEmail`, the cover letter in `applicant.shortIntroduction` and the Profile CV when there is one. My Applications and Application Detail keep working unchanged.
+  5. CV Match and Validate CV stay reachable as optional, advisory actions on the compose screen; they never block sending.
+- **Not changed:** the Firestore rules (`users/{uid}/**`), the shared listing pool, and the Profile CV upload path.
+- **Open follow-ups:** the compose screen has no Figma frame (DC-31); an application created this way is self-reported, so the student still updates its status (G-10/G-25 #6); a long cover letter may be truncated by some mail apps (the prompt keeps it at 120–170 words).

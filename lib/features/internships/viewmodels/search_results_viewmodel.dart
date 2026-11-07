@@ -6,12 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/distinct_listings.dart';
+import '../../../core/utils/skill_suggestions.dart';
 import '../../../models/internship.dart';
 import '../../../models/user_profile.dart';
 import '../../../services/analytics_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/internship_service.dart';
-import '../../../services/saved_service.dart';
 import '../../../services/search_history_service.dart';
 import '../models/search_filter_criteria.dart';
 
@@ -32,14 +32,12 @@ class SearchResultsState {
     this.criteria = const SearchFilterCriteria(),
     this.sortBy = SearchSortBy.mostRecent,
     this.results = const ViewLoading(),
-    this.savedIds = const <String>{},
   });
 
   final String query;
   final SearchFilterCriteria criteria;
   final SearchSortBy sortBy;
   final ViewState<List<Internship>> results;
-  final Set<String> savedIds;
 
   /// Backward-compatible getter for single work mode.
   WorkMode? get workMode => criteria.workModes.firstOrNull;
@@ -55,14 +53,12 @@ class SearchResultsState {
     SearchFilterCriteria? criteria,
     SearchSortBy? sortBy,
     ViewState<List<Internship>>? results,
-    Set<String>? savedIds,
   }) {
     return SearchResultsState(
       query: query ?? this.query,
       criteria: criteria ?? this.criteria,
       sortBy: sortBy ?? this.sortBy,
       results: results ?? this.results,
-      savedIds: savedIds ?? this.savedIds,
     );
   }
 }
@@ -74,7 +70,6 @@ final searchResultsViewModelProvider =
 
 class SearchResultsViewModel extends Notifier<SearchResultsState> {
   StreamSubscription<List<Internship>>? _internshipsSubscription;
-  StreamSubscription<List<String>>? _savedSubscription;
   List<Internship>? _rawList;
   bool _initialized = false;
 
@@ -87,18 +82,12 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
   @override
   SearchResultsState build() {
     final internshipService = ref.watch(internshipServiceProvider);
-    final savedService = ref.watch(savedServiceProvider);
-    final uid = ref.watch(currentUserIdProvider);
 
     ref.onDispose(() {
       unawaited(_internshipsSubscription?.cancel());
-      unawaited(_savedSubscription?.cancel());
     });
 
     _subscribeInternships(internshipService);
-    if (uid != null) {
-      _subscribeSaved(savedService, uid);
-    }
 
     return const SearchResultsState();
   }
@@ -186,6 +175,20 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
     _filterAndEmit();
   }
 
+  void clearJobType() {
+    state = state.copyWith(
+      criteria: state.criteria.copyWith(clearJobType: true),
+    );
+    _filterAndEmit();
+  }
+
+  void clearAllowanceRange() {
+    state = state.copyWith(
+      criteria: state.criteria.copyWith(clearAllowanceRange: true),
+    );
+    _filterAndEmit();
+  }
+
   void clearFilters() {
     state = state.copyWith(query: '', criteria: const SearchFilterCriteria());
     _filterAndEmit();
@@ -197,38 +200,19 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
     _filterAndEmit();
   }
 
+  /// Skills the current pool mentions, for the Filter sheet's chips.
+  List<String> get suggestedSkills {
+    final raw = _rawList;
+    return raw == null
+        ? const <String>[]
+        : suggestedFilterSkills(distinctListings(raw));
+  }
+
   /// Counts how many listings would match [testCriteria] and current [state.query].
   int countMatching(SearchFilterCriteria testCriteria) {
     final raw = _rawList;
     if (raw == null) return 0;
     return _applyFilters(raw, state.query, testCriteria).length;
-  }
-
-  Future<void> toggleSave(String internshipKey) async {
-    final uid = ref.read(currentUserIdProvider);
-    if (uid == null) return;
-    final savedService = ref.read(savedServiceProvider);
-
-    final isSaved = state.savedIds.contains(internshipKey);
-    final nextSaved = Set<String>.from(state.savedIds);
-    if (isSaved) {
-      nextSaved.remove(internshipKey);
-    } else {
-      nextSaved.add(internshipKey);
-    }
-    state = state.copyWith(savedIds: nextSaved);
-
-    try {
-      if (isSaved) {
-        await savedService.unsave(uid, internshipKey);
-      } else {
-        await savedService.save(uid, internshipKey);
-      }
-    } on AppException catch (_) {
-      if (ref.mounted) {
-        state = state.copyWith(savedIds: state.savedIds);
-      }
-    }
   }
 
   void retry() {
@@ -243,14 +227,6 @@ class SearchResultsViewModel extends Notifier<SearchResultsState> {
       _onInternshipsData,
       onError: _onInternshipsError,
     );
-  }
-
-  void _subscribeSaved(SavedService service, String uid) {
-    unawaited(_savedSubscription?.cancel());
-    _savedSubscription = service.watchSavedIds(uid).listen((ids) {
-      if (!ref.mounted) return;
-      state = state.copyWith(savedIds: ids.toSet());
-    }, onError: (Object _) {});
   }
 
   void _onInternshipsData(List<Internship> data) {

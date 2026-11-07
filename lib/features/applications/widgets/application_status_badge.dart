@@ -33,6 +33,12 @@ class ApplicationStatusBadge extends StatelessWidget {
         AppColors.success,
       ),
       ApplicationStatus.rejected => (Symbols.cancel_rounded, AppColors.error),
+      // Flow 3d: the student took the application back (G-18 resolved by the
+      // Application Detail frame).
+      ApplicationStatus.withdrawn => (
+        Symbols.undo_rounded,
+        AppColors.textSecondary,
+      ),
     };
 
     return StatusBadge(label: status.label, icon: icon, color: color);

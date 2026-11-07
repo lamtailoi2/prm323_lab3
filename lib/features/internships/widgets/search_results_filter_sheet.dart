@@ -16,17 +16,23 @@ class SearchResultsFilterSheet extends StatefulWidget {
     required this.initialCriteria,
     required this.matchingCountCalculator,
     required this.onApply,
+    required this.suggestedSkills,
   });
 
   final SearchFilterCriteria initialCriteria;
   final int Function(SearchFilterCriteria) matchingCountCalculator;
   final ValueChanged<SearchFilterCriteria> onApply;
 
+  /// Skills the current pool mentions, from `suggestedFilterSkills`, so every
+  /// chip narrows the list instead of offering a fixed vocabulary.
+  final List<String> suggestedSkills;
+
   static Future<void> show({
     required BuildContext context,
     required SearchFilterCriteria currentCriteria,
     required int Function(SearchFilterCriteria) matchingCountCalculator,
     required ValueChanged<SearchFilterCriteria> onApply,
+    required List<String> suggestedSkills,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -43,6 +49,7 @@ class SearchResultsFilterSheet extends StatefulWidget {
           initialCriteria: currentCriteria,
           matchingCountCalculator: matchingCountCalculator,
           onApply: onApply,
+          suggestedSkills: suggestedSkills,
         ),
       ),
     );
@@ -55,15 +62,6 @@ class SearchResultsFilterSheet extends StatefulWidget {
 
 class _SearchResultsFilterSheetState extends State<SearchResultsFilterSheet> {
   late SearchFilterCriteria _criteria;
-
-  static const List<String> _suggestedSkills = [
-    'Flutter',
-    'React',
-    'NestJS',
-    'Java',
-    'UI/UX',
-    'Data',
-  ];
 
   static const List<String> _locationOptions = [
     'Any location',
@@ -168,6 +166,13 @@ class _SearchResultsFilterSheetState extends State<SearchResultsFilterSheet> {
     final textTheme = Theme.of(context).textTheme;
     final criteriaCount = _criteria.criteriaCount;
     final matchingCount = widget.matchingCountCalculator(_criteria);
+    // A selected skill stays visible even when the pool no longer mentions
+    // it, so it can still be removed from the sheet.
+    final skillOptions = <String>[
+      ...widget.suggestedSkills,
+      for (final skill in _criteria.skills)
+        if (!widget.suggestedSkills.contains(skill)) skill,
+    ];
 
     return SafeArea(
       child: Column(
@@ -291,27 +296,30 @@ class _SearchResultsFilterSheetState extends State<SearchResultsFilterSheet> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.s24),
-                  // Skills section
-                  Text(
-                    'Skills',
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  // Skills section: only skills the pool mentions, hidden
+                  // until the first snapshot arrives.
+                  if (skillOptions.isNotEmpty) ...[
+                    Text(
+                      'Skills',
+                      style: textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.s12),
-                  Wrap(
-                    spacing: AppSpacing.s8,
-                    runSpacing: AppSpacing.s8,
-                    children: [
-                      for (final skill in _suggestedSkills)
-                        _FilterSelectionChip(
-                          label: skill,
-                          selected: _criteria.skills.contains(skill),
-                          onSelected: (_) => _toggleSkill(skill),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.s16),
+                    const SizedBox(height: AppSpacing.s12),
+                    Wrap(
+                      spacing: AppSpacing.s8,
+                      runSpacing: AppSpacing.s8,
+                      children: [
+                        for (final skill in skillOptions)
+                          _FilterSelectionChip(
+                            label: skill,
+                            selected: _criteria.skills.contains(skill),
+                            onSelected: (_) => _toggleSkill(skill),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.s16),
+                  ],
                   // Job type section
                   _FilterDropdownTile(
                     title: 'Job type',

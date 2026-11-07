@@ -1,3 +1,5 @@
+import 'package:firebase_remote_config/firebase_remote_config.dart'
+    show ValueSource;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/services/remote_config_service.dart';
@@ -12,6 +14,21 @@ void main() {
       greaterThan(0),
     );
     expect(defaults[RemoteConfigKeys.cvMatchEnabled], isA<bool>());
+  });
+
+  test('sources use the stable names the demo screen renders', () {
+    expect(
+      FirebaseRemoteConfigService.sourceName(ValueSource.valueRemote),
+      'remote',
+    );
+    expect(
+      FirebaseRemoteConfigService.sourceName(ValueSource.valueDefault),
+      'default',
+    );
+    expect(
+      FirebaseRemoteConfigService.sourceName(ValueSource.valueStatic),
+      'static',
+    );
   });
 
   test('a non-object JSON file is rejected', () async {

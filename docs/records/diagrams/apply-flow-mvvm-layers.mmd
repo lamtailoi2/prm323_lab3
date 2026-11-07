@@ -1,0 +1,57 @@
+flowchart TB
+    subgraph View["View layer — no Firebase import, no business logic"]
+        AF["ApplyFormScreen"]
+        CVS["CvValidationScreen + CvValidationStep"]
+        ARS["ApplicationReviewScreen"]
+        ASS["ApplicationSuccessScreen (stateless, no ViewModel)"]
+    end
+
+    subgraph ViewModel["ViewModel layer — Riverpod Notifier, owns ViewState/AsyncValue"]
+        AFVM["ApplyFormViewModel\n(CV pick/upload, builds ApplySession)"]
+        CVVM["CvValidationViewModel\n(ViewState<CvValidationResult>)"]
+        ARVM["ApplicationReviewViewModel\n(ViewState<Internship> + AsyncValue<void> submit)"]
+    end
+
+    subgraph Service["Service layer — wraps SDK/HTTP, returns models, throws AppException"]
+        FSS["FileStorageService"]
+        UPS["UserProfileService"]
+        CVVS["CvValidationService\n(callable validateCv)"]
+        APPS["ApplicationService\n.createApplication()"]
+        ISV["InternshipService"]
+        ANS["AnalyticsService"]
+    end
+
+    subgraph Model["Model layer — plain Dart, @immutable"]
+        M1["ApplySession / ApplyCv"]
+        M2["InternshipApplication / ApplicationApplicant / ApplicationStatus"]
+        M3["Internship, UserProfile"]
+    end
+
+    FB[("Firebase: Storage, Firestore\nusers/{uid}/applications/{jobKey}")]
+    FN[("Callable Cloud Function\nvalidateCv → Gemini")]
+
+    AF -- "user events (pick/upload CV, Continue)" --> AFVM
+    AFVM -- "ApplyFormState (ViewState)" --> AF
+    AFVM --> FSS
+    AFVM --> UPS
+    AFVM -.-> M1
+
+    CVS -- "runs check" --> CVVM
+    CVVM -- "ViewState<CvValidationResult>" --> CVS
+    CVVM --> CVVS
+    CVVS --> FN
+
+    ARS -- "submit()" --> ARVM
+    ARVM -- "submit: AsyncValue<void>" --> ARS
+    ARVM --> APPS
+    ARVM --> ISV
+    ARVM --> UPS
+    ARVM --> ANS
+    ARVM -.-> M2
+    ARVM -.-> M3
+
+    APPS --> FB
+    ISV --> FB
+    UPS --> FB
+
+    ASS -. "stateless, only navigation, no ViewModel needed" .-> ARS

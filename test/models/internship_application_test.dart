@@ -16,9 +16,14 @@ void main() {
     });
 
     test('rejects an unknown value instead of guessing a status', () {
-      // "Withdrawn" has no Figma specimen yet (G-18), so it is not mapped.
-      expect(ApplicationStatus.fromStorage('withdrawn'), isNull);
+      // "Withdrawn" now has its Application Detail specimen (G-18), so it is
+      // a known value; anything else stays unknown.
+      expect(
+        ApplicationStatus.fromStorage('withdrawn'),
+        ApplicationStatus.withdrawn,
+      );
       expect(ApplicationStatus.fromStorage('ACCEPTED'), isNull);
+      expect(ApplicationStatus.fromStorage('ghosted'), isNull);
     });
   });
 
@@ -53,6 +58,85 @@ void main() {
       });
 
       expect(application.nextStepAt, isNull);
+      expect(application.applicant, isNull);
+      expect(application.withdrawnAt, isNull);
+      expect(application.cvFileName, isNull);
+      expect(application.cvSizeBytes, isNull);
+    });
+
+    test('reads the withdrawal, the CV snapshot and the applicant', () {
+      final withdrawnAt = DateTime(2026, 10, 12, 9);
+      final application = InternshipApplication.fromFirestore('job-7', {
+        'title': 'Flutter Developer Intern',
+        'companyName': 'FPT Software',
+        'appliedAt': DateTime(2026, 10, 11),
+        'status': 'withdrawn',
+        'withdrawnAt': Timestamp.fromDate(withdrawnAt),
+        'previousStatus': 'under_review',
+        'cvFileName': 'Profile_CV.pdf',
+        'cvUrl': 'https://storage.example/cvs/profile.pdf',
+        'cvStoragePath': 'cvs/uid-123/profile.pdf',
+        'cvSizeBytes': 430080,
+        'applicant': {
+          'fullName': ' Minh Nguyen ',
+          'email': 'minh@example.com',
+          'phone': '0908 123 456',
+          'university': 'HCMUT',
+          'yearOfStudy': 3,
+          'skills': ['Flutter', 'Dart'],
+          'shortIntroduction': 'Hello',
+        },
+      });
+
+      expect(application.status, ApplicationStatus.withdrawn);
+      expect(application.withdrawnAt, isNotNull);
+      expect(application.previousStatus, ApplicationStatus.underReview);
+      expect(application.cvFileName, 'Profile_CV.pdf');
+      expect(application.cvUrl, 'https://storage.example/cvs/profile.pdf');
+      expect(application.cvSizeBytes, 430080);
+      final applicant = application.applicant!;
+      expect(applicant.fullName, 'Minh Nguyen');
+      expect(applicant.email, 'minh@example.com');
+      expect(applicant.yearOfStudy, 3);
+      expect(applicant.skills, ['Flutter', 'Dart']);
+      expect(applicant.introduction, 'Hello');
+    });
+
+    test('reads the email channel and recipient; older docs are in app', () {
+      final email = InternshipApplication.fromFirestore('job-9', {
+        'title': 'Flutter Developer Intern',
+        'companyName': 'FPT Software',
+        'appliedAt': DateTime(2026, 11, 6),
+        'status': 'submitted',
+        'appliedVia': 'email',
+        'recipientEmail': 'hr@fpt.com.vn',
+      });
+
+      expect(email.appliedVia, ApplicationChannel.email);
+      expect(email.recipientEmail, 'hr@fpt.com.vn');
+
+      final inApp = InternshipApplication.fromFirestore('job-10', {
+        'title': 'Flutter Developer Intern',
+        'companyName': 'FPT Software',
+        'appliedAt': DateTime(2026, 11, 6),
+        'status': 'submitted',
+      });
+
+      expect(inApp.appliedVia, ApplicationChannel.inApp);
+      expect(inApp.recipientEmail, isNull);
+    });
+
+    test('a malformed applicant map hides the snapshot, not the document', () {
+      final application = InternshipApplication.fromFirestore('job-8', {
+        'title': 'Flutter Developer Intern',
+        'companyName': 'FPT Software',
+        'appliedAt': DateTime(2026, 10, 11),
+        'status': 'submitted',
+        'applicant': {'fullName': 42},
+      });
+
+      expect(application.applicant, isNull);
+      expect(application.title, 'Flutter Developer Intern');
     });
 
     test('a missing or empty required field is malformed', () {
@@ -81,7 +165,7 @@ void main() {
           'title': 'Backend Engineer Intern',
           'companyName': 'Harbor Tech',
           'appliedAt': DateTime(2026, 10, 1),
-          'status': 'withdrawn',
+          'status': 'ghosted',
         }),
         throwsFormatException,
       );

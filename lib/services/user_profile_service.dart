@@ -18,6 +18,12 @@ abstract interface class UserProfileService {
 
   Future<void> updateDetails(String uid, ProfileDetails details);
 
+  /// Merge write of the fields the Apply Form collects (`fullName`, `phone`,
+  /// `university`, `yearOfStudy`). Null fields are skipped, so saving an
+  /// application never clears the headline, major, city, bio or graduation
+  /// year that Edit profile owns.
+  Future<void> updateApplyDetails(String uid, ProfileDetails details);
+
   Future<void> updateSkills(String uid, List<String> skills);
 
   Future<void> updatePreferences(String uid, InternshipPreferences preferences);
@@ -25,6 +31,9 @@ abstract interface class UserProfileService {
   /// Sets the default CV. The previous file stays in Cloud Storage because
   /// submitted applications may still link to it.
   Future<void> updateCv(String uid, CvFile cv);
+
+  /// Saves Google's `given_name` for the Home greeting (DC-31).
+  Future<void> updateGivenName(String uid, String givenName);
 }
 
 final userProfileServiceProvider = Provider<UserProfileService>(
@@ -74,6 +83,15 @@ class FirestoreUserProfileService implements UserProfileService {
       _merge(uid, 'details', details.toFirestore());
 
   @override
+  Future<void> updateApplyDetails(String uid, ProfileDetails details) {
+    final fields = <String, Object?>{
+      for (final entry in details.toFirestore().entries)
+        if (entry.value != null) entry.key: entry.value,
+    };
+    return _merge(uid, 'apply details', fields);
+  }
+
+  @override
   Future<void> updateSkills(String uid, List<String> skills) =>
       _merge(uid, 'skills', {'skills': skills});
 
@@ -86,6 +104,10 @@ class FirestoreUserProfileService implements UserProfileService {
   @override
   Future<void> updateCv(String uid, CvFile cv) =>
       _merge(uid, 'cv', {'cv': cv.toFirestore()});
+
+  @override
+  Future<void> updateGivenName(String uid, String givenName) =>
+      _merge(uid, 'given name', {'givenName': givenName});
 
   /// The returned future completes when the server acknowledges the write,
   /// so its duration is logged: a slow acknowledgement looks like a hang in

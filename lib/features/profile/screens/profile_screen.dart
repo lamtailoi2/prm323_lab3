@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../app/router.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
+import '../../../core/widgets/app_dialog.dart';
 import '../../../core/widgets/app_sheet.dart';
-import '../../../core/widgets/app_top_bar.dart';
+import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/state_view.dart';
+import '../../../services/crashlytics_service.dart';
 import '../../../theme/app_spacing.dart';
 import '../../auth/viewmodels/sign_out_viewmodel.dart';
 import '../viewmodels/open_cv_viewmodel.dart';
@@ -63,7 +64,7 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: AppSpacing.section),
         CvSection(
           cv: data.profile.cv,
-          onUpload: () => showAppSheet(
+          onUpload: () => showAppSheet<void>(
             context,
             (_) => UpdateCvSheet(current: data.profile.cv),
           ),
@@ -76,33 +77,33 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: AppSpacing.section),
         SkillsSection(
           skills: data.profile.skills,
-          onEdit: () => showAppSheet(context, (_) => const EditSkillsSheet()),
+          onEdit: () =>
+              showAppSheet<void>(context, (_) => const EditSkillsSheet()),
         ),
         const SizedBox(height: AppSpacing.section),
         PreferencesSection(
           preferences: data.profile.preferences,
           onEdit: () =>
-              showAppSheet(context, (_) => const EditPreferencesSheet()),
+              showAppSheet<void>(context, (_) => const EditPreferencesSheet()),
         ),
       ],
     };
 
     return Scaffold(
-      appBar: AppTopBar.main(
+      // Bell only, no avatar: this tab is the profile (DC-15, DC-31).
+      appBar: MainTabAppBar(
         title: 'Profile',
-        actions: [
-          IconButton(
-            tooltip: 'Notifications',
-            icon: const Icon(Symbols.notifications_rounded),
-            onPressed: () =>
-                _showMessage(context, 'Notifications are coming soon.'),
-          ),
-        ],
+        onNotifications: () => context.push(AppRoutes.notificationCenter),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
         children: [
           ...content,
+          const SizedBox(height: AppSpacing.section),
+          DiagnosticsSection(
+            onOpenFirebaseDemo: () => context.push(AppRoutes.firebaseDemo),
+            onTestCrash: () => _confirmTestCrash(context, ref),
+          ),
           const SizedBox(height: AppSpacing.section),
           SettingsSection(
             isSigningOut: isSigningOut,
@@ -122,6 +123,24 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Forces a native crash so Crashlytics has a report to upload on the next
+  /// launch (Lab 3 §6). Always behind a confirmation: the app closes.
+  static Future<void> _confirmTestCrash(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final confirmed = await showAppDialog(
+      context,
+      title: 'Simulate a crash?',
+      message:
+          'Internly will close immediately. Reopen it so Crashlytics can '
+          'send the report.',
+      primaryLabel: 'Crash now',
+    );
+    if (confirmed != true) return;
+    ref.read(crashlyticsServiceProvider).crashForTesting();
   }
 
   static void _showMessage(BuildContext context, String message) {

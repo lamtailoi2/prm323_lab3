@@ -18,6 +18,7 @@ class UserProfile {
     this.skills = const <String>[],
     this.preferences = const InternshipPreferences(),
     this.cv,
+    this.givenName,
   });
 
   factory UserProfile.fromFirestore(String id, Map<String, Object?>? data) {
@@ -29,6 +30,7 @@ class UserProfile {
         reader.optionalMap('preferences'),
       ),
       cv: _optionalCv(reader),
+      givenName: reader.optionalString('givenName'),
     );
   }
 
@@ -39,17 +41,22 @@ class UserProfile {
   /// The default CV for applications; `null` until one is uploaded.
   final CvFile? cv;
 
+  /// Google's `given_name`, saved at sign-in for the Home greeting (DC-31);
+  /// `null` until the student signs in with this version.
+  final String? givenName;
+
   @override
   bool operator ==(Object other) =>
       other is UserProfile &&
       other.details == details &&
       listEquals(other.skills, skills) &&
       other.preferences == preferences &&
-      other.cv == cv;
+      other.cv == cv &&
+      other.givenName == givenName;
 
   @override
   int get hashCode =>
-      Object.hash(details, Object.hashAll(skills), preferences, cv);
+      Object.hash(details, Object.hashAll(skills), preferences, cv, givenName);
 
   /// A malformed `cv` map is treated as "no CV" instead of hiding the whole
   /// profile: the student can still upload a new one, which overwrites it.
