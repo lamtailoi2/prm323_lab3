@@ -78,11 +78,11 @@ async def test_tc15_notification_permission_dialog(artemis):
             "permission with an Android dialog (wait up to 10 seconds if it is "
             "not visible yet; do not reopen the app). Before tapping anything "
             "in it, note the question text of the dialog and the labels of its "
-            "two buttons. Then tap 'Allow' and note the title of the screen "
-            "shown after the dialog closes.",
+            "two buttons. Then tap 'Allow' and note which bottom navigation "
+            "item is highlighted after the dialog closes.",
             expected_output=(
                 'JSON: {"dialog_visible": boolean, "dialog_text": string, '
-                '"buttons": [string], "screen_after": string}'
+                '"buttons": [string], "selected_tab": string}'
             ),
         )
         granted = notification_permission_granted()
@@ -94,5 +94,6 @@ async def test_tc15_notification_permission_dialog(artemis):
     assert report["dialog_visible"] is True
     assert "send you notifications" in report["dialog_text"].lower()
     assert "Allow" in report["buttons"]
-    assert report["screen_after"] == "Home"
+    # Home's header shows a greeting, not "Home" (UI v2, DC-31).
+    assert report["selected_tab"] == "Home"
     assert granted is True
