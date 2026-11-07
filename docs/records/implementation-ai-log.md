@@ -840,6 +840,18 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-82: UI v2 ARTEMIS runs (2026-11-08); TC-13 checks the route in Logcat
+- **Request:** (Claude Code, Opus 5.5, 2026-11-08; operator Phạm Nguyễn Hoàng Anh) "Update TC-13", then "Write the evidence" after the operator recorded the batch. The cases waiting on the CV library are Lập's.
+- **Output:**
+  - `e2e_test/test_notifications.py` TC-13: the instruction waits 3 s after the tap and asks for the bell, not the profile photo. The landing screen is asserted from the app's `screen_view` in Logcat; the agent's reading stays in the report only. `conftest.py` gains `logged_screen_views()`.
+  - `evidence/artemis/e2e-environment-20261108.md` and `runs-20261108.jsonl` (38 runs, lines 99–136 of `runs.jsonl`).
+  - `docs/test-plan.md`: TC-01, 02, 03, 04, 05, 08, 10, 12, 13, 15, 16 Done (3/3, 2026-11-08); §4 rows and causes; TC-13 row.
+  - Seven TC-13 runs moved to `practice-runs.jsonl` with notes; their notifications deleted from the account at the operator's request.
+- **Verification:** every counted run checked against its ARTEMIS step history (TC-08: open from Saved → Back → `Remove from saved`, count 9 → 10 → 9). For TC-13, Logcat showed the route opening about 2 s after each tap. `py_compile` OK.
+- **Decision:** Accepted. The TC-13 failures before the change were the wrong route and the agent's timing, not the app.
+
+---
+
 ## Entry template
 
 ```markdown
