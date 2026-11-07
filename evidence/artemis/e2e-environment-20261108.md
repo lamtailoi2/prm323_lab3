@@ -14,7 +14,7 @@ All 38 runs below are lines 99–136 of `e2e_test/artifacts/runs.jsonl`, copied 
 | Device | `emulator-5554`, `Pixel_API_36`, API 36, started with `-gpu swiftshader_indirect` (the GPU backend crashed on 2026-11-06) |
 | ARTEMIS | `351ca84` + [`artemis-local.patch`](../../e2e_test/artemis-local.patch); primary model `gemini-3.5-flash-lite`, fallback `gemini-3.1-flash-lite` (since 2026-11-06 14:20) |
 | API key | Free tier. The operator switched `~/artemis/.env` from borrowed key B to the owner's own key during the evening; the time of the switch was not logged. No daily-quota 429 occurred |
-| Recording | The operator screen-recorded the emulator, the ARTEMIS console (`localhost:8000/workspace`) and Terminal for each test, with the command typed in Terminal and its output saved with `tee` to `e2e_test/artifacts/logs/`. ARTEMIS also keeps `recording.mp4` and `stdout.log` per session under `~/artemis/traces/`. Videos show the account and stay outside the repository |
+| Recording | The operator screen-recorded the emulator, the ARTEMIS console (`localhost:8000/workspace`) and Terminal for each test, with the command typed in Terminal and its output saved with `tee` to `e2e_test/artifacts/logs/`. Videos show the account and stay outside the repository, in the [Record Artemis Test - PRM323](https://drive.google.com/drive/folders/1B44bE_K5JY06eAhTU0FrJZrbmcfe7LCf) Drive folder ([Recordings](#recordings)). ARTEMIS also keeps `recording.mp4` and `stdout.log` per session under `~/artemis/traces/` |
 | Remote Config | `home_recommended_limit` = 6 in the console for TC-12 (in-app default 5) |
 | TC-13 sender | `tools/admin-dashboard` on the operator's machine (own service-account key in `~/.internly-admin/`, outside the repository), one message per run, route `/saved` |
 
@@ -93,6 +93,25 @@ uv run pytest test_notifications.py -k tc13 --count 3 -s -v
 | TC-15 | 3/3 | 31.7 | `0c3dfc7e`, `ffc73388`, `2fa04a74` |
 | TC-16 | 3/3 | 31.5 | `d9094540`, `d68cd6ca`, `658a1882` |
 What the counted runs showed: TC-03 `28 internships found` with chips `Internship` and `Intern`; TC-04 `No internships found` → `Clear filters` → `117 internships found`; TC-08 Saved 9 → 10 → 9 with the card opened from Saved before the unsave; TC-12 `6 · From Firebase` and 6 cards under `Recommended for you`; TC-15 the system dialog `Allow internly to send you notifications?` with `Allow` / `Don't allow`, then the `Home` tab; TC-13 each message listed and `Read`.
+
+## Recordings
+
+Screen recordings in the Drive folder [Record Artemis Test - PRM323](https://drive.google.com/drive/folders/1B44bE_K5JY06eAhTU0FrJZrbmcfe7LCf), one per batch, each showing the emulator, the ARTEMIS console and the Terminal command. Matched by file name; each file's modification time on Drive falls just after the last run of its batch.
+
+| Test | Video | Counted runs in it |
+|---|---|---|
+| TC-01 | [TC-01_Đăng nhập.mp4](https://drive.google.com/file/d/1oflaDEePD5S6KQ9hlwdG2zPYP5rExvwI/view) (204 MB) | `d9aac3bb`, `9313b9ac`, `720cd8ed` (23:25–23:30) |
+| TC-02 | [TC-02_Chuyển tab.mp4](https://drive.google.com/file/d/1zovz4Wi22NquHaK9LZ-J4_o0P8QBacd4/view) (124.8 MB) | `a8c08b49`, `115f7fc3`, `55b503e0` (23:32–23:35) |
+| TC-03, TC-04 | [TC-03, TC-04 Search.mp4](https://drive.google.com/file/d/1T6CUcgLMoPn3DUA_5ZEW5cd5hj8jQ9lP/view) (288.6 MB) | TC-03 `256e2ee3`, `05fe9f84`, `27385523`; TC-04 `7660a5b0`, `f0fc3eb3`, `3b0c99f6` (23:36–23:45) |
+| TC-05 | [TC-05_Chi tiết tin.mp4](https://drive.google.com/file/d/1xcAGhzFeB7ZdFF3QRVxPa9EQJrDYgS96/view) (149.6 MB) | `0973f1e6`, `9451d0c1`, `fecf6a78` (23:47–23:50) |
+| TC-08 | [TC-08 _Save_UnSave.mp4](https://drive.google.com/file/d/19ZHViHq9NxQefauraSY5CocfCnusoov7/view) (234.4 MB) | `146db8f2`, `8a6cb91b`, `f195878e` (23:52–23:58) |
+| TC-10 | [TC-10_Offline.mp4](https://drive.google.com/file/d/18SGIO4h0jSCm2xFZFvWZx9x0TgsTQwzB/view) (94.2 MB) | `f74f0ce3`, `5fd55b20`, `7db0d8ae` (23:59–00:02) |
+| TC-12 | [TC-12_Remote Config.mp4](https://drive.google.com/file/d/1TzhYv5BAFfei1o5abnguOnO5pEcba6xS/view) (184.8 MB) | `070f4a53`, `96edd424`, `c99322ce` (00:06–00:10) |
+| TC-13 | [TC-13 Mở thông báo.mp4](https://drive.google.com/file/d/10InV9qUqfATeT1W-nAgm_T6Y-TbmjtWN/view) (181.9 MB) | `48f3319d`, `a381427b`, `1e6f3b6c` (01:28–01:32), including the admin dashboard send |
+| TC-15 | [TC-15 Quyền thông báo.mp4](https://drive.google.com/file/d/1aL3y5ZrzHlEvFBwhoWGTw9n8IkYQZLVC/view) (89.3 MB) | `0c3dfc7e`, `ffc73388`, `2fa04a74` (00:16–00:18); the failed batch at 00:12–00:14 is not in a separate file |
+| TC-16 | [TC-16 Browse by Role.mp4](https://drive.google.com/file/d/12AA35OdQqrrf_h0PoG_F2gXC8ptFp7NY/view) (92.1 MB) | `d9094540`, `d68cd6ca`, `658a1882` (00:25–00:27) |
+
+The folder is shared by link; the videos show the test account's name, photo and e-mail.
 
 ## Why runs failed or were not counted
 
