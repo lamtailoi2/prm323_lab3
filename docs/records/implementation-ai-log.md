@@ -791,6 +791,24 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - `py_compile` and `pytest --collect-only` (18 tests) OK.
 - **Decision:** Accepted. Two API keys borrowed from team members' free-tier projects; a third, prepaid one was refused (G-26).
 
+### P-77: UI v2 — photo tab headers, Job Hero Card, Application Detail tweaks
+- **Note:** first logged as P-73 on `feat/ui-v2` (`4396a12`); the entry was lost when PR #33 and the admin dashboard work (also P-73) were merged into `dev`, so it is restored here under a free number.
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) Redesign the headers and Application Detail in Figma in a new section without touching the old frames, iterate on the look with banking-app references (ACB, Sacombank), use a header photo different from the Login one, then "giờ cứ sửa lại code theo UI mới đi nào tui có Idea hình thì replace lại".
+- **Output:**
+  - Figma: sections "Final UI v2 · Headers & Application Detail (proposal)" and "Final UI v2 · All screens (Header v2)" (47 frames, old frames unchanged); two images generated with Figma AI (Ho Chi Minh City skyline, abstract blue cover).
+  - Code: `MainTabAppBar` photo hero (`assets/images/tab_header.jpg`), Home greeting (a summary card, header chips and a summary bar were tried and dropped at the operator's request), Profile and Search results on the same header, `JobHeroCard` (`assets/images/job_cover.jpg`) replacing the Detail header / Key facts / Applied banner, Application Detail identity card and active-step tint; `AppColors.inverseSurface`, `AppSizes.companyLogoHero`, `AppSizes.jobCoverHeight`; `greetingFor()`; removed the unused `DetailMetaTile` and `DetailAppliedBanner`.
+  - Docs: DC-31, `design-system.md` §1.1 / §2.6 / §2.15, test-report Run 33.
+- **Verification:** `dart format` clean, `flutter analyze` no issues, `flutter test` 676 / 676 on the final state (Run 33). Not checked on a device or emulator.
+- **Decision:** Accepted with changes: the avatar stays on the non-Home tabs (DC-20), the unread dot and the `under review` count from the frames are not built (no data behind them), pushed screens keep the white `AppTopBar.back`.
+
+---
+
+### P-78: Home greeting by given name; long names fit
+- **Request:** (Claude Code, Opus 5.5, 2026-11-07; operator Phạm Nguyễn Hoàng Anh) The Home header cut "Phạm Nguyễn Hoàng…"; asked for options, chose "C + A": Google's given name, with a fit-to-width fallback.
+- **Output:** `AuthService.signInWithGoogle` reads `given_name` from `additionalUserInfo.profile` into `AppUser.givenName`; `LoginViewModel` saves it with the new `UserProfileService.updateGivenName` (`users/{uid}.givenName`, merge write, best effort); `UserProfile.givenName`; `homeGivenNameProvider`; Home title = given name → full name → `Home`; `MainTabAppBar` title steps 24 → 20 → 18 before an ellipsis. Tests and fakes updated; DC-31, `design-system.md` §2.6, test-report Run 35.
+- **Verification:** `flutter analyze` no issues; `flutter test` 663 passed (Run 35). Not checked on a device; existing accounts get the given name only after their next sign-in.
+- **Decision:** Accepted. Rejected: guessing the given name from word order (wrong for "given family" order and foreign names) and a new Edit profile field (out of scope).
+
 ---
 
 ## Entry template

@@ -607,6 +607,24 @@ Findings:
 2. After a failing router test, `flutter test` waited instead of exiting;
    passing runs exit normally. Not investigated in this change.
 
+## Run 35: Home greeting uses the Google given name; long names fit (2026-11-07)
+
+Branch `feat/home-given-name` from `dev` `8f1f174`, uncommitted working tree.
+Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable. No device run.
+AI log P-78.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | 0 files changed |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` | `+663: All tests passed!` (6 new: given name saved / not written / save failure ignored, `givenName` parsing, long-name heading at 360 and 412 dp) |
+| 4 | Sign in on a device and check the Home name | **Not run** |
+
+Findings: `LoginViewModel` now reads `userProfileServiceProvider`, so the
+Login screen and ViewModel tests override it with `FakeUserProfileService`.
+The `676` in the UI v2 run below was the compact reporter's running counter,
+not the number of tests.
+
 ## Run 33: UI v2 headers, Job Hero Card, Application Detail tweaks (2026-11-06)
 
 Branch `feat/ui-v2` from `dev` `ab6c8d3`, uncommitted working tree.

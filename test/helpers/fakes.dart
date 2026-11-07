@@ -343,6 +343,9 @@ class FakeAuthService implements AuthService {
   /// Completes the next sign-in only when the test calls `complete()`.
   Completer<void>? signInGate;
 
+  /// The account the next sign-in returns.
+  AppUser signInUser = testUser;
+
   /// Emits the current user first, then every change. Subscribes to the
   /// change stream synchronously on listen, so no event can be lost.
   @override
@@ -371,8 +374,8 @@ class FakeAuthService implements AuthService {
     await signInGate?.future;
     final error = signInError;
     if (error != null) throw error;
-    _emit(testUser);
-    return testUser;
+    _emit(signInUser);
+    return signInUser;
   }
 
   @override
@@ -653,6 +656,18 @@ class FakeUserProfileService implements UserProfileService {
   Future<void> updateCv(String uid, CvFile cv) =>
       _write('cv', (current) => _copy(current, cv: cv));
 
+  @override
+  Future<void> updateGivenName(String uid, String givenName) => _write(
+    'given name',
+    (current) => UserProfile(
+      details: current.details,
+      skills: current.skills,
+      preferences: current.preferences,
+      cv: current.cv,
+      givenName: givenName,
+    ),
+  );
+
   Future<void> _write(
     String section,
     UserProfile Function(UserProfile current) change,
@@ -677,6 +692,7 @@ class FakeUserProfileService implements UserProfileService {
     skills: skills ?? current.skills,
     preferences: preferences ?? current.preferences,
     cv: cv ?? current.cv,
+    givenName: current.givenName,
   );
 
   Future<void> dispose() => _updates.close();
