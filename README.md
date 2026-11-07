@@ -161,6 +161,7 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 | Command Code | CV validation vertical slice: callable `validateCv` + Gemini free tier, `CvValidationService`, ViewModel, step widget, tests and docs (P-32); work mode read from the listing text so the Search filter no longer returns an empty list (P-45); Filter Skills from the current pool instead of a fixed list (P-46); Flow 2 completion: Validate CV screen, Application Review, Success, `ApplicationService.createApplication()` and `application_create` (P-47); FCM in all three app states and the Notification Center (P-50, P-51); local admin dashboard for FCM, users and notification history (P-52); email-based Apply flow: Compose application, callable `composeCoverLetter` (Groq + template fallback), `mailto:` draft and optional CV checks (P-74) ([log](docs/records/implementation-ai-log.md)) |
 | Google ARTEMIS + Gemini (free tier) | End-to-end tests and the exploratory session |
 | Claude Code review subagents (Opus 5.5) | AI code review R1 of PRs #11–#15: 20 findings, decisions and fixes ([`code-review.md`](docs/code-review.md), raw output in `evidence/code-review/`) |
+| Claude Code (Sonnet 5) | DC-09 deviation record, `application_update` / `application_delete` logging on withdraw / undo (P-48) ([log](docs/records/implementation-ai-log.md)) |
 
 ## Known limitations
 

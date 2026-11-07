@@ -380,6 +380,21 @@ Environment: Windows 11 × Flutter 3.47.8 / Dart 3.13.7, Android emulator `sdk g
 
 ---
 
+## Run 24: Track evidence — DC-09 deviation, application_update/application_delete (2026-11-05)
+
+Branch `chore/analytics-evidence-artemis` (off `main`, worktree). Environment: Windows 11 × Flutter 3.47.3 / Dart 3.13.3 (no device or emulator attached).
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `dart format lib test` | formatted (2 files changed: `application_detail_viewmodel.dart`, `application_detail_viewmodel_test.dart`) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test/features/applications/application_detail_viewmodel_test.dart` | **10 passed**, including the two new tests for `application_update` / `application_delete` on withdraw, and `application_update` on undo |
+| 4 | `flutter test` (full suite) | **585 tests, all passed** (`All tests passed!`) |
+
+Scope: row 5 (DC-09 CV Match Check recorded as a deviation in `design-traceability.md` §4 and `handoff-gaps.md` G-24, no code change) and row 16 (logged `application_update` / `application_delete` on withdraw / undo in `ApplicationDetailViewModel`, per `docs/analytics-plan.md` rows 12-13). DebugView screenshots for these two events, and for rows 14-15 and 20 (auth console), are a separate manual step — not captured in this run; recorded as **Not run** until a device/emulator session is available.
+
+---
+
 ## Run 24: Flow 3 Application Detail audit (2026-11-04)
 
 Branch `feat/application-detail` on Windows 11. Environment: Flutter 3.47.8 / Dart 3.13.7 (no device or emulator attached).

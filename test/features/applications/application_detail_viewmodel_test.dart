@@ -142,6 +142,42 @@ void main() {
     );
   });
 
+  test('withdraw logs application_update and application_delete '
+      '(docs/analytics-plan.md rows 12-13)', () async {
+    final container = build();
+    await settle();
+
+    expect(await viewModel(container).withdraw(), isTrue);
+
+    expect(analytics.parameters['application_update'], {
+      'internship_id': key,
+      'from_status': 'under_review',
+      'to_status': 'withdrawn',
+    });
+    expect(analytics.parameters['application_delete'], {
+      'internship_id': key,
+      'status': 'under_review',
+    });
+  });
+
+  test(
+    'undoWithdrawal logs application_update back to the restored status',
+    () async {
+      applications.results = [withdrawn];
+      final container = build(now: withdrawnAt.add(const Duration(hours: 1)));
+      await settle();
+      await settle();
+
+      expect(await viewModel(container).undoWithdrawal(), isTrue);
+
+      expect(analytics.parameters['application_update'], {
+        'internship_id': key,
+        'from_status': 'withdrawn',
+        'to_status': 'under_review',
+      });
+    },
+  );
+
   test('Undo is offered for 24 hours only', () async {
     applications.results = [withdrawn];
 
