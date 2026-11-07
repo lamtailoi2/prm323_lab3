@@ -8,7 +8,9 @@ from conftest import (
     APP_PACKAGE,
     SIGNED_IN,
     app_notification_titles,
+    enable_analytics_debug,
     grant_notification_permission,
+    logged_screen_views,
     notification_permission_granted,
     reset_notification_permission,
     run_case,
@@ -19,12 +21,15 @@ from conftest import (
 # console need project credentials the suite must not hold. The case waits
 # while the operator sends one message with this route to the test account.
 TC13_ROUTE = "/saved"
-TC13_SCREEN = "Saved"
+# Analytics screen name logged when the route opens (`router.dart`).
+TC13_SCREEN_VIEW = "saved"
 TC13_WAIT_SECONDS = 180
 
 
 @pytest.mark.native
 async def test_tc13_open_notification_from_shade(artemis, capsys):
+    # Clears Logcat, so the screen views read below start after this point.
+    enable_analytics_debug()
     send_app_to_background()
     before = app_notification_titles()
     with capsys.disabled():
@@ -51,17 +56,25 @@ async def test_tc13_open_notification_from_shade(artemis, capsys):
         "TC-13",
         "The internly app is in the background. Swipe down from the top of "
         "the screen to open the notification shade and tap the internly "
-        f"notification titled '{title}'. Wait until the app is open and note "
-        "the title in the top app bar. Then tap the bell icon at the top right "
-        "(tooltip 'Notifications'). On the 'Notifications' screen note whether "
-        f"a notification titled '{title}' is listed and whether it is marked "
-        "'Read' or 'Unread'.",
+        f"notification titled '{title}'. Wait 3 seconds for the app to "
+        "finish opening, then note which bottom navigation item is "
+        "highlighted. Then tap the bell icon in the header (tooltip "
+        "'Notifications'), not the profile photo next to it. On the "
+        f"'Notifications' screen note whether a notification titled '{title}' "
+        "is listed and whether it is marked 'Read' or 'Unread'.",
         expected_output=(
-            'JSON: {"opened_screen_title": string, "listed": boolean, '
+            'JSON: {"selected_tab": string, "listed": boolean, '
             '"read_state": "Read" | "Unread" | null}'
         ),
     )
-    assert report["opened_screen_title"] == TC13_SCREEN
+    # The app first shows the screen it was on and moves to the route about
+    # 2 s later. The agent often reads the screen before that (2026-11-08:
+    # Logcat showed `saved` 2 s after the tap while it reported Home), so the
+    # landing screen is checked in the app's own screen_view log, and the
+    # agent's reading is kept in the report only. ARTEMIS brings the app to
+    # the front when the session starts, so the tap reaches a running app.
+    views = logged_screen_views()
+    assert TC13_SCREEN_VIEW in views, f"TC-13: screen views {views}"
     assert report["listed"] is True
     # Opening a notification marks it read (NotificationCoordinator._open).
     assert report["read_state"] == "Read"

@@ -191,6 +191,13 @@ def logged_analytics_events() -> list[str]:
     return re.findall(r"Logging event: origin=app,name=([a-z0-9_]+)", dump)
 
 
+def logged_screen_views() -> list[str]:
+    """Analytics screen names the app logged, in order, since the last
+    `enable_analytics_debug()` (one per route the app actually showed)."""
+    dump = _adb("logcat", "-d", "-s", "FA", "FA-SVC")
+    return re.findall(r"Logging screen view with name, class: ([a-z0-9_]+)", dump)
+
+
 # ---- Sample CV on the device ------------------------------------------------
 
 SAMPLE_CV_NAME = "Sample_CV.pdf"
