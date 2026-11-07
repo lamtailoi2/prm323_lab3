@@ -36,6 +36,25 @@ enum ApplicationStatus {
   }
 }
 
+/// How the application was sent. Older documents (saved before the email
+/// flow) have no channel and read as [inApp].
+enum ApplicationChannel {
+  inApp('in_app', 'In app'),
+  email('email', 'Email');
+
+  const ApplicationChannel(this.storageValue, this.label);
+
+  final String storageValue;
+  final String label;
+
+  static ApplicationChannel? fromStorage(String raw) {
+    for (final channel in values) {
+      if (channel.storageValue == raw) return channel;
+    }
+    return null;
+  }
+}
+
 /// One application the student tracks, stored at
 /// `users/{uid}/applications/{jobKey}` (architecture.md §6).
 ///
@@ -59,6 +78,8 @@ class InternshipApplication {
     this.cvStoragePath,
     this.cvSizeBytes,
     this.applicant,
+    this.appliedVia = ApplicationChannel.inApp,
+    this.recipientEmail,
   });
 
   factory InternshipApplication.fromFirestore(
@@ -87,6 +108,11 @@ class InternshipApplication {
       // Absent on applications saved before this field existed.
       cvSizeBytes: reader.optionalInt('cvSizeBytes'),
       applicant: _optionalApplicant(reader),
+      // Absent on applications saved before the email flow existed.
+      appliedVia:
+          reader.optionalEnum('appliedVia', ApplicationChannel.fromStorage) ??
+          ApplicationChannel.inApp,
+      recipientEmail: reader.optionalString('recipientEmail'),
     );
   }
 
@@ -129,6 +155,13 @@ class InternshipApplication {
   /// Who applied, written by the Apply flow; `null` for documents saved
   /// before the snapshot existed.
   final ApplicationApplicant? applicant;
+
+  /// How the application was sent (`in_app` on older documents).
+  final ApplicationChannel appliedVia;
+
+  /// The recruiter address the email was sent to; `null` for in-app
+  /// applications and when the student left it empty.
+  final String? recipientEmail;
 }
 
 /// Who applied and with what, snapshotted with the application so the record

@@ -710,28 +710,42 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
-### P-72: TC-08 without Undo, TC-15 single launch, TC-13 hint; TC-08 / TC-10 / TC-15 runs
-- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Run them now" (TC-08, TC-10, TC-15), "Rewrite TC-08" → "Yes, fix them", "Switch to 3.5", then "done giờ viết docs và commit đi". The operator's teacher asked for a recording of each ARTEMIS batch with its terminal command.
+### P-72: Firebase demo area, Remote Config source fix and the Profile crash control
+- **Request:** "kiểm tra xem tôi đã làm những tính năng hay task này chưa, nếu chưa hướng dẫn tôi từng bước" then "làm hoàn thiện luôn từng bước giúp tôi"; later "giữ lại giúp tôi nút crash ở profile người dùng đi".
 - **Output:**
-  - `e2e_test/test_saved.py` TC-08 (`test_tc08_save_then_unsave`): numbered steps; no `Undo` and no `Saved to your list` (ARTEMIS needs 5–15 s per step, the Snackbar lasts 4 s; widget tests cover both); reports the title of the detail opened from Saved; button label checked with `startswith("Saved")` (the agent may read the accessibility label); the case unsaves the card it saved.
-  - `e2e_test/conftest.py` `reset_notification_permission()` no longer starts the app: with the case's own launch the app opened twice and the system dialog closed.
-  - `e2e_test/test_notifications.py`: TC-15 wording ("do not reopen the app"); TC-13 prompt says Profile → Firebase demo → Copy FCM token (PR #30 moved it); same in `docs/guides/artemis-e2e.md`.
-  - `docs/test-plan.md` TC-08 / TC-10 Done, TC-15 Ready (fixed), §4 rows and causes; `evidence/artemis/e2e-environment-20261106.md` section "TC-08, TC-10, TC-15"; runs 66–87 appended to `runs-20261106.jsonl`.
-- **Verification:**
-  - TC-10 3/3 on `dev` `d4674ee`.
-  - TC-08 3/3 on `gemini-3.5-flash-lite`. Each counted run was checked against its ARTEMIS step history, because on 3.1 one run (`049a9ddd`) passed in pytest with an invented report.
-  - TC-15 not run again after the fix.
-  - `py_compile` and `pytest --collect-only` (18 tests) OK.
-- **Decision:** Accepted. Two API keys borrowed from team members' free-tier projects; a third, prepaid one was refused (G-26).
+  - `FirebaseDemoScreen` + `FirebaseDemoViewModel` at `/profile/firebase`: Remote Config key/value/source, live `onUpdated` refresh, `Send a non-fatal error`, `Simulate app crash`, `Copy FCM token`, Notification Center link, and a disabled Report export row until G-05. Route `firebase_demo`; Profile → Diagnostics keeps the `Simulate app crash` tile and adds the `Firebase demo` entry.
+  - **Bug found on device:** `RemoteConfigValue.source.name` returns `valueRemote` / `valueDefault` / `valueStatic`, so the screen labelled remote values `In-app default`. `FirebaseRemoteConfigService.snapshot()` now maps them through `sourceName()`; tests cover the mapping and the `From Firebase` label.
+  - Tests: `firebase_demo_viewmodel_test.dart`, `firebase_demo_screen_test.dart` (360/412 dp, live update, non-fatal, crash confirmation, links, FCM token, tap targets), restored Profile crash test, `remote_config_defaults_test.dart` source mapping.
+  - Docs: design traceability, architecture, G-06, Run 31, evidence images.
+- **Verification:** `flutter analyze` → No issues found; `flutter test` → **676 passed**. Device walk on `emulator-5554`: all three parameters show `From Firebase` (`6 / 10 / true`); non-fatal showed its SnackBar; the Profile Diagnostics section shows both `Simulate app crash` and `Firebase demo`. Evidence: `evidence/remote-config/remote-config-app-from-firebase-20261106.png`, `evidence/crashlytics/crashlytics-nonfatal-sent-20261106.png`. The test crash and Crashlytics dashboard screenshots are not part of this entry.
+- **Decision:** Accepted. The source mapping lives in the service so the SDK enum never leaks into UI code. The Profile crash control stays after the user's correction; the FCM token remains on the demo screen.
 
-### P-73: UI v2 — photo tab headers, Job Hero Card, Application Detail tweaks
-- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) Redesign the headers and Application Detail in Figma in a new section without touching the old frames, iterate on the look with banking-app references (ACB, Sacombank), use a header photo different from the Login one, then "giờ cứ sửa lại code theo UI mới đi nào tui có Idea hình thì replace lại".
+---
+
+### P-73: Admin dashboard refactor, explicit recipients and admin-triggered crash
+- **Request:** "dựa vào skill UI vừa cài, refactor lại UI của dashboard admin", fix "user đang không chọn chỉ định được ai sẽ được gửi notification", remove the UI slop, and add a crash control so the admin can test the whole app without opening each user's Profile.
 - **Output:**
-  - Figma: sections "Final UI v2 · Headers & Application Detail (proposal)" and "Final UI v2 · All screens (Header v2)" (47 frames, old frames unchanged); two images generated with Figma AI (Ho Chi Minh City skyline, abstract blue cover).
-  - Code: `MainTabAppBar` photo hero (`assets/images/tab_header.jpg`), Home greeting (a summary card, header chips and a summary bar were tried and dropped at the operator's request), Profile and Search results on the same header, `JobHeroCard` (`assets/images/job_cover.jpg`) replacing the Detail header / Key facts / Applied banner, Application Detail identity card and active-step tint; `AppColors.inverseSurface`, `AppSizes.companyLogoHero`, `AppSizes.jobCoverHeight`; `greetingFor()`; removed the unused `DetailMetaTile` and `DetailAppliedBanner`.
-  - Docs: DC-31, `design-system.md` §1.1 / §2.6 / §2.15, test-report Run 33.
-- **Verification:** `dart format` clean, `flutter analyze` no issues, `flutter test` 676 / 676 on the final state (Run 33). Not checked on a device or emulator.
-- **Decision:** Accepted with changes: the avatar stays on the non-Home tabs (DC-20), the unread dot and the `under review` count from the frames are not built (no data behind them), pushed screens keep the white `AppTopBar.back`.
+  - **Backend:** `lib/admin.js` gains `normaliseTarget()` and `buildTestCrashData()`; `server.js` extracts `resolveRecipients()` and `deliver()` (one user or every unique token, 500-per-batch) and adds `POST /api/test-crash`, which sends a **data-only** FCM command `{type: 'test_crash', source: 'admin_dashboard', target, requestedAt}` with high Android priority and no notification block.
+  - **App:** `NotificationService.testCrashRequests()` exposes `TestCrashRequest`; foreground/opened/initial messages filter control messages out of the history; `NotificationCoordinator` sets `crash_source`, `crash_target` and `crash_requested_at` then calls `crashForTesting()`; the background isolate does the same through `FirebaseCrashlytics.instance.crash()`. No Firestore rules change.
+  - **UI:** rewritten `public/index.html`, `styles.css`, `app.js` as a warm-paper ops desk: explicit recipient picker (everyone or one student; no-token students disabled with the reason), title/body/route, delivery and history panels, skeleton/empty/error states, focus rings, 44 dp targets, reduced-motion support, and a crash panel with an acknowledgment checkbox plus a native confirmation dialog. The full-page screenshot sticky-header duplication is a capture artifact; the viewport render is clean.
+  - README updated with the new recipient and crash workflows.
+- **Verification:**
+  - `cd tools/admin-dashboard && npm test` → **9 passed**; `node --check` on `server.js`, `lib/admin.js` and `public/app.js` → clean.
+  - `flutter analyze` → No issues found; `flutter test` → **676 passed** (includes the admin crash coordinator test).
+  - End-to-end on `emulator-5554`: `POST /api/test-crash` to `mgqfiZkcaaRbV5zEsad9bODhKvu1` returned `successCount: 1`; logcat showed `FATAL EXCEPTION` / `FirebaseCrashlyticsTestCrash` on the app PID, which then closed. The app was rebuilt and reinstalled before this run.
+  - `agent-browser` (via `npx agent-browser 0.41.2`) rendered the dashboard: the recipient select lists all 9 users plus `Everyone with a token (5)`; no-token users are disabled; selecting `Mai Duy Lập` enabled `Send notification` and changed the chip to `To Mai Duy Lập`; the crash acknowledgment enabled `Send test crash`.
+- **Decision:** Accepted. A data-only FCM command avoids a new Firestore collection and rules change, works from the dashboard, and is recognised before the notification handlers so it never writes history or shows a banner. The remote crash is destructive, so it requires the acknowledgment and a confirmation dialog and is only reachable on the localhost-bound dashboard. The existing Profile crash control remains for on-device testing.
+
+---
+
+### P-74: Email-based Apply flow (AI cover letter + `mailto:`)
+- **Request:** "phần application, giờ tôi muốn chỉnh sửa như sau. Thay vì phải điền form để điền như những nền tảng khác, giờ nếu được có thể dẫn tới email, soạn mail và cover letter dựa trên JD của job đó được không". Answers to the design questions: read the recipient from the JD and allow editing; draft with AI through a Cloud Function; auto-save the record behind an `I've sent it` button.
+- **Output:**
+  - **App:** `ApplyComposeScreen` + `ApplyComposeViewModel` replace the six-field `ApplyFormScreen` and the Review step at `/{tab}/internships/:jobKey/apply` (route name `{tab}_apply_email`); `apply_compose_parts.dart` and the extracted `apply_summary_card.dart`; `core/utils/contact_email.dart` (prefers `hr` / `recruit` / `tuyendung` / `career` / `job` / `apply` / `contact`, drops `noreply`); `core/utils/mailto.dart` (RFC 6068, `%20` / `%0A`); `services/cover_letter_service.dart`; `models/apply_session.dart` and `models/cover_letter_draft.dart`; `ExternalLinkService.openEmail()`; `ApplicationService.createApplication` now takes nullable CV fields plus `recipientEmail` / `appliedVia`; `InternshipApplication` gains `ApplicationChannel`, `appliedVia` and `recipientEmail`, and Application Detail shows `Sent to` and the cover letter; the optional CV Match / Validate screens now pop back to the compose screen.
+  - **Backend:** `functions/src/compose-cover-letter.ts` (callable, `GROQ_API_KEY`, 120–170-word letter in the listing's language, JSON `{subject, body}`, deterministic template on a blank key / model failure / unparseable output, CV text optional and ownership-checked); registered in `index.ts`.
+  - **Platform/docs:** Android `<queries>` for `SENDTO` + `mailto`; DC-31, G-33, architecture (ViewModel, service, schema, integration, secrets), analytics rows 8/10/17/19/20 and the Apply funnel, `test-report.md` Run 34, and the rewritten `apply-flow-mvvm-architecture.md`.
+- **Verification:** `dart format lib test` → 216 files (8 changed, then clean); `flutter analyze` → **No issues found!**; `flutter test` → **653 passed**; `cd functions && npm test` → **59 passed** (13 new). New tests: contact-email and mailto helpers, cover-letter service parsing/error mapping, `ApplyComposeViewModel` (prefill, AI draft, `mailto:`, record fields, repeated tap, failure, no name, late snapshot, session), the compose screen at 360/412 dp, the router paths, and the `ApplicationChannel` model. Deploy, a real Groq call, a device walk (Gmail + CV attachment + `I've sent it`) and DebugView were **not run**.
+- **Decision:** Accepted. The recipient is extracted but never invented, and an empty field still opens a draft with an empty `To`. The callable keeps the model key off the device and returns a deterministic template on any failure, so the flow never dead-ends. The CV is attached manually because `mailto:` cannot attach files; the screen says so. CV Match / Validate remain as optional actions so the G-24 evidence stays reachable without blocking the email.
 
 ---
 

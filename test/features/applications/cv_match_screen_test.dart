@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:internly/features/applications/screens/cv_match_screen.dart';
-import 'package:internly/features/internships/viewmodels/apply_form_viewmodel.dart';
+import 'package:internly/features/internships/models/apply_session.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
@@ -42,23 +42,33 @@ Future<GoRouter> _pumpScreen(
 }) async {
   setScreenSize(tester);
   final router = GoRouter(
-    initialLocation: '/home/internships/$_job/apply/match',
+    initialLocation: '/home/internships/$_job/apply',
     routes: [
       GoRoute(
-        path: '/home/internships/:jobKey/apply/match',
-        builder: (context, state) => CvMatchScreen(
-          internshipKey: state.pathParameters['jobKey']!,
-          source: 'home',
-          session: session,
-        ),
-      ),
-      GoRoute(
-        path: '/home/internships/:jobKey/apply/validation',
-        builder: (context, state) => const Text('Validate CV step'),
-      ),
-      GoRoute(
         path: '/home/internships/:jobKey/apply',
-        builder: (context, state) => const Text('Apply form'),
+        builder: (context, state) => Scaffold(
+          body: Center(
+            child: TextButton(
+              onPressed: () => context.push(
+                '/home/internships/$_job/apply/match',
+                extra: session,
+              ),
+              child: const Text('Compose application'),
+            ),
+          ),
+        ),
+        routes: [
+          GoRoute(
+            path: 'match',
+            builder: (context, state) => CvMatchScreen(
+              internshipKey: state.pathParameters['jobKey']!,
+              source: 'home',
+              session: state.extra is ApplySession
+                  ? state.extra as ApplySession
+                  : null,
+            ),
+          ),
+        ],
       ),
     ],
   );
@@ -73,6 +83,9 @@ Future<GoRouter> _pumpScreen(
       child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
     ),
   );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Compose application'));
+  await tester.pumpAndSettle();
   return router;
 }
 
@@ -83,11 +96,11 @@ void main() {
 
     expect(find.text('CV match'), findsOneWidget);
     expect(find.text('Choose a CV first'), findsOneWidget);
-    expect(find.text('Back to the form'), findsOneWidget);
+    expect(find.text('Back to apply'), findsOneWidget);
     expect(find.text('Continue'), findsNothing);
   });
 
-  testWidgets('Continue replaces the step with Validate CV', (tester) async {
+  testWidgets('Continue returns to the compose screen', (tester) async {
     final match = FakeCvMatchService();
     await _pumpScreen(tester, match: match, session: _session());
     await tester.pumpAndSettle();
@@ -96,7 +109,7 @@ void main() {
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Validate CV step'), findsOneWidget);
+    expect(find.text('Compose application'), findsOneWidget);
     expect(find.text('CV match'), findsNothing);
   });
 

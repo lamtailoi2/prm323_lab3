@@ -42,6 +42,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-29 | Edit Profile `Change Photo` / `Remove` (JPG, PNG ≤ 5 MB) has no storage path: `storage.rules` allows only PDFs in `cvs/` and `reports/` | Profile owner | Resolved for now (Google photo only, user decision; DC-14) |
 | G-31 | Login "Terms" and "Privacy" links have no content or URL | Auth owner + team | Assumed (honest coming-soon message, DC-18) |
 | G-32 | Open items from the AI code review (CR-07 Saved part, CR-11, CR-17) | Saved owner, Search owner, Apply owner + rules owner | Open |
+| G-33 | Apply is email-based; Google Jobs provides no recruiter email | Apply owner | Resolved (user decision 2026-11-06; DC-31) |
 
 ---
 
@@ -249,3 +250,14 @@ The user wants **no spending at all**, including AI models. Every requirement ca
 - **CR-07 (Saved part):** lists show one synced copy per job (`distinctListings`), but Saved documents are keyed per copy, so when a re-sync keeps another copy the bookmark looks empty and the job can be saved twice. Options: let `distinctListings` prefer a saved copy, or match Saved by `jobIdentity`. Owner: Saved feature.
 - **CR-11:** the Search tab Filter sheet counts `Show N results` from the pool streamed for Trending; opened before the first snapshot it shows 0 until the next selection. A live count needs the sheet to watch a provider instead of a callback. Owner: Search.
 - **CR-17:** a CV uploaded on the Apply Form for one internship stays in `cvs/{uid}` when it is replaced, dropped or the form is left. Deleting it needs `allow delete` for the owner in `firebase/storage.rules` (rules change, owner-deployed, rule 9) and a retention rule agreed with Flow 4, which reads that CV's `storagePath` for Validate CV. Owner: Apply + rules owner.
+
+### G-33: Apply is email-based; Google Jobs has no recruiter email
+- **Found (2026-11-06):** Flow 2 asked the student to fill a six-field form, but the app cannot submit to the employer: SerpAPI Google Jobs only gives `apply_options` links to the employer's site and stores no recruiter address. A student applying by email must copy the JD into a message themselves.
+- **Decision (user, 2026-11-06, final):**
+  1. `Apply now` opens a **Compose application** screen instead of the form. The recipient address is read from the JD text (`hr@`, `tuyendung@`, `career@` preferred) and stays editable; when the post has none the field is empty and the mail app opens with an empty `To`.
+  2. The subject and cover letter are drafted by the callable `composeCoverLetter` (Groq, `openai/gpt-oss-20b`, free tier) from the JD + Profile (+ CV text when available). The model failure path returns a deterministic template in the JD's language, so the flow never dead-ends. The letter is editable and can be regenerated.
+  3. `Open email app` opens the draft with `mailto:` (RFC 6068, `%20`/`%0A` encoding). The CV is attached manually in the mail app because `mailto:` cannot attach files; the screen says so.
+  4. After sending, `I've sent it` records the application at `users/{uid}/applications/{jobKey}` with `appliedVia: email`, `recipientEmail`, the cover letter in `applicant.shortIntroduction` and the Profile CV when there is one. My Applications and Application Detail keep working unchanged.
+  5. CV Match and Validate CV stay reachable as optional, advisory actions on the compose screen; they never block sending.
+- **Not changed:** the Firestore rules (`users/{uid}/**`), the shared listing pool, and the Profile CV upload path.
+- **Open follow-ups:** the compose screen has no Figma frame (DC-31); an application created this way is self-reported, so the student still updates its status (G-10/G-25 #6); a long cover letter may be truncated by some mail apps (the prompt keeps it at 120–170 words).

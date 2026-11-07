@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
+import '../../../core/widgets/app_dialog.dart';
 import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/state_view.dart';
+import '../../../services/crashlytics_service.dart';
 import '../../../theme/app_spacing.dart';
 import '../../auth/viewmodels/sign_out_viewmodel.dart';
 import '../viewmodels/open_cv_viewmodel.dart';
@@ -100,6 +102,7 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.section),
           DiagnosticsSection(
             onOpenFirebaseDemo: () => context.push(AppRoutes.firebaseDemo),
+            onTestCrash: () => _confirmTestCrash(context, ref),
           ),
           const SizedBox(height: AppSpacing.section),
           SettingsSection(
@@ -120,6 +123,24 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Forces a native crash so Crashlytics has a report to upload on the next
+  /// launch (Lab 3 §6). Always behind a confirmation: the app closes.
+  static Future<void> _confirmTestCrash(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final confirmed = await showAppDialog(
+      context,
+      title: 'Simulate a crash?',
+      message:
+          'Internly will close immediately. Reopen it so Crashlytics can '
+          'send the report.',
+      primaryLabel: 'Crash now',
+    );
+    if (confirmed != true) return;
+    ref.read(crashlyticsServiceProvider).crashForTesting();
   }
 
   static void _showMessage(BuildContext context, String message) {

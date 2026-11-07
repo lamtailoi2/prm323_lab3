@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildTestCrashData,
   chunk,
   normaliseMessageId,
+  normaliseTarget,
   requireText,
   summariseSend,
   toIso,
@@ -62,6 +64,28 @@ test('summariseSend keeps successes and failure codes', () => {
       { ok: false, error: 'messaging/registration-token-not-registered' },
     ],
   );
+});
+
+test('normaliseTarget accepts only the broadcast target', () => {
+  assert.equal(normaliseTarget('all'), 'all');
+  assert.equal(normaliseTarget('uid'), 'uid');
+  assert.equal(normaliseTarget('everyone'), 'uid');
+  assert.equal(normaliseTarget(undefined), 'uid');
+});
+
+test('buildTestCrashData creates a data-only crash command', () => {
+  const data = buildTestCrashData({
+    target: 'all',
+    requestedAt: '2026-11-06T12:00:00.000Z',
+  });
+  assert.deepEqual(data, {
+    type: 'test_crash',
+    source: 'admin_dashboard',
+    target: 'all',
+    requestedAt: '2026-11-06T12:00:00.000Z',
+  });
+  assert.equal(buildTestCrashData().target, 'uid');
+  assert.match(buildTestCrashData().requestedAt, /^\d{4}-\d{2}-\d{2}T/);
 });
 
 test('normaliseMessageId keeps the trailing ID the app stores', () => {

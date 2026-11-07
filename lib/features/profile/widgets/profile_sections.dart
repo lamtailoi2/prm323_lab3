@@ -275,13 +275,18 @@ class SettingsSection extends StatelessWidget {
   }
 }
 
-/// "Diagnostics": the entry point to the Firebase demo area required by Lab 3
-/// (G-06). It keeps the Profile list short; the values and test controls live
-/// on `/profile/firebase`.
+/// "Diagnostics": the Crashlytics test control (G-06) and the entry point to
+/// the Firebase demo area. The crash stays on Profile so a student can run it
+/// without opening the demo screen.
 class DiagnosticsSection extends StatelessWidget {
-  const DiagnosticsSection({super.key, required this.onOpenFirebaseDemo});
+  const DiagnosticsSection({
+    super.key,
+    required this.onOpenFirebaseDemo,
+    required this.onTestCrash,
+  });
 
   final VoidCallback onOpenFirebaseDemo;
+  final VoidCallback onTestCrash;
 
   @override
   Widget build(BuildContext context) {
@@ -293,14 +298,26 @@ class DiagnosticsSection extends StatelessWidget {
       icon: Symbols.bug_report_rounded,
       title: 'Diagnostics',
       padded: false,
-      child: ListTile(
-        leading: const Icon(Symbols.bug_report_rounded),
-        title: const Text('Firebase demo'),
-        subtitle: const Text(
-          'Remote Config values, crash and non-fatal tests.',
-        ),
-        trailing: chevron,
-        onTap: onOpenFirebaseDemo,
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Symbols.bug_report_rounded),
+            title: const Text('Simulate app crash'),
+            subtitle: const Text('Closes the app and sends a crash report.'),
+            trailing: chevron,
+            onTap: onTestCrash,
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Symbols.tune_rounded),
+            title: const Text('Firebase demo'),
+            subtitle: const Text(
+              'Remote Config values, non-fatal test and links.',
+            ),
+            trailing: chevron,
+            onTap: onOpenFirebaseDemo,
+          ),
+        ],
       ),
     );
   }

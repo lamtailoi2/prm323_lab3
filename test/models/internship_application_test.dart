@@ -102,6 +102,30 @@ void main() {
       expect(applicant.introduction, 'Hello');
     });
 
+    test('reads the email channel and recipient; older docs are in app', () {
+      final email = InternshipApplication.fromFirestore('job-9', {
+        'title': 'Flutter Developer Intern',
+        'companyName': 'FPT Software',
+        'appliedAt': DateTime(2026, 11, 6),
+        'status': 'submitted',
+        'appliedVia': 'email',
+        'recipientEmail': 'hr@fpt.com.vn',
+      });
+
+      expect(email.appliedVia, ApplicationChannel.email);
+      expect(email.recipientEmail, 'hr@fpt.com.vn');
+
+      final inApp = InternshipApplication.fromFirestore('job-10', {
+        'title': 'Flutter Developer Intern',
+        'companyName': 'FPT Software',
+        'appliedAt': DateTime(2026, 11, 6),
+        'status': 'submitted',
+      });
+
+      expect(inApp.appliedVia, ApplicationChannel.inApp);
+      expect(inApp.recipientEmail, isNull);
+    });
+
     test('a malformed applicant map hides the snapshot, not the document', () {
       final application = InternshipApplication.fromFirestore('job-8', {
         'title': 'Flutter Developer Intern',

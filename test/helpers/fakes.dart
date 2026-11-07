@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/utils/job_key.dart';
+import 'package:internly/features/internships/models/cover_letter_draft.dart';
 import 'package:internly/features/internships/models/search_history_entry.dart';
 import 'package:internly/models/app_user.dart';
 import 'package:internly/models/cv_match_result.dart';
@@ -13,6 +14,7 @@ import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
+import 'package:internly/services/cover_letter_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/cv_match_service.dart';
 import 'package:internly/services/cv_validation_service.dart';
@@ -157,11 +159,13 @@ typedef CreatedApplication = ({
   String internshipKey,
   String title,
   String companyName,
-  String cvStoragePath,
-  String cvFileName,
-  String cvUrl,
-  int cvSizeBytes,
+  String? cvStoragePath,
+  String? cvFileName,
+  String? cvUrl,
+  int? cvSizeBytes,
   ApplicationApplicant applicant,
+  String? recipientEmail,
+  ApplicationChannel appliedVia,
 });
 
 /// In-memory [ApplicationService] backed by a broadcast stream. Tests set
@@ -202,11 +206,13 @@ class FakeApplicationService implements ApplicationService {
     required String internshipKey,
     required String title,
     required String companyName,
-    required String cvStoragePath,
-    required String cvFileName,
-    required String cvUrl,
-    required int cvSizeBytes,
+    String? cvStoragePath,
+    String? cvFileName,
+    String? cvUrl,
+    int? cvSizeBytes,
     required ApplicationApplicant applicant,
+    String? recipientEmail,
+    required ApplicationChannel appliedVia,
   }) async {
     await createGate?.future;
     final failure = createError;
@@ -220,6 +226,8 @@ class FakeApplicationService implements ApplicationService {
       cvUrl: cvUrl,
       cvSizeBytes: cvSizeBytes,
       applicant: applicant,
+      recipientEmail: recipientEmail,
+      appliedVia: appliedVia,
     ));
   }
 
@@ -791,6 +799,7 @@ class FakeCvMatchService implements CvMatchService {
 /// Records opened links instead of launching them.
 class FakeExternalLinkService implements ExternalLinkService {
   final List<Uri> opened = <Uri>[];
+  final List<Uri> openedEmails = <Uri>[];
   AppException? error;
 
   @override
@@ -798,5 +807,48 @@ class FakeExternalLinkService implements ExternalLinkService {
     final failure = error;
     if (failure != null) throw failure;
     opened.add(uri);
+  }
+
+  @override
+  Future<void> openEmail(Uri uri) async {
+    final failure = error;
+    if (failure != null) throw failure;
+    openedEmails.add(uri);
+  }
+}
+
+/// Records cover letter drafting calls instead of reaching Cloud Functions.
+class FakeCoverLetterService implements CoverLetterService {
+  CoverLetterDraft draft = const CoverLetterDraft(
+    subject: 'Application for Flutter Intern',
+    body:
+        'Dear Hiring Team,\n\nI would like to apply for the Flutter Intern '
+        'position.\n\nBest regards,\nMinh Nguyen',
+    usedAi: true,
+  );
+  AppException? error;
+
+  /// Completes the next draft only when the test calls `complete()`.
+  Completer<void>? gate;
+
+  int calls = 0;
+  final List<String> internshipKeys = <String>[];
+  final List<String?> storagePaths = <String?>[];
+  final List<String?> studentNames = <String?>[];
+
+  @override
+  Future<CoverLetterDraft> compose({
+    required String internshipKey,
+    String? storagePath,
+    String? studentName,
+  }) async {
+    calls++;
+    internshipKeys.add(internshipKey);
+    storagePaths.add(storagePath);
+    studentNames.add(studentName);
+    await gate?.future;
+    final failure = error;
+    if (failure != null) throw failure;
+    return draft;
   }
 }

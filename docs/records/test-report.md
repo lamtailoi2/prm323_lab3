@@ -653,6 +653,48 @@ Follow-ups: capture `evidence/crashlytics/` (dashboard with fatal + non-fatal, u
 
 ---
 
+## Run 33: Admin dashboard refactor + admin crash command — 2026-11-06
+
+Environment: Windows 11 · Flutter 3.47.8 · Node 24 · `emulator-5554` (1080 × 2400) · Firebase project `prm-lab3` · signed-in test account.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd tools/admin-dashboard && npm test` | **9 passed** |
+| 2 | `node --check server.js`, `lib/admin.js`, `public/app.js` | Clean |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **676 passed** |
+| 5 | `POST /api/test-crash` to the signed-in UID | `successCount: 1`; logcat showed `FATAL EXCEPTION: FirebaseCrashlyticsTestCrash` on the app PID, then the app closed |
+| 6 | Rebuilt and reinstalled the APK; Profile → Diagnostics | Both `Simulate app crash` and `Firebase demo` are present |
+| 7 | `agent-browser` visual check | Recipient select lists all 9 users plus `Everyone with a token (5)`; no-token users are disabled; selecting `Mai Duy Lập` enabled `Send notification` and changed the chip to `To Mai Duy Lập`; the crash acknowledgment enabled `Send test crash` |
+| 8 | Crashlytics dashboard for the admin crash | **Not checked** (the fatal report uploads on the next launch) |
+
+Notes: the app must be rebuilt after the `test_crash` handler lands; the first attempt used the earlier APK and did not close. The dashboard is served only on `127.0.0.1:4317`.
+
+---
+
+## Run 34: Email-based apply flow (DC-31) — 2026-11-06
+
+Environment: Windows 11 · Flutter 3.47.8 · Dart 3.13.3 · Node 24.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Formatted 216 files (8 changed on the first run, then clean) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **653 passed** |
+| 4 | `cd functions && npm test` | **59 passed** (`npm run build` + `node --test`; 13 new for `composeCoverLetter`) |
+| 5 | Unit: `contact_email_test.dart`, `mailto_test.dart`, `cover_letter_service_test.dart` | Passed (in the 653) |
+| 6 | ViewModel: `apply_compose_viewmodel_test.dart` | Passed: prefill from the JD, AI draft, empty / invalid recipient, `mailto:`, `I've sent it` record fields (`appliedVia: email`, `recipientEmail`, cover letter, optional CV), repeated tap, failed draft, no name, late profile snapshot, `buildSession` |
+| 7 | Widget: `apply_compose_screen_test.dart` | Passed at 360 / 412 dp: drafted subject and letter, found / absent address helper, CV card, error + Retry, `Open email app` hands the draft to the fake mail service, 48 dp guideline |
+| 8 | Router: `router_test.dart` | `home_apply_email` for `Apply now`; new `/apply/match`, `/apply/validation`, `/apply/success` paths |
+| 9 | Deploy `composeCoverLetter` / a real Groq call | **Not run** (no owner deploy or secret in this session) |
+| 10 | Device walk (open Gmail, attach the CV, `I've sent it`) | **Not run** (no device session owned by this agent) |
+| 11 | `cover_letter_generate` / `application_create` in DebugView | **Not run** |
+| 12 | `uv run --no-sync python -m py_compile e2e_test/test_apply.py e2e_test/test_apply_form.py e2e_test/conftest.py` | Clean (TC-06 / TC-18 / TC-19 rewritten for the email flow; TC-20 removed with the form) |
+
+Notes: the compose screen replaces the six-field Application Form and the Review step (DC-31, G-33). The callable's unit tests cover the AI path, the template fallback (blank key, model error, unparseable JSON), Vietnamese listings, a missing internship / key / auth, another user's CV path and a failed CV read.
+
+---
+
 ## Run template
 
 ```markdown

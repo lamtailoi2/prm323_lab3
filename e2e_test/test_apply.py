@@ -1,59 +1,41 @@
-"""TC-06 Flow 2 + 2d: CV Match Check, Validate CV and submission. TC-07
-Flow 2c: a listing already applied to shows its application."""
+"""TC-06 Flow 2: the email draft and `I've sent it`. TC-07 Flow 2c: a listing
+already applied to shows its application."""
 
-import pytest
-from conftest import (
-    FILL_PERSONAL,
-    SIGNED_IN,
-    UPLOAD_SAMPLE_CV,
-    push_sample_cv,
-    run_case,
-)
+from conftest import SIGNED_IN, run_case
 
-# Every run submits a real application, which cannot be deleted. The listing
-# needs skill tags, or CV match has nothing to compare ("Nothing to compare
-# yet", no gaps).
+# Every run records a real application, which cannot be deleted. The listing
+# only needs an unapplied card; the compose screen drafts from the JD.
 CHOOSE_LISTING = (
     "Tap 'Search' in the bottom navigation, type 'Developer' in the search "
     "field and tap 'Find Internships'. Tap the first internship card that has "
-    "no 'Applied' badge and shows at least three skill tags (scroll down if "
-    "needed). Note its job title and company name."
+    "no 'Applied' badge (scroll down if needed). Note its job title and "
+    "company name."
 )
 
 
-@pytest.mark.native
-async def test_tc06_cv_match_then_validate_and_submit(artemis):
-    # The fictional CV replaces the Profile CV for this application: the
-    # 2026-11-02 Profile sample is too short for `validateCv` ("CV appears to
-    # be empty or unreadable"), and no personal CV is sent to the functions.
-    push_sample_cv()
+async def test_tc06_compose_email_then_sent(artemis):
     report = await run_case(
         artemis,
         "TC-06",
-        f"{SIGNED_IN} {CHOOSE_LISTING} Tap 'Apply now'. {UPLOAD_SAMPLE_CV} "
-        f"{FILL_PERSONAL} Scroll down and tap 'Continue to review'. On the 'CV "
-        "match' screen, read the percentage, the line that contains "
-        "'requirements matched', every skill under 'Gaps to review' and the "
-        "suggestion under each gap. Note whether the 'Continue' button is "
-        "visible before the check finishes. Tap 'Continue'. The 'Validate CV' "
-        "screen moves on by itself to 'Review application' when the CV is "
-        "accepted: wait up to 60 seconds. On 'Review application' tap 'Submit "
-        "application' and read the title and company shown in the success "
-        "recap.",
+        f"{SIGNED_IN} {CHOOSE_LISTING} Tap 'Apply now'. The next screen's app "
+        "bar reads 'Apply by email'. Read the value in the 'To' field, the text "
+        "in 'Subject', the first two lines in 'Cover letter', and whether the "
+        "buttons 'Open email app' and \"I've sent it\" are visible. Tap \"I've "
+        "sent it\" and read the title and company shown in the success recap.",
         expected_output=(
             'JSON: {"card_title": string, "card_company": string, '
-            '"match_percent": string, "match_summary": string, '
-            '"gap_count": integer, "suggestion_count": integer, '
-            '"continue_visible_while_checking": boolean, '
+            '"recipient": string, "subject": string, "letter_excerpt": string, '
+            '"open_email_visible": boolean, "sent_visible": boolean, '
             '"success_title": string, "success_company": string}'
         ),
     )
 
-    assert "%" in report["match_percent"]
-    assert "requirements matched" in report["match_summary"]
-    assert report["gap_count"] >= 1
-    assert report["suggestion_count"] >= 1
-    assert report["continue_visible_while_checking"] is True
+    # The recipient may be empty when the job post names no address; the
+    # screen must still offer the draft and the two actions.
+    assert report["open_email_visible"] is True
+    assert report["sent_visible"] is True
+    assert report["subject"].strip()
+    assert report["letter_excerpt"].strip()
     assert report["success_title"].strip()
     assert report["success_company"].strip()
     # The success recap names the listing the run started from.
