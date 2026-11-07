@@ -31,6 +31,9 @@ abstract interface class UserProfileService {
   /// Sets the default CV. The previous file stays in Cloud Storage because
   /// submitted applications may still link to it.
   Future<void> updateCv(String uid, CvFile cv);
+
+  /// Saves Google's `given_name` for the Home greeting (DC-31).
+  Future<void> updateGivenName(String uid, String givenName);
 }
 
 final userProfileServiceProvider = Provider<UserProfileService>(
@@ -101,6 +104,10 @@ class FirestoreUserProfileService implements UserProfileService {
   @override
   Future<void> updateCv(String uid, CvFile cv) =>
       _merge(uid, 'cv', {'cv': cv.toFirestore()});
+
+  @override
+  Future<void> updateGivenName(String uid, String givenName) =>
+      _merge(uid, 'given name', {'givenName': givenName});
 
   /// The returned future completes when the server acknowledges the write,
   /// so its duration is logged: a slow acknowledgement looks like a hang in

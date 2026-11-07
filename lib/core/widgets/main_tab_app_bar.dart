@@ -128,17 +128,7 @@ class MainTabAppBar extends StatelessWidget implements PreferredSizeWidget {
                                 color: AppColors.onPrimary,
                               ),
                             ),
-                          Semantics(
-                            header: true,
-                            child: Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.headingLarge.copyWith(
-                                color: AppColors.onPrimary,
-                              ),
-                            ),
-                          ),
+                          Semantics(header: true, child: _FittedTitle(title)),
                         ],
                       ),
                     ),
@@ -243,6 +233,53 @@ class _AvatarFallback extends StatelessWidget {
       Symbols.person_rounded,
       size: AppSizes.icon,
       color: AppColors.onPrimary,
+    );
+  }
+}
+
+/// [text] in the largest heading style that fits on one line:
+/// `type/heading/large` (24) → `type/heading/medium` (20) → `type/title`
+/// (18), and only then an ellipsis, so a long full name is not cut early
+/// (DC-31).
+class _FittedTitle extends StatelessWidget {
+  const _FittedTitle(this.text);
+
+  final String text;
+
+  static const List<TextStyle> _steps = [
+    AppTypography.headingLarge,
+    AppTypography.headingMedium,
+    AppTypography.title,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final scaler = MediaQuery.textScalerOf(context);
+    final direction = Directionality.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        var style = _steps.last;
+        for (final candidate in _steps) {
+          final painter = TextPainter(
+            text: TextSpan(text: text, style: candidate),
+            maxLines: 1,
+            textDirection: direction,
+            textScaler: scaler,
+          )..layout(maxWidth: constraints.maxWidth);
+          final fits = !painter.didExceedMaxLines;
+          painter.dispose();
+          if (fits) {
+            style = candidate;
+            break;
+          }
+        }
+        return Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: style.copyWith(color: AppColors.onPrimary),
+        );
+      },
     );
   }
 }

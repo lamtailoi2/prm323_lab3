@@ -23,6 +23,7 @@ import '../../../theme/app_spacing.dart';
 import '../../applications/viewmodels/applied_providers.dart';
 import '../../saved/viewmodels/saved_providers.dart';
 import '../../saved/viewmodels/saved_viewmodel.dart';
+import '../viewmodels/greeting_name_provider.dart';
 import '../viewmodels/home_viewmodel.dart';
 import '../widgets/home_section_header.dart';
 import '../widgets/role_shortcuts.dart';
@@ -54,7 +55,11 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: MainTabAppBar(
         // Home greets the student by name (Tab Header v2, DC-31).
-        title: _displayName(user?.displayName) ?? 'Home',
+        // Google's given name when known, else the full account name.
+        title:
+            ref.watch(homeGivenNameProvider).value ??
+            _displayName(user?.displayName) ??
+            'Home',
         greeting: greetingFor(DateTime.now()),
         user: user,
         onProfile: () => context.go(AppRoutes.profile),

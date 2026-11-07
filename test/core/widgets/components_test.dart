@@ -420,6 +420,39 @@ void main() {
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     });
 
+    for (final width in checkWidths) {
+      testWidgets('a long name steps down the heading at $width dp', (
+        tester,
+      ) async {
+        setScreenSize(tester, width: width);
+        Future<double?> sizeFor(String name) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: AppTheme.light(),
+              home: Scaffold(
+                appBar: MainTabAppBar(
+                  title: name,
+                  greeting: 'Good evening',
+                  user: testUser,
+                  onProfile: () {},
+                  onNotifications: () {},
+                ),
+              ),
+            ),
+          );
+          return tester.widget<Text>(find.text(name)).style?.fontSize;
+        }
+
+        expect(await sizeFor('Anh'), 24);
+        expect(await sizeFor('Phạm Nguyễn Hoàng Anh'), lessThan(24));
+        expect(
+          await sizeFor('Phạm Nguyễn Hoàng Anh Christopher Alexander'),
+          18,
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+
     testWidgets('Home: greeting and avatar; the avatar opens Profile', (
       tester,
     ) async {

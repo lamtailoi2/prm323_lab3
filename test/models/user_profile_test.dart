@@ -9,6 +9,14 @@ void main() {
   final uploadedAt = DateTime.utc(2026, 10, 14, 9);
 
   group('UserProfile.fromFirestore', () {
+    test('givenName is read when present and null otherwise', () {
+      expect(
+        UserProfile.fromFirestore('uid-1', {'givenName': 'Anh'}).givenName,
+        'Anh',
+      );
+      expect(UserProfile.fromFirestore('uid-1', {}).givenName, isNull);
+    });
+
     test('valid document: every section is parsed', () {
       final profile = UserProfile.fromFirestore('uid-1', {
         'fullName': 'Minh Nguyen',
