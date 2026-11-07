@@ -332,6 +332,46 @@ Branch `fix/code-review-r1` from `origin/dev` `4d2aeda`. Environment: macOS 26.7
 
 ---
 
+## Run 21: Apply flow after Pre-submit — Validate CV → Confirm → employer website (2026-11-03)
+
+Environment: Windows 11 · Flutter 3.47.6 / Dart 3.13.5 · no device or Firebase project on this machine. Changes: P-45, DC-27.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **177 files formatted, 0 changed** after the final edits |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **551 tests, all passed** (+26): `internship_test.dart` apply options / share link (+4); `apply_confirm_viewmodel_test.dart` (+7: open → awaitingReturn, failed redirect + retry, `onReturned` only while waiting, submit writes + `application_create` with `cv_source` and `duration_sec`, failed write + retry, repeated tap writes once, no CV writes nothing); `apply_validate_screen_test.dart` (+8: checking, valid auto-continues, invalid → Retry / Update CV back to the form, failed check, Cancel → Detail, no CV, 360 / 412 dp); `apply_confirm_screen_test.dart` (+7: content, open → resume → record → `/applications`, failed redirect + retry, no employer link + Google Jobs fallback + `Mark as applied`, failed write + Retry, 360 / 412 dp); updated `apply_form_screen_test.dart` (Continue opens Validate CV, `Step 1 of 3`) |
+| 4 | Not run | Real browser round trip, Firestore write on a device, DebugView screenshots for `cv_validation_result` / `application_create`, a deployed `validateCv` with a real `GEMINI_API_KEY`, and ARTEMIS E2E (no device / Firebase project / model key here) |
+
+---
+
+## Run 22: SerpAPI fresher/junior keywords + Detail role/level badges (2026-11-07)
+
+Environment: Windows 11 · Flutter 3.47.6 / Dart 3.13.5 · Node 24.6.0 (functions declare Node 22) · no device or Firebase project on this machine. Changes: P-46, DC-28.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd functions && npm ci && npm test` | **20 tests, all passed** (+2: `config.test.ts` checks the keyword list contains intern, fresher and junior queries and computes the rotation against the 250-search free plan and the 7-day expiry) |
+| 2 | `dart format lib test` | **174 files formatted, 0 changed** |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **557 tests, all passed** (+6): `job_level_test.dart` (5: title levels incl. Vietnamese/`TTS`/`new grad`, fresher/junior over internship, senior titles excluded, “international”, no level), Detail screen (+1: level badge hidden when the listing states no level; the assertion reads the semantics label) and `Internship.level` wiring in the model test; role/level badge assertions at 360/412 dp |
+| 5 | Deployed `syncInternshipsJob` + manual Cloud Scheduler run (2026-11-07) | **Real backfill passed**: `sync/state` → `backfill=true`, `fetched=65`, `written=65`, `expiredDeleted=0`, all eight keywords, no `lastError`; Firestore shows 10 `IT fresher Vietnam` and 10 `IT junior Vietnam` listings; the Pixel 6 emulator shows the `DevOps/Cloud` + `Intern` badges on Detail. One earlier trigger hit a 20 s SerpAPI timeout and succeeded on retry. Evidence: `evidence/sync/2026-11-07-p46-sync.md` + screenshot |
+
+---
+
+## Run 23: Experience band + ranking tiebreaker (2026-11-07)
+
+Environment: Windows 11 · Flutter 3.47.6 / Dart 3.13.5 · no device or Firebase project on this machine. Changes: P-47, DC-29, DC-30.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **174 files formatted, 5 changed** before the final run (the edited model, ViewModel, Home and three test files), then 0 changed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **571 tests, all passed** (+14 over Run 22). Coverage added/updated: `user_profile_test.dart` (parse/store, legacy profile without `experience`, band → level mapping, equality/hashCode by experience); `profile_viewmodels_test.dart` (seeded band, single-select + clear, other fields keep the draft, save with `item_count`, unanswered experience stored null and not counted, failed save keeps the draft); `recommendation_test.dart` (level matrix incl. `null`, experience does not change the score); `home_viewmodel_test.dart` (level match beats sync rank, no experience keeps sync order, level cannot outrank a better role/skill score); `profile_screen_test.dart` (the Update preferences sheet runs at 360 and 412 dp and saves an experience chip; Profile asserts the `1–2 years` tag and four "Not set" groups) |
+| 4 | Not run | On-device sheet/tag screenshots, Firestore round trip on a real project, DebugView for the new `profile_update.item_count` (no device / Firebase project here) |
+
+---
+
 ## Run template
 
 ```markdown

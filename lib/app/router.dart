@@ -7,7 +7,9 @@ import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/internships/models/search_filter_criteria.dart';
+import '../features/internships/screens/apply_confirm_screen.dart';
 import '../features/internships/screens/apply_form_screen.dart';
+import '../features/internships/screens/apply_validate_screen.dart';
 import '../features/internships/screens/internship_detail_screen.dart';
 import '../features/internships/screens/search_results_screen.dart';
 import '../features/internships/screens/search_screen.dart';
@@ -44,6 +46,14 @@ abstract final class AppRoutes {
   /// Back (and Cancel in the next step) returns to the Detail.
   static String applyForm(String tab, String internshipKey) =>
       '${internshipDetail(tab, internshipKey)}/apply';
+
+  /// Validate CV step above the Apply Form (Flow 4).
+  static String applyValidate(String tab, String internshipKey) =>
+      '${applyForm(tab, internshipKey)}/validate';
+
+  /// Confirm Application step, reached only after the CV passed.
+  static String applyConfirm(String tab, String internshipKey) =>
+      '${applyForm(tab, internshipKey)}/confirm';
 }
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
@@ -211,6 +221,26 @@ GoRoute _internshipDetail(String source) {
           internshipKey: state.pathParameters['jobKey']!,
           source: source,
         ),
+        routes: [
+          GoRoute(
+            path: 'validate',
+            name: '${source}_apply_validate_cv',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) => ApplyValidateScreen(
+              internshipKey: state.pathParameters['jobKey']!,
+              source: source,
+            ),
+          ),
+          GoRoute(
+            path: 'confirm',
+            name: '${source}_apply_confirm',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) => ApplyConfirmScreen(
+              internshipKey: state.pathParameters['jobKey']!,
+              source: source,
+            ),
+          ),
+        ],
       ),
     ],
   );

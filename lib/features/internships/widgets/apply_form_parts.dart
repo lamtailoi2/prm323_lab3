@@ -15,17 +15,45 @@ import '../../../theme/app_spacing.dart';
 import '../viewmodels/apply_form_viewmodel.dart';
 import 'detail_parts.dart';
 
-/// "Step 1 of 2 · Your details" with the two-segment progress of the Apply
-/// Form frames; step 2 is the review step of Flow 4.
+/// Step header of the Apply flow: `Step 1 of 3 · Your details` with the
+/// next step on the right and one segment per step.
 class ApplyStepHeader extends StatelessWidget {
-  const ApplyStepHeader({super.key});
+  const ApplyStepHeader({
+    super.key,
+    this.step = 1,
+    this.total = 3,
+    this.label = 'Your details',
+    this.nextLabel = 'CV check',
+  });
+
+  /// Validate CV step (Step 2), between the form and Confirm.
+  const ApplyStepHeader.cvCheck({super.key})
+    : step = 2,
+      total = 3,
+      label = 'CV check',
+      nextLabel = 'Confirm';
+
+  /// Confirm Application step (Step 3), the last screen inside Internly.
+  const ApplyStepHeader.confirm({super.key})
+    : step = 3,
+      total = 3,
+      label = 'Confirm',
+      nextLabel = '';
+
+  final int step;
+  final int total;
+  final String label;
+
+  /// Empty on the last step; hides the right-hand label.
+  final String nextLabel;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final next = nextLabel.isEmpty ? '' : ' Next: ${nextLabel.toLowerCase()}';
     return Semantics(
       container: true,
-      label: 'Step 1 of 2, your details. Next: review',
+      label: 'Step $step of $total, ${label.toLowerCase()}.$next',
       excludeSemantics: true,
       child: DecoratedBox(
         decoration: const BoxDecoration(
@@ -46,26 +74,34 @@ class ApplyStepHeader extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Step 1 of 2 · Your details',
+                      'Step $step of $total · $label',
                       style: textTheme.labelLarge?.copyWith(
                         color: AppColors.primary,
                       ),
                     ),
                   ),
-                  Text(
-                    'Review',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
+                  if (nextLabel.isNotEmpty)
+                    Text(
+                      nextLabel,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.s8),
-              const Row(
+              Row(
                 children: [
-                  Expanded(child: _StepBar(color: AppColors.primary)),
-                  SizedBox(width: AppSpacing.s8),
-                  Expanded(child: _StepBar(color: AppColors.border)),
+                  for (var index = 0; index < total; index++) ...[
+                    if (index > 0) const SizedBox(width: AppSpacing.s8),
+                    Expanded(
+                      child: _StepBar(
+                        color: index < step
+                            ? AppColors.primary
+                            : AppColors.border,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/utils/job_key.dart';
+import 'package:internly/core/utils/job_level.dart';
 import 'package:internly/models/internship.dart';
 
 void main() {
@@ -34,6 +35,7 @@ void main() {
     expect(internship.companyName, 'MoMo Financial Tech');
     expect(internship.location, 'District 3, Ho Chi Minh City');
     expect(internship.workMode, WorkMode.hybrid);
+    expect(internship.level, JobLevel.intern);
     expect(internship.salary, '8M–12M VND a month');
     expect(internship.postedText, '2 days ago');
     expect(internship.postedAge, const Duration(days: 2));
@@ -246,5 +248,65 @@ void main() {
         reason: field,
       );
     }
+  });
+
+  test('reads the first https apply option as the employer page', () {
+    final internship = Internship.fromSerpApi(
+      job({
+        'apply_options': [
+          {'title': 'Broken', 'link': 'http://insecure.example/apply'},
+          {'title': 'No link'},
+          'not a map',
+          {'title': 'Apply on LinkedIn', 'link': 'https://linkedin.com/jobs/1'},
+          {'title': 'Apply direct', 'link': 'https://careers.example/apply'},
+        ],
+      }),
+    );
+
+    expect(internship.employerApplyUrl, 'https://linkedin.com/jobs/1');
+  });
+
+  test('no usable apply option leaves the employer page null', () {
+    expect(Internship.fromSerpApi(job()).employerApplyUrl, isNull);
+    expect(
+      Internship.fromSerpApi(
+        job({
+          'apply_options': [
+            {'link': 'mailto:jobs@example.com'},
+            {'link': 'https://'},
+          ],
+        }),
+      ).employerApplyUrl,
+      isNull,
+    );
+  });
+
+  test('share_link is kept as the Google Jobs fallback and must be https', () {
+    final internship = Internship.fromSerpApi(
+      job({'share_link': 'https://www.google.com/search?ibp=htl;jobs'}),
+    );
+    expect(internship.shareUrl, 'https://www.google.com/search?ibp=htl;jobs');
+    expect(internship.employerApplyUrl, isNull);
+
+    expect(
+      Internship.fromSerpApi(
+        job({'share_link': 'http://www.google.com/search?ibp=htl;jobs'}),
+      ).shareUrl,
+      isNull,
+    );
+  });
+
+  test('fromFirestore keeps the employer and share links of the raw job', () {
+    final internship = Internship.fromFirestore('abc123', {
+      'raw': job({
+        'apply_options': [
+          {'link': 'https://careers.example/apply'},
+        ],
+        'share_link': 'https://www.google.com/search?ibp=htl;jobs',
+      }),
+    });
+
+    expect(internship.employerApplyUrl, 'https://careers.example/apply');
+    expect(internship.shareUrl, 'https://www.google.com/search?ibp=htl;jobs');
   });
 }

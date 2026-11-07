@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../core/utils/allowance.dart';
 import '../core/utils/firestore_reader.dart';
 import '../core/utils/job_key.dart';
+import '../core/utils/job_level.dart';
 import '../core/utils/job_role.dart';
 import '../core/utils/listing_extensions.dart';
 import '../core/utils/listing_text.dart';
@@ -55,6 +56,8 @@ class Internship {
     this.highlights = const <JobHighlight>[],
     this.scheduleType,
     this.via,
+    this.employerApplyUrl,
+    this.shareUrl,
     this.syncedAt,
     this.searchKeyword,
     this.searchRank,
@@ -110,6 +113,10 @@ class Internship {
           scheduleTypeFromExtensions(extensions),
       // SerpAPI has sent both "LinkedIn" and "via LinkedIn" over time.
       via: via?.replaceFirst(RegExp('^via ', caseSensitive: false), ''),
+      // Google Jobs lists the employer's own application pages here, oldest
+      // known limit of the data source (G-25 #6).
+      employerApplyUrl: _applyOptionLink(json['apply_options']),
+      shareUrl: _httpsUrl(reader.optionalString('share_link')),
     );
   }
 
@@ -144,6 +151,8 @@ class Internship {
       highlights: parsed.highlights,
       scheduleType: parsed.scheduleType,
       via: parsed.via,
+      employerApplyUrl: parsed.employerApplyUrl,
+      shareUrl: parsed.shareUrl,
       syncedAt: syncedAt,
       searchKeyword: reader.optionalString('searchKeyword'),
       searchRank: reader.optionalInt('searchRank'),
@@ -198,6 +207,15 @@ class Internship {
   /// The site Google Jobs found the listing on, e.g. "LinkedIn".
   final String? via;
 
+  /// The employer's own application page (`apply_options[].link`); `null`
+  /// when Google shares none, so the student records the application
+  /// manually instead (G-25 #6).
+  final String? employerApplyUrl;
+
+  /// Google Jobs' own share link for this listing (`share_link`), used only
+  /// when there is no employer page to open.
+  final String? shareUrl;
+
   /// Items of the first highlight whose title contains [titleWord]
   /// (case-insensitive); empty when there is none.
   List<String> highlightItems(String titleWord) {
@@ -212,6 +230,10 @@ class Internship {
   /// for non-IT listings, which Home hides.
   JobRole? get role =>
       jobRoleFor(title: title, searchKeyword: searchKeyword, skills: skills);
+
+  /// Early-career level inferred from the title ([jobLevelFor]); `null` when
+  /// the listing states no level.
+  JobLevel? get level => jobLevelFor(title: title);
 
   /// When the sync function last wrote this document.
   final DateTime? syncedAt;
@@ -249,6 +271,20 @@ class Internship {
     return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty
         ? value
         : null;
+  }
+
+  /// First https link of `apply_options`; entries without a usable `link` are
+  /// skipped so one malformed option does not hide the others.
+  static String? _applyOptionLink(Object? options) {
+    if (options is! List) return null;
+    for (final option in options) {
+      if (option is! Map) continue;
+      final link = option['link'];
+      if (link is! String) continue;
+      final url = _httpsUrl(link.trim());
+      if (url != null) return url;
+    }
+    return null;
   }
 
   static String? _plainOrNull(String text) {

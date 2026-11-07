@@ -121,15 +121,11 @@ class ApplyFormScreen extends ConsumerWidget {
           ? ApplyBottomBar(
               isUploading: state.isUploading,
               onContinue: () {
-                // Pre-submit Complete. The review step (Validate CV →
-                // Confirm, Flow 4) is not built yet, so the button says so
-                // instead of faking a step; the CV section shows the error
-                // when there is no CV.
+                // Pre-submit Complete: hand the chosen CV to the Validate CV
+                // step. The CV section already shows the error when there is
+                // no CV or the upload failed.
                 if (viewModel.continueToReview() != null) {
-                  _showMessage(
-                    context,
-                    'Your CV is ready. The review step is coming soon.',
-                  );
+                  context.push(AppRoutes.applyValidate(source, internshipKey));
                 } else if (state.uploadError != null) {
                   _showMessage(
                     context,

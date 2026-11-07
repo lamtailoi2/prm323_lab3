@@ -68,12 +68,26 @@ void main() {
   Future<void> pumpForm(WidgetTester tester, {double width = 360}) async {
     setScreenSize(tester, width: width, height: 900);
     final router = GoRouter(
-      initialLocation: '/apply',
+      initialLocation: '/home/internships/${listing.key}/apply',
       routes: [
         GoRoute(
-          path: '/apply',
+          path: '/home/internships/:jobKey',
           builder: (context, state) =>
-              ApplyFormScreen(internshipKey: listing.key, source: 'home'),
+              const Scaffold(body: Text('Detail stub')),
+          routes: [
+            GoRoute(
+              path: 'apply',
+              builder: (context, state) =>
+                  ApplyFormScreen(internshipKey: listing.key, source: 'home'),
+              routes: [
+                GoRoute(
+                  path: 'validate',
+                  builder: (context, state) =>
+                      const Scaffold(body: Text('Validate CV stub')),
+                ),
+              ],
+            ),
+          ],
         ),
         GoRoute(
           path: '/profile',
@@ -115,7 +129,7 @@ void main() {
       await pumpForm(tester, width: width);
 
       expect(find.text('Apply Form'), findsOneWidget);
-      expect(find.text('Step 1 of 2 · Your details'), findsOneWidget);
+      expect(find.text('Step 1 of 3 · Your details'), findsOneWidget);
       expect(find.text('Flutter Developer Intern'), findsOneWidget);
       expect(find.text('FPT Software · Remote'), findsOneWidget);
       expect(
@@ -132,11 +146,8 @@ void main() {
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text('Continue to review'));
-      await tester.pump();
-      expect(
-        find.text('Your CV is ready. The review step is coming soon.'),
-        findsOneWidget,
-      );
+      await tester.pumpAndSettle();
+      expect(find.text('Validate CV stub'), findsOneWidget);
     });
 
     testWidgets('no Profile CV: tip, upload area and its error at $width dp', (

@@ -74,6 +74,26 @@ Reviewer: Claude Code, one Opus 5.5 subagent per PR group with a fresh context, 
 - flutter analyze → No issues found!; flutter test → 525/525
 ```
 
+## Review record: P-46 uncommitted change (2026-11-07)
+
+Two OpenCode review subagents with fresh context, given only the P-46 files and `AGENTS.md` (not the unrelated uncommitted Apply/Confirm work in the same tree). No SHA range: the change is not committed yet. One round only; no blocker remains after the fixes. Raw outputs: `evidence/code-review/P-46-r1-correctness.md`, `evidence/code-review/P-46-r1-conventions-docs.md`.
+
+| ID | Tool | File:line | Kind | Finding (summary) | Decision | Reason | Fix commit | PR / round |
+|---|---|---|---|---|---|---|---|---|
+| CR-21 | OpenCode review subagent | `lib/core/utils/job_level.dart:25` | bug | Level fell back to `searchKeyword`, which every synced listing has, so a senior role returned by an intern query was labelled Intern and the "no signal" path never ran | **Accepted** | Reproduced by reasoning over the sync path and covered by new tests; wrong visible data is worse than a hidden badge | working tree (P-46) | P-46 R1 |
+| CR-22 | OpenCode review subagent | `functions/src/sync.ts:69` + `lib/core/utils/job_level.dart` | bug | `searchKeyword` is overwritten by whichever rotating keyword re-finds a listing, so a generic title's level badge could flip between syncs | **Accepted** | Same fix as CR-21: the level now reads the title only, so the overwrite cannot change it | working tree (P-46) | P-46 R1 |
+| CR-23 | OpenCode review subagent | `test/features/internships/internship_detail_screen_test.dart:209` | test gap | The hidden-badge test used `find.textContaining('Experience:')`, which can never match a `Semantics` label, so it passed even if the badge rendered | **Accepted** | A negative assertion that cannot fail gives false confidence (testing rules); now asserts `bySemanticsLabel(RegExp('^Experience:'))` | working tree (P-46) | P-46 R1 |
+| CR-24 | OpenCode review subagent | `test/core/utils/job_level_test.dart` | test gap | No case covered a senior title found by an intern keyword, the fresher/junior precedence, or `Internship.level` wiring | **Accepted** | Those are the risk branches; added senior/precedence/Vietnamese cases and a model assertion | working tree (P-46) | P-46 R1 |
+| CR-25 | OpenCode review subagent | `lib/core/utils/job_role.dart:77` | bug | `accountant` whole-word matching misses `Accountants` / `Accountancy`, which could then fall through to `dataAi` | **Accepted** | Same keyword-leak risk the `accountant` word was added for; added both variants | working tree (P-46) | P-46 R1 |
+| CR-26 | OpenCode review subagent | `functions/src/config.test.ts:13` | test gap | `KEYWORDS.length <= 8` was an arbitrary cap, not a check of the 250-search plan or the expiry window | **Accepted** | The requirement is the free tier, not a magic number; the test now computes monthly searches and the refresh interval | working tree (P-46) | P-46 R1 |
+| CR-27 | OpenCode review subagent | `lib/features/internships/screens/internship_detail_screen.dart:276` | bug | A non-IT listing (`role == null`) could still show an experience badge with no job-family context | **Accepted** | The badge row describes an IT listing; both badges now render only when `role != null` | working tree (P-46) | P-46 R1 |
+| CR-28 | OpenCode review subagent | `docs/records/handoff-gaps.md:196` | maintainability | The doc called all six intern queries "proven", but the recorded run evidence only covers five | **Accepted** | Lab 3 evidence rules forbid claiming coverage that was not recorded; "proven" removed (code comment too) | working tree (P-46) | P-46 R1 |
+| CR-29 | OpenCode review subagent | `lib/core/utils/job_level.dart` | bug | Vietnamese fresher terms (`mới tốt nghiệp`) and `TTS` were not recognized, so Vietnamese-titled early-career roles showed no level | **Accepted** | The user asked for fresher/junior coverage; added the folded terms and tests | working tree (P-46) | P-46 R1 |
+| CR-30 | OpenCode review subagent | `test/core/utils/job_level_test.dart:19` | test gap | The documented precedence (fresher/junior over intern) had no test | **Accepted** | Highest-risk ordering branch; added `Junior Developer (Internship)` and `Fresher Intern` | working tree (P-46) | P-46 R1 |
+| CR-31 | OpenCode review subagent | `docs/design-traceability.md:104` | maintainability | DC-28 records the new badge row but the Figma frame update is still pending, against golden rule 1 | **Rejected** | Real constraint: this environment has no Figma access; DC-28 records the deviation and the design owner owns the frame update | — | P-46 R1 |
+
+Totals: 11 unique findings after de-duplicating the two reviewers (bug 5, test gap 4, maintainability 2); 10 accepted, 1 rejected; fixes are in the working tree, not committed.
+
 ## AI tools used (disclosure)
 
 | Tool | Version / model | Used for | Where recorded |
@@ -81,6 +101,7 @@ Reviewer: Claude Code, one Opus 5.5 subagent per PR group with a fresh context, 
 | Google Stitch | — | Lab 2 screen generation and refinement | Lab 2 `ai/ai-design-log.md` |
 | Claude Code | Opus 5.5 (`claude-opus-5-5`) | Repository initialization: design tokens, shared widgets, services, routing, tests, documentation; requirement review against the Lab 3 handout; Profile screen, sheets, Edit profile, profile service and tests (P-21); Saved empty state opens Search (P-33); Internship Detail, Search field / filters / analytics, Apply Form, Job type and Applied badge (P-34 – P-43); fixes from the AI review (P-44) | [`implementation-ai-log.md`](records/implementation-ai-log.md) |
 | OpenCode | `deepseek-v4.1-flash-free` | Home UI implementation, SerpAPI → Firestore sync function, rules and documentation (P-18); Saved list, the Home Save Toggle, unsave with Undo and the Saved loading state (P-21, P-22, P-26, P-27) | [`implementation-ai-log.md`](records/implementation-ai-log.md) |
+| OpenCode (review subagents) | `deepseek-v4.1-flash-free`, two subagents with fresh context and only the P-46 diff + AGENTS.md | AI code review R1 of the P-46 search-keyword and Detail-badge change (CR-21 – CR-31) | this file; raw output in `evidence/code-review/P-46-r1-*.md` |
 | Command Code | — (implementation assistant; not a review tool) | CV validation implementation: callable `validateCv` + Gemini, Flutter service/ViewModel/step widget, tests and documentation (P-32) | [`implementation-ai-log.md`](records/implementation-ai-log.md) |
 | Google ARTEMIS | commit `351ca84` + model on the host | End-to-end test execution and the exploratory session | [`test-plan.md`](test-plan.md) |
 | Claude Code (review subagents) | Opus 5.5 (`claude-opus-5-5`), one subagent per PR group with a fresh context and only the diff + AGENTS.md | AI code review R1 of PRs #11–#15 (CR-01 – CR-20) | this file; raw output in `evidence/code-review/` |

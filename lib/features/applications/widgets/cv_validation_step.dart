@@ -57,7 +57,11 @@ class _CvValidationStepState extends ConsumerState<CvValidationStep> {
     ) {
       if (next != null && !_started) {
         _started = true;
-        unawaited(_run());
+        // Modifying the ViewModel during initState (or a sliver build) is
+        // forbidden, so the first check starts after the frame is built.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) unawaited(_run());
+        });
       }
     }, fireImmediately: true);
   }

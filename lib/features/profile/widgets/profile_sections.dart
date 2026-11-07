@@ -109,8 +109,8 @@ class SkillsSection extends StatelessWidget {
   }
 }
 
-/// "Internship preferences": target roles, work modes and location, with
-/// `Update` opening the Update preferences sheet.
+/// "Internship preferences": target roles, experience, work modes and
+/// location, with `Update` opening the Update preferences sheet.
 class PreferencesSection extends StatelessWidget {
   const PreferencesSection({
     super.key,
@@ -135,6 +135,14 @@ class PreferencesSection extends StatelessWidget {
           _TagGroup(
             label: 'Target roles',
             tags: [for (final role in preferences.targetRoles) role.label],
+          ),
+          const SizedBox(height: AppSpacing.s16),
+          _TagGroup(
+            label: 'Experience',
+            tags: [
+              if (preferences.experience case final experience?)
+                experience.label,
+            ],
           ),
           const SizedBox(height: AppSpacing.s16),
           _TagGroup(

@@ -143,12 +143,16 @@ void main() {
     if (settle) await tester.pumpAndSettle();
   }
 
-  Future<void> scrollTo(WidgetTester tester, Finder finder) =>
-      tester.scrollUntilVisible(
-        finder,
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
+  Future<void> scrollTo(WidgetTester tester, Finder finder) async {
+    await tester.scrollUntilVisible(
+      finder,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    // Leave room for the sticky bottom bar so the target can be tapped.
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
+    await tester.pumpAndSettle();
+  }
 
   for (final width in checkWidths) {
     testWidgets('shows the listing, key facts and sections at $width dp', (
@@ -159,6 +163,8 @@ void main() {
 
       expect(find.text('Internship details'), findsOneWidget);
       expect(find.text('Flutter Developer Intern'), findsOneWidget);
+      expect(find.bySemanticsLabel('Role: Mobile'), findsOneWidget);
+      expect(find.bySemanticsLabel('Experience: Intern'), findsOneWidget);
       expect(find.text('FPT Software'), findsOneWidget);
       expect(find.text('Posted 2 days ago'), findsOneWidget);
       expect(find.text('via LinkedIn'), findsOneWidget);
@@ -191,6 +197,17 @@ void main() {
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     });
   }
+
+  testWidgets('hides the level badge when the listing states no level', (
+    tester,
+  ) async {
+    final roleOnly = testInternship('2', title: 'Backend Developer');
+    internships.byKey[roleOnly.key] = roleOnly;
+    await pumpDetail(tester, key: roleOnly.key);
+
+    expect(find.bySemanticsLabel('Role: Backend'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('^Experience:')), findsNothing);
+  });
 
   for (final width in checkWidths) {
     testWidgets('an applied listing shows the banner and View application '

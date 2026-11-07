@@ -51,6 +51,7 @@ class ApplyFormState {
     this.missingCv = false,
     this.skillMatch,
     this.profileError,
+    this.startedAt,
   });
 
   final ViewState<Internship> internship;
@@ -86,6 +87,10 @@ class ApplyFormState {
   /// so with `Retry` instead of looking like "no CV yet" (CR-18).
   final AppException? profileError;
 
+  /// When the form opened, so `application_create` can report how long the
+  /// application took (`duration_sec`, docs/analytics-plan.md row 10).
+  final DateTime? startedAt;
+
   bool get isUploading => progress != null;
 
   ApplyCv? get cv {
@@ -112,6 +117,7 @@ class ApplyFormState {
     bool? missingCv,
     Object? skillMatch = _keep,
     Object? profileError = _keep,
+    DateTime? startedAt,
   }) {
     return ApplyFormState(
       internship: internship ?? this.internship,
@@ -138,6 +144,7 @@ class ApplyFormState {
       profileError: identical(profileError, _keep)
           ? this.profileError
           : profileError as AppException?,
+      startedAt: startedAt ?? this.startedAt,
     );
   }
 }
@@ -195,7 +202,10 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
 
     _subscribe(service);
     _logStart();
-    return ApplyFormState(profileLoaded: uid == null);
+    return ApplyFormState(
+      profileLoaded: uid == null,
+      startedAt: DateTime.now(),
+    );
   }
 
   /// Listens to the listing again after a load error.

@@ -10,6 +10,7 @@ import '../../../core/state/view_state.dart';
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/display_format.dart';
 import '../../../core/utils/posted_age.dart';
+import '../../../core/widgets/app_tag.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
@@ -249,6 +250,8 @@ class _JobHeader extends StatelessWidget {
         ? formatPostedAgeLong(postedAt)
         : internship.postedText;
     final via = internship.via;
+    final role = internship.role;
+    final level = internship.level;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -270,6 +273,24 @@ class _JobHeader extends StatelessWidget {
           header: true,
           child: Text(internship.title, style: textTheme.headlineSmall),
         ),
+        if (role != null) ...[
+          const SizedBox(height: AppSpacing.s8),
+          Wrap(
+            spacing: AppSpacing.s8,
+            runSpacing: AppSpacing.s4,
+            children: [
+              _DetailBadge(
+                label: role.label,
+                semanticsLabel: 'Role: ${role.label}',
+              ),
+              if (level != null)
+                _DetailBadge(
+                  label: level.label,
+                  semanticsLabel: 'Experience: ${level.label}',
+                ),
+            ],
+          ),
+        ],
         if (posted != null || via != null) ...[
           const SizedBox(height: AppSpacing.s8),
           Wrap(
@@ -311,6 +332,25 @@ class _IconText extends StatelessWidget {
               ?.copyWith(color: AppColors.textSecondary),
         ),
       ],
+    );
+  }
+}
+
+/// Job family / experience level tag under the title (DC-28). Reuses the
+/// compact [AppTag] and labels it for assistive technology.
+class _DetailBadge extends StatelessWidget {
+  const _DetailBadge({required this.label, required this.semanticsLabel});
+
+  final String label;
+  final String semanticsLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: semanticsLabel,
+      excludeSemantics: true,
+      child: AppTag(label: label),
     );
   }
 }

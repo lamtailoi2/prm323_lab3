@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/distinct_listings.dart';
+import '../../../core/utils/job_level.dart';
 import '../../../core/utils/job_role.dart';
 import '../../../core/utils/location_match.dart';
 import '../../../core/utils/recommendation.dart';
@@ -25,8 +26,8 @@ class HomeFeed {
 
   /// The first `home_recommended_limit` listings in the student's preferred
   /// location (when set in Profile), best profile match first (target roles,
-  /// then shared skills), then by sync rank / recency; optionally filtered
-  /// by the selected role.
+  /// then shared skills; experience level breaks ties), then by sync rank /
+  /// recency; optionally filtered by the selected role.
   final List<Internship> recommended;
 
   /// The remaining listings, newest first, capped by `home_recent_limit`.
@@ -61,8 +62,9 @@ class HomeViewModel extends Notifier<HomeState> {
   StreamSubscription<List<Internship>>? _subscription;
   DateTime _openedAt = DateTime.now();
 
-  /// Location, target roles and skills from Profile; empty until the
-  /// student sets them (then Recommended keeps the sync order, unfiltered).
+  /// Location, target roles, experience and skills from Profile; empty until
+  /// the student sets them (then Recommended keeps the sync order,
+  /// unfiltered).
   InternshipPreferences _preferences = const InternshipPreferences();
   List<String> _skills = const <String>[];
 
@@ -194,11 +196,12 @@ class HomeViewModel extends Notifier<HomeState> {
       remoteConfig.getInt(RemoteConfigKeys.homeRecentLimit),
     );
 
-    // Location filters; target roles and skills only reorder, so a narrow
-    // profile still gets a full Recommended list (G-23).
+    // Location filters; target roles, skills and experience only reorder, so
+    // a narrow profile still gets a full Recommended list (G-23).
     final wantedRoles = {
       for (final target in _preferences.targetRoles) ...target.jobRoles,
     };
+    final wantedLevels = _preferences.experience?.levels ?? const <JobLevel>{};
     final profileSkills = _skills.toSet();
     final scores = {
       for (final internship in filtered)
@@ -208,6 +211,10 @@ class HomeViewModel extends Notifier<HomeState> {
           wantedRoles: wantedRoles,
           profileSkills: profileSkills,
         ),
+    };
+    final levelMatches = {
+      for (final internship in filtered)
+        internship.key: matchesWantedLevel(internship.level, wantedLevels),
     };
     final ranked =
         filtered
@@ -220,7 +227,11 @@ class HomeViewModel extends Notifier<HomeState> {
             .toList()
           ..sort((a, b) {
             final byScore = scores[b.key]!.compareTo(scores[a.key]!);
-            return byScore != 0 ? byScore : compareBySyncRank(a, b);
+            if (byScore != 0) return byScore;
+            final byLevel = (levelMatches[b.key]! ? 1 : 0).compareTo(
+              levelMatches[a.key]! ? 1 : 0,
+            );
+            return byLevel != 0 ? byLevel : compareBySyncRank(a, b);
           });
     final recommended = ranked.take(recommendedLimit).toList(growable: false);
     final recommendedKeys = {

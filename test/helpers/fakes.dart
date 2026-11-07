@@ -48,6 +48,8 @@ Internship testInternship(
   List<JobHighlight> highlights = const <JobHighlight>[],
   String? scheduleType,
   String? via,
+  String? employerApplyUrl,
+  String? shareUrl,
 }) {
   final jobId = 'job-$id';
   return Internship(
@@ -68,6 +70,8 @@ Internship testInternship(
     highlights: highlights,
     scheduleType: scheduleType,
     via: via,
+    employerApplyUrl: employerApplyUrl,
+    shareUrl: shareUrl,
   );
 }
 
@@ -173,6 +177,28 @@ class FakeApplicationService implements ApplicationService {
     if (failure != null) throw failure;
     yield results;
     yield* _updates.stream;
+  }
+
+  /// Every recorded application, in call order.
+  final List<({String jobKey, String title, String companyName})> submissions =
+      <({String jobKey, String title, String companyName})>[];
+
+  /// Thrown by [markSubmitted]; usually an [AppException].
+  AppException? submitError;
+
+  /// Holds [markSubmitted] open, as an offline write never completes.
+  Completer<void>? submitGate;
+
+  @override
+  Future<void> markSubmitted({
+    required String jobKey,
+    required String title,
+    required String companyName,
+  }) async {
+    await submitGate?.future;
+    final failure = submitError;
+    if (failure != null) throw failure;
+    submissions.add((jobKey: jobKey, title: title, companyName: companyName));
   }
 
   /// Pushes a new snapshot, as Firestore would.

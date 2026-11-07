@@ -63,7 +63,7 @@ class InternshipApplication {
       status: reader.requireEnum('status', ApplicationStatus.fromStorage),
       // Optional: the next date the student should act on, either an
       // interview slot or the employer's reply deadline. The Apply flow does
-      // not write applications yet, so it is absent on every document today.
+      // not set it when it records a submitted application.
       nextStepAt: reader.optionalDateTime('nextStepAt'),
     );
   }

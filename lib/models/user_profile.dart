@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../core/utils/firestore_reader.dart';
+import '../core/utils/job_level.dart';
 import '../core/utils/job_role.dart';
 import 'internship.dart' show WorkMode;
 
@@ -155,33 +156,60 @@ class ProfileDetails {
   );
 }
 
-/// Target roles offered by the Update Preferences frame, in its order.
+/// Self-reported years of experience, used only to break ranking ties.
+///
+/// Google Jobs has no structured experience field, so the bands map to the
+/// early-career levels we can read from a listing title ([JobLevel]).
+enum ExperienceRange {
+  none('No experience'),
+  underOne('Under 1 year'),
+  oneToTwo('1–2 years'),
+  twoPlus('2+ years');
+
+  const ExperienceRange(this.label);
+
+  final String label;
+
+  /// Early-career levels this band can apply to.
+  Set<JobLevel> get levels => switch (this) {
+    none => const {JobLevel.intern},
+    underOne => const {JobLevel.intern, JobLevel.fresher},
+    oneToTwo => const {JobLevel.fresher, JobLevel.junior},
+    twoPlus => const {JobLevel.junior},
+  };
+}
+
+/// Target roles offered by the Update Preferences sheet, in its order.
 enum TargetRole {
-  softwareEngineer('Software Engineer Intern', {
+  softwareEngineer('Software Engineer', {
     JobRole.backend,
     JobRole.fullStack,
     JobRole.otherIt,
   }),
-  mobile('Mobile Intern', {JobRole.mobile}),
-  frontend('Frontend Intern', {JobRole.frontend}),
-  backend('Backend Intern', {JobRole.backend}),
-  qaTester('QA / Tester Intern', {JobRole.tester});
+  mobile('Mobile', {JobRole.mobile}),
+  frontend('Frontend', {JobRole.frontend}),
+  backend('Backend', {JobRole.backend}),
+  qaTester('QA / Tester', {JobRole.tester}),
+  dataAi('Data / AI', {JobRole.dataAi}),
+  devOps('DevOps / Cloud', {JobRole.devOps});
 
   const TargetRole(this.label, this.jobRoles);
 
   final String label;
 
   /// Home's listing roles (DC-13) that this target covers, for
-  /// "Recommended for you". "Software Engineer Intern" is the general
-  /// software role: backend, full-stack and generic IT titles.
+  /// "Recommended for you". "Software Engineer" is the general software role:
+  /// backend, full-stack and generic IT titles.
   final Set<JobRole> jobRoles;
 }
 
-/// What the student is looking for: target roles, work modes and a location.
+/// What the student is looking for: target roles, experience, work modes and
+/// a location.
 @immutable
 class InternshipPreferences {
   const InternshipPreferences({
     this.targetRoles = const <TargetRole>[],
+    this.experience,
     this.workModes = const <WorkMode>[],
     this.location,
   });
@@ -194,6 +222,7 @@ class InternshipPreferences {
       targetRoles: List.unmodifiable(
         reader.stringList('targetRoles').map(_roleFor).nonNulls,
       ),
+      experience: _experienceFor(reader.optionalString('experience')),
       workModes: List.unmodifiable(
         reader.stringList('workModes').map(_workModeFor).nonNulls,
       ),
@@ -204,12 +233,20 @@ class InternshipPreferences {
   /// Roles in [TargetRole] order.
   final List<TargetRole> targetRoles;
 
+  /// `null` when the student has not answered; [ExperienceRange.none] is an
+  /// explicit "No experience" answer.
+  final ExperienceRange? experience;
+
   /// Work modes in the order the sheet shows them.
   final List<WorkMode> workModes;
   final String? location;
 
   Map<String, Object?> toFirestore() => <String, Object?>{
     'targetRoles': [for (final role in targetRoles) storageValue(role)],
+    'experience': switch (experience) {
+      final value? => storageValue(value),
+      null => null,
+    },
     'workModes': [for (final mode in workModes) storageValue(mode)],
     'location': location,
   };
@@ -218,12 +255,14 @@ class InternshipPreferences {
   bool operator ==(Object other) =>
       other is InternshipPreferences &&
       listEquals(other.targetRoles, targetRoles) &&
+      other.experience == experience &&
       listEquals(other.workModes, workModes) &&
       other.location == location;
 
   @override
   int get hashCode => Object.hash(
     Object.hashAll(targetRoles),
+    experience,
     Object.hashAll(workModes),
     location,
   );
@@ -236,6 +275,13 @@ class InternshipPreferences {
 
   static TargetRole? _roleFor(String raw) =>
       TargetRole.values.where((role) => storageValue(role) == raw).firstOrNull;
+
+  static ExperienceRange? _experienceFor(String? raw) {
+    if (raw == null) return null;
+    return ExperienceRange.values
+        .where((range) => storageValue(range) == raw)
+        .firstOrNull;
+  }
 
   static WorkMode? _workModeFor(String raw) =>
       WorkMode.values.where((mode) => storageValue(mode) == raw).firstOrNull;
