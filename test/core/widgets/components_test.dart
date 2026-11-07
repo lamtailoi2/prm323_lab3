@@ -419,6 +419,34 @@ void main() {
       await pumpBar(tester, user: testUser);
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     });
+
+    testWidgets('Home: greeting and avatar; the avatar opens Profile', (
+      tester,
+    ) async {
+      setScreenSize(tester);
+      var opened = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            appBar: MainTabAppBar(
+              title: 'Test Student',
+              greeting: 'Good morning',
+              user: testUser,
+              onProfile: () => opened = true,
+              onNotifications: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Good morning'), findsOneWidget);
+      expect(find.text('Test Student'), findsOneWidget);
+      await tester.tap(find.byTooltip('Profile'));
+      expect(opened, isTrue);
+      expect(tester.takeException(), isNull);
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    });
   });
 
   testWidgets('showAppDialog returns true for primary, false for secondary', (

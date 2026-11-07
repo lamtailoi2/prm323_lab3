@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../models/app_user.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_radii.dart';
 import '../../theme/app_sizes.dart';
-import 'app_top_bar.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_typography.dart';
 
-/// Top bar of a bottom-navigation destination (Figma page 05, App Bar `.main`).
+/// Top bar of a bottom-navigation destination (Figma "Tab Header v2",
+/// section "Final UI v2 · All screens", DC-31).
 ///
-/// Every tab shows the same bar, so switching tabs only changes the title:
-/// screen title → notification bell → profile avatar. The title repeats the
-/// destination label from the bottom navigation.
-///
-/// There is no brand mark in the leading slot: the logo was dropped from the
-/// tab headers so the title starts at the normal 16 dp text margin (DC-20).
+/// A photo hero that runs behind the status bar, with a dark scrim so the
+/// white text stays readable (banking-app reference: ACB / Sacombank). Home
+/// passes [greeting] and shows the avatar, the greeting and the student's
+/// name; the other tabs show their title, an optional one-line [summary],
+/// and the avatar after the bell. The bottom [sheetOverlap] is painted as the rounded top of the
+/// body, so the screen reads as a sheet laid over the photo.
 ///
 /// The bell opens the Notification Center (G-04, G-13); every tab passes the
 /// same callback so the entry point behaves identically.
@@ -21,16 +25,24 @@ class MainTabAppBar extends StatelessWidget implements PreferredSizeWidget {
   const MainTabAppBar({
     super.key,
     required this.title,
-    required this.onProfile,
     required this.onNotifications,
+    this.onProfile,
     this.user,
+    this.greeting,
+    this.summary,
   });
 
-  /// Screen title, identical to the bottom navigation label.
+  /// The header photo. It is decoration only: replace the file to change it.
+  static const String headerAsset = 'assets/images/tab_header.jpg';
+
+  /// Height of the body sheet's rounded top, drawn inside the header.
+  static const double sheetOverlap = AppSpacing.s24;
+
+  /// Tab title; on Home, the student's name.
   final String title;
 
-  /// Opens Profile; the avatar is the same entry point as the Profile tab.
-  final VoidCallback onProfile;
+  /// Opens Profile from the Home avatar.
+  final VoidCallback? onProfile;
 
   /// Opens the Notification Center.
   final VoidCallback onNotifications;
@@ -38,42 +50,176 @@ class MainTabAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Signed-in student, for the avatar photo. Falls back to the person glyph.
   final AppUser? user;
 
+  /// Home only: time-of-day greeting above [title]; also shows the avatar.
+  final String? greeting;
+
+  /// Optional line under the title, built from data the tab already has.
+  final String? summary;
+
+  static double _lineHeight(TextStyle style) => style.fontSize! * style.height!;
+
   @override
-  Size get preferredSize => const Size.fromHeight(AppSizes.appBarHeight);
+  Size get preferredSize => Size.fromHeight(
+    AppSpacing.s16 +
+        AppSizes.minTouchTarget +
+        (summary == null
+            ? 0
+            : AppSpacing.s4 + _lineHeight(AppTypography.bodySmall)) +
+        AppSpacing.s24 +
+        sheetOverlap,
+  );
 
   @override
   Widget build(BuildContext context) {
-    return AppTopBar.main(
-      title: title,
-      actions: [
-        IconButton(
-          tooltip: 'Notifications',
-          icon: const Icon(Symbols.notifications_rounded),
-          onPressed: onNotifications,
-        ),
-        _ProfileAction(user: user, onPressed: onProfile),
-      ],
+    final summaryText = summary;
+    final greetingText = greeting;
+    // Content is pinned to the bottom, so larger system text grows upwards
+    // into the top padding instead of overflowing the sheet.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Stack(
+        fit: StackFit.expand,
+        clipBehavior: Clip.hardEdge,
+        children: [
+          Image.asset(
+            headerAsset,
+            fit: BoxFit.cover,
+            excludeFromSemantics: true,
+            errorBuilder: (_, _, _) =>
+                const ColoredBox(color: AppColors.primary),
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.inverseSurface.withValues(alpha: 0.55),
+                  AppColors.inverseSurface.withValues(alpha: 0.35),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: AppSpacing.screenHorizontal,
+            right: AppSpacing.s12,
+            bottom: AppSpacing.s24 + sheetOverlap,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (greetingText != null) ...[
+                      _Avatar(user: user, onPressed: onProfile),
+                      const SizedBox(width: AppSpacing.s12),
+                    ],
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (greetingText != null)
+                            Text(
+                              greetingText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.bodySmall.copyWith(
+                                color: AppColors.onPrimary,
+                              ),
+                            ),
+                          Semantics(
+                            header: true,
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.headingLarge.copyWith(
+                                color: AppColors.onPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Notifications',
+                      icon: const Icon(Symbols.notifications_rounded),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.onPrimary.withValues(
+                          alpha: 0.2,
+                        ),
+                        foregroundColor: AppColors.onPrimary,
+                      ),
+                      onPressed: onNotifications,
+                    ),
+                    // The other tabs keep the avatar as their Profile entry
+                    // point (DC-20); Profile itself passes no callback.
+                    if (greetingText == null && onProfile != null) ...[
+                      const SizedBox(width: AppSpacing.s4),
+                      _Avatar(user: user, onPressed: onProfile),
+                    ],
+                  ],
+                ),
+                if (summaryText != null) ...[
+                  const SizedBox(height: AppSpacing.s4),
+                  Text(
+                    summaryText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.onPrimary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: sheetOverlap,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(AppRadii.large),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _ProfileAction extends StatelessWidget {
-  const _ProfileAction({required this.user, required this.onPressed});
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.user, required this.onPressed});
 
   final AppUser? user;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
+
+  static const double _size = AppSizes.minTouchTarget - AppSpacing.s4;
 
   @override
   Widget build(BuildContext context) {
     final photoUrl = user?.photoUrl;
     return IconButton(
       tooltip: 'Profile',
+      padding: EdgeInsets.zero,
       onPressed: onPressed,
-      icon: ClipOval(
-        child: SizedBox.square(
-          dimension: AppSizes.profileAvatar,
+      icon: Container(
+        width: _size,
+        height: _size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.onPrimary, width: 2),
+        ),
+        child: ClipOval(
           child: ColoredBox(
-            color: AppColors.primaryContainer,
+            color: AppColors.primary,
             child: photoUrl == null
                 ? const _AvatarFallback()
                 : Image.network(
@@ -95,8 +241,8 @@ class _AvatarFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Icon(
       Symbols.person_rounded,
-      size: AppSizes.iconSmall,
-      color: AppColors.primary,
+      size: AppSizes.icon,
+      color: AppColors.onPrimary,
     );
   }
 }

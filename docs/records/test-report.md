@@ -592,6 +592,29 @@ Findings:
 2. After a failing router test, `flutter test` waited instead of exiting;
    passing runs exit normally. Not investigated in this change.
 
+## Run 33: UI v2 headers, Job Hero Card, Application Detail tweaks (2026-11-06)
+
+Branch `feat/ui-v2` from `dev` `ab6c8d3`, uncommitted working tree.
+Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable. No device run.
+AI log P-73.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | 0 files changed (after the edits were formatted) |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` | 676 / 676 passed (final state: Home without the summary) |
+| 4 | Device / emulator check of the new headers and cards | **Not run** |
+
+Findings:
+
+1. 36 tests failed on the first run: they asserted the old UI. The avatar
+   was then kept on the non-Home tabs (DC-20), and the tests were updated for
+   `Company · City` on one line, the student's name on Home, three
+   `Not disclosed` facts instead of four, and a taller header that shows
+   fewer application cards (the count line is checked instead).
+2. Two Internship Detail taps needed an extra scroll so the link was not
+   under the bottom action bar.
+
 ## Run 32: Job type / allowance chips; Edit skills from the Apply Form (2026-11-06)
 
 Branch `fix/filter-chips-and-skills-sheet` from `dev` `b08b47f`, uncommitted

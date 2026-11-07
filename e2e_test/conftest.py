@@ -309,7 +309,10 @@ NOTIFICATION_PERMISSION = "android.permission.POST_NOTIFICATIONS"
 
 def reset_notification_permission() -> None:
     """Puts the notification permission back to "never asked", as after a
-    fresh install, and relaunches the app: it asks again once signed in."""
+    fresh install, and leaves the app stopped. The case's own "Open the
+    Internly app" then starts it once and it asks once signed in: a launch
+    here as well made ARTEMIS reopen the app over the system dialog, which
+    closed it (TC-15, 2026-11-06)."""
     _adb("shell", "am", "force-stop", APP_PACKAGE)
     _adb("shell", "pm", "revoke", APP_PACKAGE, NOTIFICATION_PERMISSION)
     _adb(
@@ -321,7 +324,6 @@ def reset_notification_permission() -> None:
         "user-set",
         "user-fixed",
     )
-    _adb("shell", "am", "start", "-W", "-n", f"{APP_PACKAGE}/.MainActivity")
 
 
 def grant_notification_permission() -> None:

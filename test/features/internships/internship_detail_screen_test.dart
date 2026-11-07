@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:internly/core/errors/app_exception.dart';
+import 'package:internly/features/applications/widgets/application_status_badge.dart';
 import 'package:internly/features/internships/screens/internship_detail_screen.dart';
 import 'package:internly/features/internships/widgets/detail_skeleton.dart';
 import 'package:internly/models/internship.dart';
@@ -168,7 +169,14 @@ void main() {
 
       expect(find.text('Internship details'), findsOneWidget);
       expect(find.text('Flutter Developer Intern'), findsOneWidget);
-      expect(find.text('FPT Software'), findsOneWidget);
+      // Job Hero Card: company and city on one line (DC-31).
+      expect(
+        find.text(
+          'FPT Software · Ho Chi Minh City, Vietnam',
+          findRichText: true,
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Posted 2 days ago'), findsOneWidget);
       expect(find.text('via LinkedIn'), findsOneWidget);
       expect(find.text('Allowance'), findsOneWidget);
@@ -214,6 +222,8 @@ void main() {
       internships.byKey[listing.key] = listing;
       await pumpDetail(tester, width: width);
 
+      // The status badge sits beside the logo in the Job Hero Card.
+      expect(find.byType(ApplicationStatusBadge), findsOneWidget);
       expect(find.text('You applied on Oct 11, 2026'), findsOneWidget);
       expect(
         find.text(
@@ -276,7 +286,9 @@ void main() {
     );
     await pumpDetail(tester, key: sparse.key);
 
-    expect(find.text('Not disclosed'), findsNWidgets(4));
+    // Allowance, work mode and job type; the city has no tile any more and
+    // is simply left out of the company line (DC-31).
+    expect(find.text('Not disclosed'), findsNWidgets(3));
     expect(find.textContaining('skill match'), findsNothing);
     expect(find.text('About the role'), findsNothing);
     expect(find.text('Requirements'), findsNothing);
@@ -454,11 +466,16 @@ void main() {
     await pumpDetail(tester);
 
     await scrollTo(tester, find.text('Show more'));
+    await tester.ensureVisible(find.text('Show more'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Show more'));
     await tester.pumpAndSettle();
     expect(find.text('Show less'), findsOneWidget);
 
     await scrollTo(tester, find.text('Show all 4 benefits'));
+    // Lift the link clear of the bottom action bar before tapping it.
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -200));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Show all 4 benefits'));
     await tester.pumpAndSettle();
     expect(find.text('Laptop'), findsOneWidget);
