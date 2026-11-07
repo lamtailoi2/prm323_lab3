@@ -13,6 +13,10 @@ import {
   loadProfileSkillsFromFirestore,
   MATCH_RUBRIC,
 } from './match-cv';
+import {
+  handleSelectCv,
+  SELECT_RUBRIC,
+} from './select-cv';
 import { SKILL_EXTRACTION_RUBRIC } from './skill-extraction';
 import {
   askGemini,
@@ -101,6 +105,9 @@ const matchGroq = (prompt: string, apiKey: string) =>
 const extractGroq = (prompt: string, apiKey: string) =>
   askGroq({ prompt, apiKey, system: SKILL_EXTRACTION_RUBRIC });
 
+const selectGroq = (prompt: string, apiKey: string) =>
+  askGroq({ prompt, apiKey, system: SELECT_RUBRIC });
+
 /**
  * Advisory CV Match Check (G-24/DC-09).
  *
@@ -122,6 +129,33 @@ export const matchCv = onCall(
         extractText: extractPdfText,
         askExtraction: extractGroq,
         askModel: matchGroq,
+        loadInternship: loadInternshipFromFirestore,
+        loadProfileSkills: loadProfileSkillsFromFirestore,
+      },
+      groqApiKey.value(),
+    ),
+);
+
+/**
+ * Automatic CV selection for the Apply Form (G-33 item 8).
+ *
+ * Deterministic scoring across the student's own CVs; Groq writes only the
+ * one-sentence reason, and any model failure falls back to a deterministic
+ * sentence, so the call never blocks applying.
+ */
+export const selectCv = onCall(
+  {
+    secrets: [groqApiKey],
+    timeoutSeconds: 60,
+    memory: '256MiB',
+  },
+  (request) =>
+    handleSelectCv(
+      request,
+      {
+        downloadPdf: downloadPdfFromStorage,
+        extractText: extractPdfText,
+        askModel: selectGroq,
         loadInternship: loadInternshipFromFirestore,
         loadProfileSkills: loadProfileSkillsFromFirestore,
       },

@@ -29,6 +29,7 @@ void main() {
           'sizeBytes': 430080,
           'uploadedAt': Timestamp.fromDate(uploadedAt),
         },
+        'defaultCvId': 'cv-1',
       });
 
       expect(profile.details.fullName, 'Minh Nguyen');
@@ -46,6 +47,7 @@ void main() {
       expect(profile.cv?.fileName, 'Minh_Nguyen_CV_SE.pdf');
       expect(profile.cv?.sizeBytes, 430080);
       expect(profile.cv!.uploadedAt.isAtSameMomentAs(uploadedAt), isTrue);
+      expect(profile.defaultCvId, 'cv-1');
     });
 
     test('missing document or optional fields: an empty profile', () {
@@ -104,6 +106,60 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('CvFile library document', () {
+    test('parses the id, label and optional size', () {
+      final cv = CvFile.fromFirestore('cv-9', {
+        'fileName': 'backend.pdf',
+        'url': 'https://storage.example/cvs/backend.pdf',
+        'storagePath': 'cvs/uid-1/backend-abc.pdf',
+        'label': 'Backend CV',
+        'uploadedAt': Timestamp.fromDate(uploadedAt),
+      });
+
+      expect(cv.id, 'cv-9');
+      expect(cv.label, 'Backend CV');
+      expect(cv.displayName, 'Backend CV');
+      expect(cv.sizeBytes, 0);
+      expect(cv.fileName, 'backend.pdf');
+      expect(cv.storagePath, 'cvs/uid-1/backend-abc.pdf');
+    });
+
+    test('a malformed document names the missing required field', () {
+      expect(
+        () => CvFile.fromFirestore('cv-9', {
+          'fileName': 'backend.pdf',
+          'url': 'https://storage.example/cvs/backend.pdf',
+          'uploadedAt': Timestamp.fromDate(uploadedAt),
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('storagePath'),
+          ),
+        ),
+      );
+    });
+
+    test('copyWith changes the id or label only', () {
+      final cv = CvFile(
+        fileName: 'cv.pdf',
+        url: 'https://storage.example/cv.pdf',
+        storagePath: 'cvs/uid-1/cv.pdf',
+        sizeBytes: 2048,
+        uploadedAt: uploadedAt,
+      );
+
+      final labelled = cv.copyWith(id: 'cv-1', label: 'Mobile CV');
+      expect(labelled.id, 'cv-1');
+      expect(labelled.displayName, 'Mobile CV');
+      expect(labelled.fileName, cv.fileName);
+      expect(labelled.storagePath, cv.storagePath);
+      expect(labelled.copyWith(label: null).label, 'Mobile CV');
+      expect(labelled == cv, isFalse);
     });
   });
 

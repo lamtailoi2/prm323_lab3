@@ -701,3 +701,47 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 - **Verification:** <commands + real results, manual checks, or "not verified">
 - **Decision:** Accepted / Modified (<how>) / Rejected (<why>)
 ```
+
+---
+
+### P-70: CV library (G-33) — thêm kho CV nhiều file cho Profile
+
+- **Request:** (Claude Code, Sonnet 5, 2026-11-07; operator Phạm Nguyễn Tú) "làm tiếp các bước trong plan / các file đang làm dang dở, kiểm tra xem có sai sót thì cũng sửa luôn". Agent trước hết context sau khi đã viết phần lớn code PR 1 (`feat/cv-library`); agent này rà soát lại toàn bộ, phát hiện lỗi, sửa, ghi tài liệu.
+- **Output:**
+  - Phát hiện và sửa 2 lỗi logic trong `FirestoreUserProfileService.removeCv` (`lib/services/user_profile_service.dart`):
+    1. Nhánh xoá CV thường: guard `if (!removingDefault && currentDefault != null)` bỏ sót trường hợp legacy mirror là default (`defaultCvId == null`) — đã sửa thành `currentDefault != null || mirrorPath != null`.
+    2. Nhánh xoá legacy mirror: chỉ xoá `cv` và `defaultCvId`, để Apply Form không có CV dù library còn file — đã refactor thành `_newestCv()` helper để promote entry còn lại lên default.
+  - Thêm helper `_newestCv(String uid)` trong `FirestoreUserProfileService` để tìm CV mới nhất trong subcollection.
+  - Cập nhật `docs/records/test-report.md`: Run 32 (`flutter analyze` → No issues, `flutter test` → 687/687 passed).
+  - File thay đổi: `lib/services/user_profile_service.dart`, `docs/records/test-report.md`, `docs/records/implementation-ai-log.md`.
+- **Verification:**
+  - `dart format lib test` → 0 changed.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **687 tests, all passed** (profile, services, models, core/utils, full suite).
+  - Kiểm tra logic thủ công: legacy-mirror branch bây giờ promote CV còn lại; library-entry branch không promote khi legacy mirror còn tồn tại làm default.
+- **Decision:** Accepted.
+
+---
+
+### P-71: CV auto-select + library picker trong Apply Form (G-33 item 8)
+
+- **Request:** (Claude Code, Sonnet 5, 2026-11-08; operator Phạm Nguyễn Tú) "Tính năng tự động chọn CV phù hợp nhất khi apply internship" + "khi Replace cv file ở apply form thì show cả cv library của profile để replace cho nhanh chóng". Chọn: picker từ library + auto-select; CV chọn chỉ cho đơn hiện tại.
+- **Output:**
+  - `functions/src/select-cv.ts` — callable `selectCv`: chấm điểm tất định (reuse `findKnownSkills` + `scoreMatch` + `requirementsFromInternship`), Groq chỉ viết lý do 1 câu, timeout 60s, `GROQ_API_KEY` secret, tối đa 10 CV, tie-break ưu tiên default CV.
+  - `functions/src/select-cv.test.ts` — 12 test case (happy path, tie-break, CV không đọc được, model fail, 1 CV skip model, auth guard, max 10 CV, internship not found, parseSelectionReason, fallbackReason).
+  - `functions/src/index.ts` — thêm callable `selectCv`.
+  - `lib/models/cv_selection.dart` — model kết quả.
+  - `lib/services/cv_select_service.dart` — interface + `FirebaseCvSelectService` + `mapCvSelectError` + `parseSelectionResult`.
+  - `lib/features/internships/viewmodels/apply_form_viewmodel.dart` — thêm `library`, `chosenCv`, `autoSelection`, `autoSelecting` vào `ApplyFormState`; `_subscribeCvs`, `_onCvs`, `_applyLibrary`, `_resolveDefaultCv`, `_maybeAutoSelect`, `_autoSelect`, `selectLibraryCv`; sửa `useProfileCv` và `_upload` để set `_cvChosenByStudent`; log `cv_auto_select`.
+  - `lib/core/widgets/cv_upload_sheet.dart` — thêm `library`, `selectedPath`, `onSelectLibrary`; render `_LibraryTile` trước file picker.
+  - `lib/features/internships/widgets/apply_cv_sheet.dart` — truyền library + `onSelectLibrary` vào sheet.
+  - `lib/features/internships/widgets/apply_form_parts.dart` — render `matchReason` (FormMessage info) khi auto-select chọn CV.
+  - `test/helpers/fakes.dart` — thêm `FakeCvSelectService`, import `CvSelection`, `CvSelectService`.
+  - `docs/analytics-plan.md` — `cv_auto_select` chuyển từ Planned → Implemented.
+  - Bug fix: `_onProfile` trước đây ghi đè `profileCv` bằng `profile?.cv` thay vì dùng kết quả `_resolveDefaultCv()`, gây `profileCv` null khi `_applyLibrary` chạy (test phát hiện).
+- **Verification:**
+  - `dart format lib test` → 0 changed.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **687 tests, all passed** (bao gồm tất cả apply-form tests).
+  - `npm run build && npm test` (Cloud Functions) → **57/57 tests passed** kể cả 12 test mới `select-cv.test.ts`.
+- **Decision:** Accepted.

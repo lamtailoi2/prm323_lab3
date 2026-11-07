@@ -1,4 +1,4 @@
-import 'dart:io' show File;
+import 'dart:io' show File, FileSystemException;
 import 'dart:math' as math;
 import 'dart:typed_data' show Uint8List;
 
@@ -79,6 +79,40 @@ class LocalFileStorageService implements FileStorageService {
       sizeBytes: bytes.length,
       uploadedAt: DateTime.now(),
     );
+  }
+
+  @override
+  Future<void> deletePdf(String storagePath) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
+      throw const AppException(
+        AppErrorKind.permissionDenied,
+        'Sign in to remove a file.',
+      );
+    }
+    final path = storagePath.trim();
+    final prefix = '${StorageFolder.cvs.path}/$uid/';
+    if (path.isEmpty || !path.startsWith(prefix) || path.contains('..')) {
+      throw const AppException(
+        AppErrorKind.permissionDenied,
+        'You can only remove files from your own CV library.',
+      );
+    }
+    try {
+      await File(path).delete();
+    } on FileSystemException catch (error) {
+      if (error.osError?.errorCode == 2) {
+        throw const AppException(
+          AppErrorKind.notFound,
+          'This CV file was already removed.',
+        );
+      }
+      throw AppException(
+        AppErrorKind.unknown,
+        'The file could not be removed. Please try again.',
+        cause: error,
+      );
+    }
   }
 
   String _randomHex(int byteCount) => List.generate(

@@ -52,6 +52,11 @@ abstract interface class FileStorageService {
     required Uint8List bytes,
     void Function(double progress)? onProgress,
   });
+
+  /// Deletes a CV the signed-in user owns. Only a `cvs/{uid}/…` path is
+  /// accepted, so a bug or a hostile payload cannot reach another student's
+  /// file (G-33).
+  Future<void> deletePdf(String storagePath);
 }
 
 final fileStorageServiceProvider = Provider<FileStorageService>(
@@ -141,10 +146,71 @@ class FirebaseStorageService implements FileStorageService {
     }
   }
 
+  @override
+  Future<void> deletePdf(String storagePath) async {
+    final path = prepareDeletePath(
+      uid: _auth.currentUser?.uid,
+      storagePath: storagePath,
+    );
+    try {
+      await _storage.ref(path).delete();
+    } on FirebaseException catch (error) {
+      throw mapDeleteError(error.code, cause: error);
+    }
+  }
+
   String _randomHex(int byteCount) => [
     for (var i = 0; i < byteCount; i++)
       _random.nextInt(256).toRadixString(16).padLeft(2, '0'),
   ].join();
+}
+
+/// Validates that [storagePath] is a CV in the signed-in user's own folder.
+/// Throws [AppException] before any request is sent.
+@visibleForTesting
+String prepareDeletePath({required String? uid, required String storagePath}) {
+  if (uid == null) {
+    throw const AppException(
+      AppErrorKind.permissionDenied,
+      'Sign in to remove a file.',
+    );
+  }
+  final prefix = '${StorageFolder.cvs.path}/$uid/';
+  final path = storagePath.trim();
+  if (path.isEmpty || !path.startsWith(prefix) || path.contains('..')) {
+    throw const AppException(
+      AppErrorKind.permissionDenied,
+      'You can only remove files from your own CV library.',
+    );
+  }
+  return path;
+}
+
+/// Translates Cloud Storage delete error codes into user-safe messages.
+@visibleForTesting
+AppException mapDeleteError(String code, {Object? cause}) {
+  return switch (code.replaceFirst('storage/', '')) {
+    'unauthorized' || 'unauthenticated' => AppException(
+      AppErrorKind.permissionDenied,
+      'You do not have permission to remove this file.',
+      cause: cause,
+    ),
+    'object-not-found' => AppException(
+      AppErrorKind.notFound,
+      'This CV file was already removed.',
+      cause: cause,
+    ),
+    'retry-limit-exceeded' => AppException(
+      AppErrorKind.network,
+      'We could not remove the file. Check your connection and try again.',
+      cause: cause,
+    ),
+    _ => AppException(
+      AppErrorKind.unknown,
+      'The file could not be removed. Please try again.',
+      cause: cause,
+    ),
+  };
 }
 
 /// Validates an upload and returns its object path. Throws [AppException]

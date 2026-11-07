@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/display_format.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_sheet.dart' show FormMessage;
 import '../../../core/widgets/company_logo.dart';
 import '../../../core/widgets/cv_file_tile.dart';
 import '../../../core/widgets/detail_section_card.dart';
@@ -346,7 +347,19 @@ class ApplyCvSection extends StatelessWidget {
       );
     }
     if (state.cv case final cv?) {
-      return _SelectedCv(cv: cv, onPreview: onPreview, onReplace: onChoose);
+      // Only show the reason while the automatic choice is the CV in use;
+      // a manual choice or an upload replaces it silently.
+      final selection = state.autoSelection;
+      final showReason =
+          selection != null &&
+          state.chosenCv != null &&
+          selection.storagePath == cv.file.storagePath;
+      return _SelectedCv(
+        cv: cv,
+        matchReason: showReason ? selection.reason : null,
+        onPreview: onPreview,
+        onReplace: onChoose,
+      );
     }
     if (state.profileError case final error?) {
       return _ProfileFailed(
@@ -364,11 +377,16 @@ class _SelectedCv extends StatelessWidget {
     required this.cv,
     required this.onPreview,
     required this.onReplace,
+    this.matchReason,
   });
 
   final ApplyCv cv;
   final VoidCallback onPreview;
   final VoidCallback onReplace;
+
+  /// Why the app picked this CV automatically (`selectCv`); `null` when the
+  /// default or a manual choice is in use.
+  final String? matchReason;
 
   @override
   Widget build(BuildContext context) {
@@ -388,6 +406,10 @@ class _SelectedCv extends StatelessWidget {
             ),
           ),
         ),
+        if (matchReason case final reason?) ...[
+          const SizedBox(height: AppSpacing.s8),
+          FormMessage(message: reason, isInfo: true),
+        ],
         const SizedBox(height: AppSpacing.s4),
         Padding(
           padding: const EdgeInsets.only(left: AppSizes.fileTile),

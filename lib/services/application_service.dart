@@ -17,6 +17,10 @@ abstract interface class ApplicationService {
   /// signed out.
   Stream<List<InternshipApplication>> watchApplications();
 
+  /// Storage paths of the CVs snapshotted by submitted applications, so
+  /// removing a CV from the library never breaks an application preview.
+  Future<Set<String>> cvStoragePaths();
+
   /// Records a submitted application (Flow 2 end). Writing the same listing
   /// again overwrites its document instead of creating a duplicate.
   Future<void> createApplication({
@@ -93,6 +97,26 @@ class FirestoreApplicationService implements ApplicationService {
         'We could not load your applications. Try again in a moment.',
         cause: error,
       );
+    }
+  }
+
+  @override
+  Future<Set<String>> cvStoragePaths() async {
+    final uid = _uid;
+    if (uid == null || uid.isEmpty) return const <String>{};
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('applications')
+          .get();
+      return {
+        for (final doc in snapshot.docs)
+          if (doc.data()['cvStoragePath'] case final String path)
+            if (path.isNotEmpty) path,
+      };
+    } on FirebaseException catch (error) {
+      throw _toAppException(error);
     }
   }
 

@@ -14,63 +14,122 @@ import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import 'profile_section.dart';
 
-/// "CV / Resume": the default CV with a view action and `Replace CV`, or
-/// `Upload CV` when there is none yet.
-class CvSection extends StatelessWidget {
-  const CvSection({
+/// "CV library": every CV with its metadata, a default badge, and per-file
+/// actions, plus `Add CV`. There is no Figma frame for the library yet, so it
+/// reuses the Profile section and `CvFileTile` (G-33, DC-31).
+class CvLibrarySection extends StatelessWidget {
+  const CvLibrarySection({
     super.key,
-    required this.cv,
-    required this.onUpload,
+    required this.cvs,
+    required this.onAdd,
     required this.onView,
+    required this.onSetDefault,
+    required this.onRemove,
+    this.defaultCv,
+    this.isBusy = false,
   });
 
-  final CvFile? cv;
-  final VoidCallback onUpload;
+  final List<CvFile> cvs;
+  final CvFile? defaultCv;
+  final VoidCallback onAdd;
+  final ValueChanged<CvFile> onView;
+  final ValueChanged<CvFile> onSetDefault;
+  final ValueChanged<CvFile> onRemove;
 
-  /// `null` while the CV is being opened.
-  final VoidCallback? onView;
+  /// Disables the actions while a library write is in flight.
+  final bool isBusy;
 
   @override
   Widget build(BuildContext context) {
-    final cv = this.cv;
     return ProfileSection(
       icon: Symbols.description_rounded,
-      title: 'CV / Resume',
-      trailingText: cv == null ? null : '1 active file',
+      title: 'CV library',
+      trailingText: cvs.isEmpty ? null : _fileCount(cvs.length),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (cv == null)
-            const ProfileHint(
-              'No CV yet. Upload a PDF once and use it for every '
-              'application.',
-            )
+          if (cvs.isEmpty)
+            const ProfileHint('No CV yet. Add a PDF to use when you apply.')
           else
-            CvFileTile(
-              fileName: cv.fileName,
-              details:
-                  '${formatShortDate(cv.uploadedAt)} · '
-                  '${formatFileSize(cv.sizeBytes)}',
-              badge: const StatusBadge(
-                label: 'Default for applications',
-                icon: Symbols.check_circle_rounded,
-                color: AppColors.success,
+            for (var i = 0; i < cvs.length; i++) ...[
+              if (i > 0) const SizedBox(height: AppSpacing.s16),
+              _CvLibraryTile(
+                cv: cvs[i],
+                isDefault: defaultCv?.storagePath == cvs[i].storagePath,
+                isBusy: isBusy,
+                onView: onView,
+                onSetDefault: onSetDefault,
+                onRemove: onRemove,
               ),
-              trailing: IconButton(
-                tooltip: 'View CV',
-                icon: const Icon(Symbols.visibility_rounded),
-                color: AppColors.textSecondary,
-                onPressed: onView,
-              ),
-            ),
+            ],
           const SizedBox(height: AppSpacing.s16),
           AppButton(
-            label: cv == null ? 'Upload CV' : 'Replace CV',
+            label: 'Add CV',
             icon: Symbols.upload_file_rounded,
             variant: AppButtonVariant.secondary,
             expand: true,
-            onPressed: onUpload,
+            onPressed: isBusy ? null : onAdd,
           ),
+        ],
+      ),
+    );
+  }
+
+  static String _fileCount(int count) => count == 1 ? '1 file' : '$count files';
+}
+
+class _CvLibraryTile extends StatelessWidget {
+  const _CvLibraryTile({
+    required this.cv,
+    required this.isDefault,
+    required this.isBusy,
+    required this.onView,
+    required this.onSetDefault,
+    required this.onRemove,
+  });
+
+  final CvFile cv;
+  final bool isDefault;
+  final bool isBusy;
+  final ValueChanged<CvFile> onView;
+  final ValueChanged<CvFile> onSetDefault;
+  final ValueChanged<CvFile> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return CvFileTile(
+      fileName: cv.displayName,
+      details:
+          '${formatShortDate(cv.uploadedAt)} · '
+          '${formatFileSize(cv.sizeBytes)}',
+      badge: isDefault
+          ? const StatusBadge(
+              label: 'Default for applications',
+              icon: Symbols.check_circle_rounded,
+              color: AppColors.success,
+            )
+          : null,
+      trailing: PopupMenuButton<String>(
+        tooltip: 'CV actions',
+        enabled: !isBusy,
+        icon: const Icon(
+          Symbols.more_vert_rounded,
+          color: AppColors.textSecondary,
+        ),
+        onSelected: (action) => switch (action) {
+          'view' => onView(cv),
+          'default' => onSetDefault(cv),
+          'remove' => onRemove(cv),
+          _ => null,
+        },
+        itemBuilder: (context) => [
+          const PopupMenuItem(value: 'view', child: Text('View')),
+          PopupMenuItem(
+            value: 'default',
+            enabled: !isDefault,
+            child: const Text('Set as default'),
+          ),
+          const PopupMenuItem(value: 'remove', child: Text('Remove')),
         ],
       ),
     );

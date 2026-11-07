@@ -5,12 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
+import '../../../core/utils/cv_library.dart';
 import '../../../core/utils/skill_match.dart';
 import '../../../core/utils/validators.dart';
+import '../../../models/cv_selection.dart';
 import '../../../models/internship.dart';
 import '../../../models/user_profile.dart';
 import '../../../services/analytics_service.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/cv_select_service.dart';
 import '../../../services/document_picker_service.dart';
 import '../../../services/external_link_service.dart';
 import '../../../services/file_storage_service.dart';
@@ -110,6 +113,10 @@ class ApplyFormState {
     this.internship = const ViewLoading(),
     this.profileLoaded = false,
     this.profileCv,
+    this.library = const <CvFile>[],
+    this.chosenCv,
+    this.autoSelection,
+    this.autoSelecting = false,
     this.uploadedCv,
     this.pending,
     this.progress,
@@ -140,6 +147,21 @@ class ApplyFormState {
 
   /// The default CV in `users/{uid}`.
   final CvFile? profileCv;
+
+  /// Every CV in the Profile library (legacy mirror merged), so the sheet
+  /// can offer them instead of a file picker (G-33).
+  final List<CvFile> library;
+
+  /// A library CV chosen for this application only; `null` means the
+  /// Profile default is used. Never written back to the Profile.
+  final CvFile? chosenCv;
+
+  /// The automatic choice (`selectCv`) and its reason; `null` until it
+  /// resolves or when the library has fewer than two CVs.
+  final CvSelection? autoSelection;
+
+  /// `true` while `selectCv` runs, so the section can say it is comparing.
+  final bool autoSelecting;
 
   /// A CV uploaded for this internship only; the Profile default is left as
   /// it is, so each application can use a different CV (DC-26).
@@ -191,6 +213,7 @@ class ApplyFormState {
 
   ApplyCv? get cv {
     if (uploadedCv case final file?) return ApplyCv(file, CvSource.uploaded);
+    if (chosenCv case final file?) return ApplyCv(file, CvSource.profile);
     if (profileCv case final file?) return ApplyCv(file, CvSource.profile);
     return null;
   }
@@ -207,6 +230,10 @@ class ApplyFormState {
     ViewState<Internship>? internship,
     bool? profileLoaded,
     Object? profileCv = _keep,
+    Object? library = _keep,
+    Object? chosenCv = _keep,
+    Object? autoSelection = _keep,
+    bool? autoSelecting,
     Object? uploadedCv = _keep,
     Object? pending = _keep,
     Object? progress = _keep,
@@ -230,6 +257,16 @@ class ApplyFormState {
       profileCv: identical(profileCv, _keep)
           ? this.profileCv
           : profileCv as CvFile?,
+      library: identical(library, _keep)
+          ? this.library
+          : library as List<CvFile>,
+      chosenCv: identical(chosenCv, _keep)
+          ? this.chosenCv
+          : chosenCv as CvFile?,
+      autoSelection: identical(autoSelection, _keep)
+          ? this.autoSelection
+          : autoSelection as CvSelection?,
+      autoSelecting: autoSelecting ?? this.autoSelecting,
       uploadedCv: identical(uploadedCv, _keep)
           ? this.uploadedCv
           : uploadedCv as CvFile?,
@@ -280,6 +317,22 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
 
   StreamSubscription<Internship?>? _subscription;
   StreamSubscription<UserProfile?>? _profileSubscription;
+  StreamSubscription<List<CvFile>>? _cvsSubscription;
+
+  /// The Profile CV library without the legacy mirror; merged in
+  /// [ApplyFormState.library].
+  List<CvFile> _cvs = const <CvFile>[];
+  CvFile? _legacyCv;
+  String? _defaultCvId;
+  bool _cvsLoaded = false;
+
+  /// `selectCv` ran once; a retry or a later library change must not start
+  /// it again and override a choice the student has already made.
+  bool _autoSelectRequested = false;
+
+  /// The student picked a CV or used the Profile one; the background
+  /// selection must not override it (G-33 item 8).
+  bool _cvChosenByStudent = false;
 
   /// `false` until the first snapshot of the listing arrives.
   bool _resolved = false;
@@ -313,6 +366,12 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
     _resolved = false;
     _listing = null;
     _profileSkills = null;
+    _cvs = const <CvFile>[];
+    _legacyCv = null;
+    _defaultCvId = null;
+    _cvsLoaded = false;
+    _autoSelectRequested = false;
+    _cvChosenByStudent = false;
 
     ref.listen(savedInternshipsProvider, (previous, next) {
       _savedCopies = {
@@ -323,8 +382,10 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
     }, fireImmediately: true);
 
     _subscribeProfile(profiles, uid);
+    _subscribeCvs(profiles, uid);
     ref.onDispose(() {
       unawaited(_profileSubscription?.cancel());
+      unawaited(_cvsSubscription?.cancel());
       unawaited(_subscription?.cancel());
     });
 
@@ -375,6 +436,150 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
             );
           },
         );
+  }
+
+  /// Watches the Profile CV library (G-33). A failure is silent on the form:
+  /// the default CV from the profile still applies, so the student is never
+  /// blocked by a failed comparison.
+  void _subscribeCvs(UserProfileService profiles, String? uid) {
+    unawaited(_cvsSubscription?.cancel());
+    if (uid == null) return;
+    _cvsSubscription = profiles
+        .watchCvs(uid)
+        .listen(
+          _onCvs,
+          onError: (Object error, StackTrace _) {
+            if (!ref.mounted) return;
+            _cvsLoaded = true;
+            _applyLibrary();
+          },
+        );
+  }
+
+  void _onCvs(List<CvFile> cvs) {
+    if (!ref.mounted) return;
+    _cvs = cvs;
+    _cvsLoaded = true;
+    _applyLibrary();
+  }
+
+  /// Merges the library with the legacy mirror. Runs when either source
+  /// changes; the automatic selection waits until both have arrived.
+  void _applyLibrary() {
+    final library = mergeLegacyCv(_cvs, _legacyCv);
+    final selected = state.chosenCv;
+    // `profileCv` is the CV Apply sends by default: the raw entry, not the
+    // merged copy with the `legacy` sentinel id, so it stays equal to what
+    // the Profile stream emitted.
+    state = state.copyWith(
+      library: library,
+      profileCv: _resolveDefaultCv(),
+      // A CV removed from Profile while the form is open falls back to the
+      // default instead of sending a file that is no longer in the library.
+      chosenCv: selected != null && library.any((cv) => isSameCv(cv, selected))
+          ? selected
+          : null,
+      missingCv: library.isEmpty && state.missingCv,
+    );
+    _maybeAutoSelect(library);
+  }
+
+  /// The default CV without the display-only `legacy` id: `defaultCvId`,
+  /// then the legacy mirror, then the newest library entry.
+  CvFile? _resolveDefaultCv() {
+    if (_defaultCvId != null) {
+      for (final cv in _cvs) {
+        if (cv.id == _defaultCvId) return cv;
+      }
+    }
+    if (_legacyCv != null) return _legacyCv;
+    if (_cvs.isNotEmpty) {
+      return _cvs.reduce(
+        (newest, cv) => cv.uploadedAt.isAfter(newest.uploadedAt) ? cv : newest,
+      );
+    }
+    return null;
+  }
+
+  void _maybeAutoSelect(List<CvFile> library) {
+    if (_autoSelectRequested ||
+        _cvChosenByStudent ||
+        !_cvsLoaded ||
+        !state.profileLoaded ||
+        state.isUploading ||
+        state.uploadError != null ||
+        library.length < 2) {
+      return;
+    }
+    _autoSelectRequested = true;
+    unawaited(_autoSelect(library));
+  }
+
+  /// `selectCv` in the background: the default stays selected until the
+  /// server answers, and a failure never blocks applying (G-33 item 8).
+  Future<void> _autoSelect(List<CvFile> library) async {
+    final service = ref.read(cvSelectServiceProvider);
+    final analytics = ref.read(analyticsServiceProvider);
+    final internshipKey = args.internshipKey;
+    final defaultPath = state.profileCv?.storagePath;
+
+    if (ref.mounted) state = state.copyWith(autoSelecting: true);
+    try {
+      final selection = await service.select(
+        internshipKey: internshipKey,
+        storagePaths: [for (final cv in library) cv.storagePath],
+        defaultPath: defaultPath,
+      );
+      if (!ref.mounted) return;
+      final changed = _cvChosenByStudent || state.uploadedCv != null;
+      final match = library
+          .where((cv) => cv.storagePath == selection.storagePath)
+          .firstOrNull;
+      final usesDefault =
+          defaultPath != null && selection.storagePath == defaultPath;
+      state = state.copyWith(
+        autoSelecting: false,
+        autoSelection: selection,
+        chosenCv: changed || match == null ? state.chosenCv : match,
+      );
+      await analytics.logEvent('cv_auto_select', {
+        'internship_id': internshipKey,
+        'cv_count': library.length,
+        'best_percent': selection.percent,
+        'used_default': usesDefault ? 1 : 0,
+        'user_changed': changed ? 1 : 0,
+        'result': changed || match == null
+            ? (match == null ? 'failed' : 'default')
+            : 'selected',
+      });
+    } on AppException {
+      if (!ref.mounted) return;
+      // The default CV stays; the form does not show a comparison error
+      // because applying still works.
+      state = state.copyWith(autoSelecting: false);
+      await analytics.logEvent('cv_auto_select', {
+        'internship_id': internshipKey,
+        'cv_count': library.length,
+        'best_percent': 0,
+        'used_default': 1,
+        'user_changed': _cvChosenByStudent ? 1 : 0,
+        'result': 'failed',
+      });
+    }
+  }
+
+  /// `Choose this CV` in the sheet: a library entry for this application
+  /// only. The Profile default is never changed (DC-26).
+  void selectLibraryCv(CvFile cv) {
+    if (state.isUploading) return;
+    _cvChosenByStudent = true;
+    state = state.copyWith(
+      chosenCv: cv,
+      uploadedCv: null,
+      pending: null,
+      uploadError: null,
+      missingCv: false,
+    );
   }
 
   /// `Choose file` in the CV sheet: picks a PDF to upload for this
@@ -428,10 +633,18 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
     state = state.copyWith(pending: null, uploadError: null);
   }
 
-  /// `Use CV from Profile`: drops the failed or uploaded file.
+  /// `Use CV from Profile`: drops the failed or uploaded file and any
+  /// library choice, back to the Profile default.
   void useProfileCv() {
     if (state.isUploading) return;
-    state = state.copyWith(uploadedCv: null, pending: null, uploadError: null);
+    // A deliberate action: the background selection must not override it.
+    _cvChosenByStudent = true;
+    state = state.copyWith(
+      uploadedCv: null,
+      chosenCv: null,
+      pending: null,
+      uploadError: null,
+    );
   }
 
   /// `Preview`: opens the CV in the device's PDF viewer or browser. Returns
@@ -569,6 +782,9 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
         'file_size_kb': (uploaded.sizeBytes / 1024).ceil(),
       });
       if (!ref.mounted) return true;
+      // The student chose this file on purpose; the background selection
+      // must not replace it when it resolves.
+      _cvChosenByStudent = true;
       state = state.copyWith(
         uploadedCv: CvFile(
           fileName: uploaded.fileName,
@@ -641,12 +857,12 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
   void _onProfile(UserProfile? profile) {
     if (!ref.mounted) return;
     _profileSkills = profile?.skills ?? const <String>[];
+    _legacyCv = profile?.cv;
+    _defaultCvId = profile?.defaultCvId;
     final details = profile?.details;
     var next = state.copyWith(
       profileLoaded: true,
       profileError: null,
-      profileCv: profile?.cv,
-      missingCv: profile?.cv == null && state.missingCv,
       skillMatch: _matchFor(switch (state.internship) {
         ViewData(:final data) => data,
         _ => null,
@@ -665,6 +881,9 @@ class ApplyFormViewModel extends Notifier<ApplyFormState> {
       );
     }
     state = next;
+    // The default CV comes from the library plus the legacy mirror, not from
+    // one profile field, so recompute it whenever the profile changes.
+    _applyLibrary();
   }
 
   /// `apply_start`: once per opened form (`Apply now` tapped).
