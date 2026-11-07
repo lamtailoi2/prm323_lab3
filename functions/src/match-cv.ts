@@ -70,7 +70,7 @@ Rules:
   mentioning relevant coursework/projects.
 - Do not repeat the skill name as the whole suggestion.`;
 
-function readInternshipKey(data: unknown): string {
+export function readInternshipKey(data: unknown): string {
   if (typeof data !== 'object' || data === null) {
     throw new HttpsError('invalid-argument', 'An internship is required.');
   }

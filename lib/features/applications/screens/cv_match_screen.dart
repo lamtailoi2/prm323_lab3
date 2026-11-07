@@ -5,8 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../app/router.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/state_view.dart';
-import '../../internships/viewmodels/apply_form_viewmodel.dart'
-    show ApplySession;
+import '../../internships/models/apply_session.dart';
 import '../widgets/cv_match_step.dart';
 
 /// CV Match Check (G-24, DC-09): an advisory comparison between the CV /
@@ -39,9 +38,9 @@ class CvMatchScreen extends StatelessWidget {
           icon: Symbols.description_rounded,
           title: 'Choose a CV first',
           message:
-              'Start the application from the Apply Form so we know which CV '
-              'to compare with this internship.',
-          actionLabel: 'Back to the form',
+              'Start the application from Apply now so we know which CV to '
+              'compare with this internship.',
+          actionLabel: 'Back to apply',
           onAction: () =>
               context.go(AppRoutes.applyForm('/$source', internshipKey)),
         ),
@@ -55,14 +54,11 @@ class CvMatchScreen extends StatelessWidget {
           child: CvMatchStep(
             storagePath: session.cv.file.storagePath,
             internshipKey: internshipKey,
-            // Back from the Validate CV gate returns to the Apply Form, not to
-            // this advisory screen.
-            onContinue: () => context.pushReplacement(
-              AppRoutes.applyValidation('/$source', internshipKey),
-              extra: session,
-            ),
-            // The form owns the Edit skills / Replace CV sheets, so editing
-            // there rebuilds the session (and the submitted skills).
+            // Advisory: it never blocks, and it returns to the compose
+            // screen so the student can continue with the email.
+            onContinue: () => Navigator.of(context).maybePop(),
+            // Skills and CV live in Profile, so `Edit` returns there through
+            // the compose screen.
             onEdit: () => Navigator.of(context).maybePop(),
           ),
         ),

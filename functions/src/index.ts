@@ -5,6 +5,11 @@ import { defineSecret } from 'firebase-functions/params';
 import { onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 
+import {
+  COVER_LETTER_RUBRIC,
+  handleComposeCoverLetter,
+  loadProfileFromFirestore,
+} from './compose-cover-letter';
 import { syncInternships } from './sync';
 import { askGroq } from './groq';
 import {
@@ -124,6 +129,34 @@ export const matchCv = onCall(
         askModel: matchGroq,
         loadInternship: loadInternshipFromFirestore,
         loadProfileSkills: loadProfileSkillsFromFirestore,
+      },
+      groqApiKey.value(),
+    ),
+);
+
+const coverLetterGroq = (prompt: string, apiKey: string) =>
+  askGroq({ prompt, apiKey, system: COVER_LETTER_RUBRIC });
+
+/**
+ * Drafts the application email (subject + cover letter) for the email-based
+ * Apply flow. Groq writes it from the listing and the Profile; any failure
+ * returns a deterministic template, so the flow never dead-ends.
+ */
+export const composeCoverLetter = onCall(
+  {
+    secrets: [groqApiKey],
+    timeoutSeconds: 60,
+    memory: '256MiB',
+  },
+  (request) =>
+    handleComposeCoverLetter(
+      request,
+      {
+        loadInternship: loadInternshipFromFirestore,
+        loadProfile: loadProfileFromFirestore,
+        downloadPdf: downloadPdfFromStorage,
+        extractText: extractPdfText,
+        askModel: coverLetterGroq,
       },
       groqApiKey.value(),
     ),

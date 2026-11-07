@@ -738,6 +738,17 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-74: Email-based Apply flow (AI cover letter + `mailto:`)
+- **Request:** "phần application, giờ tôi muốn chỉnh sửa như sau. Thay vì phải điền form để điền như những nền tảng khác, giờ nếu được có thể dẫn tới email, soạn mail và cover letter dựa trên JD của job đó được không". Answers to the design questions: read the recipient from the JD and allow editing; draft with AI through a Cloud Function; auto-save the record behind an `I've sent it` button.
+- **Output:**
+  - **App:** `ApplyComposeScreen` + `ApplyComposeViewModel` replace the six-field `ApplyFormScreen` and the Review step at `/{tab}/internships/:jobKey/apply` (route name `{tab}_apply_email`); `apply_compose_parts.dart` and the extracted `apply_summary_card.dart`; `core/utils/contact_email.dart` (prefers `hr` / `recruit` / `tuyendung` / `career` / `job` / `apply` / `contact`, drops `noreply`); `core/utils/mailto.dart` (RFC 6068, `%20` / `%0A`); `services/cover_letter_service.dart`; `models/apply_session.dart` and `models/cover_letter_draft.dart`; `ExternalLinkService.openEmail()`; `ApplicationService.createApplication` now takes nullable CV fields plus `recipientEmail` / `appliedVia`; `InternshipApplication` gains `ApplicationChannel`, `appliedVia` and `recipientEmail`, and Application Detail shows `Sent to` and the cover letter; the optional CV Match / Validate screens now pop back to the compose screen.
+  - **Backend:** `functions/src/compose-cover-letter.ts` (callable, `GROQ_API_KEY`, 120–170-word letter in the listing's language, JSON `{subject, body}`, deterministic template on a blank key / model failure / unparseable output, CV text optional and ownership-checked); registered in `index.ts`.
+  - **Platform/docs:** Android `<queries>` for `SENDTO` + `mailto`; DC-31, G-33, architecture (ViewModel, service, schema, integration, secrets), analytics rows 8/10/17/19/20 and the Apply funnel, `test-report.md` Run 34, and the rewritten `apply-flow-mvvm-architecture.md`.
+- **Verification:** `dart format lib test` → 216 files (8 changed, then clean); `flutter analyze` → **No issues found!**; `flutter test` → **653 passed**; `cd functions && npm test` → **59 passed** (13 new). New tests: contact-email and mailto helpers, cover-letter service parsing/error mapping, `ApplyComposeViewModel` (prefill, AI draft, `mailto:`, record fields, repeated tap, failure, no name, late snapshot, session), the compose screen at 360/412 dp, the router paths, and the `ApplicationChannel` model. Deploy, a real Groq call, a device walk (Gmail + CV attachment + `I've sent it`) and DebugView were **not run**.
+- **Decision:** Accepted. The recipient is extracted but never invented, and an empty field still opens a draft with an empty `To`. The callable keeps the model key off the device and returns a deterministic template on any failure, so the flow never dead-ends. The CV is attached manually because `mailto:` cannot attach files; the screen says so. CV Match / Validate remain as optional actions so the G-24 evidence stays reachable without blocking the email.
+
+---
+
 ## Entry template
 
 ```markdown
