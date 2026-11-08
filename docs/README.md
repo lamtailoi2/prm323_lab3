@@ -10,6 +10,10 @@
 | [`test-plan.md`](test-plan.md) | ARTEMIS end-to-end test cases, coverage, results, exploratory session |
 | [`code-review.md`](code-review.md) | AI code review findings, decisions, fix commits, AI tool disclosure |
 
+## Business rules
+
+[`business-rules.md`](business-rules.md) — User and Admin actors, actor/system map, swimlanes, `BR-xx` codes at every branch point, application state machine, exception catalogue, and BR ↔ test traceability.
+
 ## Folders
 
 | Folder | Content |

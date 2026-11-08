@@ -20,19 +20,19 @@ This repository is the PRM393 **Lab 3** implementation (Flutter + Firebase, grad
 
 ### User flows
 
-One journey in three flows: **search → apply (now, or later via Saved) → track**. Revised in Lab 3: Save is a sub-flow of Apply (DC-08), and Apply has a CV match check (DC-09).
+One journey in three flows: **search → apply (now, or later via Saved) → track**. Revised in Lab 3: Save is a sub-flow of Apply (DC-08), and Apply is the **email-based Compose flow** (DC-31) with optional CV match (DC-30) and validation (DC-19) checks.
 
 | Flow | Path | Alternative / error paths |
 |---|---|---|
 | **1. Search** | Home → Search → Filters → Results → Internship Detail | No results → Clear filters; results / detail load error → Retry |
-| **2. Apply** | Internship Detail → Apply → Application Form → **CV Match Check** → Review → Success | CV upload error + Retry; empty profile; already applied; CV gaps → suggestions → improve or continue; **2e Save for later** → Saved → open → Apply (unsave + Undo, empty list, save error + Retry) |
+| **2. Apply** | Internship Detail → Apply → **Compose application** (recipient + AI subject/letter) → Open email app → I've sent it → Success | Missing recipient email; AI draft failure → template; already applied; empty profile CV (optional); CV gaps → suggestions → improve or continue; **2e Save for later** → Saved → open → Apply (unsave + Undo, empty list, save error + Retry) |
 | **3. Track** | Applications → Application Detail → status | No applications; list / detail load errors; withdraw + Undo |
 
 Details: [`user-flow.md`](docs/design/user-flow.md) · screens: [`screen-spec.md`](docs/design/screen-spec.md) · route / widget / data source per screen: [`design-traceability.md`](docs/design-traceability.md).
 
 ### Screens
 
-Bottom navigation (fixed): **Home · Search · Saved · Applications · Profile**. Lab 2 screens: Home, Search, Search Results, Internship Detail, Saved Internships, Application Form, Application Review, Application Success, My Applications, Application Detail, Profile. Lab 3 additions: Login, CV Match Check, and a **Firebase demo area on Profile** (Notification Center, report export and upload, Remote Config values, Crashlytics test actions).
+Bottom navigation (fixed): **Home · Search · Saved · Applications · Profile**. Lab 2 screens: Home, Search, Search Results, Internship Detail, Saved Internships, Application Form, Application Review, Application Success, My Applications, Application Detail, Profile. Lab 3 additions: Login, the Profile **CV library** (several CVs, one default), CV Match Check, and a **Firebase demo area on Profile** (Notification Center, report export and upload, Remote Config values, Crashlytics test actions). The Lab 2 Application Form / Review / Success screens were replaced by the email-based Compose flow (DC-31).
 
 ## Tech stack and pinned versions
 
@@ -147,6 +147,7 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 |---|---|
 | [`docs/design/design-system.md`](docs/design/design-system.md) | Tokens and components, Figma ↔ code cross-check, contrast results |
 | [`docs/guides/firebase-setup.md`](docs/guides/firebase-setup.md) | Firebase, Google Sign-In, Storage, Remote Config, SerpAPI sync secret |
+| [`docs/business-rules.md`](docs/business-rules.md) | User and Admin actors, swimlanes, `BR-xx` branch codes, application state machine and test traceability |
 | [`docs/records/handoff-gaps.md`](docs/records/handoff-gaps.md) | Missing / conflicting requirements and decisions |
 | [`docs/records/implementation-ai-log.md`](docs/records/implementation-ai-log.md) | Prompts, outputs, verification and decisions for AI-assisted work |
 | [`tools/admin-dashboard/README.md`](tools/admin-dashboard/README.md) | Local admin dashboard: send FCM notifications, find device tokens, inspect/delete notification history |
