@@ -305,4 +305,16 @@ void main() {
     expect(without, isNot(withNone));
     expect(without.hashCode, isNot(withNone.hashCode));
   });
+
+  test('givenName and defaultCvId take part in equality', () {
+    const base = UserProfile();
+    const withName = UserProfile(givenName: 'Anh');
+    const withDefault = UserProfile(defaultCvId: 'cv-1');
+
+    expect(base, isNot(withName));
+    expect(base, isNot(withDefault));
+    expect(withName, isNot(withDefault));
+    expect(base.hashCode, isNot(withName.hashCode));
+    expect(base.hashCode, isNot(withDefault.hashCode));
+  });
 }

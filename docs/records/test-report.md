@@ -823,3 +823,27 @@ Findings:
 
 1. Two ViewModel logic bugs discovered during review and fixed: `removeCv` guard for legacy-mirror default (2026-11-07); `_onProfile` and `_applyLibrary` ordering that caused `profileCv` to go null when the CV library stream arrived (2026-11-08).
 2. `cv_auto_select` event now Implemented; DebugView screenshot still pending device run.
+
+---
+
+## Run 39: Post-merge CV/profile regression fixes (2026-11-08)
+
+**Environment:** Windows 11 · branch `feat/cv-library`, HEAD `3f5eb24` plus an uncommitted working tree. No Firebase login on this machine.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **230 files, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` (full suite) | **729 tests, all passed** |
+| 4 | `npm run build && npm test` (`functions/`) | **72/72 tests passed** |
+| 5 | `flutter pub get` | **Got dependencies** (37 newer versions held back by constraints) |
+| 6 | `npm install` (`functions/`) | **up to date**, 259 packages audited (9 vulnerabilities reported by npm) |
+| 7 | `npx firebase-tools deploy --only functions:selectCv --project prm-lab3` | **Passed after one retry**: the first attempt created the function but failed to set the Cloud Run invoker IAM policy; the second run printed `Deploy complete!`, and `functions:list` shows `selectCv` (callable, `us-central1`, `nodejs22`) |
+
+Findings:
+
+1. The merge with `dev` dropped `UserProfile.givenName` / `UserProfile.defaultCvId` from the model fields, `fromFirestore`, `==` and `hashCode`; this broke the Home greeting and Profile default-CV selection. Restored all four places and added an equality regression test.
+2. The merge kept two `updateCv` implementations; removed the old mirror-only one so uploads add to the library and set the new CV as default.
+3. `functions/src/index.ts` imported `handleSelectCv` / `SELECT_RUBRIC` and defined `selectGroq`, but the merge lost the `selectCv` export; restored the callable and `npm run build` passes.
+4. `FakeUserProfileService` dropped `givenName` / `defaultCvId` on merge writes; both are now preserved.
+5. The first deploy created `selectCv` but failed with `Failed to set the IAM Policy on the Service`; an immediate retry completed successfully, so the callable is now deployed.

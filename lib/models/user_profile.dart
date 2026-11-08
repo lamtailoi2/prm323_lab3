@@ -31,6 +31,8 @@ class UserProfile {
         reader.optionalMap('preferences'),
       ),
       cv: _optionalCv(reader),
+      givenName: reader.optionalString('givenName'),
+      defaultCvId: reader.optionalString('defaultCvId'),
     );
   }
 
@@ -44,17 +46,32 @@ class UserProfile {
   /// backwards compatibility with builds that only knew this field.
   final CvFile? cv;
 
+  /// Google's `given_name`, used by the Home greeting while it is known.
+  final String? givenName;
+
+  /// The `id` of the default document under `users/{uid}/cvs`; `null` lets
+  /// the legacy [cv] mirror be the default.
+  final String? defaultCvId;
+
   @override
   bool operator ==(Object other) =>
       other is UserProfile &&
       other.details == details &&
       listEquals(other.skills, skills) &&
       other.preferences == preferences &&
-      other.cv == cv;
+      other.cv == cv &&
+      other.givenName == givenName &&
+      other.defaultCvId == defaultCvId;
 
   @override
-  int get hashCode =>
-      Object.hash(details, Object.hashAll(skills), preferences, cv);
+  int get hashCode => Object.hash(
+    details,
+    Object.hashAll(skills),
+    preferences,
+    cv,
+    givenName,
+    defaultCvId,
+  );
 
   /// A malformed `cv` map is treated as "no CV" instead of hiding the whole
   /// profile: the student can still upload a new one, which overwrites it.

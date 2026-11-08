@@ -905,3 +905,25 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - `flutter test` → **687 tests, all passed** (bao gồm tất cả apply-form tests).
   - `npm run build && npm test` (Cloud Functions) → **57/57 tests passed** kể cả 12 test mới `select-cv.test.ts`.
 - **Decision:** Accepted.
+
+---
+
+### P-82: Fix post-merge CV/profile regressions and restore `selectCv`
+
+- **Request:** (opencode, deepseek-v4.1-flash-free, 2026-11-08; operator Phạm Nguyễn Tú) "Sửa bug các file sau: `lib/features/home/viewmodels/greeting_name_provider.dart`, `lib/features/profile/viewmodels/profile_viewmodel.dart`, `lib/models/user_profile.dart`, `test/helpers/fakes.dart` nói chung là fix bug các file mới git pull origin dev, a xem plan có vẻ sai do conflict hay sao ấy. Với nhớ chạy cài đặt nx ( mấy cái callable function như selectCv chưa deploy)".
+- **Output:**
+  - `lib/models/user_profile.dart`: restored the `givenName` and `defaultCvId` fields, parsed them in `fromFirestore`, and included both in `==` / `hashCode`.
+  - `lib/services/user_profile_service.dart`: removed the duplicate merge-only `updateCv`; uploads keep the library behaviour (add + set default).
+  - `functions/src/index.ts`: restored the missing `export const selectCv` callable using `handleSelectCv`, `SELECT_RUBRIC` and `selectGroq`.
+  - `test/helpers/fakes.dart`: preserved `givenName` and `defaultCvId` on add / set default / remove / given-name writes.
+  - `lib/features/profile/screens/profile_screen.dart`: fixed import ordering.
+  - `test/models/user_profile_test.dart`: added an equality regression test for `givenName` and `defaultCvId`.
+  - `docs/records/test-report.md`: added Run 39 with the real command results.
+- **Verification:**
+  - `dart format lib test` → 230 files, 0 changed.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **729 tests, all passed**.
+  - `npm run build && npm test` (`functions/`) → **72/72 tests passed**.
+  - `flutter pub get` → dependencies resolved; `npm install` → up to date.
+  - `npx firebase-tools deploy --only functions:selectCv --project prm-lab3` → **passed after one retry**: the first attempt created the function but failed to set the Cloud Run invoker IAM policy; the retry printed `Deploy complete!`; `functions:list` confirms `selectCv` (callable, `us-central1`, `nodejs22`).
+- **Decision:** Accepted and deployed.

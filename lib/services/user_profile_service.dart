@@ -382,10 +382,6 @@ class FirestoreUserProfileService implements UserProfileService {
   ) => _merge(uid, 'preferences', {'preferences': preferences.toFirestore()});
 
   @override
-  Future<void> updateCv(String uid, CvFile cv) =>
-      _merge(uid, 'cv', {'cv': cv.toFirestore()});
-
-  @override
   Future<void> updateGivenName(String uid, String givenName) =>
       _merge(uid, 'given name', {'givenName': givenName});
 

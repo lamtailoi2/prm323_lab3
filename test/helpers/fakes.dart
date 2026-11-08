@@ -668,6 +668,7 @@ class FakeUserProfileService implements UserProfileService {
         skills: current.skills,
         preferences: current.preferences,
         cv: first ? added : current.cv,
+        givenName: current.givenName,
         defaultCvId: defaultCvId,
       ),
     );
@@ -695,6 +696,7 @@ class FakeUserProfileService implements UserProfileService {
         skills: current.skills,
         preferences: current.preferences,
         cv: cv,
+        givenName: current.givenName,
         defaultCvId: cvId,
       ),
     );
@@ -722,6 +724,7 @@ class FakeUserProfileService implements UserProfileService {
         skills: current.skills,
         preferences: current.preferences,
         cv: wasDefault ? next : current.cv,
+        givenName: current.givenName,
         defaultCvId: defaultCvId,
       ),
     );
@@ -787,6 +790,7 @@ class FakeUserProfileService implements UserProfileService {
       preferences: current.preferences,
       cv: current.cv,
       givenName: givenName,
+      defaultCvId: current.defaultCvId,
     ),
   );
 
@@ -815,6 +819,7 @@ class FakeUserProfileService implements UserProfileService {
     preferences: preferences ?? current.preferences,
     cv: cv ?? current.cv,
     givenName: current.givenName,
+    defaultCvId: current.defaultCvId,
   );
 
   Future<void> dispose() => _updates.close();
