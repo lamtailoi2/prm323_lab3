@@ -124,6 +124,7 @@ The View watches the provider, renders the state with shared components, and cal
 |---|---|
 | Deviate from the design, or finish / change a screen, route or component | `docs/design-traceability.md` (+ Figma) |
 | Find or resolve a missing requirement | `docs/records/handoff-gaps.md` |
+| Change a business rule, branch point, state transition or admin behaviour | `docs/business-rules.md` (keep the `BR-xx` ID and §5 traceability row) |
 | Add an analytics event | `docs/analytics-plan.md` |
 | Run Flutter tests for the PR | `docs/records/test-report.md` |
 | Use an AI tool, get a review, verify a Firebase feature, run E2E tests | See "Logs and evidence required by Lab 3" below |
