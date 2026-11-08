@@ -692,6 +692,166 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+### P-70: Job type / allowance chips on Search Results; Edit skills no longer wipes Profile skills
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "mình sửa lun ik sửa sao cho nó chạy đúng logic và thuận tiện để test tiếp tục", after ARTEMIS TC-03 failed 0/3 and the operator reported "add skill ở application form … refresh hết skill lấy từ profile và đổi luôn ở profile".
+- **Output:**
+  - **Filter chips.** `SearchFilterCriteria.criteriaCount` (the Filters badge) counted `jobType` and `allowanceRange`, but `_ActiveFiltersRow` had no chip for them, so after `Job type: Internship` the list shrank (54 → 23) with only the query chip shown. `search_results_screen.dart` now shows `filter_job_type` and `filter_allowance` chips (not for `Any …`); `SearchResultsViewModel.clearJobType()` / `clearAllowanceRange()` remove them.
+  - **Edit skills.** `EditSkillsViewModel.build()` read `profileViewModelProvider` once. That provider is auto-dispose and only the Profile screens watch it, so from the Apply Form `Add skill` (CR-16) on a fresh start it was still `ViewLoading`: the draft started empty and `Save changes` stored `[new skill]`, replacing the Profile skills. The view model now listens to the profile (which also keeps it alive), seeds the draft from the first snapshot, and has `ready`; `toggle`, `clearAll` and `save` do nothing and `Save changes` is disabled until then. Later snapshots still do not reset the draft.
+  - Tests: Results VM (`clearJobType` / `clearAllowanceRange` keep the other filters), Results widget (both chips shown and removable; `Any …` shows none), profile VM (opened before the profile loaded: not ready, edits and save ignored, then seeded; later snapshots keep the draft), Apply Form widget (`Add skill` → `2 chosen` → add `Git` → `Save changes` → Profile skills `[Flutter, Dart, Git]`).
+  - `docs/design-traceability.md` Search Results and Profile rows.
+  - Not changed: `EditProfileViewModel` and `EditPreferencesViewModel` read the profile the same way, but they open only from the Profile tab, where it has loaded.
+- **Verification:**
+  - A temporary probe test on the old code: opened before the profile loaded, selected `[]`; saving `Python` left the Profile with `[Python]` (`Flutter`, `Dart`, `Git` lost). Probe deleted.
+  - The new Apply Form test fails on the old code (`Found 0 widgets with text "2 chosen"`) and passes on the new one.
+  - Format, analyze and the full suite: test-report Run 32.
+- **Decision:** Accepted. No design change: chips use the existing active filter chip, and the disabled `Save changes` is the Primary button's documented state.
+
+---
+
+### P-71: Flow 1 ARTEMIS runs; TC-18 and TC-19 reworded
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Run Flow 1", then "Fix and rerun" for TC-18 / TC-19, "Switch to 3.1" and "ok làm nốt đi".
+- **Output:**
+  - `e2e_test/test_apply_form.py` TC-18: `Continue to review` may open `CV match` (Remote Config `cv_match_enabled` on) or `Validate CV`.
+  - TC-19: reports every line under the CV file name after `Update CV` and the sheet has closed; asserts `… · PDF` and `Uploaded for this internship` among them.
+  - `e2e_test/conftest.py` `UPLOAD_SAMPLE_CV` (also used by TC-06): replace the CV even if the Profile CV is shown.
+  - `docs/test-plan.md` TC-03 – TC-05, TC-18 – TC-20 rows, §4 results and causes; `evidence/artemis/e2e-environment-20261106.md` Flow 1 section; runs 35–65 appended to `evidence/artemis/runs-20261106.jsonl`.
+- **Verification:** 31 ARTEMIS runs, 10:30–12:29. Each Flow 1 case has 3 counted passes: TC-03 after the P-70 app fix, TC-18 and TC-19 on the new wording. The failed runs are listed with their causes in the evidence file: an app bug, a wrong expectation, ambiguous wording, and one quota timeout.
+- **Decision:** Accepted. The TC-03 failure was a real app bug and was fixed in the app (P-70), not in the test.
+
+---
+
+### P-72: Firebase demo area, Remote Config source fix and the Profile crash control
+- **Request:** "kiểm tra xem tôi đã làm những tính năng hay task này chưa, nếu chưa hướng dẫn tôi từng bước" then "làm hoàn thiện luôn từng bước giúp tôi"; later "giữ lại giúp tôi nút crash ở profile người dùng đi".
+- **Output:**
+  - `FirebaseDemoScreen` + `FirebaseDemoViewModel` at `/profile/firebase`: Remote Config key/value/source, live `onUpdated` refresh, `Send a non-fatal error`, `Simulate app crash`, `Copy FCM token`, Notification Center link, and a disabled Report export row until G-05. Route `firebase_demo`; Profile → Diagnostics keeps the `Simulate app crash` tile and adds the `Firebase demo` entry.
+  - **Bug found on device:** `RemoteConfigValue.source.name` returns `valueRemote` / `valueDefault` / `valueStatic`, so the screen labelled remote values `In-app default`. `FirebaseRemoteConfigService.snapshot()` now maps them through `sourceName()`; tests cover the mapping and the `From Firebase` label.
+  - Tests: `firebase_demo_viewmodel_test.dart`, `firebase_demo_screen_test.dart` (360/412 dp, live update, non-fatal, crash confirmation, links, FCM token, tap targets), restored Profile crash test, `remote_config_defaults_test.dart` source mapping.
+  - Docs: design traceability, architecture, G-06, Run 31, evidence images.
+- **Verification:** `flutter analyze` → No issues found; `flutter test` → **676 passed**. Device walk on `emulator-5554`: all three parameters show `From Firebase` (`6 / 10 / true`); non-fatal showed its SnackBar; the Profile Diagnostics section shows both `Simulate app crash` and `Firebase demo`. Evidence: `evidence/remote-config/remote-config-app-from-firebase-20261106.png`, `evidence/crashlytics/crashlytics-nonfatal-sent-20261106.png`. The test crash and Crashlytics dashboard screenshots are not part of this entry.
+- **Decision:** Accepted. The source mapping lives in the service so the SDK enum never leaks into UI code. The Profile crash control stays after the user's correction; the FCM token remains on the demo screen.
+
+---
+
+### P-73: Admin dashboard refactor, explicit recipients and admin-triggered crash
+- **Request:** "dựa vào skill UI vừa cài, refactor lại UI của dashboard admin", fix "user đang không chọn chỉ định được ai sẽ được gửi notification", remove the UI slop, and add a crash control so the admin can test the whole app without opening each user's Profile.
+- **Output:**
+  - **Backend:** `lib/admin.js` gains `normaliseTarget()` and `buildTestCrashData()`; `server.js` extracts `resolveRecipients()` and `deliver()` (one user or every unique token, 500-per-batch) and adds `POST /api/test-crash`, which sends a **data-only** FCM command `{type: 'test_crash', source: 'admin_dashboard', target, requestedAt}` with high Android priority and no notification block.
+  - **App:** `NotificationService.testCrashRequests()` exposes `TestCrashRequest`; foreground/opened/initial messages filter control messages out of the history; `NotificationCoordinator` sets `crash_source`, `crash_target` and `crash_requested_at` then calls `crashForTesting()`; the background isolate does the same through `FirebaseCrashlytics.instance.crash()`. No Firestore rules change.
+  - **UI:** rewritten `public/index.html`, `styles.css`, `app.js` as a warm-paper ops desk: explicit recipient picker (everyone or one student; no-token students disabled with the reason), title/body/route, delivery and history panels, skeleton/empty/error states, focus rings, 44 dp targets, reduced-motion support, and a crash panel with an acknowledgment checkbox plus a native confirmation dialog. The full-page screenshot sticky-header duplication is a capture artifact; the viewport render is clean.
+  - README updated with the new recipient and crash workflows.
+- **Verification:**
+  - `cd tools/admin-dashboard && npm test` → **9 passed**; `node --check` on `server.js`, `lib/admin.js` and `public/app.js` → clean.
+  - `flutter analyze` → No issues found; `flutter test` → **676 passed** (includes the admin crash coordinator test).
+  - End-to-end on `emulator-5554`: `POST /api/test-crash` to `mgqfiZkcaaRbV5zEsad9bODhKvu1` returned `successCount: 1`; logcat showed `FATAL EXCEPTION` / `FirebaseCrashlyticsTestCrash` on the app PID, which then closed. The app was rebuilt and reinstalled before this run.
+  - `agent-browser` (via `npx agent-browser 0.41.2`) rendered the dashboard: the recipient select lists all 9 users plus `Everyone with a token (5)`; no-token users are disabled; selecting `Mai Duy Lập` enabled `Send notification` and changed the chip to `To Mai Duy Lập`; the crash acknowledgment enabled `Send test crash`.
+- **Decision:** Accepted. A data-only FCM command avoids a new Firestore collection and rules change, works from the dashboard, and is recognised before the notification handlers so it never writes history or shows a banner. The remote crash is destructive, so it requires the acknowledgment and a confirmation dialog and is only reachable on the localhost-bound dashboard. The existing Profile crash control remains for on-device testing.
+
+---
+
+### P-74: Email-based Apply flow (AI cover letter + `mailto:`)
+- **Request:** "phần application, giờ tôi muốn chỉnh sửa như sau. Thay vì phải điền form để điền như những nền tảng khác, giờ nếu được có thể dẫn tới email, soạn mail và cover letter dựa trên JD của job đó được không". Answers to the design questions: read the recipient from the JD and allow editing; draft with AI through a Cloud Function; auto-save the record behind an `I've sent it` button.
+- **Output:**
+  - **App:** `ApplyComposeScreen` + `ApplyComposeViewModel` replace the six-field `ApplyFormScreen` and the Review step at `/{tab}/internships/:jobKey/apply` (route name `{tab}_apply_email`); `apply_compose_parts.dart` and the extracted `apply_summary_card.dart`; `core/utils/contact_email.dart` (prefers `hr` / `recruit` / `tuyendung` / `career` / `job` / `apply` / `contact`, drops `noreply`); `core/utils/mailto.dart` (RFC 6068, `%20` / `%0A`); `services/cover_letter_service.dart`; `models/apply_session.dart` and `models/cover_letter_draft.dart`; `ExternalLinkService.openEmail()`; `ApplicationService.createApplication` now takes nullable CV fields plus `recipientEmail` / `appliedVia`; `InternshipApplication` gains `ApplicationChannel`, `appliedVia` and `recipientEmail`, and Application Detail shows `Sent to` and the cover letter; the optional CV Match / Validate screens now pop back to the compose screen.
+  - **Backend:** `functions/src/compose-cover-letter.ts` (callable, `GROQ_API_KEY`, 120–170-word letter in the listing's language, JSON `{subject, body}`, deterministic template on a blank key / model failure / unparseable output, CV text optional and ownership-checked); registered in `index.ts`.
+  - **Platform/docs:** Android `<queries>` for `SENDTO` + `mailto`; DC-31, G-33, architecture (ViewModel, service, schema, integration, secrets), analytics rows 8/10/17/19/20 and the Apply funnel, `test-report.md` Run 34, and the rewritten `apply-flow-mvvm-architecture.md`.
+- **Verification:** `dart format lib test` → 216 files (8 changed, then clean); `flutter analyze` → **No issues found!**; `flutter test` → **653 passed**; `cd functions && npm test` → **59 passed** (13 new). New tests: contact-email and mailto helpers, cover-letter service parsing/error mapping, `ApplyComposeViewModel` (prefill, AI draft, `mailto:`, record fields, repeated tap, failure, no name, late snapshot, session), the compose screen at 360/412 dp, the router paths, and the `ApplicationChannel` model. Deploy, a real Groq call, a device walk (Gmail + CV attachment + `I've sent it`) and DebugView were **not run**.
+- **Decision:** Accepted. The recipient is extracted but never invented, and an empty field still opens a draft with an empty `To`. The callable keeps the model key off the device and returns a deterministic template on any failure, so the flow never dead-ends. The CV is attached manually because `mailto:` cannot attach files; the screen says so. CV Match / Validate remain as optional actions so the G-24 evidence stays reachable without blocking the email.
+
+---
+
+### P-75: ARTEMIS cases reviewed against UI v2 and the email apply flow; TC-12 written
+- **Request:** (Claude Code, Opus 5.5, 2026-11-07; operator Phạm Nguyễn Hoàng Anh) "rà lại toàn bộ project để xem test case và test artemis viết đúng chưa", after PR #33 (UI v2, DC-31) and PR #34 (email apply flow) reached `dev` `b5d1209`.
+- **Output:**
+  - Every UI label quoted in `e2e_test/*.py` was checked against `lib/`, and each flow and assertion was read against the screens.
+  - `test_auth.py` TC-01: asserts the highlighted tab `Home`; the Home header now shows a greeting and the name, not "Home".
+  - `test_navigation.py` TC-02: app bar title == tab except for Home.
+  - `test_applications.py` TC-09: no longer creates an application through the removed Apply Form/Review screens; it reports `has_application` and stops if there is none (TC-06 creates one).
+  - `test_apply_form.py` TC-18 / TC-19: open the first card with no `Applied` badge, so an applied listing cannot show `View application`.
+  - `conftest.py`: removed `FILL_PERSONAL` and `UPLOAD_SAMPLE_CV`, which named Apply Form fields that no longer exist; the sample CV helper is kept for the coming CV library.
+  - New `test_profile.py` TC-12: reads `home_recommended_limit` (`N · source`) on Profile → Firebase demo and checks Home shows N recommended cards.
+  - `docs/test-plan.md`: rows TC-01, TC-02, TC-09, TC-12, TC-18; the 2026-11-06 TC-18/19/20 results are marked as the old Apply Form.
+  - The other cases (TC-03, 04, 05, 07, 08, 10, 13, 14, 15, 16, 17) still match the labels in `lib/`.
+- **Verification:** `py_compile` OK; `pytest --collect-only` → 18 tests. Not run on a device yet.
+- **Decision:** Accepted.
+
+---
+
+### P-76: TC-08 without Undo, TC-15 single launch, TC-13 hint; TC-08 / TC-10 / TC-15 runs
+- **Note:** first recorded as P-72 in `9ec4978` (PR #31); the PR #34 merge kept another P-72, so it is restored here under a new ID.
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Run them now" (TC-08, TC-10, TC-15), "Rewrite TC-08" → "Yes, fix them", "Switch to 3.5", then "done giờ viết docs và commit đi". The operator's teacher asked for a recording of each ARTEMIS batch with its terminal command.
+- **Output:**
+  - `e2e_test/test_saved.py` TC-08 (`test_tc08_save_then_unsave`): numbered steps; no `Undo` and no `Saved to your list` (ARTEMIS needs 5–15 s per step, the Snackbar lasts 4 s; widget tests cover both); reports the title of the detail opened from Saved; button label checked with `startswith("Saved")` (the agent may read the accessibility label); the case unsaves the card it saved.
+  - `e2e_test/conftest.py` `reset_notification_permission()` no longer starts the app: with the case's own launch the app opened twice and the system dialog closed.
+  - `e2e_test/test_notifications.py`: TC-15 wording ("do not reopen the app"); TC-13 prompt says Profile → Firebase demo → Copy FCM token (PR #30 moved it); same in `docs/guides/artemis-e2e.md`.
+  - `docs/test-plan.md` TC-08 / TC-10 Done, TC-15 Ready (fixed), §4 rows and causes; `evidence/artemis/e2e-environment-20261106.md` section "TC-08, TC-10, TC-15"; runs 66–87 appended to `runs-20261106.jsonl`.
+- **Verification:**
+  - TC-10 3/3 on `dev` `d4674ee`.
+  - TC-08 3/3 on `gemini-3.5-flash-lite`. Each counted run was checked against its ARTEMIS step history, because on 3.1 one run (`049a9ddd`) passed in pytest with an invented report.
+  - TC-15 not run again after the fix.
+  - `py_compile` and `pytest --collect-only` (18 tests) OK.
+- **Decision:** Accepted. Two API keys borrowed from team members' free-tier projects; a third, prepaid one was refused (G-26).
+
+### P-77: UI v2 — photo tab headers, Job Hero Card, Application Detail tweaks
+- **Note:** first logged as P-73 on `feat/ui-v2` (`4396a12`); the entry was lost when PR #33 and the admin dashboard work (also P-73) were merged into `dev`, so it is restored here under a free number.
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) Redesign the headers and Application Detail in Figma in a new section without touching the old frames, iterate on the look with banking-app references (ACB, Sacombank), use a header photo different from the Login one, then "giờ cứ sửa lại code theo UI mới đi nào tui có Idea hình thì replace lại".
+- **Output:**
+  - Figma: sections "Final UI v2 · Headers & Application Detail (proposal)" and "Final UI v2 · All screens (Header v2)" (47 frames, old frames unchanged); two images generated with Figma AI (Ho Chi Minh City skyline, abstract blue cover).
+  - Code: `MainTabAppBar` photo hero (`assets/images/tab_header.jpg`), Home greeting (a summary card, header chips and a summary bar were tried and dropped at the operator's request), Profile and Search results on the same header, `JobHeroCard` (`assets/images/job_cover.jpg`) replacing the Detail header / Key facts / Applied banner, Application Detail identity card and active-step tint; `AppColors.inverseSurface`, `AppSizes.companyLogoHero`, `AppSizes.jobCoverHeight`; `greetingFor()`; removed the unused `DetailMetaTile` and `DetailAppliedBanner`.
+  - Docs: DC-31, `design-system.md` §1.1 / §2.6 / §2.15, test-report Run 33.
+- **Verification:** `dart format` clean, `flutter analyze` no issues, `flutter test` 676 / 676 on the final state (Run 33). Not checked on a device or emulator.
+- **Decision:** Accepted with changes: the avatar stays on the non-Home tabs (DC-20), the unread dot and the `under review` count from the frames are not built (no data behind them), pushed screens keep the white `AppTopBar.back`.
+
+---
+
+### P-78: Home greeting by given name; long names fit
+- **Request:** (Claude Code, Opus 5.5, 2026-11-07; operator Phạm Nguyễn Hoàng Anh) The Home header cut "Phạm Nguyễn Hoàng…"; asked for options, chose "C + A": Google's given name, with a fit-to-width fallback.
+- **Output:** `AuthService.signInWithGoogle` reads `given_name` from `additionalUserInfo.profile` into `AppUser.givenName`; `LoginViewModel` saves it with the new `UserProfileService.updateGivenName` (`users/{uid}.givenName`, merge write, best effort); `UserProfile.givenName`; `homeGivenNameProvider`; Home title = given name → full name → `Home`; `MainTabAppBar` title steps 24 → 20 → 18 before an ellipsis. Tests and fakes updated; DC-31, `design-system.md` §2.6, test-report Run 35.
+- **Verification:** `flutter analyze` no issues; `flutter test` 663 passed (Run 35). Not checked on a device; existing accounts get the given name only after their next sign-in.
+- **Decision:** Accepted. Rejected: guessing the given name from word order (wrong for "given family" order and foreign names) and a new Edit profile field (out of scope).
+
+---
+
+### P-79: SerpAPI fresher/junior keywords + Detail role and level badges
+- **Request:** "sửa lại search keyword của SerpAPI không chỉ có jobs intern phải có cả fresher và junior. Lưu ý tui đang sử dụng free tier của SerpAPI nên phải tối ưu, đồng thời trong details phải có badge hiển thị role của job đó" — then, asked what "role" means, the user chose **both**: job family and experience level. Renumbered from P-46 after `dev` used that number for the Filter skills change.
+- **Output:** `functions/src/config.ts` adds `IT fresher Vietnam` and `IT junior Vietnam` to the six intern queries (eight total; the 6-hour schedule, one keyword per run and one page are unchanged, so the first month is about 132 of 250 searches and each keyword refreshes every ~2 days, inside the 7-day expiry); `functions/src/config.test.ts` guards the level coverage and computes the quota. `lib/core/utils/job_level.dart` (`JobLevel` + `jobLevelFor`, folded title only, `fresher`/`junior` before `intern`, senior/lead/manager titles treated as no level, no match inside "international") and `Internship.level`. After the UI v2 merge the job family (`Internship.role`) and level (`Internship.level`) render as compact `AppTag` badges under the title in `JobHeroCard`, only for an IT listing, each hidden when the listing gives no signal, with `Role: …` / `Experience: …` semantics. `accountant`/`accountants`/`accountancy` added to the non-IT words so junior/fresher queries cannot bring accounting jobs into Home. Docs: G-25 quota/coverage, `firebase-setup.md` §13, architecture pool note, design-system badge note, traceability row 4 + DC-28, Run 36.
+- **Verification:** `cd functions && npm test` → **20 tests passed**; `dart format lib test` → **222 files, 0 changed**; `flutter analyze` → **No issues found!**; `flutter test` → **687 tests, all passed**. Real sync on 2026-11-07: `sync/state` → `backfill=true`, `fetched=65`, `written=65`, `expiredDeleted=0`, all eight keywords, no `lastError`; Firestore has 10 `IT fresher Vietnam` and 10 `IT junior Vietnam` listings, and the Pixel 6 emulator shows the `DevOps/Cloud` + `Intern` badges on Detail (`evidence/sync/2026-11-07-p46-sync.md`, raw files keep the original P-46 label).
+- **Decision:** Accepted. The level is inferred in the app like the role (no sync/Firestore field change). Two badges are shown because the user chose both; the Figma frame has no badge row, recorded as DC-28 and reusing `AppTag` rather than inventing a new component. Round-1 AI review showed the sync-keyword fallback would label senior roles returned by an intern query as Intern, so the level now reads the title only and the negative badge test asserts on semantics.
+
+---
+
+### P-80: Experience band in Profile + ranking tiebreaker, target-role labels
+- **Request:** "Ranking: giữ recommendationScore = role + skills; level là tiebreaker: sort score desc → levelMatch desc → syncRank. Không filter, không đổi thứ tự khi profile chưa có experience." Plus the four experience bands, `null` vs `none`, `Data / AI` and `DevOps / Cloud` target roles, the persistence/equality/analytics wiring, tests, and the known limits. Renumbered from P-47 after `dev` used that number for the Flow 2 completion.
+- **Output:** `ExperienceRange` (`none` / `underOne` / `oneToTwo` / `twoPlus`, labels `No experience` / `Under 1 year` / `1–2 years` / `2+ years`, `levels` mapping to `JobLevel`); `InternshipPreferences.experience` in `fromReader`, `toFirestore` (`none` / `under_one` / `one_to_two` / `two_plus`, absent = `null`), `==` / `hashCode`; `EditPreferencesState.experience`, `selectExperience` (single-select, tapping again sends `null` through a separate `hasExperience` sentinel so other field edits keep the draft), and `save` (persisted plus one `profile_update.item_count` item when set, not when `null`); `EditPreferencesSheet` Experience group; Profile preferences section tag; `TargetRole` labels without the " Intern" suffix plus `dataAi` / `devOps`; `matchesWantedLevel` (`lib/core/utils/recommendation.dart`); `HomeViewModel` second sort key (`levelMatch` desc) before `compareBySyncRank`, with no filtering and no score change. Docs: G-23 update + known limits, architecture profile field/ranking note, analytics `item_count`, traceability row 1/12 + DC-32/DC-33, this log, Run 37. Tests: model storage/equality/legacy, recommendation level matrix, ViewModel clear/save/analytics, Home tiebreaker/no-experience order/score-first, Profile section and the sheet at 360/412 dp.
+- **Verification:** `dart format lib test` → **222 files, 0 changed**; `flutter analyze` → **No issues found!**; `flutter test` → **687 tests, all passed**. Not run: a device or emulator screenshot of the new sheet/tag, a Firestore round trip on a real project (no device/Firebase project on this machine).
+- **Decision:** Accepted with the scope limits recorded in G-23: experience is a tiebreaker only (never a filter, never part of `recommendationScore`), `null` and `none` are distinct, and listings whose title gives no early-career level (`JobLevel == null`, including senior titles) get no level signal. No `scheduleType` fallback in this scope. `Data / AI` and `DevOps / Cloud` deliberately differ from `JobRole.label` (`Data/AI`, `DevOps/Cloud`) and are recorded as DC-32.
+
+---
+
+### P-81: Unread count badge on the bell; Mark all as read
+- **Request:** (Claude Code, Opus 5.5, 2026-11-08; operator Phạm Nguyễn Hoàng Anh) "sao khi có thông báo icon chuông ở header hông hiện nút đỏ or tag nhỏ số thông báo", then "tôi làm luôn và thêm marked read all btn nữa đi". The Notification Center belongs to Lập's area; the operator chose to build it.
+- **Output:**
+  - `NotificationService.markAllRead(uid, ids)`: one Firestore batch setting `read: true`, at most the 50 shown.
+  - `unreadNotificationCountProvider` (`features/notifications/viewmodels/unread_notifications_provider.dart`): counts unread items from the same history stream as the list. It is user-scoped and 0 when signed out.
+  - `MainTabAppBar.unreadNotifications`: Material `Badge` on the bell (`color/error`, `9+` above nine). The tooltip stays `Notifications`, so existing finders and ARTEMIS cases still match; the count is the button's semantics value. All six tab screens pass the count.
+  - `NotificationCenterViewModel.markAllRead()` plus a `Mark all as read` text button in the app bar, shown only while something is unread. A failure leaves the dots and allows a retry.
+  - Docs: DC-34 and the Notification Center row in `design-traceability.md`; G-04 updated; design-system header note; test-report Run 38.
+- **Verification:** format 0 changed; `flutter analyze` clean; `flutter test` 697 passed (+10). On the emulator (profile build): badge `1` on Home, Saved and Profile; `Mark all as read` cleared the dot, hid itself and removed the badge (test-report Run 38).
+- **Decision:** Accepted; Figma frames still to update (DC-34).
+
+---
+
+### P-82: UI v2 ARTEMIS runs (2026-11-08); TC-13 checks the route in Logcat
+- **Request:** (Claude Code, Opus 5.5, 2026-11-08; operator Phạm Nguyễn Hoàng Anh) "Update TC-13", then "Write the evidence" after the operator recorded the batch. The cases waiting on the CV library are Lập's.
+- **Output:**
+  - `e2e_test/test_notifications.py` TC-13: the instruction waits 3 s after the tap and asks for the bell, not the profile photo. The landing screen is asserted from the app's `screen_view` in Logcat; the agent's reading stays in the report only. `conftest.py` gains `logged_screen_views()`.
+  - `evidence/artemis/e2e-environment-20261108.md` and `runs-20261108.jsonl` (38 runs, lines 99–136 of `runs.jsonl`).
+  - `docs/test-plan.md`: TC-01, 02, 03, 04, 05, 08, 10, 12, 13, 15, 16 Done (3/3, 2026-11-08); §4 rows and causes; TC-13 row.
+  - Seven TC-13 runs moved to `practice-runs.jsonl` with notes; their notifications deleted from the account at the operator's request.
+- **Verification:** every counted run checked against its ARTEMIS step history (TC-08: open from Saved → Back → `Remove from saved`, count 9 → 10 → 9). For TC-13, Logcat showed the route opening about 2 s after each tap. `py_compile` OK.
+- **Decision:** Accepted. The TC-13 failures before the change were the wrong route and the agent's timing, not the app.
+
+---
+
 ## Entry template
 
 ```markdown

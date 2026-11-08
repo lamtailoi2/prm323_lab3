@@ -27,11 +27,13 @@ abstract interface class ApplicationService {
     required String internshipKey,
     required String title,
     required String companyName,
-    required String cvStoragePath,
-    required String cvFileName,
-    required String cvUrl,
-    required int cvSizeBytes,
+    String? cvStoragePath,
+    String? cvFileName,
+    String? cvUrl,
+    int? cvSizeBytes,
     required ApplicationApplicant applicant,
+    String? recipientEmail,
+    required ApplicationChannel appliedVia,
   });
 
   /// Withdraws an application (Flow 3d): keeps the status it had so
@@ -125,11 +127,13 @@ class FirestoreApplicationService implements ApplicationService {
     required String internshipKey,
     required String title,
     required String companyName,
-    required String cvStoragePath,
-    required String cvFileName,
-    required String cvUrl,
-    required int cvSizeBytes,
+    String? cvStoragePath,
+    String? cvFileName,
+    String? cvUrl,
+    int? cvSizeBytes,
     required ApplicationApplicant applicant,
+    String? recipientEmail,
+    required ApplicationChannel appliedVia,
   }) async {
     final uid = _uid;
     if (uid == null || uid.isEmpty) {
@@ -139,27 +143,34 @@ class FirestoreApplicationService implements ApplicationService {
       );
     }
 
+    final recipient = recipientEmail?.trim();
+    final fields = <String, Object?>{
+      // Snapshot of what the list shows: listings expire from the shared
+      // pool (G-25 #5).
+      'title': title,
+      'companyName': companyName,
+      'appliedAt': FieldValue.serverTimestamp(),
+      'status': ApplicationStatus.submitted.storageValue,
+      'appliedVia': appliedVia.storageValue,
+      if (recipient != null && recipient.isNotEmpty)
+        'recipientEmail': recipient,
+      // Only written when a CV was sent, so older-style documents never gain
+      // empty CV keys.
+      'cvStoragePath': ?cvStoragePath,
+      'cvFileName': ?cvFileName,
+      'cvUrl': ?cvUrl,
+      'cvSizeBytes': ?cvSizeBytes,
+      // What the student sent: the profile can change later.
+      'applicant': applicant.toFirestore(),
+    };
+
     try {
       await _firestore
           .collection('users')
           .doc(uid)
           .collection('applications')
           .doc(internshipKey)
-          .set(<String, Object?>{
-            // Snapshot of what the list shows: listings expire from the
-            // shared pool (G-25 #5).
-            'title': title,
-            'companyName': companyName,
-            'appliedAt': FieldValue.serverTimestamp(),
-            'status': ApplicationStatus.submitted.storageValue,
-            'cvStoragePath': cvStoragePath,
-            // The CV can no longer be replaced, so it is stored here too.
-            'cvFileName': cvFileName,
-            'cvUrl': cvUrl,
-            'cvSizeBytes': cvSizeBytes,
-            // What the student sent: the profile can change later.
-            'applicant': applicant.toFirestore(),
-          });
+          .set(fields);
     } on FirebaseException catch (error) {
       throw _toWriteAppException(error, action: 'submit your application');
     } on Exception catch (error) {

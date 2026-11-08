@@ -80,6 +80,23 @@ export function requireText(value, maxLength) {
   return { value: text };
 }
 
+/// The data-only FCM payload that asks an app to run the Crashlytics test
+/// crash. It carries no `notification`, so the system never shows a banner;
+/// the app recognises `type` and crashes before writing notification history.
+export const TEST_CRASH_TYPE = 'test_crash';
+
+export function buildTestCrashData({ target = 'uid', requestedAt } = {}) {
+  return {
+    type: TEST_CRASH_TYPE,
+    source: 'admin_dashboard',
+    target: target === 'all' ? 'all' : 'uid',
+    requestedAt:
+      typeof requestedAt === 'string'
+        ? requestedAt
+        : new Date().toISOString(),
+  };
+}
+
 /// Converts a multicast/single send result into a small per-recipient summary.
 export function summariseSend(responses) {
   return responses.map((entry) =>
@@ -87,6 +104,13 @@ export function summariseSend(responses) {
       ? { ok: true, messageId: entry.messageId }
       : { ok: false, error: entry.error?.code ?? 'unknown' },
   );
+}
+
+/// A recipient target for the send and crash endpoints. `all` means every
+/// user document with an FCM token; `uid` means one user. The caller maps the
+/// result to an HTTP status.
+export function normaliseTarget(value) {
+  return value === 'all' ? 'all' : 'uid';
 }
 
 /// Firebase Admin returns the full resource name for a sent message

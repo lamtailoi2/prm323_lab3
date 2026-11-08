@@ -1,6 +1,6 @@
 # Internship Finder — Screen Specifications
 
-> **Lab 3 revision (2026-10-21, DC-08 / DC-09).** Flows are now Flow 1 Search → Flow 2 Apply (with the Save sub-flow 2e and the new CV Match Check, 2d) → Flow 3 Track. The CV Match Check screen is new and still needs a Figma frame (handoff-gaps G-24). This copy no longer matches Lab 2 commit `03f4aa3`.
+> **Lab 3 revision (2026-10-21, DC-08 / DC-09).** Flows are now Flow 1 Search → Flow 2 Apply (with the Save sub-flow 2e) → Flow 3 Track. **Update 2026-11-03 (DC-27):** Apply continues with the generic **Validate CV** gate and **Confirm Application**, then finishes on the employer's website and returns to My Applications; the proposed CV Match Check / Application Review / Application Success screens are no longer part of the flow. This copy no longer matches Lab 2 commit `03f4aa3`.
 
 This document defines the UX purpose, content, actions, related flows, states, and design intent for each Internship Finder screen. It follows `DESIGN.md` as the source of truth for navigation, component naming, colors, typography, spacing, CTA hierarchy, and consistency rules.
 
@@ -233,7 +233,7 @@ Application Form collects the information needed to apply for an internship and 
 
 ### Primary Action
 
-Continue to the CV Match Check.
+Continue to Validate CV.
 
 ### Secondary Actions
 
@@ -255,122 +255,91 @@ Continue to the CV Match Check.
 
 The form should prevent errors before submission by using clear labels, helper text, and validation messages near the field that caused the issue. CV errors should be specific and recoverable, with an obvious action such as `Upload CV` or `Replace CV`. The CTA should remain clear, but disabled or blocked states must explain what is missing. The screen should keep the process short and avoid making students rewrite information already stored in Profile.
 
-## CV Match Check
+## Validate CV
 
-*New in Lab 3 (DC-09). Needs a Figma frame (G-24); reuse existing components (Match Card, Skill Tag, Bullet Item, Info Banner, Button).*
+*Lab 3 (G-24, DC-19, DC-27). Replaces the proposed CV Match Check: a generic "is this a usable CV?" gate that can block submission. No Figma frame yet; reuse the shared Loading / Empty / Error / Button components and the Apply Form header.*
 
 ### Purpose
 
-CV Match Check shows the student, before review, which requirements of the internship their CV and profile already cover and which they do not show yet, with a concrete suggestion for each gap. It helps students submit a stronger application without slowing them down.
+Validate CV checks that the selected PDF is readable and looks like a CV before the student confirms the application, so an unusable file never reaches the employer. The check runs automatically when the screen opens and continues to Confirm Application when the CV passes.
 
 ### Main Content
 
-- Internship summary with job title and company.
-- Match summary such as `3 of 4 requirements matched`.
-- Matched requirements, each with a check icon and label.
-- Unmatched requirements, each with a label (not color alone) and one plain-language suggestion, e.g. `Add REST API to your skills if you have used it`.
-- "Nice to have" items shown as optional, not as gaps.
-- Note that the check is a guide and does not block applying.
+- Apply flow header (`Step 2 of 3 · CV check`).
+- Internship summary (title, company, work mode / location).
+- Checking state (`Checking your CV…`).
+- Valid state (`Your CV looks good`).
+- Invalid state: `We could not use this CV` with the model's short reason.
+- Failed state: `We could not check your CV` with the service message.
+- Transparency line: `For this check, text from your CV is sent to our server.`
 
 ### Primary Action
 
-Continue to Application Review (`Continue to review`).
+A valid CV continues automatically to Confirm Application; no extra button.
 
 ### Secondary Actions
 
-- Edit skills (Profile or the form's skills section), then re-check.
-- Replace CV (Replace CV sheet), then re-check.
-- Add to the short introduction (back to Application Form).
-- Retry the check if it failed.
+- `Update CV`: back to the Apply Form, where the CV section replaces or uploads a file; the next `Continue to review` runs the check again.
+- `Retry` after a failed check or an invalid result.
+- `Cancel`: back to Internship Detail.
 
 ### Related Flows
 
-- Flow 2: Apply Internship (2d CV match gaps).
+- Flow 2: Apply Internship (2f CV invalid / check failed; 2h cancel).
 
 ### States
 
 - Checking (loading).
-- All matched.
-- Gaps found, with suggestions.
-- Check failed: error message + `Retry`, and `Continue to review` without the check.
+- Valid (auto-continue).
+- Invalid, with the reason.
+- Check failed: message + `Retry` (never reported as an invalid CV).
 
 ### Design Intent
 
-The screen should feel like a helpful checklist, not a gate. Lead with the summary, then the gaps, because they are the part the student can act on. Suggestions must be honest: never encourage claiming skills or experience the student does not have. `Continue to review` stays visible and dominant so the persona can still apply in under 2 minutes. Status of each requirement uses a label and an icon, never color alone.
+The gate should be quick and honest. A rejected CV must be recoverable in one tap (`Update CV`), and a network failure must not accuse the student's CV. The step says where the text goes; no CV content is shown back in the UI.
 
-## Application Review
+## Confirm Application
+
+*Lab 3 (G-25 #6, DC-27). Replaces the proposed Application Review and Application Success: Internly cannot submit to the employer, so the student finishes on the employer's website and returns to record the application.*
 
 ### Purpose
 
-Application Review gives students a final chance to confirm their information before submitting, reducing accidental or incomplete applications.
+Confirm Application lets the student review the listing and the chosen CV, opens the employer's own application page, and records the application in My Applications once the student confirms they submitted it.
 
 ### Main Content
 
-- Internship summary.
-- Applicant information summary.
-- Skills or experience summary.
-- CV / Resume file name or status.
-- Optional cover message preview.
-- Submission reminder or confirmation text.
+- Apply flow header (`Step 3 of 3 · Confirm`).
+- Internship summary card.
+- CV / Resume card with `Preview`.
+- Application website card: `You will finish this application on <company>'s website. Internly keeps it in My Applications so you can track it.`
+- After the redirect: `Finish your application on <company>'s website, then come back here.`; after the app resumes: `Welcome back. Confirm once you have submitted your application…`.
+- Without an employer link: `This listing does not share an employer application link. You can still record it in My Applications.`
+- Redirect or write failure: the service message in an error card.
 
 ### Primary Action
 
-Submit the application.
+- `Continue to employer website` (ready).
+- `I've submitted my application` (after the website opened).
+- `Mark as applied` when the listing has no employer link.
+- `Try again` / `Retry` after a failure.
 
 ### Secondary Actions
 
-- Edit application details.
-- Replace CV.
-- Go back to Application Form.
+- `Open the website again`.
+- `Open listing on Google Jobs` when only `share_link` exists.
+- `Cancel`: back to Internship Detail; nothing is recorded.
 
 ### Related Flows
 
-- Flow 2: Apply Internship.
+- Flow 2: Apply Internship (2g redirect failed, 2h cancel, 2i no employer link; end).
 
 ### States
 
-- Populated.
-- Validation error.
-- Loading.
+- Ready, opening the website, waiting for the return, returned, saving, redirect failed, save failed.
 
 ### Design Intent
 
-Review should be calm and structured. Information should be grouped into readable sections so students can verify content quickly. The primary submit action should be visually dominant, while edit actions should be available but secondary. Validation errors should clearly identify what must be fixed before submission. This screen reduces anxiety by making the final submission predictable.
-
-## Application Success
-
-### Purpose
-
-Application Success confirms that the internship application was submitted and guides students to the next useful step.
-
-### Main Content
-
-- Success icon or simple illustration.
-- Clear success message.
-- Internship title and company.
-- Submitted date or short confirmation detail.
-- Next-step explanation.
-
-### Primary Action
-
-View the submitted application.
-
-### Secondary Actions
-
-- Return to Home.
-- Continue searching internships.
-
-### Related Flows
-
-- Flow 2: Apply Internship (end).
-
-### States
-
-- Success.
-
-### Design Intent
-
-This screen should provide reassurance and closure. The success message must be clear and not overly decorative. The next action should direct students toward tracking their application, supporting the connection between applying and My Applications. The layout should avoid adding unrelated choices immediately after submission.
+The student must never see a fake `Submitted` record: the document is written only after they say they applied. The screen keeps the employer's website and My Applications clearly connected, and a missing link still leaves a usable path instead of a dead end.
 
 ## My Applications
 
@@ -441,7 +410,7 @@ View and understand the current application status.
 ### Related Flows
 
 - Flow 3: Track Application (end).
-- Flow 2: Apply Internship (optional next step via `View application` from Application Success, or from Internship Detail when already applied, Flow 2c).
+- Flow 2: Apply Internship (optional next step via `View application` from Confirm Application, or from Internship Detail when already applied, Flow 2c).
 
 ### States
 
@@ -483,7 +452,7 @@ Edit or complete profile information needed for internship applications.
 
 ### Related Flows
 
-- Flow 2: Apply Internship (alternative path via `Edit profile`, and `Edit skills` from the CV Match Check, Flow 2d).
+- Flow 2: Apply Internship (alternative path via `Edit profile` from the Application Form).
 
 ### States
 
@@ -508,12 +477,12 @@ Flow numbers follow `user-flow.md` (Lab 3 revision): Flow 1 = Search Internship,
 | Internship Detail | Yes (end) | Yes (start), 2c, 2e | No | Decision screen: apply now or save for later; once applied, `View application` replaces `Apply now`. |
 | Saved Internships | No | 2e (sub-flow) | No | Saved internships lead back to `Apply now`. |
 | Application Form | No | Yes | No | Collects and validates application information, including CV upload. |
-| CV Match Check | No | Yes (2d) | No | New in Lab 3: unmatched requirements and suggestions; never blocks. |
-| Application Review | No | Yes | No | Confirms application details before submission. |
-| Application Success | No | Yes (end) | No | Confirms submission; `View application` routes to Application Detail. |
+| Validate CV | No | Yes (2f) | No | Generic LLM gate: a usable CV is required before Confirm Application. |
+| Confirm Application | No | Yes (2g–2i) | No | Reviews the listing and CV, opens the employer's website, records the application after the student confirms. |
+| Employer website *(external)* | No | Yes (end) | No | The student finishes the application outside Internly, then returns. |
 | My Applications | No | No | Yes (start) | Main status tracking screen. |
 | Application Detail | No | Optional (`View application`, 2c) | Yes (end) | Shows detailed application status and optional withdrawal. |
-| Profile | No | Alternative (`Edit profile`, 2d `Edit skills`) | No | Supports application readiness through CV, skills, and preferences. |
+| Profile | No | Alternative (`Edit profile`) | No | Supports application readiness through CV, skills, and preferences. |
 
 # Global Screen Rules
 

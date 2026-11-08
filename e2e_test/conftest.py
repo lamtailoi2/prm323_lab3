@@ -191,14 +191,22 @@ def logged_analytics_events() -> list[str]:
     return re.findall(r"Logging event: origin=app,name=([a-z0-9_]+)", dump)
 
 
-# ---- Device setup for the Apply Form cases (Flow 1 pre-submit) ------------
+def logged_screen_views() -> list[str]:
+    """Analytics screen names the app logged, in order, since the last
+    `enable_analytics_debug()` (one per route the app actually showed)."""
+    dump = _adb("logcat", "-d", "-s", "FA", "FA-SVC")
+    return re.findall(r"Logging screen view with name, class: ([a-z0-9_]+)", dump)
+
+
+# ---- Sample CV on the device ------------------------------------------------
 
 SAMPLE_CV_NAME = "Sample_CV.pdf"
 
 # Fictional details only. The structure (contact, education, skills,
 # projects) is what the `validateCv` Gemini rubric accepts as a CV, and the
-# text is well over its 50-character minimum, so a case that continues past
-# the Apply Form reaches Review instead of "We could not use this CV".
+# text is well over its 50-character minimum, so `Validate CV` accepts it.
+# Unused since the Apply Form was removed (DC-31); kept for the CV library
+# cases that will pick a file from the device.
 SAMPLE_CV_LINES = [
     "Test Student - Software Engineering Intern",
     "Email: test.student@example.com | Phone: 0900 000 000 | Ho Chi Minh City",
@@ -272,28 +280,6 @@ def push_sample_cv() -> None:
     )
 
 
-# Instruction parts shared by the cases that go through the Apply Form.
-
-# Fills only what the test account's Profile left empty, so `Continue to
-# review` is decided by the CV alone.
-FILL_PERSONAL = (
-    "In 'Personal information' fill only the fields that are empty: "
-    "'Full name' type 'Test Student', 'Phone number' type '0908123456', "
-    "'University' tap it and choose 'FPT University', 'Year of study' tap it "
-    "and choose 'Year 3'."
-)
-
-# Needs `push_sample_cv()` first. The fictional CV passes Validate CV, and the
-# account's own CV is never sent to the `validateCv` function.
-UPLOAD_SAMPLE_CV = (
-    "In the 'CV / Resume' section tap 'Replace' (or 'Upload CV' if there is "
-    "no file). In the sheet tap 'Choose file'. In the Android file picker "
-    f"choose '{SAMPLE_CV_NAME}' (open Downloads if it is not listed). Back in "
-    "the sheet tap the blue 'Update CV' (or 'Upload CV') button and wait "
-    "until the sheet closes."
-)
-
-
 def set_network(enabled: bool) -> None:
     """Turns Wi-Fi and mobile data on or off (emulator / test device only)."""
     state = "enable" if enabled else "disable"
@@ -308,7 +294,10 @@ NOTIFICATION_PERMISSION = "android.permission.POST_NOTIFICATIONS"
 
 def reset_notification_permission() -> None:
     """Puts the notification permission back to "never asked", as after a
-    fresh install, and relaunches the app: it asks again once signed in."""
+    fresh install, and leaves the app stopped. The case's own "Open the
+    Internly app" then starts it once and it asks once signed in: a launch
+    here as well made ARTEMIS reopen the app over the system dialog, which
+    closed it (TC-15, 2026-11-06)."""
     _adb("shell", "am", "force-stop", APP_PACKAGE)
     _adb("shell", "pm", "revoke", APP_PACKAGE, NOTIFICATION_PERMISSION)
     _adb(
@@ -320,7 +309,6 @@ def reset_notification_permission() -> None:
         "user-set",
         "user-fixed",
     )
-    _adb("shell", "am", "start", "-W", "-n", f"{APP_PACKAGE}/.MainActivity")
 
 
 def grant_notification_permission() -> None:

@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../app/router.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/widgets/app_dialog.dart';
 import '../../../core/widgets/app_sheet.dart';
-import '../../../core/widgets/app_top_bar.dart';
+import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/user_profile.dart';
 import '../../../services/crashlytics_service.dart';
-import '../../../services/notification_service.dart';
 import '../../../theme/app_spacing.dart';
 import '../../auth/viewmodels/sign_out_viewmodel.dart';
 import '../viewmodels/cv_library_viewmodel.dart';
+import '../../notifications/viewmodels/unread_notifications_provider.dart';
 import '../viewmodels/open_cv_viewmodel.dart';
 import '../viewmodels/profile_viewmodel.dart';
 import '../widgets/add_cv_sheet.dart';
@@ -102,15 +100,12 @@ class ProfileScreen extends ConsumerWidget {
     };
 
     return Scaffold(
-      appBar: AppTopBar.main(
+      // Bell only, no avatar: this tab is the profile (DC-15, DC-31).
+      appBar: MainTabAppBar(
         title: 'Profile',
-        actions: [
-          IconButton(
-            tooltip: 'Notifications',
-            icon: const Icon(Symbols.notifications_rounded),
-            onPressed: () => context.push(AppRoutes.notificationCenter),
-          ),
-        ],
+        onNotifications: () => context.push(AppRoutes.notificationCenter),
+        unreadNotifications:
+            ref.watch(unreadNotificationCountProvider).value ?? 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
@@ -118,8 +113,8 @@ class ProfileScreen extends ConsumerWidget {
           ...content,
           const SizedBox(height: AppSpacing.section),
           DiagnosticsSection(
+            onOpenFirebaseDemo: () => context.push(AppRoutes.firebaseDemo),
             onTestCrash: () => _confirmTestCrash(context, ref),
-            onCopyFcmToken: () => _copyFcmToken(context, ref),
           ),
           const SizedBox(height: AppSpacing.section),
           SettingsSection(
@@ -202,32 +197,6 @@ class ProfileScreen extends ConsumerWidget {
     );
     if (confirmed != true) return;
     ref.read(crashlyticsServiceProvider).crashForTesting();
-  }
-
-  /// Copies this device's FCM token, the target of a Firebase Console test
-  /// message (docs/guides/firebase-setup.md §9).
-  static Future<void> _copyFcmToken(BuildContext context, WidgetRef ref) async {
-    final token = await ref.read(notificationServiceProvider).token();
-    if (!context.mounted) return;
-    if (token == null || token.trim().isEmpty) {
-      _showMessage(
-        context,
-        'No FCM token yet. Use a device with Google Play services and try '
-        'again.',
-      );
-      return;
-    }
-    try {
-      await Clipboard.setData(ClipboardData(text: token));
-    } catch (error) {
-      debugPrint('Could not copy the FCM token: $error');
-      if (context.mounted) {
-        _showMessage(context, 'Could not copy the FCM token. Try again.');
-      }
-      return;
-    }
-    if (!context.mounted) return;
-    _showMessage(context, 'FCM token copied.');
   }
 
   static void _showMessage(BuildContext context, String message) {

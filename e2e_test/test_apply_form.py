@@ -1,94 +1,66 @@
-"""Flow 1 pre-submit (Apply Form): TC-18 Check CV → Continue → Validate CV,
-TC-19 upload a CV through the Android document picker, TC-20 upload failed
-while offline."""
+"""Flow 2 (Compose application): TC-18 the email draft, TC-19 editing the
+recipient and the letter.
 
-import pytest
+TC-20 (a CV upload that fails offline) is gone with the form: the compose
+screen has no upload, and a failed draft is covered by the
+`ApplyComposeViewModel` unit tests instead.
+"""
+
 from conftest import (
-    FILL_PERSONAL,
-    SAMPLE_CV_NAME,
     SIGNED_IN,
-    UPLOAD_SAMPLE_CV,
     enable_analytics_debug,
     logged_analytics_events,
-    push_sample_cv,
     run_case,
-    set_network,
 )
 
-OPEN_APPLY_FORM = (
+OPEN_COMPOSE = (
     "Tap 'Search' in the bottom navigation, type 'Intern' in the search field "
-    "and tap 'Find Internships'. Tap the first internship card, then tap "
-    "'Apply now' at the bottom."
+    "and tap 'Find Internships'. Tap the first internship card that has no "
+    "'Applied' badge (an applied listing shows 'View application' instead), "
+    "then tap 'Apply now' at the bottom."
 )
 
-NO_CV = "Add a CV to continue. Companies need it to review your application."
 
-
-async def test_tc18_apply_form_checks_the_cv_before_continue(artemis):
+async def test_tc18_compose_screen_drafts_the_email(artemis):
     enable_analytics_debug()
     report = await run_case(
         artemis,
         "TC-18",
-        f"{SIGNED_IN} {OPEN_APPLY_FORM} On the Apply Form report the top app "
-        "bar title, the step text under it, and whether the 'CV / Resume' "
-        "section shows a CV file (with 'Preview' and 'Replace') or an "
-        f"'Upload CV' button. {FILL_PERSONAL} Then tap 'Continue to review' "
-        "at the bottom and do not tap anything after that. Report the top app "
-        "bar title of the screen you are now on and, if it is still the Apply "
-        "Form, the red message in the 'CV / Resume' section.",
+        f"{SIGNED_IN} {OPEN_COMPOSE} The next screen's app bar reads 'Apply by "
+        "email'. Wait until the 'Subject' field contains text (up to 60 "
+        "seconds). Then read the value in the 'To' field, the text in "
+        "'Subject', the first two lines in 'Cover letter', the notice above "
+        "the 'To' field, and whether the buttons 'Open email app' and \"I've "
+        "sent it\" are visible.",
         expected_output=(
-            'JSON: {"app_bar_title": string, "step_text": string, '
-            '"cv_state": "file" | "upload_button", '
-            '"next_app_bar_title": string, "cv_error": string | null}'
+            'JSON: {"app_bar_title": string, "to_value": string, '
+            '"subject": string, "letter_excerpt": string, '
+            '"draft_notice": string, "open_email_visible": boolean, '
+            '"sent_visible": boolean}'
         ),
     )
-    assert report["app_bar_title"] == "Apply Form"
-    assert report["step_text"].startswith("Step 1 of 2")
-    assert "Your details" in report["step_text"]
-    if report["cv_state"] == "file":
-        # Pre-submit Complete: the form hands the CV to Validate CV (Flow 4).
-        assert report["next_app_bar_title"] == "Validate CV"
-    else:
-        assert report["next_app_bar_title"] == "Apply Form"
-        assert report["cv_error"] == NO_CV
+    assert report["app_bar_title"] == "Apply by email"
+    assert report["open_email_visible"] is True
+    assert report["sent_visible"] is True
+    assert report["subject"].strip()
+    assert report["letter_excerpt"].strip()
+    # The draft came from the model, or the deterministic template when the
+    # model was unavailable; either way the screen says which.
+    notice = report["draft_notice"].lower()
+    assert "drafted from the job description" in notice or "template" in notice
     assert "apply_start" in logged_analytics_events()
 
 
-@pytest.mark.native
-async def test_tc19_upload_a_cv_for_this_internship(artemis):
-    push_sample_cv()
+async def test_tc19_recipient_and_letter_are_editable(artemis):
     report = await run_case(
         artemis,
         "TC-19",
-        f"{SIGNED_IN} {OPEN_APPLY_FORM} {UPLOAD_SAMPLE_CV} Report the file "
-        "name and the line under it in the 'CV / Resume' section.",
-        expected_output=(
-            'JSON: {"cv_file_name": string, "cv_source_line": string}'
-        ),
+        f"{SIGNED_IN} {OPEN_COMPOSE} On 'Apply by email', tap the 'To' field, "
+        "clear it and type 'hr@example.com'. Then tap the 'Cover letter' "
+        "field, move the cursor to the end and type ' Test line.'. Read the "
+        "final 'To' value and the character count shown under the cover "
+        "letter.",
+        expected_output='JSON: {"to_value": string, "character_count": integer}',
     )
-    assert report["cv_file_name"].lower().endswith(".pdf")
-    assert report["cv_source_line"] == "Uploaded for this internship"
-
-
-@pytest.mark.native
-@pytest.mark.error_path
-async def test_tc20_upload_offline_shows_the_error(artemis):
-    push_sample_cv()
-    set_network(False)
-    try:
-        report = await run_case(
-            artemis,
-            "TC-20",
-            f"{SIGNED_IN} The device is offline. {OPEN_APPLY_FORM} In the "
-            "'CV / Resume' section tap 'Replace' (or 'Upload CV'), tap "
-            f"'Choose file' and choose '{SAMPLE_CV_NAME}' in the Android file "
-            "picker. Tap the blue 'Update CV' (or 'Upload CV') button and "
-            "wait up to 60 seconds for an error message above that button. "
-            "Report the error message.",
-            expected_output='JSON: {"error_message": string}',
-        )
-    finally:
-        set_network(True)
-    assert report["error_message"] == (
-        "We could not upload the file. Check your connection and try again."
-    )
+    assert report["to_value"] == "hr@example.com"
+    assert report["character_count"] > 0

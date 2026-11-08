@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:internly/core/utils/job_level.dart';
 import 'package:internly/core/utils/job_role.dart';
 import 'package:internly/core/utils/recommendation.dart';
+import 'package:internly/models/user_profile.dart' show ExperienceRange;
 
 void main() {
   int score(
@@ -51,5 +53,49 @@ void main() {
       4,
     );
     expect(score(JobRole.frontend, listingSkills: ['React']), 0);
+  });
+
+  test('a level matches only the bands the experience covers', () {
+    expect(
+      matchesWantedLevel(JobLevel.intern, ExperienceRange.none.levels),
+      isTrue,
+    );
+    expect(
+      matchesWantedLevel(JobLevel.intern, ExperienceRange.underOne.levels),
+      isTrue,
+    );
+    expect(
+      matchesWantedLevel(JobLevel.fresher, ExperienceRange.underOne.levels),
+      isTrue,
+    );
+    expect(
+      matchesWantedLevel(JobLevel.junior, ExperienceRange.oneToTwo.levels),
+      isTrue,
+    );
+    expect(
+      matchesWantedLevel(JobLevel.junior, ExperienceRange.twoPlus.levels),
+      isTrue,
+    );
+    expect(
+      matchesWantedLevel(JobLevel.intern, ExperienceRange.oneToTwo.levels),
+      isFalse,
+    );
+    expect(
+      matchesWantedLevel(JobLevel.junior, ExperienceRange.underOne.levels),
+      isFalse,
+    );
+    expect(matchesWantedLevel(null, ExperienceRange.none.levels), isFalse);
+  });
+
+  test('experience never changes the role + skill score', () {
+    expect(
+      score(
+        JobRole.frontend,
+        listingSkills: ['React'],
+        wanted: {JobRole.frontend},
+        mine: {'React'},
+      ),
+      exactRoleScore + 1,
+    );
   });
 }

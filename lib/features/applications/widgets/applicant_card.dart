@@ -63,6 +63,9 @@ class ApplicantCard extends StatelessWidget {
           DetailRow(label: 'University email', value: email),
         if (phone != null && phone.isNotEmpty)
           DetailRow(label: 'Phone number', value: phone),
+        if (application.recipientEmail case final recipient?
+            when recipient.trim().isNotEmpty)
+          DetailRow(label: 'Sent to', value: recipient),
         if (matched.isNotEmpty) ...[
           Semantics(
             header: true,
@@ -76,6 +79,14 @@ class ApplicantCard extends StatelessWidget {
             runSpacing: AppSpacing.s8,
             children: [for (final skill in matched) AppTag(label: skill)],
           ),
+        ],
+        if (applicant.introduction case final letter?
+            when letter.trim().isNotEmpty) ...[
+          Semantics(
+            header: true,
+            child: Text('Cover letter', style: textTheme.labelLarge),
+          ),
+          Text(letter, style: textTheme.bodyMedium),
         ],
       ],
     );

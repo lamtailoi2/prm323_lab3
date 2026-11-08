@@ -10,11 +10,10 @@ import '../../../core/state/view_state.dart';
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/distinct_listings.dart';
 import '../../../core/widgets/app_search_field.dart';
-import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/internship_card.dart';
+import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/state_view.dart';
-import '../../../models/app_user.dart';
 import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_colors.dart';
@@ -22,6 +21,7 @@ import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import '../../applications/viewmodels/applied_providers.dart';
+import '../../notifications/viewmodels/unread_notifications_provider.dart';
 import '../../saved/viewmodels/saved_providers.dart';
 import '../../saved/viewmodels/saved_viewmodel.dart';
 import '../models/search_filter_criteria.dart';
@@ -133,19 +133,14 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
         ref.watch(appliedJobsProvider).asData?.value ?? const <String>{};
 
     return Scaffold(
-      appBar: AppTopBar.main(
+      // Results stay in the Search tab, so they keep its header (DC-31).
+      appBar: MainTabAppBar(
         title: 'Search',
-        actions: [
-          IconButton(
-            tooltip: 'Notifications',
-            icon: const Icon(Symbols.notifications_rounded),
-            onPressed: () => context.push(AppRoutes.notificationCenter),
-          ),
-          _ProfileAction(
-            user: user,
-            onPressed: () => context.go(AppRoutes.profile),
-          ),
-        ],
+        user: user,
+        onProfile: () => context.go(AppRoutes.profile),
+        onNotifications: () => context.push(AppRoutes.notificationCenter),
+        unreadNotifications:
+            ref.watch(unreadNotificationCountProvider).value ?? 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -266,6 +261,26 @@ class _ActiveFiltersRow extends StatelessWidget {
               key: const ValueKey('filter_location'),
               label: location,
               onDeleted: viewModel.clearLocation,
+            ),
+            const SizedBox(width: AppSpacing.s8),
+          ],
+          // Every filter the Filters badge counts has a chip, so the
+          // student sees why the list is shorter and can remove it here.
+          if (state.criteria.jobType case final jobType?
+              when jobType != 'Any job type') ...[
+            _ActiveFilterChip(
+              key: const ValueKey('filter_job_type'),
+              label: jobType,
+              onDeleted: viewModel.clearJobType,
+            ),
+            const SizedBox(width: AppSpacing.s8),
+          ],
+          if (state.criteria.allowanceRange case final allowance?
+              when allowance != 'Any allowance') ...[
+            _ActiveFilterChip(
+              key: const ValueKey('filter_allowance'),
+              label: allowance,
+              onDeleted: viewModel.clearAllowanceRange,
             ),
             const SizedBox(width: AppSpacing.s8),
           ],
@@ -542,45 +557,6 @@ class _LoadingView extends StatelessWidget {
         SizedBox(height: AppSpacing.betweenCards),
         InternshipCardSkeleton(),
       ],
-    );
-  }
-}
-
-class _ProfileAction extends StatelessWidget {
-  const _ProfileAction({required this.user, required this.onPressed});
-
-  final AppUser? user;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final photoUrl = user?.photoUrl;
-    return IconButton(
-      tooltip: 'Profile',
-      onPressed: onPressed,
-      icon: ClipOval(
-        child: SizedBox.square(
-          dimension: AppSizes.profileAvatar,
-          child: ColoredBox(
-            color: AppColors.primaryContainer,
-            child: photoUrl == null
-                ? const Icon(
-                    Symbols.person_rounded,
-                    size: AppSizes.iconSmall,
-                    color: AppColors.primary,
-                  )
-                : Image.network(
-                    photoUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const Icon(
-                      Symbols.person_rounded,
-                      size: AppSizes.iconSmall,
-                      color: AppColors.primary,
-                    ),
-                  ),
-          ),
-        ),
-      ),
     );
   }
 }

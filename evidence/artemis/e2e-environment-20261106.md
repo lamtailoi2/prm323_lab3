@@ -1,6 +1,6 @@
-# ARTEMIS runs — 2026-11-06 (TC-01, TC-02, TC-07 – TC-10, TC-14, TC-16, TC-17)
+# ARTEMIS runs — 2026-11-06 (TC-01 – TC-05, TC-07 – TC-10, TC-14 – TC-20)
 
-Status: **TC-01, TC-02, TC-07, TC-09, TC-14, TC-16 and TC-17 each passed 3 of 3** on the final setup. **TC-08 passed 0 of 3 and TC-10 failed its exploratory run**: both expectations were wrong, and both cases were rewritten in `f9b5f43` but not run again yet (see [Flow 2 and Flow 3](#flow-2-and-flow-3-0804--0830)).
+Status: **TC-01, TC-02, TC-07, TC-09, TC-14, TC-16 and TC-17 each passed 3 of 3** on the final setup. **Flow 1 (TC-03, TC-04, TC-05, TC-18, TC-19, TC-20) passed 3 of 3 each** from 10:30, after one app fix and two case fixes (see [Flow 1](#flow-1-1030--1229)). **TC-08 passed 0 of 3 and TC-10 failed its exploratory run**: both expectations were wrong, and both cases were rewritten in `f9b5f43` but not run again yet (see [Flow 2 and Flow 3](#flow-2-and-flow-3-0804--0830)).
 
 - TC-02, TC-16, TC-17 ran 07:12–07:24 +07 on `gemini-3.1-flash-lite`.
 - TC-14 and TC-01 ran 07:35–07:47 on `gemini-3.5-flash-lite`, because 3.1 had used up its daily quota.
@@ -143,3 +143,144 @@ Rewritten in `f9b5f43`:
 Model use for this block was about 250 calls (13 runs).
 
 Replays and step screenshots of every trace are on the ARTEMIS host in `~/artemis/traces/`. They are not committed because they show the signed-in account.
+
+## Flow 1 (10:30 – 12:29)
+
+Runs 35–65 in [`runs-20261106.jsonl`](runs-20261106.jsonl). Runs and records were done with Claude Code (P-70).
+
+### Environment
+
+| Item | Value |
+|---|---|
+| App | Profile build of `dev` `b08b47f` (PR #27: Search empty query and the field after Search Results), installed about 10:04. From 12:12, a profile build of `fix/filter-chips-and-skills-sheet` (P-70: `Job type` / allowance chips, Edit skills waits for the profile). |
+| Suite | `test/e2e-flow1` at `b08b47f`, plus the TC-18 / TC-19 / `UPLOAD_SAMPLE_CV` wording changes below (uncommitted during the runs) |
+| Device | `emulator-5554`, Android API 36; notification permission granted with `adb` before the runs |
+| API key | A free-tier key from another team member's own AI Studio project (no billing), shared privately with their consent and kept only in `~/artemis/.env`. The owner's key had used its 3.1 quota for the day. |
+| Model | 10:30–11:12 `gemini-3.5-flash-lite` (fallback 3.1). That key's 3.5 quota (500 per day) ran out at 11:12; from 11:17 the host config was switched back to the team patch: primary `gemini-3.1-flash-lite`, fallback 3.5. |
+
+The 31 runs used 735 model calls (9–43 per run). The Apply Form cases cost the most: 22–43 calls, against 9–22 for Search and Detail.
+
+### Runs
+
+| # | Start (+07) | Test | Trace | pytest | Time (s) | Model calls | Build / model | Note |
+|---|---|---|---|---|---|---|---|---|
+| 35 | 10:31 | TC-03 | `9cb45bff` | **failed** | 104.1 | 20 | dev `b08b47f` / 3.5 | app bug: no `Job type` chip → `'Internship' in ['Intern']` |
+| 36 | 10:33 | TC-03 | `a039c385` | **failed** | 51.6 | 17 | dev `b08b47f` / 3.5 | same |
+| 37 | 10:34 | TC-03 | `bab18c1a` | **failed** | 59.8 | 15 | dev `b08b47f` / 3.5 | same |
+| 38 | 10:35 | TC-04 | `c90faf15` | passed | 45.4 | 11 | dev `b08b47f` / 3.5 |  |
+| 39 | 10:36 | TC-04 | `a824cd6a` | passed | 37.4 | 9 | dev `b08b47f` / 3.5 |  |
+| 40 | 10:37 | TC-04 | `63631ad3` | passed | 57.5 | 11 | dev `b08b47f` / 3.5 |  |
+| 41 | 10:39 | TC-05 | `108cf8ac` | passed | 44.4 | 13 | dev `b08b47f` / 3.5 |  |
+| 42 | 10:40 | TC-05 | `e0ada1d5` | passed | 56.6 | 13 | dev `b08b47f` / 3.5 |  |
+| 43 | 10:41 | TC-05 | `1ab4c069` | passed | 49.4 | 13 | dev `b08b47f` / 3.5 |  |
+| 44 | 10:43 | TC-18 | `51b07205` | **failed** | 114.3 | 26 | dev `b08b47f` / 3.5 | wrong expectation: next screen `CV match` |
+| 45 | 10:45 | TC-18 | `25aa5d78` | **failed** | 109.9 | 26 | dev `b08b47f` / 3.5 | same |
+| 46 | 10:47 | TC-18 | `1b4ba996` | **failed** | 107.9 | 28 | dev `b08b47f` / 3.5 | same |
+| 47 | 10:49 | TC-19 | `ec0bf776` | **failed** | 136.2 | 30 | dev `b08b47f` / 3.5 | ambiguous: reported the size line `2 KB · PDF` |
+| 48 | 10:52 | TC-19 | `964deb59` | **failed** | 160.5 | 33 | dev `b08b47f` / 3.5 | same |
+| 49 | 10:55 | TC-19 | `eeb2d83d` | **failed** | 171.3 | 43 | dev `b08b47f` / 3.5 | same |
+| 50 | 10:58 | TC-20 | `774a3906` | passed | 152.1 | 33 | dev `b08b47f` / 3.5 |  |
+| 51 | 11:00 | TC-20 | `32d3c95c` | passed | 158.6 | 35 | dev `b08b47f` / 3.5 |  |
+| 52 | 11:03 | TC-20 | `69f090e2` | passed | 103.1 | 31 | dev `b08b47f` / 3.5 |  |
+| 53 | 11:06 | TC-18 | `92169173` | passed | 103.7 | 31 | dev `b08b47f` / 3.5 | rewritten case |
+| 54 | 11:08 | TC-18 | `5a13af8f` | passed | 131.0 | 30 | dev `b08b47f` / 3.5 | rewritten case |
+| 55 | 11:10 | TC-18 | `655227ed` | passed | 89.8 | 22 | dev `b08b47f` / 3.5 | rewritten case |
+| 56 | 11:12 | TC-19 | `683d1708` | **failed** | 223.3 | 9 | dev `b08b47f` / 3.5 | environment: 3.5 daily quota (500) used at 11:12, LLM call timed out after 180 s |
+| 57 | 11:18 | TC-19 | `ba904dd4` | **failed** | 63.6 | 15 | dev `b08b47f` / 3.1 | ambiguous: reported the Profile CV without uploading |
+| 58 | 11:20 | TC-19 | `a75cd4e1` | passed | 171.9 | 43 | dev `b08b47f` / 3.1 | second wording, not counted |
+| 59 | 11:23 | TC-19 | `7e2b8eb6` | **failed** | 68.5 | 15 | dev `b08b47f` / 3.1 | ambiguous: reported the Profile CV without uploading |
+| 60 | 11:25 | TC-19 | `a1482888` | passed | 141.1 | 34 | dev `b08b47f` / 3.1 | final wording |
+| 61 | 12:16 | TC-03 | `55c7985d` | passed | 102.2 | 22 | fix `filter-chips` / 3.1 | after the chip fix |
+| 62 | 12:18 | TC-03 | `2b271938` | passed | 49.5 | 15 | fix `filter-chips` / 3.1 | after the chip fix |
+| 63 | 12:19 | TC-03 | `c07e2122` | passed | 71.8 | 15 | fix `filter-chips` / 3.1 | after the chip fix |
+| 64 | 12:23 | TC-19 | `58225e0a` | passed | 141.1 | 42 | fix `filter-chips` / 3.1 | final wording |
+| 65 | 12:25 | TC-19 | `7a1e3528` | passed | 202.8 | 35 | fix `filter-chips` / 3.1 | final wording |
+Not in `runs.jsonl`: session `b6763c92` (11:16, TC-19), cancelled by stopping the daemon after the quota ran out; session `2f5ac78e` (11:27, TC-19), cancelled at the operator's request to use the emulator by hand.
+
+### Result (counted runs)
+
+| Test | Passed | Average time (s) | Counted traces |
+|---|---|---|---|
+| TC-03 | 3/3 | 74.5 | `55c7985d`, `2b271938`, `c07e2122` (after the chip fix) |
+| TC-04 | 3/3 | 46.8 | `c90faf15`, `a824cd6a`, `63631ad3` |
+| TC-05 | 3/3 | 50.1 | `108cf8ac`, `e0ada1d5`, `1ab4c069` (case that skips applied / saved cards) |
+| TC-18 | 3/3 | 108.2 | `92169173`, `5a13af8f`, `655227ed` (rewritten case) |
+| TC-19 | 3/3 | 161.7 | `a1482888`, `58225e0a`, `7a1e3528` (final wording) |
+| TC-20 | 3/3 | 137.9 | `774a3906`, `32d3c95c`, `69f090e2` |
+
+TC-03 also checked the `search` and `search_filter_apply` events in Logcat, and TC-18 `apply_start`. TC-19 and TC-20 upload the fictional `Sample_CV.pdf` to `cvs/{uid}/` for the chosen listing; no application is submitted in Flow 1.
+
+### Why runs failed
+
+- **TC-03, app bug (0/3).** The agent chose `Job type: Internship` and the list went from 54 to 23 results, but the only chip shown was `Intern`. The Filters badge counted the job type, yet `_ActiveFiltersRow` had no chip for job type or allowance. Fixed in the app (P-70, test-report Run 32); the reruns passed 3/3.
+- **TC-18, wrong expectation (0/3).** Since CV Match (PR #24, DC-30), `Continue to review` opens `CV match` while Remote Config `cv_match_enabled` is on. The case expected `Validate CV` and now accepts either.
+- **TC-19, ambiguous instruction (0/3).** The upload worked each time, but the CV card now shows two lines under the file name (`2 KB · PDF`, then `Uploaded for this internship`), and the agent reported the first one for "the line under it". The case now asks for every line and checks that the source line is among them.
+- **TC-19, environment (run 56, `683d1708`).** Every call returned 429 for the 3.5 daily quota; ARTEMIS timed out after 180 s instead of using its fallback. Not counted.
+- **TC-19, ambiguous instruction (runs 57 and 59).** On 3.1 the agent saw the CV from the Profile and reported it without replacing it. `UPLOAD_SAMPLE_CV` now says to replace the CV even if one is shown, and the case asks for the report only after `Update CV`. Run 58 passed on that intermediate wording and is not counted.
+
+Also seen: `Choose file` often needed a second tap before the Android picker opened (in runs on both models). Not investigated; it did not fail a run.
+
+## TC-08, TC-10, TC-15 (12:50 – 14:30)
+
+Runs 66–87 in [`runs-20261106.jsonl`](runs-20261106.jsonl), 438 model calls. Records done with Claude Code (P-76; first logged as P-72, see the AI log).
+
+### Environment
+
+| Item | Value |
+|---|---|
+| App | Profile build of `dev` `35799c3` (runs 66–71), then of `dev` `d4674ee` (PR #30: Firebase demo screen; runs 72–87). After the 14:07 emulator crash the APK was reinstalled. |
+| Emulator | `Pixel_API_36`, API 36. It crashed three times: 13:00 and 13:44 when the host hung (hang detector, "no response for 15 s"; swap 5.2 of 6 GB in use), 14:07 in the GPU backend (`libgfxstream_backend` `createColorBuffer`, SIGSEGV). The Mac was restarted at 13:50, and from 14:08 the emulator runs with `-gpu swiftshader_indirect` (software rendering). A quick boot from an old snapshot had also reverted the installed app; it was reinstalled and the snapshot saved again. |
+| API keys | Key A: a team member's free-tier project (runs 66–77). A second borrowed key was refused: its project uses prepaid billing (HTTP 402 "prepayment credits are depleted"), against G-26. Key B: another member's project, confirmed Free in AI Studio by the operator (runs 78–87). |
+| Model | `gemini-3.1-flash-lite` primary (team patch) until 14:20; from 14:20 `gemini-3.5-flash-lite` primary, fallback 3.1, because 3.1 skipped steps and invented results in TC-08 (below). |
+| Recording | From 13:44 the operator screen-recorded the emulator, the ARTEMIS console and Terminal for each batch (video kept outside the repository: it shows the account), with the command typed in Terminal and its output saved with `tee` to `e2e_test/artifacts/logs/`. ARTEMIS also saves `recording.mp4` and `stdout.log` for each session under `~/artemis/traces/`. |
+
+Commands (from `e2e_test/`):
+
+```bash
+uv run pytest test_saved.py --count 3 -v 2>&1 | tee artifacts/logs/20261106-tc08.log
+uv run pytest test_applications.py -k tc10 --count 3 -v
+uv run pytest test_notifications.py -k tc15 --count 3 -v
+```
+
+### Runs
+
+| # | Start (+07) | Test | Trace | pytest | Time (s) | Model calls | Build / key / model | Note |
+|---|---|---|---|---|---|---|---|---|
+| 66 | 12:50 | TC-08 | `ac1990bb` | **failed** | 113.0 | 30 | `35799c3` / borrowed key A / 3.1 | old case: Undo missed (4 s Snackbar) |
+| 67 | 12:52 | TC-08 | `12e44b75` | **failed** | 152.5 | 36 | `35799c3` / borrowed key A / 3.1 | old case: read the button `Saved` as the message; Undo missed |
+| 68 | 12:55 | TC-08 | `aa985d75` | **failed** | 143.3 | 25 | `35799c3` / borrowed key A / 3.1 | old case: misread counts and the message; Undo missed |
+| 69 | 12:59 | TC-10 | `e6299835` | **failed** | 28.5 | 3 | `35799c3` / borrowed key A / 3.1 | environment: emulator crashed (13:00) during the network toggle |
+| 70 | 13:04 | TC-10 | `9b123960` | passed | 30.7 | 3 | `35799c3` / borrowed key A / 3.1 | build of `dev` `35799c3`, not counted |
+| 71 | 13:04 | TC-10 | `0b3103aa` | passed | 26.6 | 3 | `35799c3` / borrowed key A / 3.1 | build of `dev` `35799c3`, not counted |
+| 72 | 13:11 | TC-10 | `2956f83e` | passed | 51.6 | 9 | `d4674ee` / borrowed key A / 3.1 | counted |
+| 73 | 13:12 | TC-10 | `8cbd2938` | passed | 36.4 | 3 | `d4674ee` / borrowed key A / 3.1 | counted |
+| 74 | 13:13 | TC-10 | `395acd45` | passed | 20.4 | 3 | `d4674ee` / borrowed key A / 3.1 | counted |
+| 75 | 13:14 | TC-15 | `7c9ea8f9` | **failed** | 92.9 | 20 | `d4674ee` / borrowed key A / 3.1 | test bug: app launched twice, dialog gone |
+| 76 | 13:16 | TC-15 | `b7c1b34d` | **failed** | 21.6 | 6 | `d4674ee` / borrowed key A / 3.1 | test bug: dialog gone before the tap, tap opened a card |
+| 77 | 13:16 | TC-15 | `7587d519` | **failed** | 38.7 | 6 | `d4674ee` / borrowed key A / 3.1 | same |
+| 78 | 13:44 | TC-08 | `ad1c4f88` | **failed** | 64.6 | 11 | `d4674ee` / free key B / 3.1 | environment: emulator crashed (13:44, hang detector); 2 more runs errored on adb |
+| 79 | 13:55 | TC-08 | `d29c9d13` | passed | 168.3 | 19 | `d4674ee` / free key B / 3.1 | first rewrite, not counted |
+| 80 | 13:58 | TC-08 | `b68c9c82` | **failed** | 129.2 | 26 | `d4674ee` / free key B / 3.1 | skipped opening the card from Saved, invented `View application` |
+| 81 | 14:00 | TC-08 | `6bec2030` | **failed** | 75.7 | 17 | `d4674ee` / free key B / 3.1 | read the accessibility label `Saved. Remove from saved` |
+| 82 | 14:11 | TC-08 | `049a9ddd` | passed | 135.1 | 31 | `d4674ee` / free key B / 3.1 | **invalid pass**: stopped after the Saved tab and invented the rest; its listing stayed saved |
+| 83 | 14:13 | TC-08 | `cdda7c80` | **failed** | 131.0 | 28 | `d4674ee` / free key B / 3.1 | skipped opening the card; misread the count (9 → 10) |
+| 84 | 14:16 | TC-08 | `af95ee7f` | passed | 149.1 | 37 | `d4674ee` / free key B / 3.1 | genuine, but before the switch to 3.5; not counted |
+| 85 | 14:21 | TC-08 | `7bda5a47` | passed | 105.9 | 30 | `d4674ee` / free key B / 3.5 | counted; steps checked |
+| 86 | 14:23 | TC-08 | `1d1f3d20` | passed | 202.4 | 47 | `d4674ee` / free key B / 3.5 | counted; steps checked |
+| 87 | 14:27 | TC-08 | `1753334f` | passed | 229.9 | 45 | `d4674ee` / free key B / 3.5 | counted; steps checked |
+### Result (counted runs)
+
+| Test | Passed | Average time (s) | Counted traces |
+|---|---|---|---|
+| TC-08 | 3/3 | 179.4 | `7bda5a47`, `1d1f3d20`, `1753334f` (case without Undo, `gemini-3.5-flash-lite`; each run's step history shows Save → open from Saved → Back → unsave) |
+| TC-10 | 3/3 | 36.1 | `2956f83e`, `8cbd2938`, `395acd45` (`dev` `d4674ee`) |
+| TC-15 | 0/3 | — | Test fixed, not run again yet |
+
+### Why runs failed
+
+- **TC-08, `Undo` (runs 66–68).** One ARTEMIS step (screenshot + model call) takes 5–15 s, the Snackbar stays 4 s (design-system), so the agent never reached `Undo`; it also read the button text `Saved` as the Snackbar. The case now ends with the unsave and checks `Removed from Saved`; `Undo` and `Saved to your list` are covered by widget tests.
+- **TC-15, test bug (runs 75–77).** `reset_notification_permission()` relaunched the app, then the case's "Open the Internly app" made ARTEMIS open it again, which closed the system dialog: no dialog at all (run 75), or a tap on `Allow` that landed on a Home card after the dialog had gone (runs 76–77). The helper now leaves the app stopped so the case opens it once.
+- **TC-08 on `gemini-3.1-flash-lite` (runs 80–84).** The agent skipped steps of a long case and filled the report from the instruction: it never opened the card from Saved (runs 80, 83) and in run 82 stopped after the Saved tab and reported a full, plausible pass. That listing ("Intern C/C++ Embedded Systems Engineer Qt") stayed saved. Run 81 read the accessibility label `Saved. Remove from saved`. The case was split into numbered steps, accepts a label that starts with `Saved`, asks for the title on the detail opened from Saved, and runs on 3.5. pytest results alone are not trusted for this case: each counted run was checked against its step history.
+- **Environment (runs 69, 78).** Emulator crashes, above. Not counted.
+
+Side effect on the account: across the TC-08 runs today Saved went from 6 (13:39) to 9; the runs on the final case leave it unchanged.

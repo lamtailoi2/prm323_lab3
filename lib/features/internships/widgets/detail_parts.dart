@@ -3,68 +3,8 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/widgets/app_button.dart';
 import '../../../theme/app_colors.dart';
-import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
-
-/// Figma "Meta Tile": icon + caption label + value (Key facts grid).
-class DetailMetaTile extends StatelessWidget {
-  const DetailMetaTile({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return MergeSemantics(
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.s8,
-          vertical: AppSpacing.s12,
-        ),
-        decoration: const BoxDecoration(
-          color: AppColors.surfaceVariant,
-          borderRadius: AppRadii.smallAll,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: AppSizes.iconSmall, color: AppColors.primary),
-                const SizedBox(width: AppSpacing.s4),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.s4),
-            Text(
-              value,
-              style: textTheme.labelLarge?.copyWith(
-                color: AppColors.textPrimary,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// Figma "Bullet Item": a primary bullet and wrapping body text.
 class DetailBulletItem extends StatelessWidget {
@@ -207,63 +147,6 @@ class _DetailBenefitListState extends State<DetailBenefitList> {
           ),
         ],
       ],
-    );
-  }
-}
-
-/// Figma "Info Banner / Applied" (`Tone=Success`) at the top of Internship
-/// Detail when the student already tracks an application for the listing.
-class DetailAppliedBanner extends StatelessWidget {
-  const DetailAppliedBanner({
-    super.key,
-    required this.title,
-    required this.message,
-  });
-
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Semantics(
-      container: true,
-      liveRegion: true,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppSpacing.s12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: AppRadii.mediumAll,
-          border: Border.all(color: AppColors.success),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              Symbols.check_circle_rounded,
-              size: AppSizes.icon,
-              color: AppColors.success,
-            ),
-            const SizedBox(width: AppSpacing.s12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: textTheme.labelLarge),
-                  const SizedBox(height: AppSpacing.s4),
-                  Text(
-                    message,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

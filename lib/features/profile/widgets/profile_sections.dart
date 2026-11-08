@@ -168,8 +168,8 @@ class SkillsSection extends StatelessWidget {
   }
 }
 
-/// "Internship preferences": target roles, work modes and location, with
-/// `Update` opening the Update preferences sheet.
+/// "Internship preferences": target roles, experience, work modes and
+/// location, with `Update` opening the Update preferences sheet.
 class PreferencesSection extends StatelessWidget {
   const PreferencesSection({
     super.key,
@@ -194,6 +194,14 @@ class PreferencesSection extends StatelessWidget {
           _TagGroup(
             label: 'Target roles',
             tags: [for (final role in preferences.targetRoles) role.label],
+          ),
+          const SizedBox(height: AppSpacing.s16),
+          _TagGroup(
+            label: 'Experience',
+            tags: [
+              if (preferences.experience case final experience?)
+                experience.label,
+            ],
           ),
           const SizedBox(height: AppSpacing.s16),
           _TagGroup(
@@ -334,18 +342,18 @@ class SettingsSection extends StatelessWidget {
   }
 }
 
-/// "Diagnostics": the explicit Crashlytics test control required by Lab 3
-/// (G-06). It only ever runs after the student confirms the dialog; no
-/// startup or automated flow calls it.
+/// "Diagnostics": the Crashlytics test control (G-06) and the entry point to
+/// the Firebase demo area. The crash stays on Profile so a student can run it
+/// without opening the demo screen.
 class DiagnosticsSection extends StatelessWidget {
   const DiagnosticsSection({
     super.key,
+    required this.onOpenFirebaseDemo,
     required this.onTestCrash,
-    required this.onCopyFcmToken,
   });
 
+  final VoidCallback onOpenFirebaseDemo;
   final VoidCallback onTestCrash;
-  final VoidCallback onCopyFcmToken;
 
   @override
   Widget build(BuildContext context) {
@@ -368,11 +376,13 @@ class DiagnosticsSection extends StatelessWidget {
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Symbols.key_rounded),
-            title: const Text('Copy FCM token'),
-            subtitle: const Text('For Firebase Console → Send test message.'),
+            leading: const Icon(Symbols.tune_rounded),
+            title: const Text('Firebase demo'),
+            subtitle: const Text(
+              'Remote Config values, non-fatal test and links.',
+            ),
             trailing: chevron,
-            onTap: onCopyFcmToken,
+            onTap: onOpenFirebaseDemo,
           ),
         ],
       ),

@@ -237,9 +237,11 @@ class _WhatHappensNext extends StatelessWidget {
           child: Text('What happens next?', style: textTheme.titleMedium),
         ),
         const SizedBox(height: AppSpacing.s12),
-        _Step(
+        const _Step(
           index: 1,
-          text: 'We saved your details and CV with this application.',
+          text:
+              'We saved this application and your cover letter in My '
+              'Applications.',
         ),
         const SizedBox(height: AppSpacing.s8),
         const _Step(

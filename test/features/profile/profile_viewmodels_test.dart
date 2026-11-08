@@ -312,6 +312,46 @@ void main() {
       expect(skillsState().suggestions.toSet(), knownSkills.toSet());
     });
 
+    test(
+      'opened before the profile loaded: waits, then starts from it',
+      () async {
+        // The Apply Form opens the sheet without the Profile tab (CR-16).
+        profiles.profile = const UserProfile(skills: ['Flutter', 'Dart']);
+        await signedIn();
+        container.listen(editSkillsViewModelProvider, (_, _) {});
+        final vm = container.read(editSkillsViewModelProvider.notifier);
+
+        expect(skillsState().ready, isFalse);
+        expect(skillsState().selected, isEmpty);
+        // Nothing can be edited or saved over the profile yet.
+        vm
+          ..toggle('SQL')
+          ..clearAll();
+        expect(skillsState().selected, isEmpty);
+        expect(await vm.save(), isFalse);
+        expect(profiles.writes, isEmpty);
+
+        await pumpEventQueue();
+        expect(skillsState().ready, isTrue);
+        expect(skillsState().selected, ['Flutter', 'Dart']);
+        expect(skillsState().suggestions.take(2), ['Flutter', 'Dart']);
+
+        vm.toggle('SQL');
+        expect(await vm.save(), isTrue);
+        expect(profiles.profile?.skills, ['Flutter', 'Dart', 'SQL']);
+      },
+    );
+
+    test('later profile snapshots do not reset the draft', () async {
+      final vm = await open(['Flutter']);
+      vm.toggle('SQL');
+
+      await profiles.updateSkills(testUser.uid, ['Kotlin']);
+      await pumpEventQueue();
+
+      expect(skillsState().selected, ['Flutter', 'SQL']);
+    });
+
     test('toggle adds and removes; clear all empties the list', () async {
       final vm = await open(['Flutter']);
       vm
@@ -375,13 +415,38 @@ void main() {
       await open(
         const InternshipPreferences(
           targetRoles: [TargetRole.mobile],
+          experience: ExperienceRange.underOne,
           workModes: [WorkMode.remote],
           location: 'Hanoi',
         ),
       );
       expect(prefsState().targetRoles, {TargetRole.mobile});
+      expect(prefsState().experience, ExperienceRange.underOne);
       expect(prefsState().workModes, {WorkMode.remote});
       expect(prefsState().location, 'Hanoi');
+    });
+
+    test('experience is single-select and can be cleared', () async {
+      final vm = await open();
+
+      vm.selectExperience(ExperienceRange.oneToTwo);
+      expect(prefsState().experience, ExperienceRange.oneToTwo);
+
+      vm.selectExperience(ExperienceRange.twoPlus);
+      expect(prefsState().experience, ExperienceRange.twoPlus);
+
+      vm.selectExperience(ExperienceRange.twoPlus);
+      expect(prefsState().experience, isNull);
+    });
+
+    test('changing another field keeps the experience draft', () async {
+      final vm = await open();
+      vm
+        ..selectExperience(ExperienceRange.none)
+        ..toggleRole(TargetRole.mobile)
+        ..setLocation('Da Nang');
+
+      expect(prefsState().experience, ExperienceRange.none);
     });
 
     test('work modes follow the frame order', () {
@@ -399,6 +464,7 @@ void main() {
         ..toggleRole(TargetRole.mobile)
         ..toggleWorkMode(WorkMode.onSite)
         ..toggleWorkMode(WorkMode.hybrid)
+        ..selectExperience(ExperienceRange.oneToTwo)
         ..setLocation('  Da Nang ');
 
       expect(await vm.save(), isTrue);
@@ -406,15 +472,33 @@ void main() {
         profiles.profile?.preferences,
         const InternshipPreferences(
           targetRoles: [TargetRole.mobile, TargetRole.qaTester],
+          experience: ExperienceRange.oneToTwo,
           workModes: [WorkMode.hybrid, WorkMode.onSite],
           location: 'Da Nang',
         ),
       );
       expect(analytics.parameters['profile_update'], {
         'section': 'preferences',
-        'item_count': 5,
+        'item_count': 6,
       });
     });
+
+    test(
+      'an unanswered experience is stored as null and not counted',
+      () async {
+        final vm = await open();
+        vm
+          ..toggleRole(TargetRole.mobile)
+          ..toggleWorkMode(WorkMode.remote);
+
+        expect(await vm.save(), isTrue);
+        expect(profiles.profile?.preferences.experience, isNull);
+        expect(analytics.parameters['profile_update'], {
+          'section': 'preferences',
+          'item_count': 2,
+        });
+      },
+    );
 
     test('an empty location starts from the current city', () async {
       profiles.profile = const UserProfile(
@@ -441,6 +525,16 @@ void main() {
       vm.setLocation('   ');
       expect(await vm.save(), isTrue);
       expect(profiles.profile?.preferences.location, isNull);
+    });
+
+    test('a failed save keeps the experience draft', () async {
+      final vm = await open();
+      profiles.saveError = _network;
+      vm.selectExperience(ExperienceRange.twoPlus);
+
+      expect(await vm.save(), isFalse);
+      expect(prefsState().save.error, _network);
+      expect(prefsState().experience, ExperienceRange.twoPlus);
     });
 
     test('a too-long location is a validation error', () async {

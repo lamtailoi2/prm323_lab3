@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +10,7 @@ import 'package:internly/core/widgets/app_button.dart';
 import 'package:internly/core/widgets/app_tag.dart';
 import 'package:internly/core/widgets/app_text_field.dart';
 import 'package:internly/features/profile/screens/edit_profile_screen.dart';
+import 'package:internly/features/profile/screens/firebase_demo_screen.dart';
 import 'package:internly/features/profile/screens/profile_screen.dart';
 import 'package:internly/features/profile/viewmodels/edit_profile_viewmodel.dart';
 import 'package:internly/features/profile/widgets/profile_sections.dart';
@@ -24,6 +24,7 @@ import 'package:internly/services/document_picker_service.dart';
 import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/file_storage_service.dart';
 import 'package:internly/services/notification_service.dart';
+import 'package:internly/services/remote_config_service.dart';
 import 'package:internly/services/user_profile_service.dart';
 import 'package:internly/theme/app_theme.dart';
 
@@ -51,6 +52,7 @@ final _complete = UserProfile(
   skills: const ['Flutter', 'React', 'NestJS', 'MongoDB'],
   preferences: const InternshipPreferences(
     targetRoles: [TargetRole.softwareEngineer, TargetRole.mobile],
+    experience: ExperienceRange.oneToTwo,
     workModes: [WorkMode.remote, WorkMode.hybrid],
     location: 'Ho Chi Minh City',
   ),
@@ -66,6 +68,7 @@ void main() {
   late FakeExternalLinkService links;
   late FakeCrashlyticsService crashlytics;
   late FakeNotificationService notificationService;
+  late FakeRemoteConfigService remoteConfig;
   late FakeApplicationService applications;
 
   setUp(() {
@@ -78,6 +81,7 @@ void main() {
     links = FakeExternalLinkService();
     crashlytics = FakeCrashlyticsService();
     notificationService = FakeNotificationService();
+    remoteConfig = FakeRemoteConfigService();
   });
 
   tearDown(() async {
@@ -85,6 +89,7 @@ void main() {
     await applications.dispose();
     await auth.dispose();
     await notificationService.dispose();
+    remoteConfig.dispose();
   });
 
   Future<void> pumpProfile(
@@ -105,6 +110,10 @@ void main() {
               path: 'edit',
               builder: (context, state) => const EditProfileScreen(),
             ),
+            GoRoute(
+              path: 'firebase',
+              builder: (context, state) => const FirebaseDemoScreen(),
+            ),
           ],
         ),
       ],
@@ -122,6 +131,7 @@ void main() {
           externalLinkServiceProvider.overrideWithValue(links),
           crashlyticsServiceProvider.overrideWithValue(crashlytics),
           notificationServiceProvider.overrideWithValue(notificationService),
+          remoteConfigServiceProvider.overrideWithValue(remoteConfig),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light(),
@@ -179,8 +189,9 @@ void main() {
       expect(find.text('Internship preferences'), findsOneWidget);
       expect(find.text('Update'), findsOneWidget);
       for (final tag in [
-        'Software Engineer Intern',
-        'Mobile Intern',
+        'Software Engineer',
+        'Mobile',
+        '1–2 years',
         'Remote',
         'Hybrid',
       ]) {
@@ -224,7 +235,7 @@ void main() {
           find.text('Add the skills you have, such as Flutter or SQL.'),
         );
         await scrollTo(tester, find.text('Sign out'));
-        expect(find.text('Not set'), findsNWidgets(3));
+        expect(find.text('Not set'), findsNWidgets(4));
         expect(tester.takeException(), isNull);
       },
     );
@@ -281,6 +292,19 @@ void main() {
     expect(analytics.events, contains('logout'));
   });
 
+  testWidgets('Diagnostics opens the Firebase demo area', (tester) async {
+    await pumpProfile(tester);
+    await scrollTo(tester, find.text('Firebase demo'));
+
+    await tester.tap(find.text('Firebase demo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Remote Config'), findsOneWidget);
+    expect(find.textContaining('home_recommended_limit'), findsOneWidget);
+    expect(find.text('Send a non-fatal error'), findsOneWidget);
+    expect(find.text('Simulate app crash'), findsOneWidget);
+  });
+
   testWidgets('crash test control asks first, then forces the crash', (
     tester,
   ) async {
@@ -301,31 +325,6 @@ void main() {
     await tester.tap(find.text('Crash now'));
     await tester.pumpAndSettle();
     expect(crashlytics.crashCalls, 1);
-  });
-
-  testWidgets('FCM token tile copies the device token', (tester) async {
-    final copied = <String?>[];
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-          if (call.method == 'Clipboard.setData') {
-            copied.add(
-              (call.arguments as Map<Object?, Object?>)['text'] as String?,
-            );
-          }
-          return null;
-        });
-    addTearDown(
-      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(SystemChannels.platform, null),
-    );
-
-    await pumpProfile(tester);
-    await scrollTo(tester, find.text('Copy FCM token'));
-    await tester.tap(find.text('Copy FCM token'));
-    await tester.pumpAndSettle();
-
-    expect(copied, ['fcm-test-token']);
-    expect(find.text('FCM token copied.'), findsOneWidget);
   });
 
   testWidgets('settings rows without a screen say so honestly', (tester) async {
@@ -424,78 +423,85 @@ void main() {
     });
   });
 
-  testWidgets('Update preferences sheet saves chips and a quick location', (
-    tester,
-  ) async {
-    await pumpProfile(tester);
-    await scrollTo(tester, find.text('Update'));
-    await tester.tap(find.text('Update'));
-    await tester.pumpAndSettle();
+  for (final width in checkWidths) {
+    testWidgets('Update preferences sheet saves chips, experience and a quick '
+        'location at $width dp', (tester) async {
+      await pumpProfile(tester, width: width);
+      await scrollTo(tester, find.text('Update'));
+      await tester.tap(find.text('Update'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Update preferences'), findsOneWidget);
-    expect(find.text('TARGET ROLES'), findsOneWidget);
-    expect(
-      find.widgetWithText(FilterChip, 'QA / Tester Intern'),
-      findsOneWidget,
-    );
-    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
-    for (final chip in ['Frontend Intern', 'Hybrid']) {
+      expect(find.text('Update preferences'), findsOneWidget);
+      expect(find.text('TARGET ROLES'), findsOneWidget);
+      expect(find.widgetWithText(FilterChip, 'QA / Tester'), findsOneWidget);
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      for (final chip in ['Frontend', 'Hybrid']) {
+        expect(
+          tester
+              .getSize(
+                find
+                    .descendant(
+                      of: find.widgetWithText(FilterChip, chip),
+                      matching: find.byType(Material),
+                    )
+                    .first,
+              )
+              .height,
+          44,
+          reason: chip,
+        );
+      }
+      Future<void> tapChip(String label) async {
+        final chip = find.widgetWithText(FilterChip, label);
+        await tester.ensureVisible(chip);
+        await tester.pumpAndSettle();
+        await tester.tap(chip);
+        await tester.pumpAndSettle();
+      }
+
+      await tapChip('Mobile');
+      await tapChip('Remote');
+      await tapChip('1–2 years');
+      await tapChip('Da Nang');
+      expect(find.widgetWithText(TextField, 'Da Nang'), findsOneWidget);
+      // Quick select: 36 dp, outline without a check (the field shows the
+      // city).
+      final quick = tester.widget<FilterChip>(
+        find.widgetWithText(FilterChip, 'Da Nang'),
+      );
+      expect(quick.selected, isTrue);
+      expect(quick.showCheckmark, isFalse);
       expect(
         tester
             .getSize(
               find
                   .descendant(
-                    of: find.widgetWithText(FilterChip, chip),
+                    of: find.widgetWithText(FilterChip, 'Da Nang'),
                     matching: find.byType(Material),
                   )
                   .first,
             )
             .height,
-        44,
-        reason: chip,
+        36,
       );
-    }
-    await tester.tap(find.widgetWithText(FilterChip, 'Mobile Intern'));
-    await tester.tap(find.widgetWithText(FilterChip, 'Remote'));
-    await tester.ensureVisible(find.widgetWithText(FilterChip, 'Da Nang'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilterChip, 'Da Nang'));
-    await tester.pumpAndSettle();
-    expect(find.widgetWithText(TextField, 'Da Nang'), findsOneWidget);
-    // Quick select: 36 dp, outline without a check (the field shows the city).
-    final quick = tester.widget<FilterChip>(
-      find.widgetWithText(FilterChip, 'Da Nang'),
-    );
-    expect(quick.selected, isTrue);
-    expect(quick.showCheckmark, isFalse);
-    expect(
-      tester
-          .getSize(
-            find
-                .descendant(
-                  of: find.widgetWithText(FilterChip, 'Da Nang'),
-                  matching: find.byType(Material),
-                )
-                .first,
-          )
-          .height,
-      36,
-    );
 
-    await tester.tap(find.text('Save preferences'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Save preferences'));
+      await tester.pumpAndSettle();
 
-    expect(
-      profiles.profile?.preferences,
-      const InternshipPreferences(
-        targetRoles: [TargetRole.mobile],
-        workModes: [WorkMode.remote],
-        location: 'Da Nang',
-      ),
-    );
-    await scrollTo(tester, find.text('Da Nang'));
-    expect(find.widgetWithText(AppTag, 'Mobile Intern'), findsOneWidget);
-  });
+      expect(
+        profiles.profile?.preferences,
+        const InternshipPreferences(
+          targetRoles: [TargetRole.mobile],
+          experience: ExperienceRange.oneToTwo,
+          workModes: [WorkMode.remote],
+          location: 'Da Nang',
+        ),
+      );
+      await scrollTo(tester, find.text('Da Nang'));
+      expect(find.widgetWithText(AppTag, 'Mobile'), findsOneWidget);
+      expect(find.widgetWithText(AppTag, '1–2 years'), findsOneWidget);
+    });
+  }
 
   group('CV library', () {
     testWidgets('first upload: choose a PDF, add it, the library shows it', (

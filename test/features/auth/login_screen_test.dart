@@ -8,6 +8,7 @@ import 'package:internly/features/auth/screens/login_screen.dart';
 import 'package:internly/features/auth/widgets/google_sign_in_button.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
+import 'package:internly/services/user_profile_service.dart';
 import 'package:internly/theme/app_sizes.dart';
 import 'package:internly/theme/app_theme.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -38,6 +39,9 @@ void main() {
         overrides: [
           authServiceProvider.overrideWithValue(auth),
           analyticsServiceProvider.overrideWithValue(analytics),
+          userProfileServiceProvider.overrideWithValue(
+            FakeUserProfileService(),
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),

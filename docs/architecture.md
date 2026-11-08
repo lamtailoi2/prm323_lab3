@@ -1,6 +1,6 @@
 # Internly architecture
 
-Internly is a Flutter app (Android graded, iOS also builds) built with **MVVM**, **Riverpod 3** for state management and dependency injection, **go_router** for navigation, **SerpAPI (Google Jobs)** behind a scheduled Cloud Function, and **Firebase** for identity, the shared listing pool, user data, files, messaging, analytics, crash reporting and remote configuration. The function mirrors SerpAPI into Firestore every six hours; the app only reads Firestore. A second, callable function (`validateCv`) reads the student's own CV from Storage and asks **Gemini** (free tier, G-26) whether it is a usable CV, so no model key ships in the app. Written before feature work (Lab 3 §4 stage 2); every feature PR keeps it true to the code.
+Internly is a Flutter app (Android graded, iOS also builds) built with **MVVM**, **Riverpod 3** for state management and dependency injection, **go_router** for navigation, **SerpAPI (Google Jobs)** behind a scheduled Cloud Function, and **Firebase** for identity, the shared listing pool, user data, files, messaging, analytics, crash reporting and remote configuration. The function mirrors SerpAPI into Firestore every six hours; the app only reads Firestore. Callable functions read the student's own CV from Storage and call a model: **Gemini** for the `validateCv` quality gate and **Groq** for the `matchCv` commentary and the `composeCoverLetter` draft (free tiers, G-26), so no model key ships in the app. Written before feature work (Lab 3 §4 stage 2); every feature PR keeps it true to the code.
 
 ## 1. Layers
 
@@ -98,10 +98,9 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `SearchViewModel` | Search, Search Results | `InternshipService`, `AnalyticsService` | Planned |
 | `InternshipDetailViewModel` | Internship Detail | `InternshipService`, `SavedInternshipService`, `ApplicationService`, `AnalyticsService` | Planned |
 | `SavedViewModel` | Saved Internships | `SavedInternshipService`, `AnalyticsService` | Planned |
-| `ApplyFormViewModel` | Application Form (CV pick/upload, profile prefill) | `UserProfileService`, `FileStorageService`, `DocumentPickerService`, `ExternalLinkService`, `InternshipService`, `RemoteConfigService`, `AnalyticsService` | Done |
-| `CvValidationViewModel` | Validate CV step (Apply, pre-submit) | `CvValidationService`, `AnalyticsService` | Done (service, ViewModel, step widget, tests) |
-| `CvMatchViewModel` | CV Match Check step (Apply, advisory) | `CvMatchService`, `AnalyticsService` | Done (model, service, ViewModel, step + screen, tests) |
-| `ApplicationReviewViewModel` | Application Review → Success | `ApplicationService`, `InternshipService`, `UserProfileService`, `AnalyticsService`, `CrashlyticsService` | Done (Application Success is a stateless recap screen, no ViewModel) |
+| `ApplyComposeViewModel` | Compose application (Apply by email, replaces the Apply Form) | `InternshipService`, `UserProfileService`, `CoverLetterService`, `ExternalLinkService`, `ApplicationService`, `AnalyticsService` | Done (email draft, `mailto:`, `I've sent it` record; Application Success is a stateless recap screen, no ViewModel) |
+| `CvValidationViewModel` | Validate CV (optional check from Compose) | `CvValidationService`, `AnalyticsService` | Done (service, ViewModel, step widget, tests) |
+| `CvMatchViewModel` | CV Match Check (optional, advisory, from Compose) | `CvMatchService`, `AnalyticsService` | Done (model, service, ViewModel, step + screen, tests) |
 | `MyApplicationsViewModel` | My Applications | `ApplicationService` | Done (list, status filter, retry; no writes, no detail) |
 | `ApplicationDetailViewModel` | Application Detail | `ApplicationService`, `InternshipService`, `ExternalLinkService`, `AnalyticsService` | Done (load, tracker, withdraw/undo, preview, tests) |
 | `ProfileViewModel` | Profile | `UserProfileService` (+ auth for email and photo; profile and `users/{uid}/cvs` streams) | Done (library + legacy mirror, G-33) |
@@ -110,11 +109,11 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `EditSkillsViewModel`, `EditPreferencesViewModel` | Profile sheets | `UserProfileService`, `AnalyticsService` | Done |
 | `UpdateCvViewModel` | Update CV sheet (legacy single-CV flow, kept for compatibility) | `DocumentPickerService`, `FileStorageService`, `UserProfileService`, `AnalyticsService` | Done; Profile now uses `CvLibraryViewModel` |
 | `OpenCvViewModel` | Profile (View CV) | `ExternalLinkService` | Done |
-| `FirebaseDemoViewModel` | Firebase demo area | `RemoteConfigService`, `CrashlyticsService`, `NotificationService` | Planned |
+| `FirebaseDemoViewModel` | Firebase demo area | `RemoteConfigService`, `CrashlyticsService`, `NotificationService` | Done (live Remote Config values with source, non-fatal and crash tests, FCM token, links; ViewModel and screen tests) |
 | `NotificationCenterViewModel` | Notification Center | `NotificationService`, `AnalyticsService` | Done (history, read state, deep link, `notification_center_open`, tests) |
 | `ReportExportViewModel` | Report export | `ReportExportService`, `FileStorageService`, `ApplicationService`, `AnalyticsService` | Planned |
 
-Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `ApplicationService` (Firestore `users/{uid}/applications` listener, read-only; `cvStoragePaths()` for the library's remove guard), `UserProfileService` (Firestore `users/{uid}` listener + merge writes per section; `watchCvs` / `addCv` / `setDefaultCv` / `removeCv` for `users/{uid}/cvs`, G-33), `FileStorageService` (Cloud Storage for Firebase; `deletePdf` for a CV the student removes), `DocumentPickerService` (system file picker, `file_selector`), `ExternalLinkService` (opens a URL in another app, `url_launcher`), `CvValidationService` (callable `validateCv`), `CvMatchService` (callable `matchCv`: Groq extracts CV/JD technologies, rule-based score + commentary), `NotificationService` (Cloud Messaging, permission, token + refresh and `users/{uid}/notifications` history), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`; Gemini is called only by the callable `validateCv`, and Groq only by `matchCv`.
+Services that exist today: `AuthService`, `InternshipService` (Firestore `internships` listener), `ApplicationService` (Firestore `users/{uid}/applications` listener + `createApplication`, withdraw / undo), `UserProfileService` (Firestore `users/{uid}` listener + merge writes per section), `FileStorageService` (Cloud Storage for Firebase), `DocumentPickerService` (system file picker, `file_selector`), `ExternalLinkService` (opens a URL or a `mailto:` draft in another app, `url_launcher`), `CvValidationService` (callable `validateCv`), `CvMatchService` (callable `matchCv`: Groq extracts CV/JD technologies, rule-based score + commentary), `CoverLetterService` (callable `composeCoverLetter`: Groq drafts the application email subject and cover letter from the JD + Profile + CV), `NotificationService` (Cloud Messaging, permission, token + refresh, `users/{uid}/notifications` history, and data-only `test_crash` commands from the local admin dashboard), `AnalyticsService`, `CrashlyticsService`, `RemoteConfigService`. The others are added by their feature in `lib/services/`. SerpAPI is called only by the scheduled function in `functions/`; Gemini is called only by the callable `validateCv`, and Groq only by `matchCv` and `composeCoverLetter`.
 
 ## 4. Sequence: Home feed (shared Firestore pool)
 
@@ -146,7 +145,7 @@ sequenceDiagram
     end
 ```
 
-The pool itself is filled by `syncInternshipsJob` every six hours (Plan → backfill all keywords once, then one keyword per run). The function writes `/internships/{jobKey}` with the raw SerpAPI job, `searchKeyword`, `searchRank`, `syncedAt` and `expiresAt`; clients can read but never write it.
+The pool itself is filled by `syncInternshipsJob` every six hours (Plan → backfill all keywords once, then one keyword per run). The keywords cover IT interns, freshers and juniors in Vietnam, so the pool holds early-career roles beyond the internship contract. The function writes `/internships/{jobKey}` with the raw SerpAPI job, `searchKeyword`, `searchRank`, `syncedAt` and `expiresAt`; clients can read but never write it.
 
 ## 5. Navigation
 
@@ -174,7 +173,7 @@ Rules for feature owners:
 4. Parse defensively with `FirestoreReader`; skip and log (Crashlytics non-fatal) malformed documents instead of failing a list.
 5. Read server timestamps in listeners with `ServerTimestampBehavior.estimate`.
 
-**Profile document `users/{uid}`** (`UserProfile`, `lib/models/user_profile.dart`; every field optional, the document exists only after the first save). Apply reads it for prefill, the CV from Profile and the skills used by CV Match Check.
+**Profile document `users/{uid}`** (`UserProfile`, `lib/models/user_profile.dart`; every field optional, the document exists only after the first save). Apply reads it for CV selection and its `storagePath` for Validate CV; Internship Detail reads its skills for the Skill match; Home reads its preferences for the location filter and the role, skill and experience ranking (G-23).
 
 | Field | Type | Written by |
 |---|---|---|
@@ -182,8 +181,7 @@ Rules for feature owners:
 | `yearOfStudy` (1–6), `graduationYear` | int or null | Edit profile (Academic standing picker) |
 | `skills` | string[] (values from `knownSkills`) | Edit skills sheet |
 | `preferences` | map: `targetRoles` (`software_engineer` / `mobile` / `frontend` / `backend` / `qa_tester`, the frame's roles), `workModes` (`hybrid` / `remote` / `on_site`), `location` (string or null) | Update preferences sheet |
-| `cv` | map: `fileName`, `url`, `storagePath`, `sizeBytes`, `uploadedAt`, `label` (only from a real `FileStorageService` upload). Legacy mirror of the default library entry | CV library (kept for older builds and Apply prefill) |
-| `defaultCvId` | string or null: the `users/{uid}/cvs/{cvId}` document used for applications | CV library (`Set as default`, `Add CV`, `Remove`) |
+| `cv` | map: `fileName`, `url`, `storagePath`, `sizeBytes`, `uploadedAt` (only from a real `FileStorageService` upload) | Update CV sheet |
 | `updatedAt` | server timestamp | every write (merge per section) |
 
 Email and photo are never copied here; they come from the Google account. `city` (where the student lives) and `preferences.location` (where they want an internship) are both kept; Update preferences starts from `city` when its location is empty (G-30).
@@ -199,8 +197,10 @@ Email and photo are never copied here; they come from the Google account. `city`
 | `status` | `submitted` / `under_review` / `interview` / `accepted` / `rejected` / `withdrawn` (required, `ApplicationStatus`) | Apply flow; withdraw / undo (Flow 3d) |
 | `nextStepAt` | timestamp or null (optional) | Interview slot or the employer's reply deadline, when the student records one |
 | `withdrawnAt`, `previousStatus` | timestamp / status or null (optional) | `ApplicationService.withdraw` keeps the status it replaced so `undoWithdrawal` can restore it |
-| `cvFileName`, `cvUrl`, `cvStoragePath`, `cvSizeBytes` | string / string / string / int or null (optional) | Apply flow; the CV that was sent, read-only afterwards (`Preview` opens `cvUrl`; `cvSizeBytes` backs the `{size} • Uploaded {date}` CV tile on Application Detail) |
-| `applicant` | map: `fullName` (required), `email`, `phone`, `university`, `yearOfStudy`, `skills`, `shortIntroduction` | Apply flow; the profile values at submission time |
+| `cvFileName`, `cvUrl`, `cvStoragePath`, `cvSizeBytes` | string / string / string / int or null (optional) | Apply flow; the Profile CV when the student has one, omitted otherwise; read-only afterwards (`Preview` opens `cvUrl`; `cvSizeBytes` backs the `{size} • Uploaded {date}` CV tile on Application Detail) |
+| `applicant` | map: `fullName` (required), `email`, `phone`, `university`, `yearOfStudy`, `skills`, `shortIntroduction` (the cover letter on email applications) | Apply flow; the profile values at submission time |
+| `appliedVia` | `in_app` / `email` (optional; absent reads `in_app`, for documents written before the email flow) | Compose application (`ApplicationChannel.email`) |
+| `recipientEmail` | string or null (optional) | Compose application; the recruiter address the email was sent to, shown as `Sent to` on Application Detail |
 
 A required field that is missing or has the wrong type makes the document malformed: the service skips and logs it. A stored status outside the six `ApplicationStatus` values is malformed too. The optional `applicant` / CV snapshot is parsed defensively — a malformed map becomes `null` and the rest of the application still loads (Application Detail hides that card). My Applications sorts by `appliedAt` descending and derives the count line and the status chips from the documents it received, so no index beyond the default is needed.
 
@@ -214,12 +214,13 @@ Application Detail subscribes to `ApplicationService.watchApplications()` and pi
 | Auth (Google) | `services/auth_service.dart` | Cancelled picker → info message; network / config → error message |
 | SerpAPI sync | `functions/src/sync.ts` (scheduled) | Missing secret / quota / network → logged + `sync/state.lastError`; the app keeps serving the last good pool |
 | CV validation (Gemini) | `functions/src/validate-cv.ts` (callable) + `services/cv_validation_service.dart` | Wrong/other user's path → `permission-denied`; unreadable PDF or < 50 extracted characters → invalid result (no Gemini call); model output that is not JSON → fail open; download / Gemini failure → `HttpsError` with a safe message, mapped to `AppException` + Retry in the app |
-| CV match (Groq) | `functions/src/match-cv.ts` (callable) + `services/cv_match_service.dart` | Wrong/other user's CV path → `permission-denied`; missing listing → `not-found`; model extraction unparseable → local `knownSkills` vocabulary; unreadable PDF or < 50 characters → Profile skills only (`cvReadable: false`); commentary failure → deterministic suggestions (never blocks); `Continue` stays enabled in every app state |
+| CV match (Groq, optional from Compose) | `functions/src/match-cv.ts` (callable) + `services/cv_match_service.dart` | Wrong/other user's CV path → `permission-denied`; missing listing → `not-found`; model extraction unparseable → local `knownSkills` vocabulary; unreadable PDF or < 50 characters → Profile skills only (`cvReadable: false`); commentary failure → deterministic suggestions (never blocks); `Continue` stays enabled in every app state |
+| Apply email draft (Groq) | `functions/src/compose-cover-letter.ts` (callable) + `services/cover_letter_service.dart` + `core/utils/contact_email.dart` + `core/utils/mailto.dart` | Wrong/other user's CV path → `permission-denied`; missing listing → `not-found`; Profile or CV read failure → the letter is still drafted from the listing; blank key / model failure / unparseable JSON → deterministic template in the listing's language (`source: template`); a bad typed address is rejected before `mailto:` opens; no mail app → message (the student can copy the letter); the recipient is parsed from the JD and is never invented |
 | Listings | `services/internship_service.dart` | permission denied / offline → `AppException` with Retry; malformed documents skipped and logged |
-| Applications | `services/application_service.dart` | permission denied / offline → `AppException` with Retry on My Applications; malformed documents (missing fields, unknown status) skipped and logged |
+| Applications | `services/application_service.dart` | permission denied / offline → `AppException` with Retry on My Applications and on Confirm Application; malformed documents (missing fields, unknown status) skipped and logged |
 | File storage | `services/file_storage_service.dart` | Signed out → permission denied; not a PDF / too large → invalid input; `unauthorized` / `quota-exceeded` / `retry-limit-exceeded` → message; progress reported |
 | Analytics | `services/analytics_service.dart` | Failures swallowed; names validated in debug |
-| Crashlytics | `services/crashlytics_service.dart` | Global handlers at bootstrap; user ID + `last_screen` key; `crashForTesting()` only from the demo area |
+| Crashlytics | `services/crashlytics_service.dart` | Global handlers at bootstrap; user ID + `last_screen` key; `crashForTesting()` only from explicit test controls (Profile → Diagnostics, Firebase demo, and the local admin dashboard's data-only FCM command) |
 | Remote Config | `services/remote_config_service.dart` | Defaults from JSON before `runApp`; fetch and real-time updates in the background |
 | Profile / CV library | `services/user_profile_service.dart` | permission denied / offline → `AppException` (Retry on load, message in the form or sheet on save); malformed `cv` map ignored and logged; malformed CV documents skipped and logged; a failed `deletePdf` leaves the metadata removed (an orphaned file is a retention issue, not a failed action) |
 | File picking, external links | `services/document_picker_service.dart`, `services/external_link_service.dart` | Closed picker → no change; unreadable file or no app to open a link → message |
@@ -230,7 +231,7 @@ Application Detail subscribes to `ApplicationService.watchApplications()` and pi
 - Firebase config files are app configuration and are committed (Lab 3 §9).
 - The SerpAPI key lives in **Secret Manager** as `SERPAPI_KEY` and is read only by the scheduled function. It is not part of the APK or the Flutter `.env` (G-25).
 - The Gemini key lives in **Secret Manager** as `GEMINI_API_KEY`, bound only to the `validateCv` function (least privilege). It is the same free-tier Google AI Studio key as ARTEMIS (G-26). Set it with `firebase functions:secrets:set GEMINI_API_KEY`.
-- The Groq key lives in **Secret Manager** as `GROQ_API_KEY`, bound only to `matchCv`. Groq extracts technology lists from the CV and the job description and writes the match commentary with `openai/gpt-oss-20b` in JSON mode (`reasoning_effort: low`, 4096 completion tokens); extraction failures fall back to the local vocabulary and commentary failures to deterministic suggestions, so an outage never blocks applying. Set it with `firebase functions:secrets:set GROQ_API_KEY`.
+- The Groq key lives in **Secret Manager** as `GROQ_API_KEY`, bound only to `matchCv` and `composeCoverLetter`. Groq extracts technology lists from the CV and the job description and writes the match commentary, and it drafts the application email's subject and cover letter, with `openai/gpt-oss-20b` in JSON mode (`reasoning_effort: low`, 4096 completion tokens); extraction failures fall back to the local vocabulary, commentary failures to deterministic suggestions, and a failed draft to a deterministic template, so an outage never blocks applying. Set it with `firebase functions:secrets:set GROQ_API_KEY`.
 - Never commit service-account JSON, keystores, `.p8` keys, model API keys or test-account credentials.
 
 ## 9. Testing

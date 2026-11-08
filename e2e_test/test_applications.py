@@ -9,20 +9,21 @@ async def test_tc09_application_detail_matches_the_list(artemis):
         artemis,
         "TC-09",
         f"{SIGNED_IN} Tap 'Applications' in the bottom navigation. If the "
-        "screen says 'You have not applied yet', create an application first: "
-        "tap 'Home', open the first internship card, tap 'Apply now', tap "
-        "'Continue to review', wait for the CV check to finish, tap 'Submit "
-        "application', then tap 'View my applications'. Read the first "
-        "application card: its position, company, the text that starts with "
-        "'Applied', and its status badge. Then tap the card to open "
-        "'Application Detail' and read the position, company and status badge "
-        "shown there.",
+        "screen says 'You have not applied yet', report has_application false "
+        "and stop. Otherwise read the first application card: its position, "
+        "company, the text that starts with 'Applied', and its status badge. "
+        "Then tap the card to open 'Application Detail' and read the position, "
+        "company and status badge shown there.",
         expected_output=(
-            'JSON: {"list": {"position": string, "company": string, '
-            '"applied_text": string, "status": string}, "detail": '
-            '{"position": string, "company": string, "status": string}}'
+            'JSON: {"has_application": boolean, "list": {"position": string, '
+            '"company": string, "applied_text": string, "status": string}, '
+            '"detail": {"position": string, "company": string, '
+            '"status": string}}'
         ),
     )
+    # The case only reads: an application cannot be deleted, so it never
+    # creates one (TC-06 does).
+    assert report["has_application"] is True, "TC-09: no application; run TC-06"
     listed = report["list"]
     detail = report["detail"]
 

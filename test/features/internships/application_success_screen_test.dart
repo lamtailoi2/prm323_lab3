@@ -71,7 +71,10 @@ void main() {
 
       expect(find.text('What happens next?'), findsOneWidget);
       expect(
-        find.text('We saved your details and CV with this application.'),
+        find.text(
+          'We saved this application and your cover letter in My '
+          'Applications.',
+        ),
         findsOneWidget,
       );
       expect(

@@ -12,6 +12,7 @@ import '../../../models/internship_application.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
+import '../../notifications/viewmodels/unread_notifications_provider.dart';
 import '../viewmodels/my_applications_viewmodel.dart';
 import '../widgets/application_card.dart';
 
@@ -40,6 +41,8 @@ class MyApplicationsScreen extends ConsumerWidget {
         user: user,
         onProfile: () => context.go(AppRoutes.profile),
         onNotifications: () => context.push(AppRoutes.notificationCenter),
+        unreadNotifications:
+            ref.watch(unreadNotificationCountProvider).value ?? 0,
       ),
       body: switch (state.applications) {
         ViewLoading<MyApplicationsFeed>() => const _LoadingBody(),

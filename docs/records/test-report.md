@@ -607,6 +607,169 @@ Findings:
 2. After a failing router test, `flutter test` waited instead of exiting;
    passing runs exit normally. Not investigated in this change.
 
+## Run 35: Home greeting uses the Google given name; long names fit (2026-11-07)
+
+Branch `feat/home-given-name` from `dev` `8f1f174`, uncommitted working tree.
+Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable. No device run.
+AI log P-78.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | 0 files changed |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` | `+663: All tests passed!` (6 new: given name saved / not written / save failure ignored, `givenName` parsing, long-name heading at 360 and 412 dp) |
+| 4 | Sign in on a device and check the Home name | **Not run** |
+
+Findings: `LoginViewModel` now reads `userProfileServiceProvider`, so the
+Login screen and ViewModel tests override it with `FakeUserProfileService`.
+The `676` in the UI v2 run below was the compact reporter's running counter,
+not the number of tests.
+
+## Run 33: UI v2 headers, Job Hero Card, Application Detail tweaks (2026-11-06)
+
+Branch `feat/ui-v2` from `dev` `ab6c8d3`, uncommitted working tree.
+Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable. No device run.
+AI log P-73.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | 0 files changed (after the edits were formatted) |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` | 676 / 676 passed (final state: Home without the summary) |
+| 4 | Device / emulator check of the new headers and cards | **Not run** |
+
+Findings:
+
+1. 36 tests failed on the first run: they asserted the old UI. The avatar
+   was then kept on the non-Home tabs (DC-20), and the tests were updated for
+   `Company · City` on one line, the student's name on Home, three
+   `Not disclosed` facts instead of four, and a taller header that shows
+   fewer application cards (the count line is checked instead).
+2. Two Internship Detail taps needed an extra scroll so the link was not
+   under the bottom action bar.
+
+## Run 32: Job type / allowance chips; Edit skills from the Apply Form (2026-11-06)
+
+Branch `fix/filter-chips-and-skills-sheet` from `dev` `b08b47f`, uncommitted
+working tree. Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable ·
+Android emulator `Pixel_API_36`. AI log P-70.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | 211 files, 0 changed |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` (full suite) | **660 tests, all passed** (+6: Results VM clears job type / allowance alone; Results widget chips shown and removable, none for `Any …`; Edit skills opened before the profile loaded waits, ignores edits and save, then seeds; later snapshots keep the draft; Apply Form `Add skill` keeps the Profile skills) |
+| 4 | Negative check: old `edit_skills_viewmodel.dart` / `edit_skills_sheet.dart` from `dev` | The new Apply Form test **fails** (`Found 0 widgets with text "2 chosen"`); code restored afterwards |
+| 5 | Probe on the old code (temporary test, deleted) | Profile `[Flutter, Dart, Git]`, sheet opened before the profile loaded: selected `[]`; saving `Python` left `[Python]` |
+| 6 | Profile build installed on the emulator | The first launch after install showed "internly isn't responding": the host was short of memory (emulator about 7 GB, Gradle daemon 1.4 GB on an 8 GB Mac). After `./gradlew --stop` the app started in 3.6 s |
+| 7 | Device: cold start, Profile tab not opened → Search `Recruitment` → card → `Apply now` → `Add skill` | **Passed**: the sheet shows the 4 Profile skills (`4 chosen`: Git, React, Next.js, JavaScript); before the fix it opened empty. Closed with `Cancel`, nothing saved |
+| 8 | Device: Search `Intern` → Filters → `Job type: Internship` → `Show 23 results` | **Passed**: chips `Internship` and `Intern`, Filters badge `2`, `23 internships found`; removing the `Internship` chip → `54 internships found` |
+
+---
+
+## Run 31: Firebase demo area (G-06) — 2026-11-06
+
+Branch `feat/fcm-notification-center`, working tree with the Firebase demo screen. Environment: Windows 11 · Flutter 3.47.8.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib/features/profile lib/app/router.dart test/features/profile` | 1 file reformatted, the rest already formatted |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test/features/profile/firebase_demo_viewmodel_test.dart test/features/profile/firebase_demo_screen_test.dart test/features/profile/profile_screen_test.dart` | **39 passed** |
+| 4 | `flutter test` | **663 passed** |
+| 5 | Device walk on `emulator-5554` after `adb install`: `/profile/firebase` | **Passed** after the source fix: `cv_match_enabled = true`, `home_recent_limit = 10`, `home_recommended_limit = 6`, all **`From Firebase`**; `Send a non-fatal error` showed the confirmation SnackBar. Test crash **not tapped** in this run |
+| 6 | Evidence screenshots | App states saved as `evidence/remote-config/remote-config-app-from-firebase-20261106.png` and `evidence/crashlytics/crashlytics-nonfatal-sent-20261106.png`. Console before/after and the Crashlytics dashboard are **not captured** |
+
+Fix found during the device walk: `RemoteConfigValue.source.name` returns `valueRemote` / `valueDefault` / `valueStatic`, not `remote` / `default` / `static`, so the demo screen labelled remote values `In-app default`. `FirebaseRemoteConfigService.snapshot()` now maps the enum through `sourceName()`, with a unit test and a widget test for the `From Firebase` label.
+
+Follow-ups: capture `evidence/crashlytics/` (dashboard with fatal + non-fatal, user ID and custom keys) and the Console side of `evidence/remote-config/` (values before/after a change) as described in [`evidence/README.md`](../evidence/README.md). Test crash not run yet. Figma updates for DC-24, DC-25 and DC-26 remain open.
+
+---
+
+## Run 33: Admin dashboard refactor + admin crash command — 2026-11-06
+
+Environment: Windows 11 · Flutter 3.47.8 · Node 24 · `emulator-5554` (1080 × 2400) · Firebase project `prm-lab3` · signed-in test account.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd tools/admin-dashboard && npm test` | **9 passed** |
+| 2 | `node --check server.js`, `lib/admin.js`, `public/app.js` | Clean |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **676 passed** |
+| 5 | `POST /api/test-crash` to the signed-in UID | `successCount: 1`; logcat showed `FATAL EXCEPTION: FirebaseCrashlyticsTestCrash` on the app PID, then the app closed |
+| 6 | Rebuilt and reinstalled the APK; Profile → Diagnostics | Both `Simulate app crash` and `Firebase demo` are present |
+| 7 | `agent-browser` visual check | Recipient select lists all 9 users plus `Everyone with a token (5)`; no-token users are disabled; selecting `Mai Duy Lập` enabled `Send notification` and changed the chip to `To Mai Duy Lập`; the crash acknowledgment enabled `Send test crash` |
+| 8 | Crashlytics dashboard for the admin crash | **Not checked** (the fatal report uploads on the next launch) |
+
+Notes: the app must be rebuilt after the `test_crash` handler lands; the first attempt used the earlier APK and did not close. The dashboard is served only on `127.0.0.1:4317`.
+
+---
+
+## Run 34: Email-based apply flow (DC-31) — 2026-11-06
+
+Environment: Windows 11 · Flutter 3.47.8 · Dart 3.13.3 · Node 24.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Formatted 216 files (8 changed on the first run, then clean) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **653 passed** |
+| 4 | `cd functions && npm test` | **59 passed** (`npm run build` + `node --test`; 13 new for `composeCoverLetter`) |
+| 5 | Unit: `contact_email_test.dart`, `mailto_test.dart`, `cover_letter_service_test.dart` | Passed (in the 653) |
+| 6 | ViewModel: `apply_compose_viewmodel_test.dart` | Passed: prefill from the JD, AI draft, empty / invalid recipient, `mailto:`, `I've sent it` record fields (`appliedVia: email`, `recipientEmail`, cover letter, optional CV), repeated tap, failed draft, no name, late profile snapshot, `buildSession` |
+| 7 | Widget: `apply_compose_screen_test.dart` | Passed at 360 / 412 dp: drafted subject and letter, found / absent address helper, CV card, error + Retry, `Open email app` hands the draft to the fake mail service, 48 dp guideline |
+| 8 | Router: `router_test.dart` | `home_apply_email` for `Apply now`; new `/apply/match`, `/apply/validation`, `/apply/success` paths |
+| 9 | Deploy `composeCoverLetter` / a real Groq call | **Not run** (no owner deploy or secret in this session) |
+| 10 | Device walk (open Gmail, attach the CV, `I've sent it`) | **Not run** (no device session owned by this agent) |
+| 11 | `cover_letter_generate` / `application_create` in DebugView | **Not run** |
+| 12 | `uv run --no-sync python -m py_compile e2e_test/test_apply.py e2e_test/test_apply_form.py e2e_test/conftest.py` | Clean (TC-06 / TC-18 / TC-19 rewritten for the email flow; TC-20 removed with the form) |
+
+Notes: the compose screen replaces the six-field Application Form and the Review step (DC-31, G-33). The callable's unit tests cover the AI path, the template fallback (blank key, model error, unparseable JSON), Vietnamese listings, a missing internship / key / auth, another user's CV path and a failed CV read.
+
+---
+
+## Run 36: SerpAPI fresher/junior keywords + Detail role/level badges (2026-11-07)
+
+Environment: Windows 11 · Flutter 3.47.6 / Dart 3.13.5 · Node 24.6.0 (functions declare Node 22) · merge of `dev` (UI v2, compose apply flow) into the feature branch. Changes: P-79, DC-28.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd functions && npm test` | **20 tests, all passed** (config keywords, rotation and quota) |
+| 2 | `dart format lib test` | **222 files formatted, 0 changed** |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **687 tests, all passed** (full suite after the merge; includes the level parser, `Internship.level` and the Detail badge assertions at 360 / 412 dp) |
+| 5 | Deployed `syncInternshipsJob` + manual Cloud Scheduler run (2026-11-07) | **Real backfill passed**: `sync/state` → `backfill=true`, `fetched=65`, `written=65`, `expiredDeleted=0`, all eight keywords, no `lastError`; Firestore shows 10 `IT fresher Vietnam` and 10 `IT junior Vietnam` listings; the Pixel 6 emulator shows the `DevOps/Cloud` + `Intern` badges on Detail. Evidence: `evidence/sync/2026-11-07-p46-sync.md` + screenshot (files keep the original P-46 label) |
+
+---
+
+## Run 37: Experience band + ranking tiebreaker (2026-11-07)
+
+Environment: Windows 11 · Flutter 3.47.6 / Dart 3.13.5 · no device or Firebase project on this machine. Changes: P-80, DC-32, DC-33.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **222 files formatted, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **687 tests, all passed** (full suite after the merge). Coverage: `user_profile_test.dart` (parse/store, legacy profile without `experience`, band → level mapping, equality/hashCode by experience); `profile_viewmodels_test.dart` (seeded band, single-select + clear, other fields keep the draft, save with `item_count`, unanswered experience stored null and not counted, failed save keeps the draft); `recommendation_test.dart` (level matrix incl. `null`, experience does not change the score); `home_viewmodel_test.dart` (level match beats sync rank, no experience keeps sync order, level cannot outrank a better role/skill score); `profile_screen_test.dart` (the Update preferences sheet runs at 360 and 412 dp and saves an experience chip; Profile asserts the `1–2 years` tag and four "Not set" groups) |
+| 4 | Not run | On-device sheet/tag screenshots, Firestore round trip on a real project, DebugView for the new `profile_update.item_count` (no device / Firebase project here) |
+
+---
+
+## Run 38: Unread badge on the bell + Mark all as read (2026-11-08)
+
+Branch `feat/notification-unread-badge` from `dev` `88b3382`, uncommitted
+working tree. Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable.
+AI log P-81.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | 0 changed |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` (full suite) | **697 tests, all passed** (+10: header badge with 3 and `9+`, none at 0; unread count follows snapshots and is 0 signed out; `markAllRead` marks only the unread, ignores loading / all read, retries after a failure; Notification Center shows `Mark all as read` only while something is unread and hides it after the snapshot) |
+| 4 | Profile build of this branch on emulator `Pixel_API_36`, 1 unread notification | **Passed**: red badge `1` on the bell of Home, Saved and Profile |
+| 5 | Device: bell → Notifications | **Passed**: `Mark all as read` shown in the app bar; the unread item has its dot |
+| 6 | Device: tap `Mark all as read` | **Passed**: the item reads `Read`, the action disappears; Back to Profile shows the bell without a badge |
+
 ---
 
 ## Run template
