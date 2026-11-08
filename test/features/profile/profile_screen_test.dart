@@ -17,6 +17,7 @@ import 'package:internly/features/profile/widgets/profile_sections.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
+import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/document_picker_service.dart';
@@ -68,10 +69,12 @@ void main() {
   late FakeCrashlyticsService crashlytics;
   late FakeNotificationService notificationService;
   late FakeRemoteConfigService remoteConfig;
+  late FakeApplicationService applications;
 
   setUp(() {
     auth = FakeAuthService(initialUser: testUser);
     profiles = FakeUserProfileService();
+    applications = FakeApplicationService();
     analytics = FakeAnalyticsService();
     picker = FakeDocumentPickerService();
     storage = FakeFileStorageService();
@@ -83,6 +86,7 @@ void main() {
 
   tearDown(() async {
     await profiles.dispose();
+    await applications.dispose();
     await auth.dispose();
     await notificationService.dispose();
     remoteConfig.dispose();
@@ -120,6 +124,7 @@ void main() {
         overrides: [
           authServiceProvider.overrideWithValue(auth),
           userProfileServiceProvider.overrideWithValue(profiles),
+          applicationServiceProvider.overrideWithValue(applications),
           analyticsServiceProvider.overrideWithValue(analytics),
           documentPickerServiceProvider.overrideWithValue(picker),
           fileStorageServiceProvider.overrideWithValue(storage),
@@ -161,16 +166,16 @@ void main() {
       expect(find.text('+84 908 123 456'), findsOneWidget);
       expect(find.widgetWithText(AppButton, 'Edit profile'), findsOneWidget);
 
-      await scrollTo(tester, find.text('Replace CV'));
-      expect(find.text('CV / Resume'), findsOneWidget);
-      expect(find.text('1 active file'), findsOneWidget);
+      await scrollTo(tester, find.text('Add CV'));
+      expect(find.text('CV library'), findsOneWidget);
+      expect(find.text('1 file'), findsOneWidget);
       expect(find.text('Minh_Nguyen_CV_SE.pdf'), findsOneWidget);
       expect(find.text('Oct 14, 2024 · 420 KB'), findsOneWidget);
       expect(
         find.bySemanticsLabel(RegExp('Status: Default for applications')),
         findsOneWidget,
       );
-      expect(find.byTooltip('View CV'), findsOneWidget);
+      expect(find.byTooltip('CV actions'), findsOneWidget);
 
       await scrollTo(tester, find.text('MongoDB'));
       expect(find.text('Technical skills'), findsOneWidget);
@@ -219,14 +224,12 @@ void main() {
 
         expect(find.text('Test Student'), findsOneWidget);
         expect(find.text('Add your university and major.'), findsOneWidget);
-        await scrollTo(tester, find.text('Upload CV'));
+        await scrollTo(tester, find.text('Add CV'));
         expect(
-          find.text(
-            'No CV yet. Upload a PDF once and use it for every application.',
-          ),
+          find.text('No CV yet. Add a PDF to use when you apply.'),
           findsOneWidget,
         );
-        expect(find.text('1 active file'), findsNothing);
+        expect(find.text('1 file'), findsNothing);
         await scrollTo(
           tester,
           find.text('Add the skills you have, such as Flutter or SQL.'),
@@ -339,8 +342,10 @@ void main() {
   testWidgets('View CV opens the stored download URL', (tester) async {
     profiles.profile = _complete;
     await pumpProfile(tester);
-    await scrollTo(tester, find.byTooltip('View CV'));
-    await tester.tap(find.byTooltip('View CV'));
+    await scrollTo(tester, find.byTooltip('CV actions'));
+    await tester.tap(find.byTooltip('CV actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View'));
     await tester.pumpAndSettle();
 
     expect(links.opened, [Uri.parse(_cv.url)]);
@@ -498,19 +503,20 @@ void main() {
     });
   }
 
-  group('Update CV sheet', () {
-    testWidgets('first upload: choose a PDF, upload, CV card appears', (
+  group('CV library', () {
+    testWidgets('first upload: choose a PDF, add it, the library shows it', (
       tester,
     ) async {
       picker.next = PickedDocument(name: 'Lan_CV.pdf', bytes: pdfBytes(4096));
       await pumpProfile(tester);
-      await scrollTo(tester, find.text('Upload CV'));
-      await tester.tap(find.text('Upload CV'));
+      await scrollTo(tester, find.text('Add CV'));
+      await tester.tap(find.text('Add CV'));
       await tester.pumpAndSettle();
 
+      expect(find.text('Add a CV to your library'), findsOneWidget);
       expect(find.text('Choose a PDF file'), findsOneWidget);
-      final upload = find.widgetWithText(AppButton, 'Upload CV').last;
-      expect(tester.widget<AppButton>(upload).onPressed, isNull);
+      final add = find.widgetWithText(AppButton, 'Add CV').last;
+      expect(tester.widget<AppButton>(add).onPressed, isNull);
 
       await tester.tap(find.text('Choose file'));
       await tester.pumpAndSettle();
@@ -518,39 +524,46 @@ void main() {
       expect(find.text('Lan_CV.pdf'), findsOneWidget);
       expect(find.text('4 KB · PDF'), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(AppButton, 'Upload CV').last);
+      await tester.tap(find.widgetWithText(AppButton, 'Add CV').last);
       await tester.pumpAndSettle();
 
       expect(find.text('Choose a PDF file'), findsNothing);
       expect(storage.uploadedNames, ['Lan_CV.pdf']);
       expect(find.text('Lan_CV.pdf'), findsOneWidget);
-      expect(find.text('Replace CV'), findsOneWidget);
+      expect(find.text('1 file'), findsOneWidget);
+      expect(profiles.cvs.single.fileName, 'Lan_CV.pdf');
+      expect(profiles.defaultCvId, profiles.cvs.single.id);
+      expect(analytics.events, contains('cv_library_change'));
     });
 
-    testWidgets('replace: shows the current CV; upload error is recoverable', (
+    testWidgets('add: an upload error is recoverable and keeps the library', (
       tester,
     ) async {
-      profiles.profile = _complete;
+      final existing = CvFile(
+        id: 'cv-existing',
+        fileName: 'Minh_CV.pdf',
+        url: 'https://storage.example/cvs/existing.pdf',
+        storagePath: 'cvs/uid-123/existing.pdf',
+        sizeBytes: 2048,
+        uploadedAt: DateTime(2026, 10, 1),
+      );
+      profiles
+        ..cvs.add(existing)
+        ..defaultCvId = existing.id
+        ..profile = UserProfile(cv: existing, defaultCvId: existing.id);
       picker.next = PickedDocument(name: 'new.pdf', bytes: pdfBytes());
       storage.error = const AppException(
         AppErrorKind.network,
         'We could not upload the file. Check your connection and try again.',
       );
       await pumpProfile(tester);
-      await scrollTo(tester, find.text('Replace CV'));
-      await tester.tap(find.text('Replace CV'));
+      await scrollTo(tester, find.text('Add CV'));
+      await tester.tap(find.text('Add CV'));
       await tester.pumpAndSettle();
-
-      expect(find.text('Current active CV'), findsOneWidget);
-      expect(
-        find.bySemanticsLabel(RegExp('Status: Active default')),
-        findsOneWidget,
-      );
-      expect(find.text('420 KB · Uploaded Oct 14, 2024'), findsOneWidget);
 
       await tester.tap(find.text('Choose file'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(AppButton, 'Update CV'));
+      await tester.tap(find.widgetWithText(AppButton, 'Add CV').last);
       await tester.pumpAndSettle();
 
       expect(
@@ -560,12 +573,117 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('new.pdf'), findsOneWidget);
+      expect(profiles.cvs, hasLength(1));
 
       storage.error = null;
-      await tester.tap(find.widgetWithText(AppButton, 'Update CV'));
+      await tester.tap(find.widgetWithText(AppButton, 'Add CV').last);
       await tester.pumpAndSettle();
-      expect(find.text('Current active CV'), findsNothing);
-      expect(profiles.profile?.cv?.fileName, 'new.pdf');
+      expect(find.text('Choose a PDF file'), findsNothing);
+      expect(profiles.cvs, hasLength(2));
+      await scrollTo(tester, find.text('2 files'));
+      expect(find.text('Minh_CV.pdf'), findsOneWidget);
+      expect(find.text('new.pdf'), findsOneWidget);
+      expect(profiles.defaultCvId, existing.id);
+    });
+
+    testWidgets('Set as default moves the badge and the mirror', (
+      tester,
+    ) async {
+      final first = CvFile(
+        id: 'cv-first',
+        fileName: 'First_CV.pdf',
+        url: 'https://storage.example/cvs/first.pdf',
+        storagePath: 'cvs/uid-123/first.pdf',
+        sizeBytes: 2048,
+        uploadedAt: DateTime(2026, 10, 1),
+      );
+      final second = CvFile(
+        id: 'cv-second',
+        fileName: 'Second_CV.pdf',
+        url: 'https://storage.example/cvs/second.pdf',
+        storagePath: 'cvs/uid-123/second.pdf',
+        sizeBytes: 2048,
+        uploadedAt: DateTime(2026, 10, 2),
+      );
+      profiles
+        ..cvs.addAll([second, first])
+        ..defaultCvId = second.id
+        ..profile = UserProfile(cv: second, defaultCvId: second.id);
+      await pumpProfile(tester);
+      await scrollTo(tester, find.byTooltip('CV actions').last);
+      await tester.tap(find.byTooltip('CV actions').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Set as default'));
+      await tester.pumpAndSettle();
+
+      expect(profiles.defaultCvId, first.id);
+      expect(profiles.profile?.cv?.fileName, 'First_CV.pdf');
+      expect(profiles.writes, contains('cv setDefault'));
+    });
+
+    testWidgets('Remove asks first, then removes and deletes the file', (
+      tester,
+    ) async {
+      final cv = CvFile(
+        id: 'cv-remove',
+        fileName: 'Old_CV.pdf',
+        url: 'https://storage.example/cvs/old.pdf',
+        storagePath: 'cvs/uid-123/old.pdf',
+        sizeBytes: 2048,
+        uploadedAt: DateTime(2026, 10, 1),
+      );
+      profiles
+        ..cvs.add(cv)
+        ..defaultCvId = cv.id
+        ..profile = UserProfile(cv: cv, defaultCvId: cv.id);
+      await pumpProfile(tester);
+      await scrollTo(tester, find.byTooltip('CV actions'));
+      await tester.tap(find.byTooltip('CV actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Remove this CV?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(AppButton, 'Remove'));
+      await tester.pumpAndSettle();
+
+      expect(profiles.cvs, isEmpty);
+      expect(storage.deletedPaths, [cv.storagePath]);
+      expect(profiles.writes, contains('cv remove'));
+    });
+
+    testWidgets('a CV used by a submitted application keeps its file', (
+      tester,
+    ) async {
+      final cv = CvFile(
+        id: 'cv-used',
+        fileName: 'Used_CV.pdf',
+        url: 'https://storage.example/cvs/used.pdf',
+        storagePath: 'cvs/uid-123/used.pdf',
+        sizeBytes: 2048,
+        uploadedAt: DateTime(2026, 10, 1),
+      );
+      profiles
+        ..cvs.add(cv)
+        ..defaultCvId = cv.id
+        ..profile = UserProfile(cv: cv, defaultCvId: cv.id);
+      applications.cvPaths.add(cv.storagePath);
+      await pumpProfile(tester);
+      await scrollTo(tester, find.byTooltip('CV actions'));
+      await tester.tap(find.byTooltip('CV actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(AppButton, 'Remove'));
+      await tester.pumpAndSettle();
+
+      expect(profiles.cvs, isEmpty);
+      expect(storage.deletedPaths, isEmpty);
+      expect(analytics.parameters['cv_library_change'], {
+        'action': 'remove',
+        'cv_count': 0,
+        'kept_file': 1,
+      });
     });
   });
 

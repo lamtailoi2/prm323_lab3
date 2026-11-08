@@ -90,6 +90,63 @@ void main() {
     );
   });
 
+  group('prepareDeletePath (checks mirrored by storage.rules)', () {
+    test('accepts a CV in the signed-in user\'s own folder', () {
+      final path = prepareDeletePath(
+        uid: testUser.uid,
+        storagePath: '  cvs/${testUser.uid}/cv-abc.pdf  ',
+      );
+      expect(path, 'cvs/${testUser.uid}/cv-abc.pdf');
+    });
+
+    test('rejects signed-out users and foreign paths', () {
+      for (final call in [
+        () => prepareDeletePath(uid: null, storagePath: 'cvs/u1/cv.pdf'),
+        () => prepareDeletePath(uid: testUser.uid, storagePath: ''),
+        () => prepareDeletePath(
+          uid: testUser.uid,
+          storagePath: 'cvs/other-user/cv.pdf',
+        ),
+        () => prepareDeletePath(
+          uid: testUser.uid,
+          storagePath: 'reports/${testUser.uid}/report.pdf',
+        ),
+        () => prepareDeletePath(
+          uid: testUser.uid,
+          storagePath: 'cvs/${testUser.uid}/../other/cv.pdf',
+        ),
+      ]) {
+        expect(call, _appError(AppErrorKind.permissionDenied));
+      }
+    });
+
+    test('FirebaseStorageService rejects signed-out users before using '
+        'Firebase', () async {
+      final auth = FakeAuthService();
+      addTearDown(auth.dispose);
+      final service = FirebaseStorageService(auth: auth);
+
+      await expectLater(
+        service.deletePdf('cvs/u1/cv.pdf'),
+        _appError(AppErrorKind.permissionDenied),
+      );
+    });
+  });
+
+  test('maps Cloud Storage delete codes to user-safe errors', () {
+    expect(mapDeleteError('object-not-found').kind, AppErrorKind.notFound);
+    expect(
+      mapDeleteError('storage/unauthorized').kind,
+      AppErrorKind.permissionDenied,
+    );
+    expect(
+      mapDeleteError('unauthenticated').kind,
+      AppErrorKind.permissionDenied,
+    );
+    expect(mapDeleteError('retry-limit-exceeded').kind, AppErrorKind.network);
+    expect(mapDeleteError('something-else').kind, AppErrorKind.unknown);
+  });
+
   test('maps Cloud Storage error codes to user-safe errors', () {
     expect(
       mapStorageError('storage/unauthorized').kind,

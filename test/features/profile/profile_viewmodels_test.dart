@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/state/view_state.dart';
 import 'package:internly/core/utils/skill_matcher.dart';
+import 'package:internly/features/profile/viewmodels/cv_library_viewmodel.dart';
 import 'package:internly/features/profile/viewmodels/edit_preferences_viewmodel.dart';
 import 'package:internly/features/profile/viewmodels/edit_profile_viewmodel.dart';
 import 'package:internly/features/profile/viewmodels/edit_skills_viewmodel.dart';
@@ -14,6 +15,7 @@ import 'package:internly/features/profile/viewmodels/update_cv_viewmodel.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
+import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/document_picker_service.dart';
 import 'package:internly/services/external_link_service.dart';
@@ -34,6 +36,7 @@ void main() {
   late FakeDocumentPickerService picker;
   late FakeFileStorageService storage;
   late FakeExternalLinkService links;
+  late FakeApplicationService applications;
   late ProviderContainer container;
 
   setUp(() {
@@ -43,10 +46,12 @@ void main() {
     picker = FakeDocumentPickerService();
     storage = FakeFileStorageService();
     links = FakeExternalLinkService();
+    applications = FakeApplicationService();
     container = ProviderContainer.test(
       overrides: [
         authServiceProvider.overrideWithValue(auth),
         userProfileServiceProvider.overrideWithValue(profiles),
+        applicationServiceProvider.overrideWithValue(applications),
         analyticsServiceProvider.overrideWithValue(analytics),
         documentPickerServiceProvider.overrideWithValue(picker),
         fileStorageServiceProvider.overrideWithValue(storage),
@@ -57,6 +62,7 @@ void main() {
 
   tearDown(() async {
     await profiles.dispose();
+    await applications.dispose();
     await auth.dispose();
   });
 
@@ -666,6 +672,230 @@ void main() {
       );
       await container.read(openCvViewModelProvider.notifier).open(cv);
       expect(container.read(openCvViewModelProvider).error, links.error);
+    });
+  });
+
+  group('CvLibraryViewModel', () {
+    CvFile cv({
+      String? id,
+      String fileName = 'cv.pdf',
+      String? path,
+      DateTime? uploadedAt,
+    }) => CvFile(
+      id: id,
+      fileName: fileName,
+      url: 'https://storage.example/${path ?? 'cvs/uid-123/$fileName'}',
+      storagePath: path ?? 'cvs/uid-123/$fileName',
+      sizeBytes: 2048,
+      uploadedAt: uploadedAt ?? DateTime(2026, 10, 1),
+    );
+
+    Future<CvLibraryViewModel> listen() async {
+      await loadProfile();
+      container.listen(cvLibraryViewModelProvider, (_, _) {});
+      return container.read(cvLibraryViewModelProvider.notifier);
+    }
+
+    CvLibraryState cvState() => container.read(cvLibraryViewModelProvider);
+
+    test('a file over 10 MB is rejected before uploading', () async {
+      final vm = await listen();
+      picker.next = PickedDocument(
+        name: 'huge.pdf',
+        bytes: pdfBytes(maxUploadBytes + 1),
+      );
+
+      await vm.choose();
+
+      expect(cvState().pending, isNull);
+      expect(
+        cvState().error?.message,
+        'The file must be a PDF of at most 10 MB.',
+      );
+      expect(storage.uploadedNames, isEmpty);
+    });
+
+    test('a closed picker changes nothing', () async {
+      final vm = await listen();
+      await vm.choose();
+      expect(cvState().pending, isNull);
+      expect(cvState().error, isNull);
+    });
+
+    test('upload adds to the library, makes it the default and logs', () async {
+      final vm = await listen();
+      picker.next = PickedDocument(name: 'Minh_CV.pdf', bytes: pdfBytes(4096));
+      await vm.choose();
+      storage.gate = Completer<void>();
+
+      final upload = vm.upload();
+      await pumpEventQueue();
+      expect(cvState().isUploading, isTrue);
+      expect(cvState().progress, 0.5);
+      expect(cvState().action, CvLibraryAction.add);
+
+      storage.gate!.complete();
+      expect(await upload, isTrue);
+      expect(cvState().isUploading, isFalse);
+      expect(cvState().pending, isNull);
+      expect(profiles.cvs.single.fileName, 'Minh_CV.pdf');
+      expect(profiles.defaultCvId, profiles.cvs.single.id);
+      expect(analytics.events, ['cv_upload', 'cv_library_change']);
+      expect(analytics.parameters['cv_upload'], {
+        'source': 'profile',
+        'file_size_kb': 4,
+      });
+      expect(analytics.parameters['cv_library_change'], {
+        'action': 'add',
+        'cv_count': 1,
+        'kept_file': 0,
+      });
+    });
+
+    test('a failed upload keeps the file so the student can retry', () async {
+      final vm = await listen();
+      picker.next = PickedDocument(name: 'cv.pdf', bytes: pdfBytes());
+      await vm.choose();
+      storage.error = _network;
+
+      expect(await vm.upload(), isFalse);
+      expect(cvState().pending?.name, 'cv.pdf');
+      expect(cvState().error, _network);
+      expect(cvState().isBusy, isFalse);
+      expect(profiles.cvs, isEmpty);
+      expect(analytics.events, isEmpty);
+    });
+
+    test('setDefault updates the profile and logs the count', () async {
+      final first = cv(
+        id: 'cv-1',
+        fileName: 'first.pdf',
+        uploadedAt: DateTime(2026, 10, 1),
+      );
+      final second = cv(
+        id: 'cv-2',
+        fileName: 'second.pdf',
+        uploadedAt: DateTime(2026, 10, 2),
+      );
+      profiles
+        ..cvs.addAll([second, first])
+        ..defaultCvId = second.id
+        ..profile = UserProfile(cv: second, defaultCvId: second.id);
+      final vm = await listen();
+
+      expect(await vm.setDefault(first), isTrue);
+      expect(profiles.defaultCvId, first.id);
+      expect(profiles.profile?.cv?.fileName, 'first.pdf');
+      expect(analytics.parameters['cv_library_change'], {
+        'action': 'set_default',
+        'cv_count': 2,
+        'kept_file': 0,
+      });
+    });
+
+    test('a failed setDefault exposes the message', () async {
+      final first = cv(id: 'cv-1');
+      profiles
+        ..cvs.add(first)
+        ..defaultCvId = first.id
+        ..profile = UserProfile(cv: first, defaultCvId: first.id);
+      final vm = await listen();
+      profiles.cvSaveError = _network;
+
+      expect(await vm.setDefault(first), isFalse);
+      expect(cvState().error, _network);
+      expect(cvState().isBusy, isFalse);
+      expect(analytics.events, isEmpty);
+    });
+
+    test('repeated taps are ignored while an action is in flight', () async {
+      final first = cv(id: 'cv-1');
+      profiles
+        ..cvs.add(first)
+        ..defaultCvId = first.id
+        ..profile = UserProfile(cv: first, defaultCvId: first.id);
+      final vm = await listen();
+      profiles.cvSaveGate = Completer<void>();
+
+      final inFlight = vm.setDefault(first);
+      await pumpEventQueue();
+      expect(cvState().isBusy, isTrue);
+      expect(await vm.setDefault(first), isFalse);
+      expect(await vm.remove(first), isFalse);
+
+      profiles.cvSaveGate!.complete();
+      expect(await inFlight, isTrue);
+      expect(profiles.writes, ['cv setDefault']);
+    });
+
+    test('remove deletes an unreferenced file and logs', () async {
+      final only = cv(id: 'cv-1');
+      profiles
+        ..cvs.add(only)
+        ..defaultCvId = only.id
+        ..profile = UserProfile(cv: only, defaultCvId: only.id);
+      final vm = await listen();
+
+      expect(await vm.remove(only), isTrue);
+      expect(profiles.cvs, isEmpty);
+      expect(storage.deletedPaths, [only.storagePath]);
+      expect(vm.takeNotice(), isNull);
+      expect(analytics.parameters['cv_library_change'], {
+        'action': 'remove',
+        'cv_count': 0,
+        'kept_file': 0,
+      });
+    });
+
+    test('remove keeps a file a submitted application references', () async {
+      final used = cv(id: 'cv-1');
+      profiles
+        ..cvs.add(used)
+        ..defaultCvId = used.id
+        ..profile = UserProfile(cv: used, defaultCvId: used.id);
+      applications.cvPaths.add(used.storagePath);
+      final vm = await listen();
+
+      expect(await vm.remove(used), isTrue);
+      expect(profiles.cvs, isEmpty);
+      expect(storage.deletedPaths, isEmpty);
+      expect(analytics.parameters['cv_library_change'], {
+        'action': 'remove',
+        'cv_count': 0,
+        'kept_file': 1,
+      });
+      expect(vm.takeNotice(), isNotNull);
+      expect(vm.takeNotice(), isNull);
+    });
+
+    test('a failed file delete does not undo the removal', () async {
+      final only = cv(id: 'cv-1');
+      profiles
+        ..cvs.add(only)
+        ..defaultCvId = only.id
+        ..profile = UserProfile(cv: only, defaultCvId: only.id);
+      storage.deleteError = _network;
+      final vm = await listen();
+
+      expect(await vm.remove(only), isTrue);
+      expect(profiles.cvs, isEmpty);
+      expect(cvState().error, isNull);
+    });
+
+    test('a failed profile write keeps the CV and skips the file', () async {
+      final only = cv(id: 'cv-1');
+      profiles
+        ..cvs.add(only)
+        ..defaultCvId = only.id
+        ..profile = UserProfile(cv: only, defaultCvId: only.id);
+      final vm = await listen();
+      profiles.cvSaveError = _network;
+
+      expect(await vm.remove(only), isFalse);
+      expect(profiles.cvs, hasLength(1));
+      expect(storage.deletedPaths, isEmpty);
+      expect(cvState().error, _network);
+      expect(cvState().isBusy, isFalse);
     });
   });
 }

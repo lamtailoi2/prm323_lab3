@@ -787,3 +787,63 @@ Environment: <OS, Flutter, device / emulator, commit>
 
 Failures and follow-ups: <links to issues / commits>
 ```
+
+## Run 32: CV library (G-33) — 2026-11-07
+
+**Environment:** Windows 11 Home Single Language 10.0.26200 · Flutter 3.47.3 stable · Dart 3.13.3 · branch `feat/cv-library`. No Firebase project or device configured on this machine; build/device runs happen on another machine.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **Completed**; 215 files, 0 changed (already formatted) |
+| 2 | `flutter analyze` | **No issues found!** (strict casts / inference / raw types, extra lint rules from `analysis_options.yaml`) |
+| 3 | `flutter test` | **687 tests, all passed** (`All tests passed!`); new/changed: `test/core/utils/cv_library_test.dart`, `test/models/user_profile_test.dart`, `test/services/file_storage_service_test.dart`, `test/features/profile/profile_viewmodels_test.dart` (CV library add/set default/remove + referenced-file guard), `test/features/profile/profile_screen_test.dart` (CV library section at 360/412 dp) |
+| 4 | `flutter build apk --debug` | **Not run**: Android toolchain incomplete on this machine. Run on the device-owner machine before opening the PR. |
+| 5 | App launch / Firebase (Auth, Storage, Firestore `users/{uid}/cvs`) on device | **Not run**: Firebase not configured here; requires the device-owner machine. |
+
+Findings:
+
+1. Two `removeCv` bugs were found while reviewing the work-in-progress before logging, and fixed in this session: (a) removing a non-default CV promoted another CV to default even when the legacy `users/{uid}.cv` mirror was the active default (`defaultCvId == null`); (b) removing the legacy mirror cleared `cv` to `null` while library entries survived, so the Apply Form prefill went empty. The legacy-mirror branch now promotes the newest library entry to `defaultCvId` + mirror, and the library-entry branch leaves a surviving legacy mirror as the default. Tests still pass after the fix.
+2. DebugView evidence for `cv_library_change` (`action`, `cv_count`, `kept_file`) is **not captured here**; it needs a running app + Firebase Console and is recorded separately by the device-owner.
+
+---
+
+## Run 33: CV auto-select (G-33 item 8) — 2026-11-08
+
+**Environment:** Windows 11 Home Single Language 10.0.26200 · Flutter 3.47.3 stable · Dart 3.13.3 · branch `feat/cv-library`. No Firebase project or device configured on this machine.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **Completed**; 215 files, 0 changed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **687 tests, all passed**; existing apply-form tests still pass after ViewModel refactor |
+| 4 | `npm run build && npm test` (Cloud Functions) | **57/57 tests passed** including new `select-cv.test.ts` (12 cases) |
+| 5 | `flutter build apk --debug` | **Not run**: Android toolchain incomplete on this machine |
+
+Findings:
+
+1. Two ViewModel logic bugs discovered during review and fixed: `removeCv` guard for legacy-mirror default (2026-11-07); `_onProfile` and `_applyLibrary` ordering that caused `profileCv` to go null when the CV library stream arrived (2026-11-08).
+2. `cv_auto_select` event now Implemented; DebugView screenshot still pending device run.
+
+---
+
+## Run 39: Post-merge CV/profile regression fixes (2026-11-08)
+
+**Environment:** Windows 11 · branch `feat/cv-library`, HEAD `3f5eb24` plus an uncommitted working tree. No Firebase login on this machine.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **230 files, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` (full suite) | **729 tests, all passed** |
+| 4 | `npm run build && npm test` (`functions/`) | **72/72 tests passed** |
+| 5 | `flutter pub get` | **Got dependencies** (37 newer versions held back by constraints) |
+| 6 | `npm install` (`functions/`) | **up to date**, 259 packages audited (9 vulnerabilities reported by npm) |
+| 7 | `npx firebase-tools deploy --only functions:selectCv --project prm-lab3` | **Passed after one retry**: the first attempt created the function but failed to set the Cloud Run invoker IAM policy; the second run printed `Deploy complete!`, and `functions:list` shows `selectCv` (callable, `us-central1`, `nodejs22`) |
+
+Findings:
+
+1. The merge with `dev` dropped `UserProfile.givenName` / `UserProfile.defaultCvId` from the model fields, `fromFirestore`, `==` and `hashCode`; this broke the Home greeting and Profile default-CV selection. Restored all four places and added an equality regression test.
+2. The merge kept two `updateCv` implementations; removed the old mirror-only one so uploads add to the library and set the new CV as default.
+3. `functions/src/index.ts` imported `handleSelectCv` / `SELECT_RUBRIC` and defined `selectGroq`, but the merge lost the `selectCv` export; restored the callable and `npm run build` passes.
+4. `FakeUserProfileService` dropped `givenName` / `defaultCvId` on merge writes; both are now preserved.
+5. The first deploy created `selectCv` but failed with `Failed to set the IAM Policy on the Service`; an immediate retry completed successfully, so the callable is now deployed.

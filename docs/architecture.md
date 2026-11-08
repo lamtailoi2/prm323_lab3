@@ -103,10 +103,11 @@ Lab 3 suggests `lib/{models, services, firebase, viewmodels, screens, widgets, u
 | `CvMatchViewModel` | CV Match Check (optional, advisory, from Compose) | `CvMatchService`, `AnalyticsService` | Done (model, service, ViewModel, step + screen, tests) |
 | `MyApplicationsViewModel` | My Applications | `ApplicationService` | Done (list, status filter, retry; no writes, no detail) |
 | `ApplicationDetailViewModel` | Application Detail | `ApplicationService`, `InternshipService`, `ExternalLinkService`, `AnalyticsService` | Done (load, tracker, withdraw/undo, preview, tests) |
-| `ProfileViewModel` | Profile | `UserProfileService` (+ auth for email and photo) | Done |
+| `ProfileViewModel` | Profile | `UserProfileService` (+ auth for email and photo; profile and `users/{uid}/cvs` streams) | Done (library + legacy mirror, G-33) |
+| `CvLibraryViewModel` | Profile (CV library: Add CV sheet, Set as default, Remove) | `DocumentPickerService`, `FileStorageService`, `UserProfileService`, `ApplicationService`, `AnalyticsService` | Done (library actions, referenced-file guard, `cv_library_change`) |
 | `EditProfileViewModel` | Edit profile | `UserProfileService`, `AnalyticsService` | Done |
 | `EditSkillsViewModel`, `EditPreferencesViewModel` | Profile sheets | `UserProfileService`, `AnalyticsService` | Done |
-| `UpdateCvViewModel` | Update CV sheet | `DocumentPickerService`, `FileStorageService`, `UserProfileService`, `AnalyticsService` | Done |
+| `UpdateCvViewModel` | Update CV sheet (legacy single-CV flow, kept for compatibility) | `DocumentPickerService`, `FileStorageService`, `UserProfileService`, `AnalyticsService` | Done; Profile now uses `CvLibraryViewModel` |
 | `OpenCvViewModel` | Profile (View CV) | `ExternalLinkService` | Done |
 | `FirebaseDemoViewModel` | Firebase demo area | `RemoteConfigService`, `CrashlyticsService`, `NotificationService` | Done (live Remote Config values with source, non-fatal and crash tests, FCM token, links; ViewModel and screen tests) |
 | `NotificationCenterViewModel` | Notification Center | `NotificationService`, `AnalyticsService` | Done (history, read state, deep link, `notification_center_open`, tests) |
@@ -158,8 +159,8 @@ The pool itself is filled by `syncInternshipsJob` every six hours (Plan → back
 | Data | Source | Owner | Access |
 |---|---|---|---|
 | Internship listings | **Cloud Firestore** `internships/{jobKey}`, mirrored from SerpAPI `google_jobs` every 6 hours (read-only in the app) | Scheduled Cloud Function (Admin SDK) | Signed-in users read; client writes are denied. App reads through `InternshipService` only |
-| Profile, saved internships, applications, notifications, report metadata | **Cloud Firestore** under `users/{uid}/…` | The signed-in user | Owner only: `users/{uid}/**` (`firebase/firestore.rules`, final) |
-| CVs, generated PDF reports | **Cloud Storage for Firebase** `cvs/{uid}/…`, `reports/{uid}/…` (Blaze, US bucket, no-cost quota); metadata in Firestore `users/{uid}/…` | The signed-in user | `firebase/storage.rules`: owner only, PDF ≤ 10 MB; the service checks the same before uploading (G-12) |
+| Profile, CV library, saved internships, applications, notifications, report metadata | **Cloud Firestore** under `users/{uid}/…` | The signed-in user | Owner only: `users/{uid}/**` (`firebase/firestore.rules`, final) |
+| CVs, generated PDF reports (a removed CV's file is deleted unless a submitted application references it) | **Cloud Storage for Firebase** `cvs/{uid}/…`, `reports/{uid}/…` (Blaze, US bucket, no-cost quota); metadata in Firestore `users/{uid}/…` | The signed-in user | `firebase/storage.rules`: owner only, PDF ≤ 10 MB; the service checks the same before uploading (G-12) |
 | CV text for the quality gate | Read server-side from `cvs/{uid}/…` by the callable `validateCv`, then sent to Gemini as plain text | Callable Cloud Function (Admin SDK) | Only the caller's own `cvs/${request.auth.uid}/…` path; the key is a Secret Manager secret (`GEMINI_API_KEY`), never in the app |
 | CV match check | Read server-side from `cvs/{uid}/…` by the callable `matchCv`, combined with `internships/{jobKey}` and `users/{uid}.skills`; CV text and the job description are sent to Groq to extract technology lists (the local vocabulary is unioned in) | Callable Cloud Function (Admin SDK) | Caller's own CV path only; no match result is stored; separate `GROQ_API_KEY` secret, never in the app |
 | Feature switches, limits | **Remote Config** (defaults in `firebase/remote-config-defaults.json`) | App team | Read-only in the app; real-time updates |
@@ -179,11 +180,13 @@ Rules for feature owners:
 | `fullName`, `headline`, `university`, `major`, `phone`, `city`, `bio` (≤ 300) | string or null | Edit profile |
 | `yearOfStudy` (1–6), `graduationYear` | int or null | Edit profile (Academic standing picker) |
 | `skills` | string[] (values from `knownSkills`) | Edit skills sheet |
-| `preferences` | map: `targetRoles` (`software_engineer` / `mobile` / `frontend` / `backend` / `qa_tester` / `data_ai` / `dev_ops`, the sheet's roles), `experience` (`none` / `under_one` / `one_to_two` / `two_plus`, or null when not set), `workModes` (`hybrid` / `remote` / `on_site`), `location` (string or null) | Update preferences sheet |
+| `preferences` | map: `targetRoles` (`software_engineer` / `mobile` / `frontend` / `backend` / `qa_tester`, the frame's roles), `workModes` (`hybrid` / `remote` / `on_site`), `location` (string or null) | Update preferences sheet |
 | `cv` | map: `fileName`, `url`, `storagePath`, `sizeBytes`, `uploadedAt` (only from a real `FileStorageService` upload) | Update CV sheet |
 | `updatedAt` | server timestamp | every write (merge per section) |
 
-Email and photo are never copied here; they come from the Google account. `city` (where the student lives) and `preferences.location` (where they want an internship) are both kept; Update preferences starts from `city` when its location is empty (G-30). Replacing the CV keeps the old file in Storage because submitted applications may still link to it.
+Email and photo are never copied here; they come from the Google account. `city` (where the student lives) and `preferences.location` (where they want an internship) are both kept; Update preferences starts from `city` when its location is empty (G-30).
+
+**CV library `users/{uid}/cvs/{cvId}`** (`CvFile`, G-33). `UserProfileService.watchCvs` streams the documents newest first and skips malformed ones; `ProfileViewModel` waits for both the profile and the library, then merges the legacy `cv` mirror by `storagePath` (`core/utils/cv_library.dart`). The default is the `defaultCvId` document, else the legacy mirror, else the newest file. Adding the first CV makes it the default and migrates a legacy entry to a real document; `Set as default` updates `defaultCvId` and the `cv` mirror; `Remove` deletes the document and, when no submitted application references its `storagePath`, the Cloud Storage file. Replacing a CV therefore no longer leaves an unreferenced file behind, while an application's copy survives.
 
 **Application document `users/{uid}/applications/{jobKey}`** (`InternshipApplication`, `lib/models/internship_application.dart`). The document ID is the listing key, so one student can have at most one application per listing. The Apply flow writes the snapshot; My Applications and Application Detail read it.
 
@@ -219,7 +222,7 @@ Application Detail subscribes to `ApplicationService.watchApplications()` and pi
 | Analytics | `services/analytics_service.dart` | Failures swallowed; names validated in debug |
 | Crashlytics | `services/crashlytics_service.dart` | Global handlers at bootstrap; user ID + `last_screen` key; `crashForTesting()` only from explicit test controls (Profile → Diagnostics, Firebase demo, and the local admin dashboard's data-only FCM command) |
 | Remote Config | `services/remote_config_service.dart` | Defaults from JSON before `runApp`; fetch and real-time updates in the background |
-| Profile | `services/user_profile_service.dart` | permission denied / offline → `AppException` (Retry on load, message in the form or sheet on save); malformed `cv` map ignored and logged |
+| Profile / CV library | `services/user_profile_service.dart` | permission denied / offline → `AppException` (Retry on load, message in the form or sheet on save); malformed `cv` map ignored and logged; malformed CV documents skipped and logged; a failed `deletePdf` leaves the metadata removed (an orphaned file is a retention issue, not a failed action) |
 | File picking, external links | `services/document_picker_service.dart`, `services/external_link_service.dart` | Closed picker → no change; unreadable file or no app to open a link → message |
 | Firestore (other collections), FCM, PDF generation | Added by their features | Each shows a visible message for offline, permission denied and cancel |
 

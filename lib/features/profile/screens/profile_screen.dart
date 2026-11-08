@@ -9,17 +9,19 @@ import '../../../core/widgets/app_dialog.dart';
 import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/state_view.dart';
+import '../../../models/user_profile.dart';
 import '../../../services/crashlytics_service.dart';
 import '../../../theme/app_spacing.dart';
 import '../../auth/viewmodels/sign_out_viewmodel.dart';
 import '../../notifications/viewmodels/unread_notifications_provider.dart';
+import '../viewmodels/cv_library_viewmodel.dart';
 import '../viewmodels/open_cv_viewmodel.dart';
 import '../viewmodels/profile_viewmodel.dart';
+import '../widgets/add_cv_sheet.dart';
 import '../widgets/edit_preferences_sheet.dart';
 import '../widgets/edit_skills_sheet.dart';
 import '../widgets/profile_header_card.dart';
 import '../widgets/profile_sections.dart';
-import '../widgets/update_cv_sheet.dart';
 
 /// Profile tab (Lab 2 `profile-final.png`, `docs/design/screen-spec.md`
 /// §Profile): identity and `Edit profile`, CV / Resume, technical skills,
@@ -35,6 +37,7 @@ class ProfileScreen extends ConsumerWidget {
     final state = ref.watch(profileViewModelProvider);
     final isSigningOut = ref.watch(signOutViewModelProvider).isLoading;
     final isOpeningCv = ref.watch(openCvViewModelProvider).isLoading;
+    final cvState = ref.watch(cvLibraryViewModelProvider);
 
     // Both ViewModels store only AppException, whose message is safe to show.
     void showError(AsyncValue<void> next) {
@@ -45,7 +48,12 @@ class ProfileScreen extends ConsumerWidget {
 
     ref
       ..listen(signOutViewModelProvider, (_, next) => showError(next))
-      ..listen(openCvViewModelProvider, (_, next) => showError(next));
+      ..listen(openCvViewModelProvider, (_, next) => showError(next))
+      ..listen(cvLibraryViewModelProvider, (_, next) {
+        if (next.notice case final notice?) {
+          _showMessage(context, notice);
+        }
+      });
 
     final content = switch (state) {
       // ViewEmpty is never emitted: a missing document is an empty profile.
@@ -63,17 +71,18 @@ class ProfileScreen extends ConsumerWidget {
           onEdit: () => context.go(AppRoutes.editProfile),
         ),
         const SizedBox(height: AppSpacing.section),
-        CvSection(
-          cv: data.profile.cv,
-          onUpload: () => showAppSheet<void>(
-            context,
-            (_) => UpdateCvSheet(current: data.profile.cv),
-          ),
-          onView: switch (data.profile.cv) {
-            final cv? when !isOpeningCv =>
-              () => ref.read(openCvViewModelProvider.notifier).open(cv),
-            _ => null,
+        CvLibrarySection(
+          cvs: data.library,
+          defaultCv: data.defaultCv,
+          isBusy: cvState.isBusy,
+          onAdd: () => showAppSheet<void>(context, (_) => const AddCvSheet()),
+          onView: (cv) {
+            if (!isOpeningCv) {
+              ref.read(openCvViewModelProvider.notifier).open(cv);
+            }
           },
+          onSetDefault: (cv) => _setDefaultCv(context, ref, cv),
+          onRemove: (cv) => _confirmRemoveCv(context, ref, cv),
         ),
         const SizedBox(height: AppSpacing.section),
         SkillsSection(
@@ -126,6 +135,50 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  static Future<void> _setDefaultCv(
+    BuildContext context,
+    WidgetRef ref,
+    CvFile cv,
+  ) async {
+    final saved = await ref
+        .read(cvLibraryViewModelProvider.notifier)
+        .setDefault(cv);
+    if (saved || !context.mounted) return;
+    _showCvErrorIfAny(context, ref);
+  }
+
+  /// Confirms removing a CV from the library. A submitted application keeps
+  /// its own snapshot, so the copy is only removed when nothing references
+  /// it (G-33).
+  static Future<void> _confirmRemoveCv(
+    BuildContext context,
+    WidgetRef ref,
+    CvFile cv,
+  ) async {
+    final confirmed = await showAppDialog(
+      context,
+      title: 'Remove this CV?',
+      message:
+          '"${cv.displayName}" will be removed from your library. A '
+          'submitted application keeps its own copy.',
+      primaryLabel: 'Remove',
+    );
+    if (confirmed != true || !context.mounted) return;
+    final removed = await ref
+        .read(cvLibraryViewModelProvider.notifier)
+        .remove(cv);
+    if (removed || !context.mounted) return;
+    _showCvErrorIfAny(context, ref);
+  }
+
+  /// Shows the library action failure outside the Add CV sheet, where the
+  /// sheet is not there to render it inline.
+  static void _showCvErrorIfAny(BuildContext context, WidgetRef ref) {
+    if (ref.read(cvLibraryViewModelProvider).error case final error?) {
+      _showMessage(context, error.message);
+    }
   }
 
   /// Forces a native crash so Crashlytics has a report to upload on the next

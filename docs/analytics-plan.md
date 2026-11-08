@@ -38,6 +38,9 @@ Status: **Implemented** (in code and tested) · **Planned** (owner implements wi
 | 19 | `cover_letter_generate` | The callable returns a draft (once when the screen loads, or on `Regenerate`) | `internship_id` (string), `source` (string: `ai` / `template`) | Does the AI draft succeed, and how often does it fall back to the template? | Flow 2 Compose | Implemented (`ApplyComposeViewModel`; ViewModel tests; DebugView not checked yet) |
 | 20 | `cover_letter_open_email` | `Open email app` hands the draft to the mail app | `internship_id` (string), `has_recipient` (string: `yes` / `no`) | How often is a recruiter address found, and do students open the mail draft? | Flow 2 Compose | Implemented (`ApplyComposeViewModel`; ViewModel tests; DebugView not checked yet) |
 
+| 19 | `cv_library_change` | A CV is added, set as default or removed in Profile (logged after the write succeeds) | `action` (string: `add` / `set_default` / `remove`), `cv_count` (int: library size after the action), `kept_file` (int: `1` when a removed CV's file stays for a submitted application, else `0`) | How many CVs do students keep, and which library actions do they use? | Profile + CV library (G-33) | Implemented (`CvLibraryViewModel`; ViewModel and screen tests; DebugView not checked yet) |
+| 20 | `cv_auto_select` | Automatic CV selection resolves before applying (G-33 item 8) | `internship_id` (string), `cv_count` (int), `best_percent` (int), `used_default` (int: `1` / `0`), `user_changed` (int: `1` / `0`), `result` (string: `selected` / `default` / `failed`) | Does automatic selection pick a better CV than the default, and do students override it? | Flow 2a (CV from Profile) | Implemented (`ApplyFormViewModel`; ViewModel and service tests; DebugView not checked yet) |
+
 Coverage required by Lab 3 §6 (≥ 7 events): sign-in (1), sign-out (2), main search / primary action (4, 8, 10), each detail screen (6, 11), export and upload (14).
 
 ## Funnels to build in the console
