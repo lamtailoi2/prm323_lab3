@@ -16,6 +16,7 @@ import '../../../core/widgets/detail_section_card.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/state_view.dart';
 import '../../../models/internship.dart';
+import '../../../models/user_profile.dart';
 import '../../../services/remote_config_service.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
@@ -135,6 +136,7 @@ class _ApplyComposeScreenState extends ConsumerState<ApplyComposeScreen> {
           body: _body,
           generateError: generateError,
           onRegenerate: () => unawaited(viewModel.regenerate()),
+          onChangeCv: () => unawaited(_changeCv(viewModel)),
           onCheckMatch: () =>
               unawaited(_openCvStep(match: true, viewModel: viewModel)),
           onValidate: () =>
@@ -169,6 +171,18 @@ class _ApplyComposeScreenState extends ConsumerState<ApplyComposeScreen> {
           persist: false,
         ),
       );
+  }
+
+  Future<void> _changeCv(ApplyComposeViewModel viewModel) async {
+    final state = ref.read(applyComposeViewModelProvider(_args));
+    final chosen = await showAppSheet<CvFile>(
+      context,
+      (_) => ApplyCvPickerSheet(
+        library: state.library,
+        selectedPath: state.cv?.storagePath,
+      ),
+    );
+    if (chosen != null) viewModel.selectLibraryCv(chosen);
   }
 
   Future<void> _markSent(
@@ -224,6 +238,7 @@ class _ComposeBody extends ConsumerWidget {
     required this.body,
     required this.generateError,
     required this.onRegenerate,
+    required this.onChangeCv,
     required this.onCheckMatch,
     required this.onValidate,
   });
@@ -236,6 +251,7 @@ class _ComposeBody extends ConsumerWidget {
   final TextEditingController body;
   final AppException? generateError;
   final VoidCallback onRegenerate;
+  final VoidCallback onChangeCv;
   final VoidCallback onCheckMatch;
   final VoidCallback onValidate;
 
@@ -284,8 +300,12 @@ class _ComposeBody extends ConsumerWidget {
           onRegenerate: onRegenerate,
         ),
         const SizedBox(height: AppSpacing.section),
-        _CvBlock(state: state, onRetryProfile: viewModel.retryProfile),
-        if (state.profile?.cv != null) ...[
+        _CvBlock(
+          state: state,
+          onChangeCv: onChangeCv,
+          onRetryProfile: viewModel.retryProfile,
+        ),
+        if (state.cv != null) ...[
           const SizedBox(height: AppSpacing.s8),
           ApplyCheckCvRow(
             showMatch: showMatch,
@@ -306,9 +326,14 @@ class _ComposeBody extends ConsumerWidget {
 }
 
 class _CvBlock extends StatelessWidget {
-  const _CvBlock({required this.state, required this.onRetryProfile});
+  const _CvBlock({
+    required this.state,
+    required this.onChangeCv,
+    required this.onRetryProfile,
+  });
 
   final ApplyComposeState state;
+  final VoidCallback onChangeCv;
   final VoidCallback onRetryProfile;
 
   @override
@@ -341,7 +366,11 @@ class _CvBlock extends StatelessWidget {
       );
     }
     return ApplyCvSection(
-      cv: state.profile?.cv,
+      cv: state.cv,
+      library: state.library,
+      autoSelection: state.autoSelection,
+      autoSelecting: state.autoSelecting,
+      onChangeCv: onChangeCv,
       onAddCv: () => context.go(AppRoutes.profile),
     );
   }

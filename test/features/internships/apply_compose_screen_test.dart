@@ -4,11 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/features/internships/screens/apply_compose_screen.dart';
 import 'package:internly/models/app_user.dart';
+import 'package:internly/models/cv_selection.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/cover_letter_service.dart';
+import 'package:internly/services/cv_select_service.dart';
 import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
@@ -23,6 +25,7 @@ void main() {
   late FakeUserProfileService profiles;
   late FakeApplicationService applications;
   late FakeCoverLetterService coverLetters;
+  late FakeCvSelectService cvSelect;
   late FakeExternalLinkService links;
   late FakeAnalyticsService analytics;
   late FakeRemoteConfigService remoteConfig;
@@ -53,6 +56,7 @@ void main() {
     );
     applications = FakeApplicationService();
     coverLetters = FakeCoverLetterService();
+    cvSelect = FakeCvSelectService();
     links = FakeExternalLinkService();
     analytics = FakeAnalyticsService();
     remoteConfig = FakeRemoteConfigService();
@@ -74,6 +78,7 @@ void main() {
           userProfileServiceProvider.overrideWithValue(profiles),
           applicationServiceProvider.overrideWithValue(applications),
           coverLetterServiceProvider.overrideWithValue(coverLetters),
+          cvSelectServiceProvider.overrideWithValue(cvSelect),
           externalLinkServiceProvider.overrideWithValue(links),
           analyticsServiceProvider.overrideWithValue(analytics),
           remoteConfigServiceProvider.overrideWithValue(remoteConfig),
@@ -117,6 +122,56 @@ void main() {
 
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     });
+  }
+
+  for (final width in checkWidths) {
+    testWidgets(
+      'shows the suggested CV and lets the student change it at $width dp',
+      (tester) async {
+        final secondCv = CvFile(
+          id: 'cv-2',
+          fileName: 'Backend_CV.pdf',
+          url: 'https://storage.example/cvs/backend.pdf',
+          storagePath: 'cvs/uid-123/backend.pdf',
+          sizeBytes: 300 * 1024,
+          uploadedAt: DateTime(2026, 10, 20),
+        );
+        profiles.cvs.addAll([secondCv, profileCv]);
+        cvSelect.result = CvSelection(
+          storagePath: secondCv.storagePath,
+          percent: 80,
+          matchedCount: 1,
+          totalRequired: 2,
+          reason: 'This CV matches more of the internship requirements.',
+          cvReadable: true,
+        );
+        await pumpScreen(tester, width: width);
+
+        await tester.dragUntilVisible(
+          find.textContaining('This is only a suggestion'),
+          find.byType(ListView),
+          const Offset(0, -300),
+        );
+        expect(find.text('Backend_CV.pdf'), findsOneWidget);
+        expect(
+          find.textContaining('This is only a suggestion'),
+          findsOneWidget,
+        );
+
+        await tester.ensureVisible(find.text('Change CV'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Change CV'));
+        await tester.pumpAndSettle();
+
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        expect(find.text('Profile_CV.pdf'), findsWidgets);
+        await tester.tap(find.text('Profile_CV.pdf').last);
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('This is only a suggestion'), findsNothing);
+        expect(find.text('Profile_CV.pdf'), findsOneWidget);
+      },
+    );
   }
 
   testWidgets('says when the job post has no address', (tester) async {

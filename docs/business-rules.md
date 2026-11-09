@@ -171,9 +171,10 @@ flowchart LR
   F3 -.-> U18
 ```
 
-The Compose flow attaches the **default** CV (`users/{uid}.cv`); the Profile
-library in §2.3 is how that default is chosen. There is no in-app CV picker in
-the current Compose flow yet (BR-C5).
+The Compose flow starts from the **default** CV (`users/{uid}.cv`), asks
+`selectCv` for the best match when the library has 2+ CVs, and lets the student
+override the choice with `Change CV`; the Profile library in §2.3 is how the
+default itself is chosen (BR-C5, BR-C6).
 
 ### 2.2 Admin swimlane — Notify, History, Crash
 
@@ -349,8 +350,8 @@ used by tests and code comments.
 | BR-C2 | Add CV | Accept PDF only, ≤ 10 MB, metadata under `users/{uid}/cvs`. With no library document the added CV becomes the default, unless a legacy `users/{uid}.cv` is migrated on that first write (the migrated CV keeps its default role). A malformed mirror is not migrated but adding still works | Oversize/wrong type rejected before upload (`The file must be a PDF of at most 10 MB`); upload/write failure → message + retry, no partial entry | `cv_library_viewmodel.dart`, `FileStorageService` |
 | BR-C3 | Set default | Updates `defaultCvId` and mirrors the chosen CV into `users/{uid}.cv`, which is what Apply prefills. Only a document from the caller's own library can be chosen; the legacy pseudo-id sets `defaultCvId = null` | CV no longer in the library → not-found message; write failure → error, default unchanged | `setDefaultCv`, `cv_library_change` analytics |
 | BR-C4 | Remove CV | Removes the entry (library document or legacy mirror). The Storage file is deleted **only** when no submitted application references its `storagePath` (`cvStoragePaths` guard); otherwise the file stays and the UI says it was kept for the application. Removing the default promotes the newest remaining CV (a surviving legacy mirror stays the default) | Reference check or metadata write fails → removal aborts with a message and the file stays; Storage delete failure after removal → entry already gone, orphan logged, no rollback | `removeCv`, `application_service.cvStoragePaths()` |
-| BR-C5 | Apply CV snapshot | Compose prefills and snapshots the **default** CV (`users/{uid}.cv` mirror). With no CV the student can still send; CV checks are optional | Default CV removed → new default (or none) is used next time; already submitted applications keep their snapshot | BR-P3, BR-P8, BR-P9, `apply_compose_viewmodel.dart` |
-| BR-C6 | `selectCv` callable (not wired yet) | Server accepts 1–10 caller-owned `cvs/{uid}/…` paths, loads the internship and Profile skills, scores each readable CV deterministically and breaks ties toward the default; Groq only writes the reason and any model failure falls back to a deterministic sentence. Never blocks applying | Invalid/foreign path → `permission-denied`; 0 or >10 paths / missing internship → `invalid-argument` / `not-found`; client falls back to the default CV | `functions/src/select-cv.ts`, `cv_select_service.dart`, callable tests |
+| BR-C5 | Apply CV choice and snapshot | Compose starts from the **default** CV (`users/{uid}.cv` mirror). With 2+ CVs it calls `selectCv` once and adopts the best match, showing the reason as a suggestion; `Change CV` lets the student choose another library CV for this application only and never changes the Profile default. With 0/1 CV, or when `selectCv` fails, the default applies. The chosen CV is snapshotted; with no CV the student can still send and CV checks remain optional | Default CV removed → new default (or none) is used next time; a CV removed while the screen is open falls back to the current default; already submitted applications keep their snapshot | BR-P3, BR-P8, BR-P9, BR-C6, `apply_compose_viewmodel.dart` |
+| BR-C6 | `selectCv` callable | Server accepts 1–10 caller-owned `cvs/{uid}/…` paths, loads the internship and Profile skills, scores each readable CV deterministically and breaks ties toward the default; Groq only writes the reason and any model failure falls back to a deterministic sentence. Never blocks applying | Invalid/foreign path → `permission-denied`; 0 or >10 paths / missing internship → `invalid-argument` / `not-found`; client falls back to the default CV | `functions/src/select-cv.ts`, `cv_select_service.dart`, callable tests, `apply_compose_viewmodel.dart` |
 
 ### 3.5 Apply (email flow, DC-31)
 
@@ -358,12 +359,12 @@ used by tests and code comments.
 |---|---|---|---|---|
 | BR-P1 | One per listing | Document ID = `jobKey` under `users/{uid}/applications`; writing again overwrites, so a student cannot have two applications for one listing | Signed out → permission error | TC-06, application service tests |
 | BR-P2 | Already applied | Detail shows `You applied on …` + `View application` instead of `Apply now`; cards show the `Applied` badge | Duplicate submit cannot start | TC-07 |
-| BR-P3 | Compose prefill | Recipient is extracted from the JD only; a student-typed recipient wins. Applicant email = account email; name = Profile full name, else account display name; CV/profile fields used when present (CV = the default CV, BR-C5) | No recipient found → empty `To`, allowed | TC-06, TC-18 |
+| BR-P3 | Compose prefill | Recipient is extracted from the JD only; a student-typed recipient wins. Applicant email = account email; name = Profile full name, else account display name; CV/profile fields used when present (CV = the auto-selected best match or the student's `Change CV` choice, default fallback, BR-C5) | No recipient found → empty `To`, allowed | TC-06, TC-18 |
 | BR-P4 | Recipient validation | A non-empty recipient must be a valid email before the mailto draft opens; invalid → inline error, no draft | Empty recipient is allowed; the letter can be copied | TC-19 |
 | BR-P5 | Draft generation | Groq drafts subject + letter from JD + Profile + CV. Blank key, model failure or unparseable output → deterministic template. Failure never blocks sending and never invents a recipient | User can edit the text before sending | TC-06, TC-18 |
 | BR-P6 | Open email | `mailto:` carries To/Subject/Body. No email app → message + copy the letter; never claim it was sent | Failure does not record an application | TC-06 |
 | BR-P7 | Mark sent gate | `I've sent it` requires sign-in and a non-empty full name. If Profile and account have no name → `Add your name in Profile to record this application` | Listing missing → no record | TC-06 |
-| BR-P8 | Record application | On `I've sent it`: `status = submitted`, server `appliedAt`, snapshot of `title`/`companyName`, `applicant` snapshot, `appliedVia = email`, optional `recipientEmail`, and the default CV snapshot (`users/{uid}.cv`) only when a CV exists. The snapshot is independent of later library edits | Write failure → message + `Retry`; screen stays open | TC-06, BR-C5 |
+| BR-P8 | Record application | On `I've sent it`: `status = submitted`, server `appliedAt`, snapshot of `title`/`companyName`, `applicant` snapshot, `appliedVia = email`, optional `recipientEmail`, and the chosen CV snapshot (auto-selected, manually changed, or default) only when a CV exists. The snapshot is independent of later library edits | Write failure → message + `Retry`; screen stays open | TC-06, BR-C5 |
 | BR-P9 | Validate CV (optional) | Current flow: an optional check from Compose, not a blocking gate. Server reads only the caller's own `cvs/{uid}/…`. Text < 50 chars or unreadable PDF → invalid without calling Gemini. Unparseable model output → fail open (valid). Provider failure → `unavailable`, never `invalid`. Text truncated to 12,000 chars | Wrong/other path → `permission-denied`; retry keeps the student on the step | `validate-cv` tests, DC-19/DC-31 |
 | BR-P10 | CV match (optional) | Deterministic score plus local skill vocabulary; Groq only extracts/commentates. Model failure → vocabulary fallback; unreadable CV → Profile skills only. `Continue` is always enabled | `cv_match_enabled = false` hides the entry point | TC-06 note, match tests |
 | BR-P11 | Success | Success appears only after the write is accepted; it recaps title + company and links to My Applications | Write rejected → no success screen | TC-06 |
@@ -453,8 +454,8 @@ used by tests and code comments.
 | BR-C2 | added / first default | `profile_viewmodels_test.dart`, `profile_screen_test.dart` | `cv_library_viewmodel.dart`, `addCv` |
 | BR-C3 | default changed | `profile_viewmodels_test.dart` | `setDefaultCv`, `cv_library_change` analytics |
 | BR-C4 | removed / file kept | `profile_viewmodels_test.dart`, `profile_screen_test.dart` | `removeCv`, `ApplicationService.cvStoragePaths` |
-| BR-C5 | default snapshot | TC-06, `profile_viewmodels_test.dart` | `apply_compose_viewmodel.dart`, BR-P8 |
-| BR-C6 | scored CV / fallback | `functions/src/select-cv.test.ts` | `select-cv.ts`, `cv_select_service.dart` |
+| BR-C5 | auto-select / manual choice / default fallback | TC-06, `profile_viewmodels_test.dart`, `apply_compose_viewmodel_test.dart`, `apply_compose_screen_test.dart` | `apply_compose_viewmodel.dart`, BR-P8 |
+| BR-C6 | scored CV / fallback | `functions/src/select-cv.test.ts`, `apply_compose_viewmodel_test.dart` | `select-cv.ts`, `cv_select_service.dart`, `apply_compose_viewmodel.dart` |
 | BR-P1 | submitted | TC-06 | `lib/services/application_service.dart` |
 | BR-P2 | already applied | TC-07 | `lib/features/internships/` detail |
 | BR-P3 | draft prefilled | TC-06, TC-18 | `apply_compose_viewmodel.dart` |
@@ -462,7 +463,7 @@ used by tests and code comments.
 | BR-P5 | draft / template | TC-06, TC-18 | `functions/src/compose-cover-letter.ts` |
 | BR-P6 | mail open / copy | TC-06 | `lib/core/utils/mailto.dart`, `ExternalLinkService` |
 | BR-P7 | name gate | TC-06 | `apply_compose_viewmodel.dart` |
-| BR-P8 | submitted | TC-06 | `ApplicationService.createApplication` (default CV snapshot) |
+| BR-P8 | submitted | TC-06 | `ApplicationService.createApplication` (chosen CV snapshot) |
 | BR-P9 | valid / invalid / unavailable | `functions` `validate-cv` tests | `functions/src/validate-cv.ts`, `cv-shared.ts` |
 | BR-P10 | match / fallback | Match tests | `functions/src/match-cv.ts`, `match-cv-score.ts` |
 | BR-P11 | submitted | TC-06 | Application Success screen |
@@ -497,10 +498,10 @@ used by tests and code comments.
 | Admin dashboard has no authentication (BR-N1) | Acceptable only because it is local and never deployed; do not expose the port | Open by design |
 | DC-29: tracker, withdraw and undo follow the student's own status | BR-T5 restores the status that was replaced | Applied |
 | G-24: job-specific CV suggestions | BR-P10 is a quality aid only, not a requirement | Resolved |
-| CV library decision (recorded as G-33 on `feat/cv-library`) | BR-C1..C5 describe the library and the legacy `users/{uid}.cv` mirror; BR-C5 states that Compose still uses only the default CV | Applied, picker pending |
+| CV library decision (recorded as G-33 on `feat/cv-library`) | BR-C1..C5 describe the library and the legacy `users/{uid}.cv` mirror; BR-C5/BR-C6 are now wired into Compose auto-select and `Change CV` | Applied |
 | G-33 ID collision in `dev` docs | `handoff-gaps.md` G-33 is the email-Apply decision, while `architecture.md` cites G-33 for the CV library; the CV-library entry was lost in the merge. BR-C1..C5 therefore stand on their own | Open (docs cleanup) |
-| DC-31 / DC-34 definition rows missing from `design-traceability.md` §4 | Both IDs are referenced by other docs (Compose, unread badge) but have no §4 row after the merge | Open (docs cleanup) |
-| `selectCv` callable and `CvSelectService` exist but no screen calls them | BR-C6 documents the server contract; it cannot change the Apply flow until the pending CV picker is wired | Open |
+| DC-31 / DC-34 definition rows missing from `design-traceability.md` §4 | Both IDs are referenced by other docs (Compose, unread badge) but have no §4 row after the merge; DC-35 records the Compose CV choice | Open (docs cleanup) |
+| `selectCv` callable and `CvSelectService` had no screen caller | Compose now calls `selectCv` once before drafting when the library has 2+ CVs (BR-C5/BR-C6) | Resolved |
 | CV library has unit/widget tests but no ARTEMIS E2E | BR-C1..C5 are verified by `profile_viewmodels_test.dart` / `profile_screen_test.dart` only | Open |
 | DC-34: unread badge and `Mark all as read` | BR-N7 and BR-N13; badge and list share the same newest-50 stream | Applied (definition row missing, see above) |
 

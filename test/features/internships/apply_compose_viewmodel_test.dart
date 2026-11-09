@@ -6,12 +6,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/features/internships/viewmodels/apply_compose_viewmodel.dart';
 import 'package:internly/models/app_user.dart';
+import 'package:internly/models/cv_selection.dart';
 import 'package:internly/models/internship_application.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
 import 'package:internly/services/cover_letter_service.dart';
+import 'package:internly/services/cv_select_service.dart';
 import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
@@ -24,6 +26,7 @@ void main() {
   late FakeUserProfileService profiles;
   late FakeApplicationService applications;
   late FakeCoverLetterService coverLetters;
+  late FakeCvSelectService cvSelect;
   late FakeExternalLinkService links;
   late FakeAnalyticsService analytics;
   late FakeRemoteConfigService remoteConfig;
@@ -51,6 +54,7 @@ void main() {
     userProfileServiceProvider.overrideWithValue(profiles),
     applicationServiceProvider.overrideWithValue(applications),
     coverLetterServiceProvider.overrideWithValue(coverLetters),
+    cvSelectServiceProvider.overrideWithValue(cvSelect),
     externalLinkServiceProvider.overrideWithValue(links),
     analyticsServiceProvider.overrideWithValue(analytics),
     remoteConfigServiceProvider.overrideWithValue(remoteConfig),
@@ -75,6 +79,7 @@ void main() {
     );
     applications = FakeApplicationService();
     coverLetters = FakeCoverLetterService();
+    cvSelect = FakeCvSelectService();
     links = FakeExternalLinkService();
     analytics = FakeAnalyticsService();
     remoteConfig = FakeRemoteConfigService();
@@ -98,9 +103,9 @@ void main() {
       (scope ?? container).read(applyComposeViewModelProvider(args));
 
   Future<void> settle() async {
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
+    for (var i = 0; i < 6; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
   }
 
   test('logs apply_start and drafts from the job post', () async {
@@ -329,5 +334,124 @@ void main() {
     await settle();
 
     expect(viewModel.buildSession(), isNull);
+  });
+
+  test('auto-selects the best CV before drafting and logs it', () async {
+    final secondCv = CvFile(
+      id: 'cv-2',
+      fileName: 'Backend_CV.pdf',
+      url: 'https://storage.example/cvs/backend.pdf',
+      storagePath: 'cvs/uid-123/backend.pdf',
+      sizeBytes: 300 * 1024,
+      uploadedAt: DateTime(2026, 10, 20),
+    );
+    profiles.cvs.addAll([secondCv, profileCv]);
+    cvSelect.result = CvSelection(
+      storagePath: secondCv.storagePath,
+      percent: 80,
+      matchedCount: 1,
+      totalRequired: 2,
+      reason: 'This CV matches more of the internship requirements.',
+      cvReadable: true,
+    );
+
+    final viewModel = listen();
+    await settle();
+
+    expect(cvSelect.calls, 1);
+    expect(
+      cvSelect.paths,
+      containsAll(<String>[profileCv.storagePath, secondCv.storagePath]),
+    );
+    expect(read().autoSelection, cvSelect.result);
+    expect(read().cv?.storagePath, secondCv.storagePath);
+    expect(coverLetters.storagePaths.single, secondCv.storagePath);
+    expect(analytics.parameters['cv_auto_select'], {
+      'internship_id': listing.key,
+      'cv_count': 2,
+      'best_percent': 80,
+      'used_default': 0,
+      'user_changed': 0,
+      'result': 'selected',
+    });
+
+    await viewModel.markSent();
+    expect(applications.created.single.cvStoragePath, secondCv.storagePath);
+    expect(viewModel.buildSession()?.cv.file.storagePath, secondCv.storagePath);
+  });
+
+  test(
+    'a failed comparison falls back to the default CV and still drafts',
+    () async {
+      final secondCv = CvFile(
+        id: 'cv-2',
+        fileName: 'Backend_CV.pdf',
+        url: 'https://storage.example/cvs/backend.pdf',
+        storagePath: 'cvs/uid-123/backend.pdf',
+        sizeBytes: 300 * 1024,
+        uploadedAt: DateTime(2026, 10, 20),
+      );
+      profiles.cvs.addAll([secondCv, profileCv]);
+      cvSelect.error = const AppException(AppErrorKind.network, 'Offline.');
+
+      listen();
+      await settle();
+
+      expect(read().autoSelecting, isFalse);
+      expect(read().cv?.storagePath, profileCv.storagePath);
+      expect(coverLetters.storagePaths.single, profileCv.storagePath);
+      expect(analytics.parameters['cv_auto_select'], {
+        'internship_id': listing.key,
+        'cv_count': 2,
+        'best_percent': 0,
+        'used_default': 1,
+        'user_changed': 0,
+        'result': 'failed',
+      });
+    },
+  );
+
+  test('a CV chosen by the student is never replaced by auto-select', () async {
+    final secondCv = CvFile(
+      id: 'cv-2',
+      fileName: 'Backend_CV.pdf',
+      url: 'https://storage.example/cvs/backend.pdf',
+      storagePath: 'cvs/uid-123/backend.pdf',
+      sizeBytes: 300 * 1024,
+      uploadedAt: DateTime(2026, 10, 20),
+    );
+    profiles.cvs.addAll([secondCv, profileCv]);
+    cvSelect.result = CvSelection(
+      storagePath: secondCv.storagePath,
+      percent: 80,
+      matchedCount: 1,
+      totalRequired: 2,
+      reason: 'This CV matches more of the internship requirements.',
+      cvReadable: true,
+    );
+    cvSelect.gate = Completer<void>();
+    final viewModel = listen();
+    await settle();
+    expect(read().autoSelecting, isTrue);
+
+    viewModel.selectLibraryCv(profileCv);
+    cvSelect.gate!.complete();
+    await settle();
+
+    expect(read().autoSelecting, isFalse);
+    expect(read().cv?.storagePath, profileCv.storagePath);
+    expect(coverLetters.storagePaths.single, profileCv.storagePath);
+
+    await viewModel.regenerate();
+    expect(coverLetters.storagePaths.last, profileCv.storagePath);
+  });
+
+  test('one CV never calls the comparison', () async {
+    listen();
+    await settle();
+
+    expect(cvSelect.calls, 0);
+    expect(read().autoSelection, isNull);
+    expect(coverLetters.storagePaths.single, profileCv.storagePath);
   });
 }
