@@ -847,3 +847,21 @@ Findings:
 3. `functions/src/index.ts` imported `handleSelectCv` / `SELECT_RUBRIC` and defined `selectGroq`, but the merge lost the `selectCv` export; restored the callable and `npm run build` passes.
 4. `FakeUserProfileService` dropped `givenName` / `defaultCvId` on merge writes; both are now preserved.
 5. The first deploy created `selectCv` but failed with `Failed to set the IAM Policy on the Service`; an immediate retry completed successfully, so the callable is now deployed.
+
+---
+
+## Run 40: Compose CV auto-select + manual Change CV (2026-11-09)
+
+**Environment:** Windows 11 → Flutter 3.47.3 stable / Dart 3.13.3 → branch `feat/cv-library` with an uncommitted working tree. No Firebase project or device configured on this machine.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **230 files, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` (full suite) | **735 tests, all passed** (+6: auto-select success, failed fallback, manual choice during the comparison, one-CV skip, and the screen suggestion + `Change CV` sheet at 360 and 412 dp) |
+| 4 | DebugView for `cv_auto_select` | **Not run** (no Firebase project / device here) |
+
+Findings:
+
+1. The earlier auto-select only existed in the removed Apply Form; the Compose flow now owns the library, the suggestion and the manual override. Drafting waits for the comparison so the cover letter is composed against the chosen CV.
+2. `Change CV` applies to this application only. The Profile default is never written from Compose (DC-35).

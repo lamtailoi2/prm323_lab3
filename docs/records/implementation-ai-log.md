@@ -927,3 +927,22 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - `flutter pub get` → dependencies resolved; `npm install` → up to date.
   - `npx firebase-tools deploy --only functions:selectCv --project prm-lab3` → **passed after one retry**: the first attempt created the function but failed to set the Cloud Run invoker IAM policy; the retry printed `Deploy complete!`; `functions:list` confirms `selectCv` (callable, `us-central1`, `nodejs22`).
 - **Decision:** Accepted and deployed.
+
+---
+
+### P-83: Compose CV auto-select + manual Change CV
+
+- **Request:** (opencode, deepseek-v4.1-flash-free, 2026-11-09; operator Phạm Nguyễn Tú) Implement the team member's requirement: auto-select the CV that best matches the internship, show a note that the choice is only a suggestion, and allow manual selection with `Change CV`. The member's original wording is in the team chat; the operator added "Không hiểu thì hỏi, không được tự động đoán. Không đọc lại file nhiều lần."
+- **Output:**
+  - `lib/features/internships/viewmodels/apply_compose_viewmodel.dart`: added `library`, `defaultCvFile`, `chosenCv`, `autoSelection`, `autoSelecting` and `cv` to the state; added `_subscribeCvs`, `_applyLibrary`, `_resolveDefaultCv`, `_maybeAutoSelect`, `_autoSelect` and `selectLibraryCv`. Drafting now waits for the comparison (or its fallback) and uses `state.cv` for `composeCoverLetter`, `markSent` and `buildSession`.
+  - `lib/features/internships/widgets/apply_compose_parts.dart`: the CV card shows the auto-selection reason plus "This is only a suggestion, so you can change it before you send.", a comparing message while `selectCv` runs, and a `Change CV` button; new `ApplyCvPickerSheet` lists the library with a check mark on the current file.
+  - `lib/features/internships/screens/apply_compose_screen.dart`: opens the picker and forwards the choice to the ViewModel; the CV checks now appear whenever the chosen/default CV exists.
+  - `test/features/internships/apply_compose_viewmodel_test.dart`: auto-select success, failed fallback, manual choice winning over a late response, and one-CV skip.
+  - `test/features/internships/apply_compose_screen_test.dart`: suggestion text, `Change CV` sheet, and choosing another library CV at 360 and 412 dp.
+  - `docs/analytics-plan.md`, `docs/business-rules.md`, `docs/design-traceability.md` (row 6 and DC-35), `docs/records/test-report.md` (Run 40), `README.md`, `docs/code-review.md`.
+- **Verification:**
+  - `dart format lib test` → 230 files, 0 changed.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **735 tests, all passed**.
+  - DebugView / device run → **not run** (no Firebase project or device on this machine).
+- **Decision:** Accepted.
