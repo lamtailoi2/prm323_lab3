@@ -44,6 +44,9 @@ const els = {
   historyList: $('history-list'),
   refreshHistory: $('refresh-history'),
   clearHistory: $('clear-history'),
+  analyticsSummary: $('analytics-summary'),
+  analyticsEvents: $('analytics-events'),
+  refreshAnalytics: $('refresh-analytics'),
 };
 
 async function api(path, options = {}) {
@@ -537,6 +540,59 @@ function renderDelivery(payload, { kind, successLabel }) {
   }
 }
 
+function renderAnalytics(payload) {
+  const rows = payload.rows ?? [];
+  const quota = Number.isFinite(payload.quotaRemaining)
+    ? ` · ${payload.quotaRemaining} tokens left this hour`
+    : '';
+  const cached = payload.cached ? ' · cached' : '';
+  els.analyticsSummary.textContent =
+    `${payload.activeUsers ?? 0} active user(s) · ` +
+    `${payload.totalEvents ?? 0} event(s) in the last 30 minutes${quota}${cached}`;
+  els.analyticsEvents.replaceChildren();
+
+  if (rows.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'empty';
+    empty.textContent = 'No GA4 events in the last 30 minutes.';
+    els.analyticsEvents.append(empty);
+    return;
+  }
+
+  for (const row of rows) {
+    const item = document.createElement('li');
+    item.className = 'delivery-row';
+
+    const event = document.createElement('span');
+    event.className = 'delivery-name';
+    event.textContent = row.event;
+    item.append(event);
+
+    const detail = document.createElement('span');
+    detail.className = 'delivery-status ok';
+    detail.textContent = Number.isFinite(row.users)
+      ? `${row.users} users · ${row.events} events`
+      : `${row.events} events`;
+    item.append(detail);
+
+    els.analyticsEvents.append(item);
+  }
+}
+
+async function loadAnalytics() {
+  if (document.visibilityState === 'hidden') return;
+  els.analyticsSummary.textContent = 'Loading GA4 realtime…';
+  try {
+    const payload = await api('/api/analytics/realtime');
+    renderAnalytics(payload);
+  } catch (error) {
+    els.analyticsEvents.replaceChildren();
+    els.analyticsSummary.textContent = error.hint
+      ? `${error.message} ${error.hint}`
+      : error.message;
+  }
+}
+
 function currentTarget() {
   if (!state.recipient) return null;
   return state.recipient === 'all'
@@ -701,6 +757,7 @@ els.clearRecipient.addEventListener('click', () => {
 els.crashAck.addEventListener('change', updateRecipientState);
 els.refreshUsers.addEventListener('click', loadUsers);
 els.refreshHistory.addEventListener('click', loadHistory);
+els.refreshAnalytics.addEventListener('click', loadAnalytics);
 els.clearHistory.addEventListener('click', clearHistory);
 els.userSearch.addEventListener('input', () => {
   state.filter = els.userSearch.value;
@@ -711,4 +768,6 @@ els.userSearch.addEventListener('input', () => {
   await loadStatus();
   await loadUsers();
   updateRecipientState();
+  await loadAnalytics();
+  setInterval(loadAnalytics, 15000);
 })();

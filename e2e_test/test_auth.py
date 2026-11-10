@@ -46,15 +46,15 @@ async def test_tc14_sign_out_returns_to_login(artemis):
     report = await run_case(
         artemis,
         "TC-14",
-        f"{SIGNED_IN} Tap 'Profile' in the bottom navigation, scroll down to "
-        "'Settings & support' and tap 'Sign out'. Note whether the Login "
-        "screen with 'Continue with Google' appears. Press the Android Back "
-        "button once and note what is on screen now: the Internly Login "
-        "screen, the Android home screen with app icons, or another Internly "
-        "screen; and whether a bottom navigation bar is visible. If the "
-        "Internly app is no longer on screen, open the Internly app again. "
-        "Finally note whether the Login screen with 'Continue with Google' "
-        "is shown.",
+        f"{SIGNED_IN} Tap 'Profile' in the bottom navigation, scroll down past "
+        "'CV library' and 'Technical skills' to 'Settings & support' and tap "
+        "'Sign out'. Note whether the Login screen with 'Continue with Google' "
+        "appears. Press the Android Back button once and note what is on "
+        "screen now: the Internly Login screen, the Android home screen with "
+        "app icons, or another Internly screen; and whether a bottom "
+        "navigation bar is visible. If the Internly app is no longer on "
+        "screen, open the Internly app again. Finally note whether the Login "
+        "screen with 'Continue with Google' is shown.",
         expected_output=(
             'JSON: {"login_after_sign_out": boolean, '
             '"after_back": "login" | "android_home" | "other_app_screen", '

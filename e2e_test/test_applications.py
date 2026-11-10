@@ -1,7 +1,19 @@
-"""TC-09/TC-10 Flow 3 Track: Application Detail, and the list while offline."""
+"""TC-09/TC-10 Flow 3 Track: Application Detail (with the submitted CV), and
+the list while offline."""
 
 import pytest
 from conftest import SIGNED_IN, run_case, set_network
+
+
+def _same_position(left: str, right: str) -> bool:
+    """Card titles may add skills or punctuation; compare the core text."""
+
+    def norm(value: str) -> str:
+        return "".join(char for char in value.lower() if char.isalnum())
+
+    normalized_left = norm(left)
+    normalized_right = norm(right)
+    return normalized_left in normalized_right or normalized_right in normalized_left
 
 
 async def test_tc09_application_detail_matches_the_list(artemis):
@@ -13,16 +25,21 @@ async def test_tc09_application_detail_matches_the_list(artemis):
         "and stop. Otherwise read the first application card: its position, "
         "company, the text that starts with 'Applied', and its status badge. "
         "Then tap the card to open 'Application Detail' and read the position, "
-        "company and status badge shown there.",
+        "company and status badge shown there. Read the section titled "
+        "'Applicant & Submitted CV': the CV file name, the details line under "
+        "it, whether a 'Preview' button is visible, and whether a 'Replace CV' "
+        "button is visible.",
         expected_output=(
             'JSON: {"has_application": boolean, "list": {"position": string, '
             '"company": string, "applied_text": string, "status": string}, '
             '"detail": {"position": string, "company": string, '
-            '"status": string}}'
+            '"status": string, "cv_section": string, "cv_file_name": string, '
+            '"cv_details": string, "preview_visible": boolean, '
+            '"replace_cv_visible": boolean}}'
         ),
     )
     # The case only reads: an application cannot be deleted, so it never
-    # creates one (TC-06 does).
+    # creates one (TC-06 does, and its newest application carries a CV).
     assert report["has_application"] is True, "TC-09: no application; run TC-06"
     listed = report["list"]
     detail = report["detail"]
@@ -31,9 +48,18 @@ async def test_tc09_application_detail_matches_the_list(artemis):
     assert listed["company"].strip()
     assert listed["applied_text"].strip()
     assert listed["status"].strip()
-    assert detail["position"] == listed["position"]
+    # The list card may append the skills; the detail shows the core position.
+    assert _same_position(listed["position"], detail["position"])
     assert detail["company"] == listed["company"]
     assert detail["status"] == listed["status"]
+    # BR-T6: the submitted CV snapshot is shown view-only.
+    assert detail["cv_section"] == "Applicant & Submitted CV"
+    assert detail["cv_file_name"].strip(), (
+        "TC-09: newest application has no CV snapshot; run TC-06 first"
+    )
+    assert "Uploaded" in detail["cv_details"] or "Submitted" in detail["cv_details"]
+    assert detail["preview_visible"] is True
+    assert detail["replace_cv_visible"] is False
 
 
 @pytest.mark.error_path

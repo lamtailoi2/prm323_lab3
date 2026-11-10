@@ -14,7 +14,7 @@ import os
 import re
 import subprocess
 import time
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -38,8 +38,8 @@ SIGNED_IN = (
 )
 SIGNED_OUT = (
     "Open the Internly app. If the bottom navigation bar is visible, tap "
-    "'Profile', scroll down to 'Settings & support', tap 'Sign out' and wait "
-    "for the Login screen."
+    "'Profile', scroll down past 'CV library' and 'Technical skills' to "
+    "'Settings & support', tap 'Sign out' and wait for the Login screen."
 )
 
 # ARTEMIS 351ca84 accepts `expected_output` but never runs its Outputter, so a
@@ -79,13 +79,14 @@ async def run_case(
     instruction: str,
     *,
     expected_output: str,
+    locked_app_package: str | None = APP_PACKAGE,
 ) -> dict[str, Any]:
     """Runs one instruction and returns the agent's structured report."""
     started = time.monotonic()
     result = await artemis.run(
         f"{instruction}{REPORT_AS_JSON}{expected_output}",
         expected_output=expected_output,
-        locked_app_package=APP_PACKAGE,
+        locked_app_package=locked_app_package,
     )
     _record(test_id, result, time.monotonic() - started)
     assert result.succeeded, (
@@ -201,12 +202,13 @@ def logged_screen_views() -> list[str]:
 # ---- Sample CV on the device ------------------------------------------------
 
 SAMPLE_CV_NAME = "Sample_CV.pdf"
+SECOND_SAMPLE_CV_NAME = "Sample_CV_Backend.pdf"
 
 # Fictional details only. The structure (contact, education, skills,
 # projects) is what the `validateCv` Gemini rubric accepts as a CV, and the
 # text is well over its 50-character minimum, so `Validate CV` accepts it.
-# Unused since the Apply Form was removed (DC-31); kept for the CV library
-# cases that will pick a file from the device.
+# Used to seed the CV library before the Apply cases run; the agent picks
+# these files in the Android document picker.
 SAMPLE_CV_LINES = [
     "Test Student - Software Engineering Intern",
     "Email: test.student@example.com | Phone: 0900 000 000 | Ho Chi Minh City",
@@ -226,7 +228,7 @@ SAMPLE_CV_LINES = [
 ]
 
 
-def _sample_pdf() -> bytes:
+def _sample_pdf(lines: Sequence[str] = SAMPLE_CV_LINES) -> bytes:
     """A one-page PDF CV with fictional data, to upload as a test CV."""
 
     def literal(line: str) -> bytes:
@@ -235,7 +237,7 @@ def _sample_pdf() -> bytes:
 
     content = (
         b"BT /F1 11 Tf 16 TL 56 760 Td "
-        + b" ".join(literal(line) for line in SAMPLE_CV_LINES)
+        + b" ".join(literal(line) for line in lines)
         + b" ET"
     )
     objects = [
@@ -262,13 +264,15 @@ def _sample_pdf() -> bytes:
     return bytes(out)
 
 
-def push_sample_cv() -> None:
-    """Puts `Sample_CV.pdf` in the device's Downloads, where the Android
-    document picker lists it."""
+def push_sample_cv(
+    name: str = SAMPLE_CV_NAME, lines: Sequence[str] = SAMPLE_CV_LINES
+) -> None:
+    """Puts `name` in the device's Downloads, where the Android document
+    picker lists it."""
     ARTIFACTS.mkdir(exist_ok=True)
-    local = ARTIFACTS / SAMPLE_CV_NAME
-    local.write_bytes(_sample_pdf())
-    _adb("push", str(local), f"/sdcard/Download/{SAMPLE_CV_NAME}")
+    local = ARTIFACTS / name
+    local.write_bytes(_sample_pdf(lines))
+    _adb("push", str(local), f"/sdcard/Download/{name}")
     _adb(
         "shell",
         "am",
@@ -276,8 +280,14 @@ def push_sample_cv() -> None:
         "-a",
         "android.intent.action.MEDIA_SCANNER_SCAN_FILE",
         "-d",
-        f"file:///sdcard/Download/{SAMPLE_CV_NAME}",
+        f"file:///sdcard/Download/{name}",
     )
+
+
+def push_sample_cvs() -> None:
+    """Pushes both sample CVs for the CV library precondition."""
+    push_sample_cv()
+    push_sample_cv(SECOND_SAMPLE_CV_NAME)
 
 
 def set_network(enabled: bool) -> None:

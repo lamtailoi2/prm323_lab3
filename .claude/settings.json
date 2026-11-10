@@ -26,7 +26,11 @@
       "Bash(npm -v)",
       "Bash(npx -v)",
       "Bash(npx -y @mermaid-js/mermaid-cli -i docs/records/diagrams/apply-flow-mvvm-layers.mmd -o docs/records/diagrams/apply-flow-mvvm-layers.png -b white -s 2)",
-      "Bash(npx -y @mermaid-js/mermaid-cli -i docs/records/diagrams/apply-flow-mvvm-sequence.mmd -o docs/records/diagrams/apply-flow-mvvm-sequence.png -b white -s 2)"
+      "Bash(npx -y @mermaid-js/mermaid-cli -i docs/records/diagrams/apply-flow-mvvm-sequence.mmd -o docs/records/diagrams/apply-flow-mvvm-sequence.png -b white -s 2)",
+      "Bash(npx -y @mermaid-js/mermaid-cli -i docs/records/diagrams/internly-erd.mmd -o docs/records/diagrams/internly-erd.png -b white -s 2)",
+      "Bash(npx -y @mermaid-js/mermaid-cli -i docs/records/diagrams/apply-domain-classes.mmd -o docs/records/diagrams/apply-domain-classes.png -b white -s 2)",
+      "Bash(npx -y @mermaid-js/mermaid-cli -i docs/records/diagrams/apply-submit-sequence.mmd -o docs/records/diagrams/apply-submit-sequence.png -b white -s 2)",
+      "Bash(npx -y @mermaid-js/mermaid-cli -i docs/records/diagrams/application-detail-sequence.mmd -o docs/records/diagrams/application-detail-sequence.png -b white -s 2)"
     ],
     "additionalDirectories": [
       "D:\\PRM\\prm323_lab3\\docs\\records"

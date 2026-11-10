@@ -946,3 +946,33 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - `flutter test` → **735 tests, all passed**.
   - DebugView / device run → **not run** (no Firebase project or device on this machine).
 - **Decision:** Accepted.
+
+---
+
+### P-84: ARTEMIS cases for the CV library (TC-06/07/09/14/17/18/19)
+
+- **Request:** (Command Code, 2026-11-09; operator Phạm Nguyễn Tú) "lên plan cho những TC này" after the CV library merge, with the requirement that each batch is recorded on video so the execution can be reviewed.
+- **Output:**
+  - `e2e_test/conftest.py`: `push_sample_cv(name, lines)`, `push_sample_cvs()`, `SECOND_SAMPLE_CV_NAME` for the two-CV precondition; `SIGNED_OUT` scrolls past `CV library` and `Technical skills`.
+  - `e2e_test/test_apply_form.py`: TC-18 reads the top draft banner and the placeholder-aware `To` value, then taps `Open email app` and accepts either a mail app or the `No email app…` message; TC-19 scrolls to `CV / Resume`, changes to another library CV, and asserts the card follows the choice.
+  - `e2e_test/test_apply.py`: TC-06 asserts the prefilled CV; TC-07 searches `Developer` (the listings TC-06 applies to) and asserts `Applicant & Submitted CV`, `Preview` and no `Replace CV`.
+  - `e2e_test/test_applications.py`: TC-09 asserts the same submitted-CV block on Application Detail.
+  - `e2e_test/test_auth.py` TC-14 and `e2e_test/test_profile_skills.py` TC-17 scroll past the CV section.
+  - `docs/test-plan.md` (CV precondition, §3 rows, exploratory charter), `docs/guides/artemis-e2e.md` (two-CV seed and video recording), `docs/business-rules.md` (BR-C5/P3/T6 links and §5 traceability).
+- **Verification:** `uv run pytest --collect-only -q` collects every module; `uv run python -c "import conftest; conftest.push_sample_cvs()"` writes two valid `%PDF-` files. On the emulator, TC-18 smoke `3658371e` passed, then counted runs `5e99ca80`, `2adcba49`, `fd62333f` passed 3/3 (150.2 / 148.0 / 157.3 s) with `gemini-3.5-flash-lite` after `3.1` hit 180 s timeouts. The full flow opened Gmail, replaced `To` with `lap262005@gmail.com`, sent, returned and pressed `I've sent it`; the success screen matched. Video `e2e_test/artifacts/recordings/20261109/TC-18_Compose_CV.mp4`; automated mail used only the test account.
+- **Decision:** Accepted; TC-18 Done 3/3, the other listed TCs still pending.
+
+---
+
+### P-85: GA4 realtime card on the local admin dashboard
+
+- **Request:** (Command Code, 2026-11-09; operator Phạm Nguyễn Tú) "thêm tab Analytics vào dashboard admin ... server endpoint + UI + test + README", then "hướng dẫn tôi cách cấu hình chi tiết" and confirmation to implement the dashboard changes.
+- **Output:**
+  - `tools/admin-dashboard/lib/analytics.js`: `parseRealtimeReport` (totals, row fallback, malformed values) and `quotaRemaining`.
+  - `tools/admin-dashboard/test/analytics.test.js`: 4 unit tests for the parser and quota helper.
+  - `tools/admin-dashboard/server.js`: `GET /api/analytics/realtime` using `@google-analytics/data`; two `runRealtimeReport` calls (totals `activeUsers`/`eventCount`, top `eventName`/`eventCount`), a 10 s server cache, `GA4_PROPERTY_ID`, GA4-specific error hints, and a `GoogleAuth`/`JWT` client built from the service-account JSON (no deprecated `keyFilename`).
+  - `tools/admin-dashboard/public/index.html` + `app.js`: Analytics card with active users, top events and quota; 15 s polling paused while the tab is hidden.
+  - `tools/admin-dashboard/README.md`: GA4 setup (numeric property id, Data API, Viewer access), env vars, limits and troubleshooting.
+  - `tools/admin-dashboard/package.json` + lock: `@google-analytics/data@7.3.0`.
+- **Verification:** `npm test` → **14/14 tests passed**; `node --check` on `server.js`, `public/app.js` and `lib/analytics.js` → OK; `GET /api/status` → 200; `GET /api/analytics/realtime` without `GA4_PROPERTY_ID` → the expected 503 with the property/Viewer hint; with a test property id the GA4 call returned `403 PERMISSION_DENIED` with the same hint and no `keyFilename` deprecation warning. A real GA4 report was **not run** (the service account has no GA4 property access on this machine).
+- **Decision:** Accepted; the operator only needs to set `GA4_PROPERTY_ID` and add the service account as Viewer in GA4.

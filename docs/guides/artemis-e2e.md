@@ -83,11 +83,17 @@ Use a separate terminal for each long-running step.
    ```bash
    adb shell pm grant com.group3.internly android.permission.POST_NOTIFICATIONS
    ```
-3. Start the ARTEMIS daemon and leave it running. It reads `~/artemis/.env` and the config only at startup, so restart it after changing either.
+3. Seed the CV library once: the Apply cases need at least two CVs. The suite's helper pushes two fictional PDFs to the device, then add both in the app (Profile → `CV library` → `Add CV` → `Choose file` → `Downloads`).
+   ```bash
+   cd e2e_test && uv run python -c "import conftest; conftest.push_sample_cvs()"
+   adb shell ls /sdcard/Download/Sample_CV.pdf /sdcard/Download/Sample_CV_Backend.pdf
+   ```
+   In `CV library`, upload `Sample_CV.pdf` and `Sample_CV_Backend.pdf`; the header must read `2 files` and one file must carry `Default for applications`. TC-19 fails with a message naming this step when fewer than two CVs exist. TC-18 needs Gmail signed in; it replaces the recipient with the test account before sending.
+4. Start the ARTEMIS daemon and leave it running. It reads `~/artemis/.env` and the config only at startup, so restart it after changing either.
    ```bash
    cd ~/artemis && uv run python -m artemis ui --no-open
    ```
-4. Check the setup. Every row must be ✔:
+5. Check the setup. Every row must be ✔:
    ```bash
    cd ~/artemis && uv run python -m artemis doctor
    ```
@@ -122,6 +128,7 @@ What `conftest.py` does for every test:
   curl -s http://127.0.0.1:8000/api/sessions/<trace_id>/steps
   ```
   Logs and the replay video are in `~/artemis/traces/`.
+- **Record a video for every test batch.** Show the emulator, the ARTEMIS console and the Terminal that runs the command; start recording before typing the `uv run pytest … --count 3 -v` command and stop after `3 passed`. Keep one file per test (`TC-18_Compose_CV.mp4`, `TC-06_Apply.mp4`, …), upload it to the [Record Artemis Test - PRM323](https://drive.google.com/drive/folders/1B44bE_K5JY06eAhTU0FrJZrbmcfe7LCf) Drive folder, and add its link, size and counted trace IDs to the Recordings table in the evidence file. Videos show the test account, so they stay outside the repository. ARTEMIS also writes `recording.mp4` per session under `~/artemis/traces/` as a backup.
 - Record every run, passed or failed (AGENTS.md, "Logs and evidence"):
   1. Copy the day's lines of `runs.jsonl` to `evidence/artemis/runs-YYYYMMDD.jsonl`.
   2. Fill `test-plan.md` §4: runs, passed, pass rate, average time, trace IDs.

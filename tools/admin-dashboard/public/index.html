@@ -173,6 +173,42 @@
           ></div>
         </section>
 
+        <section class="surface analytics" aria-labelledby="analytics-heading">
+          <div class="surface-head">
+            <div>
+              <p class="eyebrow">GA4 realtime</p>
+              <h2 id="analytics-heading">Analytics</h2>
+            </div>
+            <div class="actions">
+              <span class="tag" id="analytics-window">Last 30 min</span>
+              <button
+                id="refresh-analytics"
+                class="button ghost small"
+                type="button"
+              >
+                Reload
+              </button>
+            </div>
+          </div>
+          <p class="body-copy">
+            Active users and top events from Google Analytics 4. GA4 reports
+            the last 30 minutes; the dashboard refreshes every 15 seconds.
+          </p>
+          <p
+            class="meta-line"
+            id="analytics-summary"
+            role="status"
+            aria-live="polite"
+          >
+            Loading…
+          </p>
+          <ul
+            id="analytics-events"
+            class="history-list"
+            aria-label="Realtime events"
+          ></ul>
+        </section>
+
         <div class="activity-grid">
           <section class="surface" aria-labelledby="delivery-heading">
             <div class="surface-head">
