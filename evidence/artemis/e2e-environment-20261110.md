@@ -83,7 +83,11 @@ TC-18's recording is in the 2026-11-09 evidence file ([`e2e-environment-20261109
 
 - **TC-07 `c67149d6`.** The test compared the card title with the detail position; the card appends the skills, so `Junior Fullstack Developer TypeScript, Node.js, API` did not equal `Junior Fullstack Developer`. `test_apply.py` now uses `_same_position` (normalise, then containment); the five later runs passed.
 - **TC-09 `cee108da`.** The same card-versus-detail difference, compared with `startswith`. `test_applications.py` now uses `_same_position`; the five later runs passed.
-- **TC-14 `d84b3a90`, `bec24fcb`.** Cancelled by the operator during the batch. The two runs before them passed in 263.4 s and 295.9 s; no fix is implied, TC-14 still needs a counted 3/3.
+- **TC-14 `d84b3a90`, `bec24fcb`.** Cancelled by the operator during the batch. The two runs before them passed in 263.4 s and 295.9 s; no fix is implied, TC-14 still needed a counted 3/3 (achieved in the rerun below).
 - **TC-19 `be05e6e5`.** Cancelled earlier: the CV change was observed, but the To edit kept clearing/retyping, so that step was removed from the case.
 - **TC-19 `0aba4890`.** Operator stopped the run.
-- **TC-19 `83edba2d`.** The agent session failed after 10.8 s and returned no report; the cause is not diagnosed. The case needs the two-CV precondition seeded before the next counted batch.
+- **TC-19 `83edba2d`.** The agent session failed after 10.8 s and returned no report. Diagnosed later: the emulator had dropped off ADB (`Device emulator-5554 is not available (adb does not list it)`, `adb install failed: device 'emulator-5554' not found` in the session's `stdout.log`) — not an app or case defect. The case also needed the two-CV precondition seeded before the next counted batch.
+
+## Rerun later on 2026-11-10
+
+TC-14 and TC-19 were rerun the same evening on a cold-booted emulator: TC-14 3/3 and TC-19 3/3, after correcting the TC-19 case (the `Change CV` sheet closes when a CV is tapped, and the letter check no longer reads the last words). Runs, causes and recordings: [`e2e-environment-20261110-rerun.md`](e2e-environment-20261110-rerun.md).

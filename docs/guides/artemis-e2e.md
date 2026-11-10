@@ -27,11 +27,18 @@ uv sync --python 3.12
 cp .env.example .env        # then set GEMINI_API_KEY=<your key> in ~/artemis/.env
 ```
 
-Optional, for the live screen and video replays (`brew` also installs `ffmpeg`):
+Optional, for the live screen and video replays, **and required for ARTEMIS to record a session** (`scrcpy` captures, `ffmpeg` remuxes the `.mkv` to `.mp4`):
 
 ```bash
+# macOS (`scrcpy` pulls in ffmpeg)
 brew install scrcpy
+
+# Windows (PowerShell); ARTEMIS looks for both on PATH
+winget install Genymobile.scrcpy
+winget install Gyan.FFmpeg
 ```
+
+Start the daemon from a shell whose `PATH` already contains both, otherwise it logs `Failed to start scrcpy recording: [WinError 2] The system cannot find the file specified` and the run has no video. Check with `scrcpy --version` and `ffmpeg -version` first.
 
 You do not need `./start.sh`. It also upgrades Node.js, builds the Angular console with npm and offers to install MCP configs into every IDE. That is heavy on an 8 GB machine and can break the Node 22 used by `functions/`. The daemon in §3 serves a prebuilt console anyway.
 
@@ -128,7 +135,7 @@ What `conftest.py` does for every test:
   curl -s http://127.0.0.1:8000/api/sessions/<trace_id>/steps
   ```
   Logs and the replay video are in `~/artemis/traces/`.
-- **Record a video for every test batch.** Show the emulator, the ARTEMIS console and the Terminal that runs the command; start recording before typing the `uv run pytest … --count 3 -v` command and stop after `3 passed`. Keep one file per test (`TC-18_Compose_CV.mp4`, `TC-06_Apply.mp4`, …), upload it to the [Record Artemis Test - PRM323](https://drive.google.com/drive/folders/1B44bE_K5JY06eAhTU0FrJZrbmcfe7LCf) Drive folder, and add its link, size and counted trace IDs to the Recordings table in the evidence file. Videos show the test account, so they stay outside the repository. ARTEMIS also writes `recording.mp4` per session under `~/artemis/traces/` as a backup.
+- **Record a video for every test batch.** Show the emulator, the ARTEMIS console and the Terminal that runs the command; start recording before typing the `uv run pytest … --count 3 -v` command and stop after `3 passed`. Keep one file per test (`TC-18_Compose_CV.mp4`, `TC-06_Apply.mp4`, …), upload it to the [Record Artemis Test - PRM323](https://drive.google.com/drive/folders/1B44bE_K5JY06eAhTU0FrJZrbmcfe7LCf) Drive folder, and add its link, size and counted trace IDs to the Recordings table in the evidence file. Videos show the test account, so they stay outside the repository. When `scrcpy` and `ffmpeg` are on the daemon's `PATH` (§1), ARTEMIS also writes one full-length `recording.mp4` per session to `~/artemis/traces/web_<id>_<trace>_<status>_<time>/` — copy it out per test as the backup, or when no desktop recorder is available.
 - Record every run, passed or failed (AGENTS.md, "Logs and evidence"):
   1. Copy the day's lines of `runs.jsonl` to `evidence/artemis/runs-YYYYMMDD.jsonl`.
   2. Fill `test-plan.md` §4: runs, passed, pass rate, average time, trace IDs.

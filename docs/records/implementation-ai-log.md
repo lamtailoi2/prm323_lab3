@@ -993,3 +993,43 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - `cd tools/admin-dashboard && npm test` → **14/14 passed**.
   - `flutter analyze` / `flutter test` and ARTEMIS → **not re-run** (no Dart file changed by `5c27ddd`; no ARTEMIS host in this session).
 - **Decision:** Accepted; TC-14 and TC-19 stay **Ready** until they have a counted 3/3.
+
+---
+
+### P-87: Fix TC-19 and complete the TC-14 counted runs
+
+- **Request:** (Command Code, 2026-11-10; operator Phạm Nguyễn Tú) "làm lại TC-19 giúp tôi, hiện tại hình như đang bị lỗi, và TC-14 đang thiếu số lần chạy, tìm hiểu luồng trong code hiện tại như thế nào trước, rồi sau đó mới chạy artemis, vừa chạy vừa quay lại từng TC".
+- **Output:**
+  - `e2e_test/test_apply_form.py` TC-19: matched the case to the screen's real behaviour — the `Change CV` sheet closes as soon as a CV row is tapped (the old wording asked for a `Done` that can never be the confirming step); scroll to the bottom for `CV / Resume`; read the chosen name again; and assert the letter contains the typed `Test line.` (`letter_edited`) instead of reading its last words, because ARTEMIS taps a screen point rather than a caret position.
+  - `docs/test-plan.md`: TC-19 and TC-14 marked Done with their counted traces; new "Rerun 2026-11-10 evening" result table; the flaky table records the real cause of `83edba2d` (emulator dropped off ADB) and the new `f1779886` test-side failure.
+  - `evidence/artemis/e2e-environment-20261110-rerun.md` + `evidence/artemis/runs-20261110-rerun.jsonl` (10 lines); a pointer added to `evidence/artemis/e2e-environment-20261110.md`.
+  - `README.md` and `docs/code-review.md`: the Command Code disclosure row lists P-87.
+- **Verification:**
+  - `uv run pytest test_apply_form.py -k tc19 -v` → **1 passed** (smoke `09d195fb`, 292.6 s).
+  - `uv run pytest test_apply_form.py -k tc19 --count 3 -v` → **3 passed** (`09f62a37` 198.4 s, `1927e4f8` 371.1 s, `23c38220` 119.4 s). An earlier batch passed 2 of 3: `f1779886` failed the then-stricter last-words assertion, which is why the counted batch was rerun after the fix.
+  - `uv run pytest test_auth.py -k tc14 --count 3 -v` → **3 passed** (`29074354` 41.3 s, `f88d29bc` 171.6 s, `4d59b7cd` 90.9 s).
+  - Step history of all six counted runs read through `GET /api/sessions/{id}/steps`; each run performed the steps the table claims (TC-19: `Change CV` → other CV → letter edit; TC-14: Sign out → Back → relaunch → Login).
+  - Device screen recorded with `adb shell screenrecord` (170 s segments) into `e2e_test/artifacts/recordings/20261110/{tc19-batch1,tc19-counted,tc14-counted}/`; ARTEMIS's own scrcpy recording fails on this host. The ARTEMIS console and terminal were not captured.
+  - `flutter analyze` / `flutter test` → **not run** (no Dart file changed).
+- **Decision:** Accepted; TC-19 and TC-14 are Done 3/3. The operator still has to upload the recordings to the Drive folder.
+
+---
+
+### P-88: Enable ARTEMIS screen recording and re-run TC-19 / TC-14 with video
+
+- **Request:** (Command Code, 2026-11-10; operator Phạm Nguyễn Tú) "quay lại giúp tôi TC-19, VÀ tc-14. ARTEMIS không record được trên máy này vì thiếu scrcpy chạy luôn phần này".
+- **Output:**
+  - Host: `winget install Genymobile.scrcpy` (5.0.1) and `winget install Gyan.FFmpeg` (9.0.2 full build); the daemon is started with both directories on `PATH`, because ARTEMIS records with `scrcpy --record <file>.mkv` and remuxes with `ffmpeg`.
+  - `docs/guides/artemis-e2e.md`: Windows install commands for both tools, the "start the daemon from a shell whose PATH has them" warning, and where ARTEMIS writes the per-session `recording.mp4` (§1 and §5).
+  - `docs/test-plan.md`: TC-14 and TC-19 statuses now point at the recorded traces; new "Recorded rerun 2026-11-10" table; the earlier evening batch stays as history.
+  - `evidence/artemis/e2e-environment-20261110-rerun.md`: new section with the host setup, the 7 runs, per-video durations and file names; `evidence/artemis/runs-20261110-recorded.jsonl` (7 lines).
+  - The three counted runs of each test were merged into one video per test with `ffmpeg -f concat -c copy` (lossless): `TC-19_Change_CV.mp4` (436.3 s, 24.4 MiB) and `TC-14_Sign_out.mp4` (269.3 s, 13.7 MiB) in `e2e_test/artifacts/recordings/20261110/artemis/`.
+  - `README.md` and `docs/code-review.md`: the Command Code disclosure row lists P-88.
+- **Verification:**
+  - `scrcpy --version` → 5.0.1; `ffmpeg -version` → 9.0.2; a probe with ARTEMIS's flags (`--no-window --record … .mkv --record-format mkv --video-bit-rate 2M --capture-orientation=@`) produced a 4.33 s MKV that `ffmpeg -c copy` remuxed to MP4.
+  - `uv run pytest test_apply_form.py -k tc19 -v` → **1 passed** (smoke `05bb60a9`, 236.1 s) with `recording.mp4` in its trace (223.9 s, 1080 × 2400, h264 + opus).
+  - `uv run pytest test_apply_form.py -k tc19 --count 3 -v` → **3 passed** (`0dcf9e76` 140.2 s, `a3b7aa33` 179.3 s, `8304537f` 140.4 s), each with a full-length video.
+  - `uv run pytest test_auth.py -k tc14 --count 3 -v` → **3 passed** (`8f5fb339` 71.5 s, `ca206198` 114.5 s, `7103ec00` 106.0 s), each with a full-length video.
+  - Final reports and action lists read from `GET /api/sessions/{id}/steps` for all six counted runs; the videos were probed with `ffprobe` (durations 63.4–171.6 s) and copied to `e2e_test/artifacts/recordings/20261110/artemis/`.
+  - `flutter analyze` / `flutter test` → **not run** (no Dart file changed).
+- **Decision:** Accepted; ARTEMIS now records every session on this host. The videos cover the device screen only (no ARTEMIS console/terminal); the operator still uploads them to the Drive folder.

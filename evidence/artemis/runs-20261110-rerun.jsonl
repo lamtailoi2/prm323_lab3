@@ -1,0 +1,10 @@
+﻿{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "09d195fb-d0b7-41b8-b933-671c13d904a9", "seconds": 292.6, "error": null, "pytest": "passed"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "bb54f7e8-6a4e-4f1c-b8b6-d044d221930d", "seconds": 221.5, "error": null, "pytest": "passed"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "5a96d3a7-58db-4203-b984-55a91fd3f0cb", "seconds": 282.3, "error": null, "pytest": "passed"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "f1779886-2308-4ef9-9449-9bba8184cc14", "seconds": 172.1, "error": null, "pytest": "failed", "failure": "AssertionError: assert 'Test line.' in 'Sincerely,\\nMai Duy Láº­p'"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "09f62a37-d42e-4af0-bd33-f9270382839f", "seconds": 198.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "1927e4f8-3dff-48c0-b082-9c3de7508cab", "seconds": 371.1, "error": null, "pytest": "passed"}
+{"test_id": "TC-19", "status": "completed", "succeeded": true, "trace_id": "23c38220-bfbc-40c8-8f1d-63fe27529041", "seconds": 119.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-14", "status": "completed", "succeeded": true, "trace_id": "29074354-ebd4-41b8-9f13-d0c3de4105bf", "seconds": 41.3, "error": null, "pytest": "passed"}
+{"test_id": "TC-14", "status": "completed", "succeeded": true, "trace_id": "f88d29bc-359a-41c5-8d92-d8b4e1cee714", "seconds": 171.6, "error": null, "pytest": "passed"}
+{"test_id": "TC-14", "status": "completed", "succeeded": true, "trace_id": "4d59b7cd-62c1-4768-8a5c-77e324e407f7", "seconds": 90.9, "error": null, "pytest": "passed"}

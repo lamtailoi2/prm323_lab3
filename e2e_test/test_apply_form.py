@@ -96,18 +96,21 @@ async def test_tc19_cv_change_and_letter_edit(artemis):
         "TC-19",
         f"{SIGNED_IN} {OPEN_COMPOSE} The next screen's app bar reads 'Apply by "
         "email'. Wait until the 'Subject' field contains text (up to 60 "
-        "seconds). Scroll down until the 'CV / Resume' section is visible; if "
-        "it is not visible, keep scrolling down. Read the CV file name. Tap "
-        "'Change CV', read the sheet title and subtitle, then tap the CV whose "
-        "file name is different from the one you read and tap 'Done'. Wait "
-        "until the 'Cover letter' has text, then scroll to the 'CV / Resume' "
-        "section and read the CV file name again. Then tap the 'Cover letter' "
-        "field, move the cursor to the end and type ' Test line.'. Read the "
-        "character count shown under the cover letter.",
+        "seconds). Scroll to the bottom of the form until the 'CV / Resume' "
+        "section is visible. Read the CV file name in that section. Tap "
+        "'Change CV' and read the sheet title. The sheet lists the CVs in your "
+        "library: tap the one whose name is different from the name you just "
+        "read. The sheet closes by itself after the tap (there is no 'Done' "
+        "button on this sheet); if it does not, tap the other CV row once. "
+        "Wait 3 seconds, then scroll back to the 'CV / Resume' section and "
+        "read the CV file name again. Tap the 'Cover letter' field, move the "
+        "cursor to the end of the text and type ' Test line.'. Read the "
+        "character count shown under the cover letter and say whether the "
+        "cover letter now contains the text 'Test line.' anywhere.",
         expected_output=(
             'JSON: {"initial_cv": string, "sheet_title": string, '
             '"selected_cv": string, "cv_after_change": string, '
-            '"character_count": integer}'
+            '"letter_edited": boolean, "character_count": integer}'
         ),
     )
     assert report["initial_cv"].strip()
@@ -116,4 +119,6 @@ async def test_tc19_cv_change_and_letter_edit(artemis):
     assert report["selected_cv"] != report["initial_cv"]
     # The choice applies to this application only (BR-C5, DC-26).
     assert report["cv_after_change"] == report["selected_cv"]
+    # The letter is still editable after the CV change (no redraft wipes it).
+    assert report["letter_edited"] is True
     assert report["character_count"] > 0
