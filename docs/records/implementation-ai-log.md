@@ -976,3 +976,20 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - `tools/admin-dashboard/package.json` + lock: `@google-analytics/data@7.3.0`.
 - **Verification:** `npm test` → **14/14 tests passed**; `node --check` on `server.js`, `public/app.js` and `lib/analytics.js` → OK; `GET /api/status` → 200; `GET /api/analytics/realtime` without `GA4_PROPERTY_ID` → the expected 503 with the property/Viewer hint; with a test property id the GA4 call returned `403 PERMISSION_DENIED` with the same hint and no `keyFilename` deprecation warning. A real GA4 report was **not run** (the service account has no GA4 property access on this machine).
 - **Decision:** Accepted; the operator only needs to set `GA4_PROPERTY_ID` and add the service account as Viewer in GA4.
+
+---
+
+### P-86: Sync the testing docs with the 2026-11-09/10 ARTEMIS batch
+
+- **Request:** (Command Code, 2026-11-10; operator Phạm Nguyễn Tú) "kiểm tra giúp tôi docs liên quan đến kiểm thử xem đã cập nhật mới nhất chưa", then "cập nhật lại tất cả giúp tôi".
+- **Output:**
+  - `docs/test-plan.md`: updated TC-06, TC-07, TC-09, TC-14, TC-17 and TC-19 statuses; added the 2026-11-09 night – 2026-11-10 result table (25 runs, counted traces); added the two title-check failures and the cancelled runs to the flaky table; removed the stale TC-20 references and the Android document-picker claim from the coverage table; marked TC-11 as not written; recorded the Pro exploratory session as not run/recorded.
+  - `evidence/artemis/e2e-environment-20261110.md`: environment, 25-run table, counted results, recordings and failure causes.
+  - `evidence/artemis/runs-20261110.jsonl`: 25 lines copied from the git-ignored `e2e_test/artifacts/runs.jsonl`.
+  - `docs/records/test-report.md`: Run 41 with the real `npm test` result and the note that Run 40 remains the latest Flutter suite.
+  - `README.md` and `docs/code-review.md`: the Command Code disclosure row now lists P-86.
+- **Verification:**
+  - Source check: `runs.jsonl` (mtime 2026-11-10 00:37) held TC-06/07/09/14/17/19 runs newer than `test-plan.md` (2026-11-09 23:47); `git log` shows `5c27ddd` as HEAD.
+  - `cd tools/admin-dashboard && npm test` → **14/14 passed**.
+  - `flutter analyze` / `flutter test` and ARTEMIS → **not re-run** (no Dart file changed by `5c27ddd`; no ARTEMIS host in this session).
+- **Decision:** Accepted; TC-14 and TC-19 stay **Ready** until they have a counted 3/3.

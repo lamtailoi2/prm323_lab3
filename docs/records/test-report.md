@@ -865,3 +865,17 @@ Findings:
 
 1. The earlier auto-select only existed in the removed Apply Form; the Compose flow now owns the library, the suggestion and the manual override. Drafting waits for the comparison so the cover letter is composed against the chosen CV.
 2. `Change CV` applies to this application only. The Profile default is never written from Compose (DC-35).
+
+---
+
+## Run 41: Test docs sync + admin dashboard analytics (2026-11-10)
+
+**Environment:** Windows 11 · Node 24.22.1 · npm 11.19.1 · branch `dev`, HEAD `5c27ddd` (documentation, E2E suite and admin dashboard changes). No Flutter or ARTEMIS run in this session.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd tools/admin-dashboard && npm test` | **14 tests, all passed** (`node --test test/*.test.js`): the 9 cases from Run 33 plus 5 in `analytics.test.js` (GA4 realtime totals, row fallback, event-only rows, malformed reports, quota bucket) |
+| 2 | `flutter analyze` / `flutter test` | **Not re-run**: `5c27ddd` changes no `lib/` or `test/` Dart file, so Run 40 (735 tests) remains the latest full suite |
+| 3 | ARTEMIS suite | **Run separately** on 2026-11-09/10 (TC-06, TC-07, TC-09, TC-14, TC-17, TC-19). Results, counted traces and causes are in `test-plan.md` §4 and [`evidence/artemis/e2e-environment-20261110.md`](../../evidence/artemis/e2e-environment-20261110.md); the day's lines were copied to [`runs-20261110.jsonl`](../../evidence/artemis/runs-20261110.jsonl) because `e2e_test/artifacts/` is git-ignored |
+
+Findings: TC-06, TC-07, TC-09 and TC-17 now have 3 of 3 counted passes; TC-14 (2 of 4) and TC-19 (0 of 3) still need a counted batch. The two title-check failures (TC-07 `c67149d6`, TC-09 `cee108da`) were test expectations, fixed by `_same_position`, not app defects.

@@ -2,7 +2,9 @@
 
 Status: **TC-18 passed 3/3** on the profile build with `gemini-3.5-flash-lite`. One smoke run passed before the counted batch and is not counted. The earlier failures were test wording (the To placeholder read as a value, the CV block below the fold, the hand-off not asserted) and a 180 s model timeout on `gemini-3.1-flash-lite`; none was an app defect. The counted runs opened Gmail, sent the draft to the test account, returned to Internly, pressed `I've sent it`, and reached `Application submitted!`.
 
-The 15 TC-18 lines of `e2e_test/artifacts/runs.jsonl` are copied to [`runs-20261109.jsonl`](runs-20261109.jsonl). Every counted run was checked against its ARTEMIS step history.
+The 15 lines of `e2e_test/artifacts/runs.jsonl` (the preceding TC-02 run and the 14 TC-18 runs) are copied to [`runs-20261109.jsonl`](runs-20261109.jsonl). Every counted run was checked against its ARTEMIS step history.
+
+The next batch (TC-06, TC-07, TC-09, TC-14, TC-17 and TC-19, late 2026-11-09 to 2026-11-10) is recorded in [`e2e-environment-20261110.md`](e2e-environment-20261110.md).
 
 ## Environment
 
