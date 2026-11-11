@@ -222,7 +222,7 @@ class _FeedLists extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final savedIds = ref.watch(savedInternshipIdsProvider);
+    final savedJobs = ref.watch(savedJobsProvider);
     final appliedJobs =
         ref.watch(appliedJobsProvider).asData?.value ?? const <String>{};
     return Column(
@@ -230,12 +230,12 @@ class _FeedLists extends ConsumerWidget {
       children: [
         if (feed.recommended.isNotEmpty) ...[
           _sectionHeader('Recommended for you'),
-          _cards(context, ref, feed.recommended, savedIds, appliedJobs),
+          _cards(context, ref, feed.recommended, savedJobs, appliedJobs),
         ],
         if (feed.recent.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.section),
           _sectionHeader('Recently Posted'),
-          _cards(context, ref, feed.recent, savedIds, appliedJobs),
+          _cards(context, ref, feed.recent, savedJobs, appliedJobs),
         ],
         const SizedBox(height: AppSpacing.section),
       ],
@@ -262,7 +262,7 @@ class _FeedLists extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     List<Internship> internships,
-    Set<String> savedIds,
+    Set<String> savedJobs,
     Set<String> appliedJobs,
   ) {
     return Column(
@@ -284,7 +284,9 @@ class _FeedLists extends ConsumerWidget {
               tags: internship.skills,
               allowanceText: formatAllowance(internship.salary),
               postedText: internship.postedText,
-              isSaved: savedIds.contains(internship.key),
+              isSaved: savedJobs.contains(
+                jobIdentity(internship.title, internship.companyName),
+              ),
               isApplied: appliedJobs.contains(
                 jobIdentity(internship.title, internship.companyName),
               ),

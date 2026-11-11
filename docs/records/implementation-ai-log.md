@@ -930,7 +930,200 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
-### P-83: Student-reported application status (techjobs.vn-style tracker)
+### P-83: Compose CV auto-select + manual Change CV
+
+- **Request:** (opencode, deepseek-v4.1-flash-free, 2026-11-09; operator Phạm Nguyễn Tú) Implement the team member's requirement: auto-select the CV that best matches the internship, show a note that the choice is only a suggestion, and allow manual selection with `Change CV`. The member's original wording is in the team chat; the operator added "Không hiểu thì hỏi, không được tự động đoán. Không đọc lại file nhiều lần."
+- **Output:**
+  - `lib/features/internships/viewmodels/apply_compose_viewmodel.dart`: added `library`, `defaultCvFile`, `chosenCv`, `autoSelection`, `autoSelecting` and `cv` to the state; added `_subscribeCvs`, `_applyLibrary`, `_resolveDefaultCv`, `_maybeAutoSelect`, `_autoSelect` and `selectLibraryCv`. Drafting now waits for the comparison (or its fallback) and uses `state.cv` for `composeCoverLetter`, `markSent` and `buildSession`.
+  - `lib/features/internships/widgets/apply_compose_parts.dart`: the CV card shows the auto-selection reason plus "This is only a suggestion, so you can change it before you send.", a comparing message while `selectCv` runs, and a `Change CV` button; new `ApplyCvPickerSheet` lists the library with a check mark on the current file.
+  - `lib/features/internships/screens/apply_compose_screen.dart`: opens the picker and forwards the choice to the ViewModel; the CV checks now appear whenever the chosen/default CV exists.
+  - `test/features/internships/apply_compose_viewmodel_test.dart`: auto-select success, failed fallback, manual choice winning over a late response, and one-CV skip.
+  - `test/features/internships/apply_compose_screen_test.dart`: suggestion text, `Change CV` sheet, and choosing another library CV at 360 and 412 dp.
+  - `docs/analytics-plan.md`, `docs/business-rules.md`, `docs/design-traceability.md` (row 6 and DC-35), `docs/records/test-report.md` (Run 40), `README.md`, `docs/code-review.md`.
+- **Verification:**
+  - `dart format lib test` → 230 files, 0 changed.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **735 tests, all passed**.
+  - DebugView / device run → **not run** (no Firebase project or device on this machine).
+- **Decision:** Accepted.
+
+---
+
+### P-84: ARTEMIS cases for the CV library (TC-06/07/09/14/17/18/19)
+
+- **Request:** (Command Code, 2026-11-09; operator Phạm Nguyễn Tú) "lên plan cho những TC này" after the CV library merge, with the requirement that each batch is recorded on video so the execution can be reviewed.
+- **Output:**
+  - `e2e_test/conftest.py`: `push_sample_cv(name, lines)`, `push_sample_cvs()`, `SECOND_SAMPLE_CV_NAME` for the two-CV precondition; `SIGNED_OUT` scrolls past `CV library` and `Technical skills`.
+  - `e2e_test/test_apply_form.py`: TC-18 reads the top draft banner and the placeholder-aware `To` value, then taps `Open email app` and accepts either a mail app or the `No email app…` message; TC-19 scrolls to `CV / Resume`, changes to another library CV, and asserts the card follows the choice.
+  - `e2e_test/test_apply.py`: TC-06 asserts the prefilled CV; TC-07 searches `Developer` (the listings TC-06 applies to) and asserts `Applicant & Submitted CV`, `Preview` and no `Replace CV`.
+  - `e2e_test/test_applications.py`: TC-09 asserts the same submitted-CV block on Application Detail.
+  - `e2e_test/test_auth.py` TC-14 and `e2e_test/test_profile_skills.py` TC-17 scroll past the CV section.
+  - `docs/test-plan.md` (CV precondition, §3 rows, exploratory charter), `docs/guides/artemis-e2e.md` (two-CV seed and video recording), `docs/business-rules.md` (BR-C5/P3/T6 links and §5 traceability).
+- **Verification:** `uv run pytest --collect-only -q` collects every module; `uv run python -c "import conftest; conftest.push_sample_cvs()"` writes two valid `%PDF-` files. On the emulator, TC-18 smoke `3658371e` passed, then counted runs `5e99ca80`, `2adcba49`, `fd62333f` passed 3/3 (150.2 / 148.0 / 157.3 s) with `gemini-3.5-flash-lite` after `3.1` hit 180 s timeouts. The full flow opened Gmail, replaced `To` with `lap262005@gmail.com`, sent, returned and pressed `I've sent it`; the success screen matched. Video `e2e_test/artifacts/recordings/20261109/TC-18_Compose_CV.mp4`; automated mail used only the test account.
+- **Decision:** Accepted; TC-18 Done 3/3, the other listed TCs still pending.
+
+---
+
+### P-85: GA4 realtime card on the local admin dashboard
+
+- **Request:** (Command Code, 2026-11-09; operator Phạm Nguyễn Tú) "thêm tab Analytics vào dashboard admin ... server endpoint + UI + test + README", then "hướng dẫn tôi cách cấu hình chi tiết" and confirmation to implement the dashboard changes.
+- **Output:**
+  - `tools/admin-dashboard/lib/analytics.js`: `parseRealtimeReport` (totals, row fallback, malformed values) and `quotaRemaining`.
+  - `tools/admin-dashboard/test/analytics.test.js`: 4 unit tests for the parser and quota helper.
+  - `tools/admin-dashboard/server.js`: `GET /api/analytics/realtime` using `@google-analytics/data`; two `runRealtimeReport` calls (totals `activeUsers`/`eventCount`, top `eventName`/`eventCount`), a 10 s server cache, `GA4_PROPERTY_ID`, GA4-specific error hints, and a `GoogleAuth`/`JWT` client built from the service-account JSON (no deprecated `keyFilename`).
+  - `tools/admin-dashboard/public/index.html` + `app.js`: Analytics card with active users, top events and quota; 15 s polling paused while the tab is hidden.
+  - `tools/admin-dashboard/README.md`: GA4 setup (numeric property id, Data API, Viewer access), env vars, limits and troubleshooting.
+  - `tools/admin-dashboard/package.json` + lock: `@google-analytics/data@7.3.0`.
+- **Verification:** `npm test` → **14/14 tests passed**; `node --check` on `server.js`, `public/app.js` and `lib/analytics.js` → OK; `GET /api/status` → 200; `GET /api/analytics/realtime` without `GA4_PROPERTY_ID` → the expected 503 with the property/Viewer hint; with a test property id the GA4 call returned `403 PERMISSION_DENIED` with the same hint and no `keyFilename` deprecation warning. A real GA4 report was **not run** (the service account has no GA4 property access on this machine).
+- **Decision:** Accepted; the operator only needs to set `GA4_PROPERTY_ID` and add the service account as Viewer in GA4.
+
+---
+
+### P-86: Sync the testing docs with the 2026-11-09/10 ARTEMIS batch
+
+- **Request:** (Command Code, 2026-11-10; operator Phạm Nguyễn Tú) "kiểm tra giúp tôi docs liên quan đến kiểm thử xem đã cập nhật mới nhất chưa", then "cập nhật lại tất cả giúp tôi".
+- **Output:**
+  - `docs/test-plan.md`: updated TC-06, TC-07, TC-09, TC-14, TC-17 and TC-19 statuses; added the 2026-11-09 night – 2026-11-10 result table (25 runs, counted traces); added the two title-check failures and the cancelled runs to the flaky table; removed the stale TC-20 references and the Android document-picker claim from the coverage table; marked TC-11 as not written; recorded the Pro exploratory session as not run/recorded.
+  - `evidence/artemis/e2e-environment-20261110.md`: environment, 25-run table, counted results, recordings and failure causes.
+  - `evidence/artemis/runs-20261110.jsonl`: 25 lines copied from the git-ignored `e2e_test/artifacts/runs.jsonl`.
+  - `docs/records/test-report.md`: Run 41 with the real `npm test` result and the note that Run 40 remains the latest Flutter suite.
+  - `README.md` and `docs/code-review.md`: the Command Code disclosure row now lists P-86.
+- **Verification:**
+  - Source check: `runs.jsonl` (mtime 2026-11-10 00:37) held TC-06/07/09/14/17/19 runs newer than `test-plan.md` (2026-11-09 23:47); `git log` shows `5c27ddd` as HEAD.
+  - `cd tools/admin-dashboard && npm test` → **14/14 passed**.
+  - `flutter analyze` / `flutter test` and ARTEMIS → **not re-run** (no Dart file changed by `5c27ddd`; no ARTEMIS host in this session).
+- **Decision:** Accepted; TC-14 and TC-19 stay **Ready** until they have a counted 3/3.
+
+---
+
+### P-87: Fix TC-19 and complete the TC-14 counted runs
+
+- **Request:** (Command Code, 2026-11-10; operator Phạm Nguyễn Tú) "làm lại TC-19 giúp tôi, hiện tại hình như đang bị lỗi, và TC-14 đang thiếu số lần chạy, tìm hiểu luồng trong code hiện tại như thế nào trước, rồi sau đó mới chạy artemis, vừa chạy vừa quay lại từng TC".
+- **Output:**
+  - `e2e_test/test_apply_form.py` TC-19: matched the case to the screen's real behaviour — the `Change CV` sheet closes as soon as a CV row is tapped (the old wording asked for a `Done` that can never be the confirming step); scroll to the bottom for `CV / Resume`; read the chosen name again; and assert the letter contains the typed `Test line.` (`letter_edited`) instead of reading its last words, because ARTEMIS taps a screen point rather than a caret position.
+  - `docs/test-plan.md`: TC-19 and TC-14 marked Done with their counted traces; new "Rerun 2026-11-10 evening" result table; the flaky table records the real cause of `83edba2d` (emulator dropped off ADB) and the new `f1779886` test-side failure.
+  - `evidence/artemis/e2e-environment-20261110-rerun.md` + `evidence/artemis/runs-20261110-rerun.jsonl` (10 lines); a pointer added to `evidence/artemis/e2e-environment-20261110.md`.
+  - `README.md` and `docs/code-review.md`: the Command Code disclosure row lists P-87.
+- **Verification:**
+  - `uv run pytest test_apply_form.py -k tc19 -v` → **1 passed** (smoke `09d195fb`, 292.6 s).
+  - `uv run pytest test_apply_form.py -k tc19 --count 3 -v` → **3 passed** (`09f62a37` 198.4 s, `1927e4f8` 371.1 s, `23c38220` 119.4 s). An earlier batch passed 2 of 3: `f1779886` failed the then-stricter last-words assertion, which is why the counted batch was rerun after the fix.
+  - `uv run pytest test_auth.py -k tc14 --count 3 -v` → **3 passed** (`29074354` 41.3 s, `f88d29bc` 171.6 s, `4d59b7cd` 90.9 s).
+  - Step history of all six counted runs read through `GET /api/sessions/{id}/steps`; each run performed the steps the table claims (TC-19: `Change CV` → other CV → letter edit; TC-14: Sign out → Back → relaunch → Login).
+  - Device screen recorded with `adb shell screenrecord` (170 s segments) into `e2e_test/artifacts/recordings/20261110/{tc19-batch1,tc19-counted,tc14-counted}/`; ARTEMIS's own scrcpy recording fails on this host. The ARTEMIS console and terminal were not captured.
+  - `flutter analyze` / `flutter test` → **not run** (no Dart file changed).
+- **Decision:** Accepted; TC-19 and TC-14 are Done 3/3. The operator still has to upload the recordings to the Drive folder.
+
+---
+
+### P-88: Enable ARTEMIS screen recording and re-run TC-19 / TC-14 with video
+
+- **Request:** (Command Code, 2026-11-10; operator Phạm Nguyễn Tú) "quay lại giúp tôi TC-19, VÀ tc-14. ARTEMIS không record được trên máy này vì thiếu scrcpy chạy luôn phần này".
+- **Output:**
+  - Host: `winget install Genymobile.scrcpy` (5.0.1) and `winget install Gyan.FFmpeg` (9.0.2 full build); the daemon is started with both directories on `PATH`, because ARTEMIS records with `scrcpy --record <file>.mkv` and remuxes with `ffmpeg`.
+  - `docs/guides/artemis-e2e.md`: Windows install commands for both tools, the "start the daemon from a shell whose PATH has them" warning, and where ARTEMIS writes the per-session `recording.mp4` (§1 and §5).
+  - `docs/test-plan.md`: TC-14 and TC-19 statuses now point at the recorded traces; new "Recorded rerun 2026-11-10" table; the earlier evening batch stays as history.
+  - `evidence/artemis/e2e-environment-20261110-rerun.md`: new section with the host setup, the 7 runs, per-video durations and file names; `evidence/artemis/runs-20261110-recorded.jsonl` (7 lines).
+  - The three counted runs of each test were merged into one video per test with `ffmpeg -f concat -c copy` (lossless): `TC-19_Change_CV.mp4` (436.3 s, 24.4 MiB) and `TC-14_Sign_out.mp4` (269.3 s, 13.7 MiB) in `e2e_test/artifacts/recordings/20261110/artemis/`.
+  - `README.md` and `docs/code-review.md`: the Command Code disclosure row lists P-88.
+- **Verification:**
+  - `scrcpy --version` → 5.0.1; `ffmpeg -version` → 9.0.2; a probe with ARTEMIS's flags (`--no-window --record … .mkv --record-format mkv --video-bit-rate 2M --capture-orientation=@`) produced a 4.33 s MKV that `ffmpeg -c copy` remuxed to MP4.
+  - `uv run pytest test_apply_form.py -k tc19 -v` → **1 passed** (smoke `05bb60a9`, 236.1 s) with `recording.mp4` in its trace (223.9 s, 1080 × 2400, h264 + opus).
+  - `uv run pytest test_apply_form.py -k tc19 --count 3 -v` → **3 passed** (`0dcf9e76` 140.2 s, `a3b7aa33` 179.3 s, `8304537f` 140.4 s), each with a full-length video.
+  - `uv run pytest test_auth.py -k tc14 --count 3 -v` → **3 passed** (`8f5fb339` 71.5 s, `ca206198` 114.5 s, `7103ec00` 106.0 s), each with a full-length video.
+  - Final reports and action lists read from `GET /api/sessions/{id}/steps` for all six counted runs; the videos were probed with `ffprobe` (durations 63.4–171.6 s) and copied to `e2e_test/artifacts/recordings/20261110/artemis/`.
+  - `flutter analyze` / `flutter test` → **not run** (no Dart file changed).
+- **Decision:** Accepted; ARTEMIS now records every session on this host. The videos cover the device screen only (no ARTEMIS console/terminal); the operator still uploads them to the Drive folder.
+
+---
+
+### P-89: Fix CR-07 (Saved part) and CR-11 from the AI code review
+
+- **Request:** (Claude Code, Opus 5.5 `claude-opus-5-5`, 2026-11-11; operator Phạm Nguyễn Hoàng Anh) "sửa code để sửa bug cr-07 và cr-11 đi" — fix the two findings left open in G-32.
+- **Output:**
+  - `lib/features/saved/viewmodels/saved_providers.dart`: `savedInternshipIdsProvider` (keys) replaced by `savedJobsProvider` (`jobIdentity` of each saved listing), the rule `appliedJobsProvider` already used.
+  - `lib/features/saved/viewmodels/saved_viewmodel.dart`: mirrors saved keys per job; `toggleAndReport` removes every saved copy of the job before it would save a new one.
+  - `lib/features/home/screens/home_screen.dart`, `lib/features/internships/screens/search_results_screen.dart`, `lib/features/internships/screens/internship_detail_screen.dart`: the Save Toggle and Detail's `Saved` state compare job identities; `applied_providers.dart` doc comment renamed.
+  - `lib/features/internships/widgets/search_results_filter_sheet.dart`: `show` takes `suggestedSkills` as a reader and a required `listingsChanged` provider; the sheet is wrapped in a `Consumer` that watches it. `search_screen.dart` passes `searchViewModelProvider`, `search_results_screen.dart` passes `searchResultsViewModelProvider`.
+  - Tests: `test/features/saved/saved_viewmodel_test.dart` (CR-07 group, 4 tests), `test/features/internships/search_results_screen_test.dart` (saved under another copy), `test/features/internships/search_screen_test.dart` (sheet opened before the pool loads).
+  - Records: `docs/code-review.md` (CR-07, CR-11, disclosure row), `docs/records/handoff-gaps.md` (G-32), `docs/business-rules.md` (BR-S2), `docs/records/test-report.md` (Run 42), `README.md`.
+- **Verification:**
+  - `dart format lib test` → 230 files, 0 changed.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **741 tests, all passed**.
+  - The two new screen tests fail on the old `lib/` (stashed): no `Remove from saved` bookmark (CR-07); `Show 0 results →` remains (CR-11).
+  - Device run / ARTEMIS → **not run**.
+- **Decision:** Accepted by the operator ("Commit 2 lần"). Committed as two commits (AGENTS.md, one per finding): `1f591c3` `fix(CR-07): match saved jobs by identity across synced copies` (740 tests passed on that commit alone) and `fix(CR-11): …` with the CR-11 change, its test and these records.
+
+### P-90: Firestore and Storage rules tests
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "kiểm tra giúp tôi, giờ tôi muốn test luôn cả phần firebase rule test thì làm như thế nào".
+- **Output:**
+  - `firebase/tests/`: new Node package (`package.json`, `README.md`) with `@firebase/rules-unit-testing` 6.0.0 and `firebase` 13.2.0 as regular `dependencies` (this machine sets `omit=dev`, which skips `devDependencies`).
+  - `firebase/tests/firestore.rules.test.mjs` (9 tests): `users/{uid}` owner-only on the document and its subcollections, the 50-field write limit, signed-out and other-user denial; `internships/{key}` readable only when signed in and never writable by a client; `sync/**` closed.
+  - `firebase/tests/storage.rules.test.mjs` (6 tests): `reports/{uid}` and `cvs/{uid}` owner-only, PDF only, non-empty, at most 10 MB; every other path denied.
+  - `firebase/tests/demo/` (`server.mjs`, `index.html`): a local page on `http://localhost:5500` that runs the same decisions as 19 rows and streams PASS/FAIL, so the run can be recorded as video evidence; `--self-test` runs it in the terminal; `npm run demo` / `npm run demo:check` in `firebase/tests/package.json`.
+  - `firebase.json`: Storage emulator added on port 9199 so both rule files can be tested in one run.
+  - `.gitignore`: ignores `firebase/tests/node_modules/`.
+  - `docs/records/test-report.md`: Run 43 with the real command output.
+- **Verification:**
+  - `npm --prefix firebase/tests install` → **136 packages installed**.
+  - `firebase emulators:exec --only firestore,storage --project demo-internly "npm --prefix firebase/tests test"` → **15 tests, 15 passed, 0 failed** (2.9 s).
+  - First attempt failed 4 tests: they addressed `users/alice/profile`, but `users/{uid}` is the document itself and a three-segment path is invalid. Test paths fixed; no rule changed. An earlier attempt failed before the tests because the Firebase CLI requires `java` on `PATH` (it ignores `JAVA_HOME` alone), so the Android Studio JDK was added to `PATH`.
+  - `firebase emulators:exec ... "node firebase/tests/demo/server.mjs --self-test"` → **19/19 demo scenarios passed** (1.8 s). The first self-test run reported 14 failures because the runner awaited each operation directly instead of wrapping denied rows in `assertFails`; the harness was fixed, the rules were not touched.
+  - Demo HTTP smoke test under the same command → `GET /` **200** (10,327 bytes, table present); `GET /run` **200**, 19 plan rows, 19 results, `19/19 passed, 0 failed, 1772 ms`.
+  - `flutter analyze` / `flutter test` → **not run** (no Dart file changed).
+- **Decision:** Accepted. The rules tests run against emulators only (demo project) and need no Firebase credentials. They close the open item in `test-report.md` Run 1 row 8.
+
+---
+
+### P-91: UAT plan, scenario script and result template
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "oke, giờ tiếp tục chuyển qua làm phần UAT", with the choices: plan + scenarios + result record; both an internal and an external round; the four main flows.
+- **Output:**
+  - `docs/uat-plan.md`: two rounds (2 internal team members, 3 external students), roles, consent and anonymisation, build/device/test-data setup, session procedure, severity scale, five-statement questionnaire, 24 scenarios (A1–A3 sign in/out, B1–B7 search and save, C1–C10 apply by email and track, D1–D4 profile and CV library), acceptance criteria, and UAT → BR → ARTEMIS traceability. Every expected string was read from the current code, not from the stale `docs/design/user-flow.md`.
+  - `docs/records/uat-results.md`: blank per-session record (environment, 24 result rows, defect log, questionnaire, sign-off) and the acceptance checklist. No row is pre-filled; an unrun session stays `Not run`.
+  - `evidence/uat/README.md`: capture and naming rules; `docs/README.md` and `evidence/README.md` index rows.
+  - Report export is recorded as out of scope because the Profile row is disabled and reads `Coming soon.` (G-05); notifications stay with TC-13 / TC-15.
+- **Verification:**
+  - Copy checked against `apply_compose_screen.dart`, `apply_compose_parts.dart`, `detail_bottom_bar.dart`, `internship_detail_screen.dart`, `saved_screen.dart`, `my_applications_screen.dart`, `application_detail_screen.dart`, `application_status_tracker.dart`, `profile_screen.dart`, `profile_sections.dart`, `profile_header_card.dart`, `add_cv_sheet.dart`, `edit_profile_screen.dart`, `home_screen.dart`, `search_results_screen.dart` and `search_results_filter_sheet.dart`.
+  - No Dart or rules file changed. No UAT session was executed, so `uat-results.md` has no results; `flutter analyze` / `flutter test` / rules tests were **not run** (nothing executable changed).
+- **Decision:** Accepted as the UAT plan and record; the team and the external participants still have to run the sessions and fill the results.
+
+---
+
+### P-92: Run documentation for the rules tests, demo and UAT
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "cập nhật docs giúp tôi với những gì đã làm, cả cách chạy luôn để người khác có thể biết để chạy".
+- **Output:**
+  - `README.md`: rules commands (install, suite, demo) and the UAT section added under Tests; deliverables and "Other documentation" rows for `firebase/tests/` and the UAT files.
+  - `AGENTS.md`: rules commands in § Commands with the JDK/`firebase-tools` note; new "Where code goes" row for a rules test; rules-test bullet in § Testing rules; two rows in the docs-to-update table; a "rules tests green" line in the feature definition of done.
+  - `docs/guides/firebase-setup.md` §16: prerequisites, the three commands, the Emulator UI port, the Windows JDK block, and a troubleshooting table (java, wrong directory, port taken, split command, `omit=dev`, `sun.misc.Unsafe`).
+  - `firebase/tests/README.md`: rewritten with prerequisites, install, suite, demo, `demo:check`, layout, how to add a case to the test and to the demo, and the same troubleshooting table.
+  - `docs/README.md`: "How to run" table for Flutter, rules tests, rules demo, ARTEMIS and UAT; `docs/uat-plan.md`: "Quick start" (build, test data, record template, recorder, evidence).
+- **Verification:**
+  - Every command in the new documentation is one that was executed earlier in this session: `15 tests, 15 passed`; demo `19/19` and `demo:check` `19/19`; `GET /` 200 and `GET /run` 200 with 19 results.
+  - The Java and port troubleshooting rows come from the two failures hit and fixed here (CLI ignores `JAVA_HOME` alone; a leftover emulator held 8080).
+  - Docs-only change: no Dart, rules or test file modified, so `flutter analyze` / `flutter test` and the rules suite were **not re-run**.
+- **Decision:** Accepted. A teammate can now install, run and record the rules checks and start a UAT session from the README, `AGENTS.md` and `firebase/tests/README.md`.
+
+---
+
+### P-93: Automated internal UAT walkthrough with screen recording
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "bạn có thể làm tự động phần uat này giúp tôi và quay lại video cho phần test đó được không", then choosing to use the real account and count it as UAT for the course report.
+- **Output:**
+  - An adb-driven script outside the repository (`uat.mjs` in the session scratchpad): dumps the UI hierarchy, finds elements by text/content-desc, taps, types, swipes and asserts the expected copy; starts and stops `adb shell screenrecord`.
+  - `docs/records/uat-results.md`: session **R1-A (internal, automated walkthrough)** with a disclosure that no human participant used the app, 13 `Pass` rows with times and video offsets, 11 `Not run` rows with reasons, and a note that the account's data changed.
+  - Recording kept at `e2e_test/artifacts/recordings/uat-r1-20261111.mp4` (241 s, 9.3 MB, git-ignored because the team account's name, email and CV are on screen).
+- **Verification:**
+  - Full run: **13/13 automated scenarios passed** (B1, B2, B4–B6, C1–C8); `ffprobe` reports 241.07 s and 9,764,320 bytes.
+  - `adb` device: Medium Phone API 37 with Google Play services; app `com.group3.internly`, profile build of `42ea1e0`.
+  - No functional defect observed. A1–A3, B3, B7, C9, C10 and D1–D4 were not driven and stay `Not run`; R2 (external) is still not run.
+- **Decision:** Accepted only as **internal automated evidence**, not as external UAT. It must not be presented as an `E1`–`E3` session, and the video stays out of Git.
+
+---
+
+### P-94: Student-reported application status (techjobs.vn-style tracker)
 
 - **Request:** (Command Code, 2026-11-11) "https://techjobs.vn/ dựa theo này làm phần application management có nghĩa là system chỉ ghi lại status applied thoi còn các status như interviewed hay acccepted, rejected gì đó thì user sẽ tự điều chỉnh kiểu để tracking". The app records `submitted`; every later stage is reported by the student.
 - **Output:**
@@ -957,7 +1150,7 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
-### P-84: State machine diagram matches the picker
+### P-95: State machine diagram matches the picker
 
 - **Request:** (Command Code, 2026-11-11) "update state machine diagram".
 - **Output:** `docs/business-rules.md` §2.4 — the diagram no longer implies a strict ladder. `accepted` / `rejected` lose their `[*]` terminal markers (BR-T8 can still move them to another trackable stage), the BR-T8 note says the picker offers all five stages every time, and the prose below the diagram spells out the three cases the arrows do not draw (skip a step, move back to correct a mistake, change a decided application). The `withdrawn` note keeps the 24-hour Undo rule.

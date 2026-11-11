@@ -247,4 +247,52 @@ flutter run --dart-define-from-file=.env
 
 Google Sign-In works immediately because the debug build carries the team key. Internship data comes from the shared Firestore pool, so teammates do not need a SerpAPI key. Only teammates who deploy rules or functions need `firebase-tools` and `firebase login` with their own Google account; nobody needs a service account.
 
+## 16. Security rules tests and the recorded demo
+
+`firebase/tests/` tests `firebase/firestore.rules` and `firebase/storage.rules` against the local emulators. It needs **no Firebase project, credentials or network data**: every request runs under the `demo-internly` project inside the emulators.
+
+| Requirement | Value |
+|---|---|
+| Node.js | 24.12+ (`@firebase/rules-unit-testing` 6) |
+| Tools | `firebase-tools` (`firebase --version`) |
+| Java | A JDK 11+ on `PATH`: `java -version` must work. The Firebase CLI ignores `JAVA_HOME` alone |
+| Working directory | The **repository root** (it needs `firebase.json`) |
+
+```bash
+# once
+npm --prefix firebase/tests install
+
+# the suite: Firestore + Storage rules, 15 tests
+firebase emulators:exec --only firestore,storage --project demo-internly "npm --prefix firebase/tests test"
+
+# the same decisions on a local page, for a screen recording
+firebase emulators:exec --only firestore,storage --project demo-internly "npm --prefix firebase/tests run demo"
+# open http://localhost:5500 and press "Run all checks"; the Emulator UI is on http://localhost:4000
+```
+
+The demo command keeps the terminal busy (emulators + page) until `Ctrl+C`. `npm --prefix firebase/tests run demo:check` runs the same 19 checks in the terminal without the page.
+
+**On Windows** with Android Studio's JDK, add it for the current PowerShell window (the CLI still checks `java` on `PATH`):
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
+$env:PATH = "C:\Program Files\Android\Android Studio\jbr\bin;$env:PATH"
+java -version
+```
+
+Set it permanently with `[Environment]::SetEnvironmentVariable('JAVA_HOME', …, 'User')` and the same for the user `Path`, then open a new terminal.
+
+Troubleshooting:
+
+| Message | Cause | Fix |
+|---|---|---|
+| `Could not spawn 'java -version'` | No JDK on `PATH` in that terminal (each window has its own environment) | Run the PowerShell block above in the same window, or `cd` to the repository root in a new one |
+| `Could not find config (firebase.json)` | Started from another directory (for example `C:\WINDOWS\System32`) | `cd` to the repository root first |
+| `port 8080 is taken` | A leftover emulator from an earlier run | `Get-NetTCPConnection -LocalPort 8080 -State Listen \| ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }` |
+| `npm warn invalid config prefix=true` | The command was split across lines inside the quotes | Paste it as one line; `Ctrl+C` if the prompt shows `>>` |
+| `npm install` adds 0 packages | Global `npm config omit=dev` | The rules package lists its tools as regular `dependencies`; run without `--omit=dev` |
+| `sun.misc.Unsafe` warning | Storage rules runtime on JDK 25 | Harmless; results are unaffected |
+
+Full details, the test layout and how to add a case: [`firebase/tests/README.md`](../../firebase/tests/README.md). Results of the latest run: [`docs/records/test-report.md`](../records/test-report.md).
+
 The debug keystore is for **debug builds only**. A real release would need its own private keystore.

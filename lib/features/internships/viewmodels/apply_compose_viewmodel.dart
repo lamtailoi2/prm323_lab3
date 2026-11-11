@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/contact_email.dart';
+import '../../../core/utils/cv_library.dart';
 import '../../../core/utils/mailto.dart';
 import '../../../core/utils/validators.dart';
+import '../../../models/cv_selection.dart';
 import '../../../models/internship.dart';
 import '../../../models/internship_application.dart';
 import '../../../models/user_profile.dart';
@@ -15,6 +17,7 @@ import '../../../services/analytics_service.dart';
 import '../../../services/application_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/cover_letter_service.dart';
+import '../../../services/cv_select_service.dart';
 import '../../../services/external_link_service.dart';
 import '../../../services/internship_service.dart';
 import '../../../services/user_profile_service.dart';
@@ -35,6 +38,11 @@ class ApplyComposeState {
     this.profileLoaded = false,
     this.profile,
     this.profileError,
+    this.library = const <CvFile>[],
+    this.defaultCvFile,
+    this.chosenCv,
+    this.autoSelection,
+    this.autoSelecting = false,
     this.recipientEmail = '',
     this.recipientError,
     this.subject = '',
@@ -54,6 +62,23 @@ class ApplyComposeState {
   final bool profileLoaded;
   final UserProfile? profile;
   final AppException? profileError;
+
+  /// Every CV in the Profile library, with the legacy mirror merged in.
+  final List<CvFile> library;
+
+  /// The Profile default, resolved from the library (G-33).
+  final CvFile? defaultCvFile;
+
+  /// A library CV chosen for this application only; never written back.
+  final CvFile? chosenCv;
+
+  /// The automatic choice from `selectCv`; `null` until it resolves or when
+  /// the library has fewer than two CVs.
+  final CvSelection? autoSelection;
+  final bool autoSelecting;
+
+  /// The CV this application uses: the student's choice, else the default.
+  CvFile? get cv => chosenCv ?? defaultCvFile;
 
   final String recipientEmail;
 
@@ -86,6 +111,11 @@ class ApplyComposeState {
     bool? profileLoaded,
     Object? profile = _keep,
     Object? profileError = _keep,
+    List<CvFile>? library,
+    Object? defaultCvFile = _keep,
+    Object? chosenCv = _keep,
+    Object? autoSelection = _keep,
+    bool? autoSelecting,
     String? recipientEmail,
     Object? recipientError = _keep,
     String? subject,
@@ -107,6 +137,17 @@ class ApplyComposeState {
       profileError: identical(profileError, _keep)
           ? this.profileError
           : profileError as AppException?,
+      library: library ?? this.library,
+      defaultCvFile: identical(defaultCvFile, _keep)
+          ? this.defaultCvFile
+          : defaultCvFile as CvFile?,
+      chosenCv: identical(chosenCv, _keep)
+          ? this.chosenCv
+          : chosenCv as CvFile?,
+      autoSelection: identical(autoSelection, _keep)
+          ? this.autoSelection
+          : autoSelection as CvSelection?,
+      autoSelecting: autoSelecting ?? this.autoSelecting,
       recipientEmail: recipientEmail ?? this.recipientEmail,
       recipientError: identical(recipientError, _keep)
           ? this.recipientError
@@ -138,11 +179,25 @@ class ApplyComposeViewModel extends Notifier<ApplyComposeState> {
 
   StreamSubscription<Internship?>? _listingSubscription;
   StreamSubscription<UserProfile?>? _profileSubscription;
+  StreamSubscription<List<CvFile>>? _cvsSubscription;
 
   Internship? _listing;
   UserProfile? _profile;
   String? _accountEmail;
   String? _displayName;
+
+  /// The library without the legacy mirror; merged in [ApplyComposeState]
+  /// (G-33).
+  List<CvFile> _cvs = const <CvFile>[];
+  CvFile? _legacyCv;
+  String? _defaultCvId;
+  bool _cvsLoaded = false;
+
+  /// `selectCv` runs once per screen; a later snapshot must not override a
+  /// choice the student has already made.
+  bool _autoSelectRequested = false;
+  bool _autoSelectResolved = false;
+  bool _cvChosenByStudent = false;
 
   /// The student typed in the To field, so a regeneration must not replace
   /// the address with the one found in the job post.
@@ -175,6 +230,7 @@ class ApplyComposeViewModel extends Notifier<ApplyComposeState> {
     ref.onDispose(() {
       unawaited(_listingSubscription?.cancel());
       unawaited(_profileSubscription?.cancel());
+      unawaited(_cvsSubscription?.cancel());
     });
 
     if (!_listingStarted) {
@@ -187,7 +243,15 @@ class ApplyComposeViewModel extends Notifier<ApplyComposeState> {
       _profileLoaded = false;
       _lastProfileError = null;
       _autoGenerateStarted = false;
+      _cvs = const <CvFile>[];
+      _legacyCv = null;
+      _defaultCvId = null;
+      _cvsLoaded = false;
+      _autoSelectRequested = false;
+      _autoSelectResolved = false;
+      _cvChosenByStudent = false;
       _subscribeProfile(profiles, uid);
+      _subscribeCvs(profiles, uid);
     }
 
     _logStart();
@@ -200,6 +264,8 @@ class ApplyComposeViewModel extends Notifier<ApplyComposeState> {
       profileLoaded: _profileLoaded,
       profile: _profile,
       profileError: _lastProfileError,
+      library: _mergedLibrary,
+      defaultCvFile: _resolveDefaultCv(),
     );
   }
 
@@ -233,6 +299,15 @@ class ApplyComposeViewModel extends Notifier<ApplyComposeState> {
 
   void setBody(String value) => state = state.copyWith(body: value);
 
+  /// `Change CV` in the CV sheet: use a library entry for this application
+  /// only. The Profile default is never changed (DC-26).
+  void selectLibraryCv(CvFile cv) {
+    _cvChosenByStudent = true;
+    _autoSelectResolved = true;
+    state = state.copyWith(chosenCv: cv);
+    _maybeGenerate();
+  }
+
   /// Drafts (or redrafts) the subject and letter. The recipient is prefilled
   /// from the job post only while the student has not typed one.
   Future<void> regenerate() async {
@@ -256,7 +331,7 @@ class ApplyComposeViewModel extends Notifier<ApplyComposeState> {
     try {
       final draft = await service.compose(
         internshipKey: listing.key,
-        storagePath: _profile?.cv?.storagePath,
+        storagePath: state.cv?.storagePath,
         studentName: studentName,
       );
       if (!ref.mounted) return;
@@ -361,7 +436,7 @@ class ApplyComposeViewModel extends Notifier<ApplyComposeState> {
       return null;
     }
 
-    final cv = profile?.cv;
+    final cv = state.cv;
     final email = account?.email?.trim();
     final recipient = state.recipientEmail.trim();
     state = state.copyWith(send: const AsyncLoading());
@@ -423,7 +498,7 @@ class ApplyComposeViewModel extends Notifier<ApplyComposeState> {
   ApplySession? buildSession() {
     final listing = _listing;
     final profile = _profile;
-    final cv = profile?.cv;
+    final cv = state.cv;
     if (listing == null || profile == null || cv == null) return null;
     return ApplySession(
       cv: ApplyCv(cv, CvSource.profile),
@@ -461,6 +536,7 @@ class ApplyComposeViewModel extends Notifier<ApplyComposeState> {
                   ? const ViewEmpty()
                   : ViewData(listing),
             );
+            _maybeAutoSelect();
             _maybeGenerate();
           },
           onError: (Object error, StackTrace _) {
@@ -487,6 +563,8 @@ class ApplyComposeViewModel extends Notifier<ApplyComposeState> {
           (profile) {
             if (!ref.mounted) return;
             _profile = profile;
+            _legacyCv = profile?.cv;
+            _defaultCvId = profile?.defaultCvId;
             _profileLoaded = true;
             _lastProfileError = null;
             state = state.copyWith(
@@ -494,7 +572,7 @@ class ApplyComposeViewModel extends Notifier<ApplyComposeState> {
               profile: profile,
               profileError: null,
             );
-            _maybeGenerate();
+            _applyLibrary();
           },
           onError: (Object error, StackTrace _) {
             if (!ref.mounted) return;
@@ -508,15 +586,167 @@ class ApplyComposeViewModel extends Notifier<ApplyComposeState> {
             _profileLoaded = true;
             _lastProfileError = failure;
             state = state.copyWith(profileLoaded: true, profileError: failure);
-            _maybeGenerate();
+            _applyLibrary();
           },
         );
   }
 
-  /// Drafts once when both the listing and the profile have resolved, so a
-  /// rebuild or a later snapshot does not spend another model call.
+  /// Watches the Profile CV library (G-33). A failure is silent: the default
+  /// CV from the profile still applies, so the student is never blocked by a
+  /// failed comparison.
+  void _subscribeCvs(UserProfileService profiles, String? uid) {
+    unawaited(_cvsSubscription?.cancel());
+    if (uid == null) return;
+    _cvsSubscription = profiles
+        .watchCvs(uid)
+        .listen(
+          (cvs) {
+            if (!ref.mounted) return;
+            _cvs = cvs;
+            _cvsLoaded = true;
+            _applyLibrary();
+          },
+          onError: (Object error, StackTrace _) {
+            if (!ref.mounted) return;
+            _cvsLoaded = true;
+            _applyLibrary();
+          },
+        );
+  }
+
+  List<CvFile> get _mergedLibrary => mergeLegacyCv(_cvs, _legacyCv);
+
+  /// Merges the library with the legacy mirror whenever either source
+  /// changes; automatic selection waits until both have arrived.
+  void _applyLibrary() {
+    if (!ref.mounted) return;
+    final library = _mergedLibrary;
+    final selected = state.chosenCv;
+    state = state.copyWith(
+      library: library,
+      defaultCvFile: _resolveDefaultCv(),
+      // A CV removed from Profile while the screen is open falls back to the
+      // default instead of sending a file that is no longer in the library.
+      chosenCv: selected != null && library.any((cv) => isSameCv(cv, selected))
+          ? selected
+          : null,
+    );
+    _maybeAutoSelect();
+    _maybeGenerate();
+  }
+
+  /// The default CV without the display-only `legacy` id: `defaultCvId`, then
+  /// the legacy mirror, then the newest library entry.
+  CvFile? _resolveDefaultCv() {
+    if (_defaultCvId != null) {
+      for (final cv in _cvs) {
+        if (cv.id == _defaultCvId) return cv;
+      }
+    }
+    if (_legacyCv != null) return _legacyCv;
+    if (_cvs.isNotEmpty) {
+      return _cvs.reduce(
+        (newest, cv) => cv.uploadedAt.isAfter(newest.uploadedAt) ? cv : newest,
+      );
+    }
+    return null;
+  }
+
+  /// Runs `selectCv` once when there are at least two CVs to compare, so the
+  /// application starts with the best match (G-33 item 8).
+  void _maybeAutoSelect() {
+    final listing = _listing;
+    if (_autoSelectRequested ||
+        _autoSelectResolved ||
+        _cvChosenByStudent ||
+        !_cvsLoaded ||
+        !state.profileLoaded ||
+        listing == null) {
+      return;
+    }
+    final library = _mergedLibrary;
+    if (library.length < 2) {
+      _autoSelectResolved = true;
+      _maybeGenerate();
+      return;
+    }
+    _autoSelectRequested = true;
+    unawaited(_autoSelect(listing, library));
+  }
+
+  /// `selectCv` in the background: the default stays selected until the
+  /// server answers, and a failure never blocks applying.
+  Future<void> _autoSelect(Internship listing, List<CvFile> library) async {
+    final service = ref.read(cvSelectServiceProvider);
+    final analytics = ref.read(analyticsServiceProvider);
+    final internshipKey = listing.key;
+    final defaultPath = _resolveDefaultCv()?.storagePath;
+
+    if (!ref.mounted) return;
+    state = state.copyWith(autoSelecting: true);
+    try {
+      final selection = await service.select(
+        internshipKey: internshipKey,
+        storagePaths: [for (final cv in library) cv.storagePath],
+        defaultPath: defaultPath,
+      );
+      if (!ref.mounted) return;
+
+      _autoSelectResolved = true;
+      final changed = _cvChosenByStudent;
+      CvFile? match;
+      for (final cv in library) {
+        if (cv.storagePath == selection.storagePath) {
+          match = cv;
+          break;
+        }
+      }
+      final usesDefault =
+          defaultPath != null && selection.storagePath == defaultPath;
+      state = state.copyWith(
+        autoSelecting: false,
+        autoSelection: selection,
+        chosenCv: changed || match == null ? state.chosenCv : match,
+      );
+      unawaited(
+        analytics.logEvent('cv_auto_select', <String, Object>{
+          'internship_id': internshipKey,
+          'cv_count': library.length,
+          'best_percent': selection.percent,
+          'used_default': usesDefault ? 1 : 0,
+          'user_changed': changed ? 1 : 0,
+          'result': changed || match == null
+              ? (match == null ? 'failed' : 'default')
+              : 'selected',
+        }),
+      );
+    } on AppException {
+      if (!ref.mounted) return;
+      _autoSelectResolved = true;
+      // The default CV stays; applying still works.
+      state = state.copyWith(autoSelecting: false);
+      unawaited(
+        analytics.logEvent('cv_auto_select', <String, Object>{
+          'internship_id': internshipKey,
+          'cv_count': library.length,
+          'best_percent': 0,
+          'used_default': 1,
+          'user_changed': _cvChosenByStudent ? 1 : 0,
+          'result': 'failed',
+        }),
+      );
+    }
+    _maybeGenerate();
+  }
+
+  /// Drafts once when the listing, the profile and automatic CV selection
+  /// have resolved, so a rebuild or a later snapshot does not spend another
+  /// model call.
   void _maybeGenerate() {
-    if (_autoGenerateStarted || _listing == null || !state.profileLoaded) {
+    if (_autoGenerateStarted ||
+        _listing == null ||
+        !state.profileLoaded ||
+        !_autoSelectResolved) {
       return;
     }
     _autoGenerateStarted = true;

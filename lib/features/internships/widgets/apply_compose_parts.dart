@@ -8,6 +8,7 @@ import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/cv_file_tile.dart';
 import '../../../core/widgets/detail_section_card.dart';
 import '../../../core/widgets/skeleton.dart';
+import '../../../models/cv_selection.dart';
 import '../../../models/user_profile.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
@@ -227,15 +228,30 @@ class ApplyCoverLetterSection extends StatelessWidget {
 /// The CV from Profile, or the honest "add one" state. The email app has to
 /// attach the file, so the block says so instead of pretending to attach it.
 class ApplyCvSection extends StatelessWidget {
-  const ApplyCvSection({super.key, required this.cv, required this.onAddCv});
+  const ApplyCvSection({
+    super.key,
+    required this.cv,
+    required this.library,
+    required this.autoSelecting,
+    required this.onChangeCv,
+    required this.onAddCv,
+    this.autoSelection,
+  });
 
   final CvFile? cv;
+  final List<CvFile> library;
+  final CvSelection? autoSelection;
+  final bool autoSelecting;
+  final VoidCallback onChangeCv;
   final VoidCallback onAddCv;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final cv = this.cv;
+    final reason = autoSelection;
+    final showSuggestion =
+        reason != null && cv != null && reason.storagePath == cv.storagePath;
     return DetailSectionCard(
       icon: Symbols.description_rounded,
       title: 'CV / Resume',
@@ -251,12 +267,34 @@ class ApplyCvSection extends StatelessWidget {
               ),
             ),
           ),
+          if (autoSelecting) ...[
+            const SizedBox(height: AppSpacing.s8),
+            const FormMessage(
+              message: 'Comparing your CVs for this internship…',
+              isInfo: true,
+            ),
+          ] else if (showSuggestion) ...[
+            const SizedBox(height: AppSpacing.s8),
+            FormMessage(
+              message:
+                  '${reason.reason} This is only a suggestion, so you can '
+                  'change it before you send.',
+              isInfo: true,
+            ),
+          ],
           Text(
             'Attach this file in your email app before you send.',
             style: textTheme.bodyMedium?.copyWith(
               color: AppColors.textSecondary,
             ),
           ),
+          if (library.length > 1)
+            AppButton(
+              label: 'Change CV',
+              icon: Symbols.swap_horiz_rounded,
+              variant: AppButtonVariant.text,
+              onPressed: onChangeCv,
+            ),
         ] else ...[
           Text(
             'You have no CV in your Profile yet. You can still send the '
@@ -271,6 +309,80 @@ class ApplyCvSection extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// `Change CV` sheet: picks another library CV for this application only.
+/// The Profile default is left untouched (G-33 item 8).
+class ApplyCvPickerSheet extends StatelessWidget {
+  const ApplyCvPickerSheet({
+    super.key,
+    required this.library,
+    required this.selectedPath,
+  });
+
+  final List<CvFile> library;
+  final String? selectedPath;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSheet(
+      title: 'Change CV',
+      subtitle:
+          'Choose another CV for this application. Your Profile default '
+          'stays the same.',
+      primaryLabel: 'Done',
+      showCancel: false,
+      onPrimary: () => Navigator.of(context).pop(),
+      children: [
+        for (var i = 0; i < library.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.s12),
+          _CvChoice(
+            cv: library[i],
+            selected: library[i].storagePath == selectedPath,
+            onTap: () => Navigator.of(context).pop(library[i]),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CvChoice extends StatelessWidget {
+  const _CvChoice({
+    required this.cv,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final CvFile cv;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Use ${cv.displayName}',
+      child: InkWell(
+        borderRadius: AppRadii.mediumAll,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.s12),
+          child: CvFileTile(
+            fileName: cv.displayName,
+            details: '${formatFileSize(cv.sizeBytes)} · PDF',
+            trailing: Icon(
+              selected
+                  ? Symbols.check_circle_rounded
+                  : Symbols.radio_button_unchecked_rounded,
+              color: selected ? AppColors.primary : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

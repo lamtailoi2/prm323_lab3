@@ -7,7 +7,8 @@ async def test_tc17_add_skill_from_profile(artemis):
     report = await run_case(
         artemis,
         "TC-17",
-        f"{SIGNED_IN} Tap 'Profile' in the bottom navigation. In 'Technical "
+        f"{SIGNED_IN} Tap 'Profile' in the bottom navigation and scroll down to "
+        "'Technical skills' (below the 'CV library' section). In 'Technical "
         "skills', if a 'Docker' tag is shown, tap 'Add skill', remove 'Docker' "
         "from 'Selected skills', tap 'Save changes' and wait for the sheet to "
         "close. Then tap 'Add skill', type 'dock' in the search field, tap the "

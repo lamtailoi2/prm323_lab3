@@ -51,6 +51,9 @@ shows which credential is in use.
   tokens are sent once).
 - **Notification history** — reads `users/{uid}/notifications` (newest first,
   read / unread, route, time) and deletes one entry or clears the list.
+- **Analytics (GA4 realtime)** — active users and top events from the GA4
+  property linked to the Firebase project, refreshed every 15 s. See
+  [Analytics (GA4 realtime)](#analytics-ga4-realtime).
 - **Crash test** — sends a data-only FCM command (`type=test_crash`) to the
   same recipient selection. Every selected app closes immediately and uploads
   a fatal report on its next launch. The action requires the acknowledgment
@@ -63,6 +66,43 @@ writes the document with the FCM message ID as its ID, the same ID the app uses
 when it receives the message, so the two writes merge instead of duplicating.
 The crash command deliberately skips this write: the app recognises the
 control message before its notification handlers and crashes instead.
+
+## Analytics (GA4 realtime)
+
+The card reads the GA4 property linked to the Firebase project. It does not
+use the Firebase Admin SDK; the server calls the GA4 Data API
+(`runRealtimeReport`).
+
+1. GA4 → **Admin** → **Property settings** → **Property details**: copy the
+   numeric **Property ID** (not the `G-...` measurement id). It is also in the
+   Firebase Console link to the property.
+2. Google Cloud Console (the project that owns the service-account key) →
+   **APIs & Services** → **Library** → enable **Google Analytics Data API**.
+3. GA4 → **Admin** → **Property access management** → add the key's
+   `client_email` as **Viewer**.
+4. Start the dashboard with the property id (the key path is the same one used
+   for Firebase):
+   ```powershell
+   cd tools/admin-dashboard
+   $env:GA4_PROPERTY_ID="123456789"
+   $env:INTERNLY_ADMIN_SA="$env:USERPROFILE\.internly-admin\service-account.json"
+   npm start
+   ```
+5. Check the endpoint:
+   ```powershell
+   curl.exe http://127.0.0.1:4317/api/analytics/realtime
+   ```
+   It returns `activeUsers`, `totalEvents`, `rows` (`event`, `events`; `users`
+   is `null` there because GA4 does not allow `activeUsers` together with the
+   `eventName` dimension), `quotaRemaining` and `fetchedAt`. The server makes
+   two small queries (totals and top events), caches for 10 s, and the UI
+   refreshes every 15 s.
+
+The GA4 realtime report covers the last **30 minutes** (60 for Analytics 360)
+and is aggregated, not a per-event DebugView. The Data API is free within its
+quota: a standard property allows 200,000 realtime tokens per day, 40,000 per
+hour and 14,000 per project per property per hour, so a 15 s poll is well
+inside the free tier.
 
 ## Security
 
@@ -82,3 +122,7 @@ control message before its notification handlers and crashes instead.
 | Send reports `messaging/registration-token-not-registered` | The app was uninstalled or the token rotated; open the app again so it stores the new token. |
 | Send fails with `messaging/invalid-argument` | Check the custom data: `route` must be an in-app path (the form validates it). |
 | Crash command succeeds but the app does not close | Install the current app build (the `type=test_crash` handler is in `NotificationService`) and make sure the chosen user has a device token. Data messages need Google Play services. |
+| Analytics says `GA4_PROPERTY_ID is not set` | The env var is missing in the shell that runs `npm start` | Set `GA4_PROPERTY_ID` to the numeric property id and restart. |
+| Analytics returns `403 PERMISSION_DENIED` | The service account is not a Viewer on the property, or the Data API is disabled | Add `client_email` in GA4 Property access management and enable the API. |
+| Analytics returns `404` | Wrong property id | Use the numeric GA4 property id, not the `G-...` measurement id. |
+| Analytics returns `429` | Realtime quota exhausted | Wait for the reset or poll less often; the dashboard already caches for 10 s. |

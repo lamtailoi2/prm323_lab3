@@ -12,9 +12,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import express from 'express';
 import admin from 'firebase-admin';
+import { GoogleAuth, JWT } from 'google-auth-library';
 
+import { parseRealtimeReport, quotaRemaining } from './lib/analytics.js';
 import {
   buildTestCrashData,
   chunk,
@@ -29,6 +32,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 4317);
 const HOST = '127.0.0.1';
 const PROJECT_ID = process.env.INTERNLY_PROJECT_ID || null;
+const GA4_PROPERTY_ID = (process.env.GA4_PROPERTY_ID || '')
+  .trim()
+  .replace(/^properties\//, '');
+const GA4_CACHE_MS = 10_000;
 
 const DEFAULT_CREDENTIAL_PATH = path.join(
   os.homedir(),
@@ -44,11 +51,12 @@ const credentialPath =
 const credentialFound = fs.existsSync(credentialPath);
 
 let initError = null;
+let serviceAccount = null;
 let credentialSource = credentialFound ? credentialPath : 'application-default';
 
 try {
   if (credentialFound) {
-    const serviceAccount = JSON.parse(fs.readFileSync(credentialPath, 'utf8'));
+    serviceAccount = JSON.parse(fs.readFileSync(credentialPath, 'utf8'));
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       projectId: PROJECT_ID || serviceAccount.project_id,
@@ -63,6 +71,54 @@ try {
 const db = () => admin.firestore();
 const messaging = () => admin.messaging();
 const auth = () => admin.auth();
+
+let ga4Client = null;
+let ga4Cache = null;
+
+function analyticsClient() {
+  if (!ga4Client) {
+    // `keyFilename` is deprecated in google-auth-library 11; build the JWT
+    // client from the same service-account JSON instead.
+    const scopes = ['https://www.googleapis.com/auth/analytics.readonly'];
+    ga4Client = new BetaAnalyticsDataClient(
+      serviceAccount
+        ? {
+            auth: new GoogleAuth({
+              authClient: new JWT({
+                email: serviceAccount.client_email,
+                key: serviceAccount.private_key,
+                scopes,
+              }),
+              scopes,
+            }),
+          }
+        : {},
+    );
+  }
+  return ga4Client;
+}
+
+function analyticsHint(status) {
+  if (status === 403) {
+    return (
+      'Add the service-account client_email as Viewer on the GA4 property, ' +
+      'and enable the Google Analytics Data API in the project.'
+    );
+  }
+  if (status === 404) {
+    return (
+      'Check GA4_PROPERTY_ID: it is the numeric property id, not the ' +
+      'G- measurement id.'
+    );
+  }
+  if (status === 429) {
+    return 'GA4 Data API quota exhausted; wait for the reset or poll less often.';
+  }
+  if (status === 401) {
+    return 'The service-account key cannot authenticate; check the key and clock.';
+  }
+  return null;
+}
 
 const app = express();
 app.use(express.json({ limit: '64kb' }));
@@ -105,10 +161,7 @@ function sendError(res, error) {
         : 500);
   res.status(status).json({
     error: message,
-    hint:
-      status === 503
-        ? cause.hint || credentialHint()
-        : undefined,
+    hint: cause.hint || (status === 503 ? credentialHint() : undefined),
   });
 }
 
@@ -260,6 +313,75 @@ app.get(
       error: initError ? initError.message : null,
       hint: readinessError()?.hint ?? null,
     });
+  }),
+);
+
+app.get(
+  '/api/analytics/realtime',
+  handle(async (_req, res) => {
+    if (!GA4_PROPERTY_ID) {
+      const error = new Error(
+        'GA4_PROPERTY_ID is not set. Add the numeric GA4 property id and ' +
+          'restart the dashboard.',
+      );
+      error.status = 503;
+      error.hint = analyticsHint(403);
+      throw error;
+    }
+
+    const now = Date.now();
+    if (ga4Cache && now - ga4Cache.at < GA4_CACHE_MS) {
+      res.json({ ...ga4Cache.payload, cached: true });
+      return;
+    }
+
+    try {
+      // GA4 rejects activeUsers together with the eventName dimension, so the
+      // totals and the event breakdown are two small queries.
+      const [totalsReport] = await analyticsClient().runRealtimeReport({
+        property: `properties/${GA4_PROPERTY_ID}`,
+        metrics: [{ name: 'activeUsers' }, { name: 'eventCount' }],
+        returnPropertyQuota: true,
+      });
+      const [eventsReport] = await analyticsClient().runRealtimeReport({
+        property: `properties/${GA4_PROPERTY_ID}`,
+        dimensions: [{ name: 'eventName' }],
+        metrics: [{ name: 'eventCount' }],
+        limit: 10,
+        returnPropertyQuota: true,
+      });
+      const payload = {
+        propertyId: GA4_PROPERTY_ID,
+        ...parseRealtimeReport({
+          totals: totalsReport.totals,
+          rows: eventsReport.rows,
+        }),
+        quotaRemaining: quotaRemaining(
+          eventsReport.propertyQuota ?? totalsReport.propertyQuota,
+        ),
+        fetchedAt: new Date().toISOString(),
+      };
+      ga4Cache = { at: now, payload };
+      res.json({ ...payload, cached: false });
+    } catch (error) {
+      const code = Number(error?.code);
+      const status =
+        code === 7
+          ? 403
+          : code === 5
+            ? 404
+            : code === 8
+              ? 429
+              : code === 16
+                ? 401
+                : 502;
+      const wrapped = new Error(
+        error?.message || 'The GA4 realtime request failed.',
+      );
+      wrapped.status = status;
+      wrapped.hint = analyticsHint(status);
+      throw wrapped;
+    }
   }),
 );
 

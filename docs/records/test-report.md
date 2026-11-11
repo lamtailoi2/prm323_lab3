@@ -850,16 +850,85 @@ Findings:
 
 ---
 
-## Run 40: Student-reported application status (2026-11-11)
+## Run 40: Compose CV auto-select + manual Change CV (2026-11-09)
 
-**Environment:** Windows 11 · branch `feat/application-status-tracking` (from `origin/dev` `77fd7ca`) · Flutter 3.47.3 stable · Dart 3.13.3. No device or emulator was attached, so no build or E2E run.
+**Environment:** Windows 11 → Flutter 3.47.3 stable / Dart 3.13.3 → branch `feat/cv-library` with an uncommitted working tree. No Firebase project or device configured on this machine.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **230 files, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` (full suite) | **735 tests, all passed** (+6: auto-select success, failed fallback, manual choice during the comparison, one-CV skip, and the screen suggestion + `Change CV` sheet at 360 and 412 dp) |
+| 4 | DebugView for `cv_auto_select` | **Not run** (no Firebase project / device here) |
+
+Findings:
+
+1. The earlier auto-select only existed in the removed Apply Form; the Compose flow now owns the library, the suggestion and the manual override. Drafting waits for the comparison so the cover letter is composed against the chosen CV.
+2. `Change CV` applies to this application only. The Profile default is never written from Compose (DC-35).
+
+---
+
+## Run 41: Test docs sync + admin dashboard analytics (2026-11-10)
+
+**Environment:** Windows 11 · Node 24.22.1 · npm 11.19.1 · branch `dev`, HEAD `5c27ddd` (documentation, E2E suite and admin dashboard changes). No Flutter or ARTEMIS run in this session.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd tools/admin-dashboard && npm test` | **14 tests, all passed** (`node --test test/*.test.js`): the 9 cases from Run 33 plus 5 in `analytics.test.js` (GA4 realtime totals, row fallback, event-only rows, malformed reports, quota bucket) |
+| 2 | `flutter analyze` / `flutter test` | **Not re-run**: `5c27ddd` changes no `lib/` or `test/` Dart file, so Run 40 (735 tests) remains the latest full suite |
+| 3 | ARTEMIS suite | **Run separately** on 2026-11-09/10 (TC-06, TC-07, TC-09, TC-14, TC-17, TC-19). Results, counted traces and causes are in `test-plan.md` §4 and [`evidence/artemis/e2e-environment-20261110.md`](../../evidence/artemis/e2e-environment-20261110.md); the day's lines were copied to [`runs-20261110.jsonl`](../../evidence/artemis/runs-20261110.jsonl) because `e2e_test/artifacts/` is git-ignored |
+
+Findings: TC-06, TC-07, TC-09 and TC-17 now have 3 of 3 counted passes; TC-14 (2 of 4) and TC-19 (0 of 3) still need a counted batch. The two title-check failures (TC-07 `c67149d6`, TC-09 `cee108da`) were test expectations, fixed by `_same_position`, not app defects.
+
+---
+
+## Run 42: CR-07 Saved part + CR-11 filter count (2026-11-11)
+
+**Environment:** macOS 26 (Apple M1) → Flutter 3.47.6 stable / Dart 3.13.5 → branch `fix/cr-07-cr-11-saved-identity-filter-count` from `dev` `1317527`: CR-07 committed as `1f591c3`, CR-11 and these records in the `fix(CR-11)` commit after it. No Firebase project or device used.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **230 files, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` (full suite) | **741 tests, all passed** (+6: `saved_viewmodel_test` CR-07 group — identity provider, unsave of another copy, two legacy copies removed, same title at another company still saved; Search Results card saved under another copy; Search filter sheet opened before the pool loads) |
+| 4 | New screen tests against the old `lib/` (`git stash push -- lib`) | **Both fail as expected**: CR-07 finds no `Remove from saved` bookmark; CR-11 stays at `Show 0 results →`. Restored with `git stash pop` before row 3 |
+| 5 | Device run / ARTEMIS | **Not run** |
+
+Findings:
+
+1. CR-07 (Saved part): the Save Toggle on Home, Search Results and Detail now reads `savedJobsProvider` (job identities). `SavedViewModel.toggleAndReport` removes the saved copies of the job, not the key of the copy on the card, so the job can no longer be saved twice.
+2. CR-11: `SearchResultsFilterSheet.show` takes `listingsChanged` (the provider the listings live in) and rebuilds from it; the criteria being edited stay in the sheet's `State`.
+
+---
+
+## Run 43: Firestore and Storage rules tests (2026-11-11)
+
+**Environment:** Windows 11 · Node 24.22.1 · npm 11.19.1 · firebase-tools 15.34.1 · JDK 25.0.3 (Android Studio `jbr`, added to `PATH`; the CLI checks `java -version` and ignores `JAVA_HOME` alone) · branch `dev`, HEAD `1317527` with an uncommitted working tree. Emulators only (`demo-internly`); no Firebase project, device or network data.
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `npm --prefix firebase/tests install` | **136 packages installed** (`@firebase/rules-unit-testing` 6.0.0, `firebase` 13.2.0). These are `dependencies`, not `devDependencies`, because this machine sets `omit=dev` |
+| 2 | `firebase emulators:exec --only firestore,storage --project demo-internly "npm --prefix firebase/tests test"` | **15 tests, 15 passed, 0 failed** (`node --test --test-concurrency=1`, 2.9 s): all 15 in the two new files |
+| 3 | `firebase emulators:exec --only firestore,storage --project demo-internly "node firebase/tests/demo/server.mjs --self-test"` | **19/19 demo scenarios passed, 0 failed** (1.8 s) — the same rules exercised through the browser harness, including the 50/51-field boundary and the Storage content-type/size checks |
+| 4 | Demo smoke test under the same `emulators:exec` | `GET /` → **200**, 10,327 bytes, page renders the table; `GET /run` → **200**, plan 19 rows, 19 results, summary `19/19 passed, 0 failed, 1772 ms` |
+| 5 | `flutter analyze` / `flutter test` | **Not re-run**: no Dart file changed; Run 42's 741 tests remain the latest full suite |
+
+Coverage: `firestore.rules.test.mjs` (9 tests) — `users/{uid}` denies signed-out and other users, allows the owner on the document and its subcollections, and rejects a 51-field write while accepting 50; `internships/{key}` reads only when signed in and never accepts a client write (create, update, delete); `sync/**` is closed. `storage.rules.test.mjs` (6 tests) — `reports/{uid}` and `cvs/{uid}` allow the owner's PDF, reject another user, a signed-out client, non-PDF content, a PDF over 10 MB and every other path. `demo/server.mjs` exposes the same decisions as 19 rows on a local page (`http://localhost:5500`) so a screen recording can be used as evidence; the page and the node:test files both read the rules from `firebase/`.
+
+Findings: the first run failed 4 Firestore cases because the tests addressed `users/alice/profile`; `users/{uid}` is the document itself and a three-segment path is invalid, so the cases now use `users/alice` and `users/alice/<collection>/<doc>`. No rule changed. Running the emulators requires a JDK on `PATH`; `JAVA_HOME` was set as well for the Storage rules runtime. The emulator prints a `sun.misc.Unsafe` warning from the Storage rules runtime on JDK 25; it did not affect results.
+
+---
+
+## Run 44: Student-reported application status (2026-11-11)
+
+**Environment:** Windows 11 · branch `feat/application-status-tracking` (merged `origin/dev` `2a5e3b0`) · Flutter 3.47.3 stable · Dart 3.13.3. No device or emulator was attached, so no build or E2E run.
 
 | # | Command / scenario | Result |
 |---|---|---|
 | 1 | `dart format lib test` | **231 files, 3 changed** on the first pass, then 0 on the re-run |
 | 2 | `flutter analyze` | **No issues found!** (ran in 6.8 s on the second pass) |
 | 3 | `flutter test test/features/applications test/models/internship_application_test.dart` | **100 tests, all passed** |
-| 4 | `flutter test` (full suite) | **739 tests, all passed** |
+| 4 | `flutter test` (full suite) | **751 tests, all passed** (after merging `dev`) |
 | 5 | `python -m py_compile e2e_test/test_applications.py` | **Passed** (new TC-21 syntax only) |
 | 6 | ARTEMIS TC-21 | **Not run**: no device attached; the case is written and marked `Ready` in `docs/test-plan.md` |
 | 7 | `flutter build apk --debug` | **Not run**: Android toolchain incomplete on this machine |

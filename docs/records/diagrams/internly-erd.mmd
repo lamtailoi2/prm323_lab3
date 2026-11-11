@@ -1,0 +1,132 @@
+erDiagram
+    USER ||--o| PROFILE : "owns users/{uid}"
+    USER ||--o{ CV_LIBRARY : "users/{uid}/cvs"
+    USER ||--o{ SAVED_INTERNSHIP : "users/{uid}/savedInternships"
+    USER ||--o{ APPLICATION : "users/{uid}/applications"
+    USER ||--o{ NOTIFICATION : "users/{uid}/notifications"
+    USER ||--o{ SEARCH_HISTORY : "users/{uid}/searchHistory"
+    USER ||--o{ STORAGE_CV : "cvs/{uid}/file.pdf"
+    USER ||--o{ STORAGE_REPORT : "reports/{uid}/file.pdf"
+
+    PROFILE }o--o| CV_LIBRARY : "defaultCvId"
+    PROFILE ||--o| CV_MIRROR : "legacy cv map"
+
+    INTERNSHIP ||--o{ SAVED_INTERNSHIP : "internship snapshot"
+    INTERNSHIP ||--o{ APPLICATION : "title + companyName snapshot"
+    CV_LIBRARY ||--o{ APPLICATION : "cvStoragePath + cvUrl snapshot"
+    STORAGE_CV ||--o{ APPLICATION : "file actually sent"
+
+    SYNC_CONFIG }o--o{ INTERNSHIP : "drives"
+    SYNC_STATE ||--o{ INTERNSHIP : "run statistics"
+
+    USER {
+        string uid PK "Firebase Auth uid"
+        string email "Auth only, not stored"
+        string photoUrl "Auth only, not stored"
+    }
+    PROFILE {
+        string uid PK "document id = uid"
+        string fullName "optional"
+        string headline "optional"
+        string university "optional"
+        string major "optional"
+        int yearOfStudy "1-6, optional"
+        int graduationYear "optional"
+        string phone "optional"
+        string city "optional"
+        string bio "max 300, optional"
+        string_array skills "knownSkills values"
+        map preferences "targetRoles, experience, workModes, location"
+        map cv "legacy mirror of the default CV"
+        string defaultCvId FK "to users/{uid}/cvs.id"
+        string givenName "Google given_name"
+        string fcmToken "push target"
+        string fcmTokenUpdatedAt "server timestamp"
+        timestamp updatedAt "server timestamp"
+    }
+    CV_LIBRARY {
+        string id PK "auto id"
+        string fileName "required"
+        string url "required download URL"
+        string storagePath FK "cvs/{uid}/name"
+        int sizeBytes "optional, 0 when absent"
+        timestamp uploadedAt "required"
+        string label "optional display name"
+    }
+    CV_MIRROR {
+        string fileName "required"
+        string url "required"
+        string storagePath "required"
+        int sizeBytes "optional"
+        timestamp uploadedAt "required"
+        string label "optional"
+    }
+    SAVED_INTERNSHIP {
+        string key PK "internships jobKey"
+        map internship "full listing copy"
+        timestamp savedAt "server timestamp"
+    }
+    APPLICATION {
+        string jobKey PK "internships jobKey"
+        string title "required snapshot"
+        string companyName "required snapshot"
+        timestamp appliedAt "required"
+        string status "submitted|under_review|interview|accepted|rejected|withdrawn"
+        timestamp nextStepAt "optional"
+        timestamp withdrawnAt "optional"
+        string previousStatus "optional, for Undo"
+        string cvFileName "optional snapshot"
+        string cvUrl "optional snapshot"
+        string cvStoragePath "optional snapshot"
+        int cvSizeBytes "optional snapshot"
+        map applicant "embedded applicant snapshot"
+        string appliedVia "in_app|email, default in_app"
+        string recipientEmail "optional, the address the mail went to"
+        timestamp updatedAt "server timestamp"
+    }
+    NOTIFICATION {
+        string id PK "FCM message id"
+        string title "required"
+        string body "optional"
+        timestamp receivedAt "required"
+        string route "optional deep link"
+        bool read "default false"
+    }
+    SEARCH_HISTORY {
+        string id PK "auto id"
+        string term "required, unique per user"
+        timestamp searchedAt "required"
+    }
+    INTERNSHIP {
+        string key PK "FNV-1a jobKey"
+        map raw "raw SerpAPI job object"
+        string searchKeyword "which query found it"
+        int searchRank "position in response"
+        timestamp syncedAt "server timestamp"
+        timestamp expiresAt "syncedAt + 7 days"
+    }
+    SYNC_CONFIG {
+        string id PK "config"
+        int lastKeywordIndex "round-robin cursor"
+        timestamp lastBackfillAt "optional"
+    }
+    SYNC_STATE {
+        string id PK "state"
+        timestamp lastRunAt "server timestamp"
+        string lastError "optional"
+        string_array keywords "queried this run"
+        int fetched "count"
+        int written "count"
+        int expiredDeleted "count"
+        bool backfill "this run backfilled"
+    }
+    STORAGE_CV {
+        string path PK "cvs/{uid}/{fileName}"
+        string contentType "application/pdf only"
+        int size "1 byte - 10 MB"
+    }
+    STORAGE_REPORT {
+        string path PK "reports/{uid}/{fileName}"
+        string contentType "application/pdf only"
+        int size "1 byte - 10 MB"
+    }

@@ -1,0 +1,324 @@
+classDiagram
+    direction LR
+
+    %% ---------- ViewModels (lib/features/*/viewmodels) ----------
+    class ApplyComposeViewModel {
+        -ApplyComposeArgs args
+        -DateTime _startedAt
+        -Internship _listing
+        -UserProfile _profile
+        +ApplyComposeState state
+        +retry() void
+        +setRecipient(String) void
+        +selectLibraryCv(CvFile) void
+        +regenerate() Future~void~
+        +openEmail() Future~void~
+        +markSent() Future~ApplicationSent?~
+        +buildSession() ApplySession?
+    }
+
+    class CvMatchViewModel {
+        +ViewState~CvMatchResult~ state
+        +run(CvMatchViewModel arguments) Future~CvMatchResult?~
+    }
+
+    class CvValidationViewModel {
+        +ViewState~CvValidationResult~ state
+        +validate(String storagePath) Future~CvValidationResult?~
+    }
+
+    class ApplicationDetailViewModel {
+        +ApplicationDetailState state
+        +retry() void
+        +withdraw() Future~bool~
+        +undoWithdrawal() Future~bool~
+        +previewCv() Future~AppException?~
+    }
+
+    class MyApplicationsViewModel {
+        +MyApplicationsState state
+        +selectStatus(ApplicationStatus?) void
+        +retry() Future~void~
+    }
+
+    %% ---------- State objects ----------
+    class ApplyComposeState {
+        +ViewState~Internship~ internship
+        +List~CvFile~ library
+        +CvFile? chosenCv
+        +CvSelection? autoSelection
+        +String recipientEmail
+        +String subject
+        +String body
+        +AsyncValue generate
+        +AsyncValue send
+        +bool emailOpened
+    }
+
+    class ApplicationDetailState {
+        +ViewState~ApplicationDetail~ detail
+        +AsyncValue~void~ action
+        +bool canUndoWithdrawal
+        +DateTime? undoDeadline
+    }
+
+    class MyApplicationsState {
+        +ApplicationStatus? selectedStatus
+        +ViewState applications
+    }
+
+    %% ---------- Services (lib/services) ----------
+    class ApplicationService {
+        <<interface>>
+        +watchApplications() Stream
+        +cvStoragePaths() Future
+        +createApplication(...) Future~void~
+        +withdraw(String, ApplicationStatus) Future~void~
+        +undoWithdrawal(String) Future~void~
+    }
+
+    class CvMatchService {
+        <<interface>>
+        +match(String storagePath, String internshipKey) Future~CvMatchResult~
+    }
+
+    class CvValidationService {
+        <<interface>>
+        +validate(String storagePath) Future~CvValidationResult~
+    }
+
+    class CvSelectService {
+        <<interface>>
+        +select(String internshipKey, List~String~, String?) Future~CvSelection~
+    }
+
+    class CoverLetterService {
+        <<interface>>
+        +compose(String internshipKey, String? storagePath, String? studentName) Future~CoverLetterDraft~
+    }
+
+    class UserProfileService {
+        <<interface>>
+        +watchProfile(String uid) Stream
+        +watchCvs(String uid) Stream
+        +addCv(String, CvFile) Future~CvFile~
+        +setDefaultCv(String, String) Future~void~
+        +updateSkills(String, List) Future~void~
+        +updateApplyDetails(String, ProfileDetails) Future~void~
+    }
+
+    class InternshipService {
+        <<interface>>
+        +watchActive() Stream
+        +watchByKey(String key) Stream
+    }
+
+    class FileStorageService {
+        <<interface>>
+        +uploadPdf(...) Future~UploadedFile~
+        +deletePdf(String) Future~void~
+    }
+
+    class ExternalLinkService {
+        <<interface>>
+        +open(Uri) Future~void~
+        +openEmail(Uri) Future~void~
+    }
+
+    class AnalyticsService {
+        <<interface>>
+        +logEvent(String, Map) Future~void~
+    }
+
+    %% ---------- Models (lib/models) ----------
+    class Internship {
+        +String jobId
+        +String key
+        +String title
+        +String companyName
+        +String? location
+        +WorkMode? workMode
+        +String? salary
+        +List~String~ skills
+        +String? employerApplyUrl
+        +String? searchKeyword
+        +int? searchRank
+        +fromSerpApi(Map) Internship
+        +fromFirestore(String, Map) Internship
+    }
+
+    class InternshipApplication {
+        +String jobKey
+        +String title
+        +String companyName
+        +DateTime appliedAt
+        +ApplicationStatus status
+        +DateTime? nextStepAt
+        +DateTime? withdrawnAt
+        +ApplicationStatus? previousStatus
+        +String? cvFileName
+        +String? cvUrl
+        +String? cvStoragePath
+        +int? cvSizeBytes
+        +ApplicationApplicant? applicant
+        +ApplicationChannel appliedVia
+        +String? recipientEmail
+    }
+
+    class ApplicationApplicant {
+        +String fullName
+        +String? email
+        +String? phone
+        +String? university
+        +int? yearOfStudy
+        +List~String~ skills
+        +String? introduction
+        +toFirestore() Map
+    }
+
+    class ApplicationStatus {
+        <<enumeration>>
+        submitted
+        underReview
+        interview
+        accepted
+        rejected
+        withdrawn
+        +canWithdraw() bool
+        +fromStorage(String) ApplicationStatus?
+    }
+
+    class ApplicationChannel {
+        <<enumeration>>
+        inApp
+        email
+    }
+
+    class CvFile {
+        +String? id
+        +String fileName
+        +String url
+        +String storagePath
+        +int sizeBytes
+        +DateTime uploadedAt
+        +String? label
+        +displayName() String
+    }
+
+    class UserProfile {
+        +ProfileDetails details
+        +List~String~ skills
+        +InternshipPreferences preferences
+        +CvFile? cv
+        +String? givenName
+        +String? defaultCvId
+    }
+
+    class CvSelection {
+        +String storagePath
+        +int percent
+        +int matchedCount
+        +int totalRequired
+        +String reason
+        +bool cvReadable
+    }
+
+    class CvMatchResult {
+        +String internshipTitle
+        +String companyName
+        +int percent
+        +int matchedCount
+        +int totalRequired
+        +List~String~ matched
+        +List~String~ missing
+        +List~String~ niceToHave
+        +List~CvMatchSuggestion~ suggestions
+        +String summary
+        +bool cvReadable
+    }
+
+    class CvValidationResult {
+        +bool isValid
+        +String? reason
+    }
+
+    class CoverLetterDraft {
+        +String subject
+        +String body
+        +bool usedAi
+    }
+
+    %% ---------- Dependency arrows: ViewModel -> Service ----------
+    ApplyComposeViewModel --> ApplicationService
+    ApplyComposeViewModel --> CoverLetterService
+    ApplyComposeViewModel --> CvSelectService
+    ApplyComposeViewModel --> UserProfileService
+    ApplyComposeViewModel --> FileStorageService
+    ApplyComposeViewModel --> ExternalLinkService
+    ApplyComposeViewModel --> InternshipService
+    ApplyComposeViewModel --> AnalyticsService
+
+    CvMatchViewModel --> CvMatchService
+    CvValidationViewModel --> CvValidationService
+    CvValidationViewModel --> AnalyticsService
+
+    ApplicationDetailViewModel --> ApplicationService
+    ApplicationDetailViewModel --> InternshipService
+    ApplicationDetailViewModel --> ExternalLinkService
+    ApplicationDetailViewModel --> AnalyticsService
+
+    MyApplicationsViewModel --> ApplicationService
+
+    %% ---------- ViewModel -> Model ----------
+    ApplyComposeViewModel ..> Internship
+    ApplyComposeViewModel ..> CvFile
+    ApplyComposeViewModel ..> CvSelection
+    ApplyComposeViewModel ..> UserProfile
+    ApplyComposeViewModel ..> CoverLetterDraft
+    ApplyComposeViewModel ..> ApplicationApplicant
+
+    CvMatchViewModel ..> CvMatchResult
+    CvValidationViewModel ..> CvValidationResult
+    ApplicationDetailViewModel ..> InternshipApplication
+    MyApplicationsViewModel ..> InternshipApplication
+
+    %% ---------- State ownership ----------
+    ApplyComposeViewModel *-- ApplyComposeState
+    ApplicationDetailViewModel *-- ApplicationDetailState
+    MyApplicationsViewModel *-- MyApplicationsState
+    ApplyComposeState *-- CvFile
+    ApplyComposeState *-- CvSelection
+
+    %% ---------- Model composition ----------
+    InternshipApplication *-- ApplicationApplicant
+    InternshipApplication --> ApplicationStatus
+    InternshipApplication --> ApplicationChannel
+    UserProfile *-- CvFile
+    CvMatchResult *-- CvMatchSuggestion
+
+    class CvMatchSuggestion {
+        +String skill
+        +String text
+    }
+
+    class ProfileDetails {
+        +String? fullName
+        +String? headline
+        +String? university
+        +String? major
+        +int? yearOfStudy
+        +int? graduationYear
+        +String? phone
+        +String? city
+        +String? bio
+    }
+
+    class InternshipPreferences {
+        +List~TargetRole~ targetRoles
+        +ExperienceRange? experience
+        +List~WorkMode~ workModes
+        +String? location
+    }
+
+    UserProfile *-- ProfileDetails
+    UserProfile *-- InternshipPreferences
