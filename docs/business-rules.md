@@ -288,22 +288,27 @@ flowchart LR
 ```mermaid
 stateDiagram-v2
   [*] --> submitted: BR-P8 record after "I've sent it"
-  submitted --> under_review: BR-T8 student updates the stage
-  under_review --> interview: BR-T8 student updates the stage
-  interview --> accepted: BR-T8 student updates the stage
-  interview --> rejected: BR-T8 student updates the stage
+
+  submitted --> under_review: BR-T8 student
+  under_review --> interview: BR-T8 student
+  interview --> accepted: BR-T8 student
+  interview --> rejected: BR-T8 student
+
   submitted --> withdrawn: BR-T4 confirm withdraw
   under_review --> withdrawn: BR-T4 confirm withdraw
   interview --> withdrawn: BR-T4 confirm withdraw
   withdrawn --> submitted: BR-T5 undo, default
   withdrawn --> under_review: BR-T5 undo, previous status
   withdrawn --> interview: BR-T5 undo, previous status
-  accepted --> [*]
-  rejected --> [*]
+
+  note right of interview
+    BR-T8 offers all five trackable
+    stages every time: the student may
+    also skip a step or move back.
+  end note
 
   note right of withdrawn
     Undo only while withdrawnAt + 24 h > now.
-    accepted and rejected cannot be withdrawn.
   end note
 ```
 
@@ -311,6 +316,19 @@ Only `submitted` is written by the Apply flow. `under_review`, `interview`,
 `accepted` and `rejected` are **student-reported** from Application Detail
 (`Update status`, BR-T8): the app has no employer or admin side, so it never
 claims a transition on the company's behalf.
+
+The picker lists every trackable stage, so the BR-T8 transitions are **not** a
+strict ladder — only the forward arrows are drawn above to keep the diagram
+readable. In practice the student can:
+
+- jump a step (`Submitted → Interview`) when a company replies faster than the
+  student updates the app;
+- move back to correct a mistake (`Accepted → Under review`);
+- change `accepted` / `rejected` to any other trackable stage, which is why
+  neither has a terminal marker.
+
+`withdrawn` is never offered by the picker: Withdraw (BR-T4) and Undo (BR-T5)
+own that transition because they also write `withdrawnAt` and `previousStatus`.
 
 ## 3. Business rules
 

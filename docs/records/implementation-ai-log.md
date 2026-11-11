@@ -954,3 +954,12 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - `python -m py_compile e2e_test/test_applications.py` → passed.
   - ARTEMIS TC-21 and `flutter build apk --debug`: **not run** (no device attached, Android toolchain incomplete).
 - **Decision:** Accepted. `withdrawn` stays on Withdraw / Undo so `previousStatus` and the 24-hour window keep their meaning; the app never claims an employer event, it only records what the student reports (rule 7, G-25 #6).
+
+---
+
+### P-84: State machine diagram matches the picker
+
+- **Request:** (Command Code, 2026-11-11) "update state machine diagram".
+- **Output:** `docs/business-rules.md` §2.4 — the diagram no longer implies a strict ladder. `accepted` / `rejected` lose their `[*]` terminal markers (BR-T8 can still move them to another trackable stage), the BR-T8 note says the picker offers all five stages every time, and the prose below the diagram spells out the three cases the arrows do not draw (skip a step, move back to correct a mistake, change a decided application). The `withdrawn` note keeps the 24-hour Undo rule.
+- **Verification:** all five mermaid blocks in `business-rules.md` were rendered with `@mermaid-js/mermaid-cli` 12.2.0; each produced an SVG. The state machine was also rendered to PNG and inspected: layout is readable, both notes fit, and no edge is clipped.
+- **Decision:** Accepted.
