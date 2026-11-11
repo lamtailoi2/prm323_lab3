@@ -92,7 +92,8 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
       context: context,
       currentCriteria: state.criteria,
       matchingCountCalculator: viewModel.countMatching,
-      suggestedSkills: viewModel.suggestedSkills,
+      suggestedSkills: () => viewModel.suggestedSkills,
+      listingsChanged: searchResultsViewModelProvider,
       onApply: viewModel.setCriteria,
     );
   }

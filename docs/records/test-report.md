@@ -879,3 +879,23 @@ Findings:
 | 3 | ARTEMIS suite | **Run separately** on 2026-11-09/10 (TC-06, TC-07, TC-09, TC-14, TC-17, TC-19). Results, counted traces and causes are in `test-plan.md` §4 and [`evidence/artemis/e2e-environment-20261110.md`](../../evidence/artemis/e2e-environment-20261110.md); the day's lines were copied to [`runs-20261110.jsonl`](../../evidence/artemis/runs-20261110.jsonl) because `e2e_test/artifacts/` is git-ignored |
 
 Findings: TC-06, TC-07, TC-09 and TC-17 now have 3 of 3 counted passes; TC-14 (2 of 4) and TC-19 (0 of 3) still need a counted batch. The two title-check failures (TC-07 `c67149d6`, TC-09 `cee108da`) were test expectations, fixed by `_same_position`, not app defects.
+
+---
+
+## Run 42: CR-07 Saved part + CR-11 filter count (2026-11-11)
+
+**Environment:** macOS 26 (Apple M1) → Flutter 3.47.6 stable / Dart 3.13.5 → branch `fix/cr-07-cr-11-saved-identity-filter-count` from `dev` `1317527`: CR-07 committed as `1f591c3`, CR-11 and these records in the `fix(CR-11)` commit after it. No Firebase project or device used.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **230 files, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` (full suite) | **741 tests, all passed** (+6: `saved_viewmodel_test` CR-07 group — identity provider, unsave of another copy, two legacy copies removed, same title at another company still saved; Search Results card saved under another copy; Search filter sheet opened before the pool loads) |
+| 4 | New screen tests against the old `lib/` (`git stash push -- lib`) | **Both fail as expected**: CR-07 finds no `Remove from saved` bookmark; CR-11 stays at `Show 0 results →`. Restored with `git stash pop` before row 3 |
+| 5 | Device run / ARTEMIS | **Not run** |
+
+Findings:
+
+1. CR-07 (Saved part): the Save Toggle on Home, Search Results and Detail now reads `savedJobsProvider` (job identities). `SavedViewModel.toggleAndReport` removes the saved copies of the job, not the key of the copy on the card, so the job can no longer be saved twice.
+2. CR-11: `SearchResultsFilterSheet.show` takes `listingsChanged` (the provider the listings live in) and rebuilds from it; the criteria being edited stay in the sheet's `State`.
+

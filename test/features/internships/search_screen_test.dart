@@ -279,6 +279,33 @@ void main() {
     expect(find.text('Results:  · Remote'), findsOneWidget);
   });
 
+  testWidgets(
+    'the sheet follows the pool when opened before it loads (CR-11)',
+    (tester) async {
+      internships.gate = Completer<void>();
+      internships.results = [
+        testInternship('1', skills: const ['Flutter']),
+        testInternship('2'),
+        testInternship('3'),
+      ];
+      await pumpSearch(tester);
+      await tester.pump();
+
+      // Opened before the first pool snapshot (skeletons still animating).
+      await tester.tap(find.byTooltip('Filters'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('Show 0 results →'), findsOneWidget);
+
+      internships.gate!.complete();
+      await tester.pumpAndSettle();
+
+      // No selection needed: the count and the skill chips follow the pool.
+      expect(find.text('Show 3 results →'), findsOneWidget);
+      expect(find.text('Flutter'), findsOneWidget);
+    },
+  );
+
   testWidgets('the sheet starts from the selected work mode and the query', (
     tester,
   ) async {

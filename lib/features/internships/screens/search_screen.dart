@@ -168,7 +168,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       ),
       matchingCountCalculator: (criteria) =>
           viewModel.countMatching(criteria, query: _controller.text),
-      suggestedSkills: viewModel.suggestedSkills,
+      suggestedSkills: () => viewModel.suggestedSkills,
+      // The pool streamed for Trending; each snapshot updates the state.
+      listingsChanged: searchViewModelProvider,
       onApply: (criteria) => applied = criteria,
     );
     final criteria = applied;
