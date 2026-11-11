@@ -148,6 +148,7 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 | [`docs/design/design-system.md`](docs/design/design-system.md) | Tokens and components, Figma ↔ code cross-check, contrast results |
 | [`docs/guides/firebase-setup.md`](docs/guides/firebase-setup.md) | Firebase, Google Sign-In, Storage, Remote Config, SerpAPI sync secret |
 | [`docs/business-rules.md`](docs/business-rules.md) | User and Admin actors, swimlanes, `BR-xx` branch codes, application state machine and test traceability |
+| [`docs/business-process-swimlane.md`](docs/business-process-swimlane.md) | Council view: one actor/system map, the end-to-end student and admin swimlanes with every `BR-xx` branch and exception, state machine, branch ↔ test table |
 | [`docs/records/handoff-gaps.md`](docs/records/handoff-gaps.md) | Missing / conflicting requirements and decisions |
 | [`docs/records/implementation-ai-log.md`](docs/records/implementation-ai-log.md) | Prompts, outputs, verification and decisions for AI-assisted work |
 | [`tools/admin-dashboard/README.md`](tools/admin-dashboard/README.md) | Local admin dashboard: send FCM notifications, find device tokens, inspect/delete notification history |
