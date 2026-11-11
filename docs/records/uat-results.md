@@ -13,11 +13,77 @@ Rules:
 
 | Session | Round | Date | Build | Device | Participant | Result | Record |
 |---|---|---|---|---|---|---|---|
-| R1-A | Internal | Not run | — | — | — | — | — |
+| R1-A | Internal | 2026-11-11 12:47 | `42ea1e0` · profile APK | Medium Phone API 37 (`emulator-5554`) | Automated walkthrough (team account) | 13 Pass · 11 Not run | `e2e_test/artifacts/recordings/uat-r1-20261111.mp4` |
 | R1-B | Internal | Not run | — | — | — | — | — |
 | E1 | External | Not run | — | — | — | — | — |
 | E2 | External | Not run | — | — | — | — | — |
 | E3 | External | Not run | — | — | — | — | — |
+
+---
+
+### Session R1-A (internal, automated walkthrough)
+
+> **Disclosure.** This is **not** a human acceptance session. The team asked for the flows to be driven automatically and recorded as internal UAT evidence. The driver (adb taps + UI assertions, script kept outside the repository) ran the scenarios below on the team's own Google account. The questionnaire was not answered because no participant used the app by hand. Do not present this row as an external (`E1`–`E3`) result.
+
+| Item | Value |
+|---|---|
+| Date and time | 2026-11-11 12:47 (Asia/Ho_Chi_Minh) |
+| Build | `42ea1e0` · `app-profile.apk` |
+| Device / Android | Medium Phone API 37 (`emulator-5554`), Google Play services present |
+| Account | the team's own Google account (name, email and CV appear on screen; the video is therefore **not** committed) |
+| Driver / operator | adb-driven script (Command Code) / team operator |
+| Recording | `e2e_test/artifacts/recordings/uat-r1-20261111.mp4` — 241 s, 9.3 MB, git-ignored |
+| Consent | not applicable (team account, internal round) |
+
+#### Scenario results
+
+| ID | Result | Time (s) | Observation | Evidence |
+|---|---|---|---|---|
+| UAT-A1 | Not run | — | Sign-in cannot be automated (Google account picker); the app was already signed in | — |
+| UAT-A2 | Not run | — | Same reason as A1 | — |
+| UAT-A3 | Not run | — | Sign-out would end the session and cannot be reversed automatically | — |
+| UAT-B1 | Pass | 16.6 | Home shows `Find your next internship` and `Browse by Role`; the search field opens Search | video 0:00–0:17 |
+| UAT-B2 | Pass | 41.9 | Query `developer`, `Filters` → `Remote`, `Show 2 results →`, filtered list | video 0:17–0:59 |
+| UAT-B3 | Not run | — | Empty-result path not driven in this run | — |
+| UAT-B4 | Pass | 26.9 | Detail opens with `Apply now` and `Save internship` | video 0:59–1:26 |
+| UAT-B5 | Pass | 11.8 | `Save internship` → `Saved to your list`; `Saved` shows the listing | video 1:26–1:38 |
+| UAT-B6 | Pass | 9.6 | Unsave → `Removed from Saved` → `Undo` restores it | video 1:38–1:47 |
+| UAT-B7 | Not run | — | Airplane-mode error path not driven | — |
+| UAT-C1 | Pass | 47.7 | `Apply by email` with `To`, `Subject`, `Cover letter`, `CV / Resume` and the AI draft banner | video 1:47–2:35 |
+| UAT-C2 | Pass | 23.6 | `Change CV` sheet, second CV chosen, sheet closes | video 2:35–2:59 |
+| UAT-C3 | Pass | 8.4 | `Open email app` opens Gmail with the draft; Back returns to Compose | video 2:59–3:07 |
+| UAT-C4 | Pass | 7.3 | `I've sent it` records the application and opens the success recap | video 3:07–3:15 |
+| UAT-C5 | Pass | 7.2 | My Applications lists the application with `Submitted` | video 3:15–3:22 |
+| UAT-C6 | Pass | 11.0 | Application Detail shows `Status tracker`, `Step 1 of 4`, `Active step` | video 3:22–3:33 |
+| UAT-C7 | Pass | 15.1 | Withdraw → confirm → `Application withdrawn` → `Undo` restores `Submitted` | video 3:33–3:48 |
+| UAT-C8 | Pass | 14.7 | Detail shows `You applied on …` and `View application` instead of `Apply now` | video 3:48–4:01 |
+| UAT-C9 | Not run | — | Optional Validate CV not driven in this run | — |
+| UAT-C10 | Not run | — | Back-without-sending not driven in this run | — |
+| UAT-D1 | Not run | — | Would change the team's real profile | — |
+| UAT-D2 | Not run | — | Would change the team's real CV library | — |
+| UAT-D3 | Not run | — | Would change the team's real skills/preferences | — |
+| UAT-D4 | Not run | — | Needs a manual sign-in again | — |
+
+**Persona targets:** not measured — the 30 s / 2 min targets assume a human searching and reading, not scripted taps.
+
+#### Defects found
+
+| Defect | Scenario | Severity | What happened | Expected | Evidence | Status |
+|---|---|---|---|---|---|---|
+| — | — | — | No functional defect observed on the 13 automated rows | — | — | — |
+
+The run did change account data as designed: it saved and unsaved one listing, changed the CV for one application, recorded one application, then withdrew and undid it. The application stays recorded (there is no delete action), so this account now has that test application.
+
+#### Questionnaire
+
+Not answered — no human participant in this run.
+
+#### Sign-off
+
+| Role | Name | Signature | Date |
+|---|---|---|---|
+| Participant | — (automated) | — | 2026-11-11 |
+| Operator | team | — | 2026-11-11 |
 
 ---
 

@@ -1105,3 +1105,18 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - The Java and port troubleshooting rows come from the two failures hit and fixed here (CLI ignores `JAVA_HOME` alone; a leftover emulator held 8080).
   - Docs-only change: no Dart, rules or test file modified, so `flutter analyze` / `flutter test` and the rules suite were **not re-run**.
 - **Decision:** Accepted. A teammate can now install, run and record the rules checks and start a UAT session from the README, `AGENTS.md` and `firebase/tests/README.md`.
+
+---
+
+### P-93: Automated internal UAT walkthrough with screen recording
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "bạn có thể làm tự động phần uat này giúp tôi và quay lại video cho phần test đó được không", then choosing to use the real account and count it as UAT for the course report.
+- **Output:**
+  - An adb-driven script outside the repository (`uat.mjs` in the session scratchpad): dumps the UI hierarchy, finds elements by text/content-desc, taps, types, swipes and asserts the expected copy; starts and stops `adb shell screenrecord`.
+  - `docs/records/uat-results.md`: session **R1-A (internal, automated walkthrough)** with a disclosure that no human participant used the app, 13 `Pass` rows with times and video offsets, 11 `Not run` rows with reasons, and a note that the account's data changed.
+  - Recording kept at `e2e_test/artifacts/recordings/uat-r1-20261111.mp4` (241 s, 9.3 MB, git-ignored because the team account's name, email and CV are on screen).
+- **Verification:**
+  - Full run: **13/13 automated scenarios passed** (B1, B2, B4–B6, C1–C8); `ffprobe` reports 241.07 s and 9,764,320 bytes.
+  - `adb` device: Medium Phone API 37 with Google Play services; app `com.group3.internly`, profile build of `42ea1e0`.
+  - No functional defect observed. A1–A3, B3, B7, C9, C10 and D1–D4 were not driven and stay `Not run`; R2 (external) is still not run.
+- **Decision:** Accepted only as **internal automated evidence**, not as external UAT. It must not be presented as an `E1`–`E3` session, and the video stays out of Git.
