@@ -899,3 +899,21 @@ Findings:
 1. CR-07 (Saved part): the Save Toggle on Home, Search Results and Detail now reads `savedJobsProvider` (job identities). `SavedViewModel.toggleAndReport` removes the saved copies of the job, not the key of the copy on the card, so the job can no longer be saved twice.
 2. CR-11: `SearchResultsFilterSheet.show` takes `listingsChanged` (the provider the listings live in) and rebuilds from it; the criteria being edited stay in the sheet's `State`.
 
+---
+
+## Run 43: Firestore and Storage rules tests (2026-11-11)
+
+**Environment:** Windows 11 · Node 24.22.1 · npm 11.19.1 · firebase-tools 15.34.1 · JDK 25.0.3 (Android Studio `jbr`, added to `PATH`; the CLI checks `java -version` and ignores `JAVA_HOME` alone) · branch `dev`, HEAD `1317527` with an uncommitted working tree. Emulators only (`demo-internly`); no Firebase project, device or network data.
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `npm --prefix firebase/tests install` | **136 packages installed** (`@firebase/rules-unit-testing` 6.0.0, `firebase` 13.2.0). These are `dependencies`, not `devDependencies`, because this machine sets `omit=dev` |
+| 2 | `firebase emulators:exec --only firestore,storage --project demo-internly "npm --prefix firebase/tests test"` | **15 tests, 15 passed, 0 failed** (`node --test --test-concurrency=1`, 2.9 s): all 15 in the two new files |
+| 3 | `firebase emulators:exec --only firestore,storage --project demo-internly "node firebase/tests/demo/server.mjs --self-test"` | **19/19 demo scenarios passed, 0 failed** (1.8 s) — the same rules exercised through the browser harness, including the 50/51-field boundary and the Storage content-type/size checks |
+| 4 | Demo smoke test under the same `emulators:exec` | `GET /` → **200**, 10,327 bytes, page renders the table; `GET /run` → **200**, plan 19 rows, 19 results, summary `19/19 passed, 0 failed, 1772 ms` |
+| 5 | `flutter analyze` / `flutter test` | **Not re-run**: no Dart file changed; Run 42's 741 tests remain the latest full suite |
+
+Coverage: `firestore.rules.test.mjs` (9 tests) — `users/{uid}` denies signed-out and other users, allows the owner on the document and its subcollections, and rejects a 51-field write while accepting 50; `internships/{key}` reads only when signed in and never accepts a client write (create, update, delete); `sync/**` is closed. `storage.rules.test.mjs` (6 tests) — `reports/{uid}` and `cvs/{uid}` allow the owner's PDF, reject another user, a signed-out client, non-PDF content, a PDF over 10 MB and every other path. `demo/server.mjs` exposes the same decisions as 19 rows on a local page (`http://localhost:5500`) so a screen recording can be used as evidence; the page and the node:test files both read the rules from `firebase/`.
+
+Findings: the first run failed 4 Firestore cases because the tests addressed `users/alice/profile`; `users/{uid}` is the document itself and a three-segment path is invalid, so the cases now use `users/alice` and `users/alice/<collection>/<doc>`. No rule changed. Running the emulators requires a JDK on `PATH`; `JAVA_HOME` was set as well for the Storage rules runtime. The emulator prints a `sun.misc.Unsafe` warning from the Storage rules runtime on JDK 25; it did not affect results.
+

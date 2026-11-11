@@ -83,6 +83,9 @@ __pycache__/
 functions/node_modules/
 functions/lib/
 
+# Firebase rules tests
+firebase/tests/node_modules/
+
 # Local admin dashboard (tools/admin-dashboard)
 tools/admin-dashboard/node_modules/
 tools/admin-dashboard/.env

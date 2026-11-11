@@ -1054,3 +1054,54 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - Device run / ARTEMIS → **not run**.
 - **Decision:** Accepted by the operator ("Commit 2 lần"). Committed as two commits (AGENTS.md, one per finding): `1f591c3` `fix(CR-07): match saved jobs by identity across synced copies` (740 tests passed on that commit alone) and `fix(CR-11): …` with the CR-11 change, its test and these records.
 
+### P-90: Firestore and Storage rules tests
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "kiểm tra giúp tôi, giờ tôi muốn test luôn cả phần firebase rule test thì làm như thế nào".
+- **Output:**
+  - `firebase/tests/`: new Node package (`package.json`, `README.md`) with `@firebase/rules-unit-testing` 6.0.0 and `firebase` 13.2.0 as regular `dependencies` (this machine sets `omit=dev`, which skips `devDependencies`).
+  - `firebase/tests/firestore.rules.test.mjs` (9 tests): `users/{uid}` owner-only on the document and its subcollections, the 50-field write limit, signed-out and other-user denial; `internships/{key}` readable only when signed in and never writable by a client; `sync/**` closed.
+  - `firebase/tests/storage.rules.test.mjs` (6 tests): `reports/{uid}` and `cvs/{uid}` owner-only, PDF only, non-empty, at most 10 MB; every other path denied.
+  - `firebase/tests/demo/` (`server.mjs`, `index.html`): a local page on `http://localhost:5500` that runs the same decisions as 19 rows and streams PASS/FAIL, so the run can be recorded as video evidence; `--self-test` runs it in the terminal; `npm run demo` / `npm run demo:check` in `firebase/tests/package.json`.
+  - `firebase.json`: Storage emulator added on port 9199 so both rule files can be tested in one run.
+  - `.gitignore`: ignores `firebase/tests/node_modules/`.
+  - `docs/records/test-report.md`: Run 43 with the real command output.
+- **Verification:**
+  - `npm --prefix firebase/tests install` → **136 packages installed**.
+  - `firebase emulators:exec --only firestore,storage --project demo-internly "npm --prefix firebase/tests test"` → **15 tests, 15 passed, 0 failed** (2.9 s).
+  - First attempt failed 4 tests: they addressed `users/alice/profile`, but `users/{uid}` is the document itself and a three-segment path is invalid. Test paths fixed; no rule changed. An earlier attempt failed before the tests because the Firebase CLI requires `java` on `PATH` (it ignores `JAVA_HOME` alone), so the Android Studio JDK was added to `PATH`.
+  - `firebase emulators:exec ... "node firebase/tests/demo/server.mjs --self-test"` → **19/19 demo scenarios passed** (1.8 s). The first self-test run reported 14 failures because the runner awaited each operation directly instead of wrapping denied rows in `assertFails`; the harness was fixed, the rules were not touched.
+  - Demo HTTP smoke test under the same command → `GET /` **200** (10,327 bytes, table present); `GET /run` **200**, 19 plan rows, 19 results, `19/19 passed, 0 failed, 1772 ms`.
+  - `flutter analyze` / `flutter test` → **not run** (no Dart file changed).
+- **Decision:** Accepted. The rules tests run against emulators only (demo project) and need no Firebase credentials. They close the open item in `test-report.md` Run 1 row 8.
+
+---
+
+### P-91: UAT plan, scenario script and result template
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "oke, giờ tiếp tục chuyển qua làm phần UAT", with the choices: plan + scenarios + result record; both an internal and an external round; the four main flows.
+- **Output:**
+  - `docs/uat-plan.md`: two rounds (2 internal team members, 3 external students), roles, consent and anonymisation, build/device/test-data setup, session procedure, severity scale, five-statement questionnaire, 24 scenarios (A1–A3 sign in/out, B1–B7 search and save, C1–C10 apply by email and track, D1–D4 profile and CV library), acceptance criteria, and UAT → BR → ARTEMIS traceability. Every expected string was read from the current code, not from the stale `docs/design/user-flow.md`.
+  - `docs/records/uat-results.md`: blank per-session record (environment, 24 result rows, defect log, questionnaire, sign-off) and the acceptance checklist. No row is pre-filled; an unrun session stays `Not run`.
+  - `evidence/uat/README.md`: capture and naming rules; `docs/README.md` and `evidence/README.md` index rows.
+  - Report export is recorded as out of scope because the Profile row is disabled and reads `Coming soon.` (G-05); notifications stay with TC-13 / TC-15.
+- **Verification:**
+  - Copy checked against `apply_compose_screen.dart`, `apply_compose_parts.dart`, `detail_bottom_bar.dart`, `internship_detail_screen.dart`, `saved_screen.dart`, `my_applications_screen.dart`, `application_detail_screen.dart`, `application_status_tracker.dart`, `profile_screen.dart`, `profile_sections.dart`, `profile_header_card.dart`, `add_cv_sheet.dart`, `edit_profile_screen.dart`, `home_screen.dart`, `search_results_screen.dart` and `search_results_filter_sheet.dart`.
+  - No Dart or rules file changed. No UAT session was executed, so `uat-results.md` has no results; `flutter analyze` / `flutter test` / rules tests were **not run** (nothing executable changed).
+- **Decision:** Accepted as the UAT plan and record; the team and the external participants still have to run the sessions and fill the results.
+
+---
+
+### P-92: Run documentation for the rules tests, demo and UAT
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "cập nhật docs giúp tôi với những gì đã làm, cả cách chạy luôn để người khác có thể biết để chạy".
+- **Output:**
+  - `README.md`: rules commands (install, suite, demo) and the UAT section added under Tests; deliverables and "Other documentation" rows for `firebase/tests/` and the UAT files.
+  - `AGENTS.md`: rules commands in § Commands with the JDK/`firebase-tools` note; new "Where code goes" row for a rules test; rules-test bullet in § Testing rules; two rows in the docs-to-update table; a "rules tests green" line in the feature definition of done.
+  - `docs/guides/firebase-setup.md` §16: prerequisites, the three commands, the Emulator UI port, the Windows JDK block, and a troubleshooting table (java, wrong directory, port taken, split command, `omit=dev`, `sun.misc.Unsafe`).
+  - `firebase/tests/README.md`: rewritten with prerequisites, install, suite, demo, `demo:check`, layout, how to add a case to the test and to the demo, and the same troubleshooting table.
+  - `docs/README.md`: "How to run" table for Flutter, rules tests, rules demo, ARTEMIS and UAT; `docs/uat-plan.md`: "Quick start" (build, test data, record template, recorder, evidence).
+- **Verification:**
+  - Every command in the new documentation is one that was executed earlier in this session: `15 tests, 15 passed`; demo `19/19` and `demo:check` `19/19`; `GET /` 200 and `GET /run` 200 with 19 results.
+  - The Java and port troubleshooting rows come from the two failures hit and fixed here (CLI ignores `JAVA_HOME` alone; a leftover emulator held 8080).
+  - Docs-only change: no Dart, rules or test file modified, so `flutter analyze` / `flutter test` and the rules suite were **not re-run**.
+- **Decision:** Accepted. A teammate can now install, run and record the rules checks and start a UAT session from the README, `AGENTS.md` and `firebase/tests/README.md`.
