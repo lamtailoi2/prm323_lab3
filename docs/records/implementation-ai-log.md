@@ -1033,3 +1033,24 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - Final reports and action lists read from `GET /api/sessions/{id}/steps` for all six counted runs; the videos were probed with `ffprobe` (durations 63.4–171.6 s) and copied to `e2e_test/artifacts/recordings/20261110/artemis/`.
   - `flutter analyze` / `flutter test` → **not run** (no Dart file changed).
 - **Decision:** Accepted; ARTEMIS now records every session on this host. The videos cover the device screen only (no ARTEMIS console/terminal); the operator still uploads them to the Drive folder.
+
+---
+
+### P-89: Fix CR-07 (Saved part) and CR-11 from the AI code review
+
+- **Request:** (Claude Code, Opus 5.5 `claude-opus-5-5`, 2026-11-11; operator Phạm Nguyễn Hoàng Anh) "sửa code để sửa bug cr-07 và cr-11 đi" — fix the two findings left open in G-32.
+- **Output:**
+  - `lib/features/saved/viewmodels/saved_providers.dart`: `savedInternshipIdsProvider` (keys) replaced by `savedJobsProvider` (`jobIdentity` of each saved listing), the rule `appliedJobsProvider` already used.
+  - `lib/features/saved/viewmodels/saved_viewmodel.dart`: mirrors saved keys per job; `toggleAndReport` removes every saved copy of the job before it would save a new one.
+  - `lib/features/home/screens/home_screen.dart`, `lib/features/internships/screens/search_results_screen.dart`, `lib/features/internships/screens/internship_detail_screen.dart`: the Save Toggle and Detail's `Saved` state compare job identities; `applied_providers.dart` doc comment renamed.
+  - `lib/features/internships/widgets/search_results_filter_sheet.dart`: `show` takes `suggestedSkills` as a reader and a required `listingsChanged` provider; the sheet is wrapped in a `Consumer` that watches it. `search_screen.dart` passes `searchViewModelProvider`, `search_results_screen.dart` passes `searchResultsViewModelProvider`.
+  - Tests: `test/features/saved/saved_viewmodel_test.dart` (CR-07 group, 4 tests), `test/features/internships/search_results_screen_test.dart` (saved under another copy), `test/features/internships/search_screen_test.dart` (sheet opened before the pool loads).
+  - Records: `docs/code-review.md` (CR-07, CR-11, disclosure row), `docs/records/handoff-gaps.md` (G-32), `docs/business-rules.md` (BR-S2), `docs/records/test-report.md` (Run 42), `README.md`.
+- **Verification:**
+  - `dart format lib test` → 230 files, 0 changed.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **741 tests, all passed**.
+  - The two new screen tests fail on the old `lib/` (stashed): no `Remove from saved` bookmark (CR-07); `Show 0 results →` remains (CR-11).
+  - Device run / ARTEMIS → **not run**.
+- **Decision:** Accepted by the operator ("Commit 2 lần"). Committed as two commits (AGENTS.md, one per finding): `1f591c3` `fix(CR-07): match saved jobs by identity across synced copies` (740 tests passed on that commit alone) and `fix(CR-11): …` with the CR-11 change, its test and these records.
+

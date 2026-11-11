@@ -92,7 +92,8 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
       context: context,
       currentCriteria: state.criteria,
       matchingCountCalculator: viewModel.countMatching,
-      suggestedSkills: viewModel.suggestedSkills,
+      suggestedSkills: () => viewModel.suggestedSkills,
+      listingsChanged: searchResultsViewModelProvider,
       onApply: viewModel.setCriteria,
     );
   }
@@ -128,7 +129,7 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
       (_, query) => ref.read(searchViewModelProvider.notifier).syncQuery(query),
     );
     final user = ref.watch(authStateChangesProvider).value;
-    final savedIds = ref.watch(savedInternshipIdsProvider);
+    final savedJobs = ref.watch(savedJobsProvider);
     final appliedJobs =
         ref.watch(appliedJobsProvider).asData?.value ?? const <String>{};
 
@@ -206,7 +207,7 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
                   internships: data,
                   query: state.query,
                   sortBy: state.sortBy,
-                  savedIds: savedIds,
+                  savedJobs: savedJobs,
                   appliedJobs: appliedJobs,
                   onSortChanged: viewModel.setSortBy,
                   onSaveToggle: (internship) =>
@@ -367,7 +368,7 @@ class _ResultsListView extends StatelessWidget {
     required this.internships,
     required this.query,
     required this.sortBy,
-    required this.savedIds,
+    required this.savedJobs,
     required this.appliedJobs,
     required this.onSortChanged,
     required this.onSaveToggle,
@@ -376,7 +377,9 @@ class _ResultsListView extends StatelessWidget {
   final List<Internship> internships;
   final String query;
   final SearchSortBy sortBy;
-  final Set<String> savedIds;
+
+  /// Jobs ([jobIdentity]) in Saved, shown with a filled bookmark (CR-07).
+  final Set<String> savedJobs;
 
   /// Jobs ([jobIdentity]) tracked in My Applications, shown with the
   /// `Applied` badge.
@@ -490,7 +493,9 @@ class _ResultsListView extends StatelessWidget {
             tags: internship.skills,
             allowanceText: formatAllowance(internship.salary),
             postedText: internship.postedText,
-            isSaved: savedIds.contains(internship.key),
+            isSaved: savedJobs.contains(
+              jobIdentity(internship.title, internship.companyName),
+            ),
             isApplied: appliedJobs.contains(
               jobIdentity(internship.title, internship.companyName),
             ),

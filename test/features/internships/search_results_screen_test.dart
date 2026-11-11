@@ -335,6 +335,31 @@ void main() {
     expect(find.byTooltip('Remove from saved'), findsOneWidget);
   });
 
+  testWidgets('a job saved under another synced copy shows as saved (CR-07)', (
+    tester,
+  ) async {
+    internships.results = [sampleListings.first];
+    // Saved earlier from another keyword's copy of the same job.
+    saved.seed([
+      testInternship(
+        '9',
+        title: sampleListings.first.title,
+        companyName: sampleListings.first.companyName,
+      ),
+    ]);
+    await pumpSearchResults(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Remove from saved'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Remove from saved'));
+    await tester.pumpAndSettle();
+
+    expect(saved.savedKeys, isEmpty);
+    expect(saved.saveCalls, 0);
+    expect(find.byTooltip('Save'), findsOneWidget);
+  });
+
   testWidgets('opens filter sheet and displays all sections', (tester) async {
     internships.results = sampleListings;
     await pumpSearchResults(tester);

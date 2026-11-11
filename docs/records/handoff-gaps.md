@@ -41,7 +41,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-30 | Edit Profile and Update Preferences frames ask twice for a city and for a target role | Profile owner | Resolved (user decision 2026-10-28) |
 | G-29 | Edit Profile `Change Photo` / `Remove` (JPG, PNG ≤ 5 MB) has no storage path: `storage.rules` allows only PDFs in `cvs/` and `reports/` | Profile owner | Resolved for now (Google photo only, user decision; DC-14) |
 | G-31 | Login "Terms" and "Privacy" links have no content or URL | Auth owner + team | Assumed (honest coming-soon message, DC-18) |
-| G-32 | Open items from the AI code review (CR-07 Saved part, CR-11, CR-17) | Saved owner, Search owner, Apply owner + rules owner | Open |
+| G-32 | Open items from the AI code review (CR-17; CR-07 Saved part and CR-11 fixed 2026-11-11) | Saved owner, Search owner, Apply owner + rules owner | Open (CR-17 only) |
 | G-33 | Apply is email-based; Google Jobs provides no recruiter email | Apply owner | Resolved (user decision 2026-11-06; DC-31) |
 
 ---
@@ -250,8 +250,8 @@ The user wants **no spending at all**, including AI models. Every requirement ca
 - **Needed:** the text of both documents (what Internly stores: Google account name, email and photo, the profile in `users/{uid}`, CVs in `cvs/{uid}`, analytics and crash reports) and where they live (an in-app screen, or a public URL opened with `ExternalLinkService`). Until then the sentence asks for agreement to documents that do not exist yet.
 
 ### G-32: Open items from the AI code review (2026-11-02)
-- **CR-07 (Saved part):** lists show one synced copy per job (`distinctListings`), but Saved documents are keyed per copy, so when a re-sync keeps another copy the bookmark looks empty and the job can be saved twice. Options: let `distinctListings` prefer a saved copy, or match Saved by `jobIdentity`. Owner: Saved feature.
-- **CR-11:** the Search tab Filter sheet counts `Show N results` from the pool streamed for Trending; opened before the first snapshot it shows 0 until the next selection. A live count needs the sheet to watch a provider instead of a callback. Owner: Search.
+- **CR-07 (Saved part):** lists show one synced copy per job (`distinctListings`), but Saved documents are keyed per copy, so when a re-sync keeps another copy the bookmark looks empty and the job can be saved twice. Options: let `distinctListings` prefer a saved copy, or match Saved by `jobIdentity`. Owner: Saved feature. **Resolved (2026-11-11, P-89):** Saved is matched by `jobIdentity` (`savedJobsProvider`, `SavedViewModel`), the second option above; unsaving removes every saved copy of the job.
+- **CR-11:** the Search tab Filter sheet counts `Show N results` from the pool streamed for Trending; opened before the first snapshot it shows 0 until the next selection. A live count needs the sheet to watch a provider instead of a callback. Owner: Search. **Resolved (2026-11-11, P-89):** the sheet now watches the listings provider (`listingsChanged`) and re-reads the count and skill chips on each snapshot.
 - **CR-17:** a CV uploaded on the Apply Form for one internship stays in `cvs/{uid}` when it is replaced, dropped or the form is left. Deleting it needs `allow delete` for the owner in `firebase/storage.rules` (rules change, owner-deployed, rule 9) and a retention rule agreed with Flow 4, which reads that CV's `storagePath` for Validate CV. Owner: Apply + rules owner.
 
 ### G-33: Apply is email-based; Google Jobs has no recruiter email

@@ -10,7 +10,7 @@ import '../../../services/application_service.dart';
 ///
 /// [applicationServiceProvider] watches `currentUserIdProvider`, so the set
 /// is dropped on sign-out (AGENTS.md rule 11); one listener serves every
-/// card, as `savedInternshipIdsProvider` does for the Save Toggle.
+/// card, as `savedJobsProvider` does for the Save Toggle.
 final appliedJobsProvider = StreamProvider<Set<String>>((ref) {
   final service = ref.watch(applicationServiceProvider);
   return service.watchApplications().map(

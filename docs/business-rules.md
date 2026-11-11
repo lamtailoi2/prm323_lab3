@@ -338,7 +338,7 @@ used by tests and code comments.
 | ID | Point | Rule | Exception / failure | Links |
 |---|---|---|---|---|
 | BR-S1 | Save | Requires sign-in and the listing still existing in the pool. Saves a snapshot of the shown fields under `users/{uid}/savedInternships/{key}` | Listing gone → `This internship is no longer available`; no partial write | TC-08 |
-| BR-S2 | Save idempotency | Document ID = listing key, so saving twice overwrites the same document; no duplicates | — | Saved service tests |
+| BR-S2 | Save idempotency | Document ID = listing key, so saving twice overwrites the same document; no duplicates. One job synced under several keys is one saved job (`jobIdentity`: folded title + company): a card or Detail of any copy shows `Saved`, and unsaving removes every saved copy (CR-07) | — | Saved service tests, `saved_viewmodel_test.dart` (CR-07 group), Search Results screen test |
 | BR-S3 | Unsave + Undo | Unsave removes the item and shows a snackbar with `Undo`; Undo restores it | Undo after the snackbar expires is unavailable | TC-08, widget tests |
 | BR-S4 | Save failure | Network/permission failure → message + `Retry`; the UI never shows `Saved` before the write succeeds | Repeated taps ignored while loading | TC-08 |
 
