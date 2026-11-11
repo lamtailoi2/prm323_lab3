@@ -89,23 +89,24 @@ Every instruction states the start, the steps and what must be visible, and asks
 | TC-19 | Flow 2 (Compose edit) | Signed in | Compose screen → clear `To`, type `hr@example.com` → append ` Test line.` to the letter | `To` == `hr@example.com`; the character count under the letter is > 0 | Happy | `test_apply_form.py` | Ready (rewritten for the email flow, not run) |
 | TC-20 | ~~Flow 1 alt. (CV upload failed)~~ | — | — | Removed with the Apply Form (DC-31): the compose screen has no upload. A failed AI draft shows the message + `Retry` and is covered by `ApplyComposeViewModel` unit tests. The old 3/3 result stays as history in §4. | — | — | Removed |
 | TC-17 | Profile upkeep (Flow 2 alt., 2d `Edit skills`) | Signed in; `Docker` not yet in the profile skills (test removes it first if needed) | Profile → `Add skill` → search `dock` → tap `Docker` → `Save changes` | Sheet closed; `Technical skills` lists `Docker`; reported skills include `Docker` | Alt | `test_profile_skills.py` | Done (3/3, 2026-11-06) |
+| TC-21 | Flow 3e (student-reported stage) | Signed in; an application whose status is not `Withdrawn`, `Accepted` or `Rejected` | Applications → open it → `Update status` → pick `Interview` → `Save status` → reopen the list and the detail | The detail badge reads `Interview` and so does the list card; `Step 3 of 4 (75% completed)`; **`application_update` in Logcat** with `from_status` / `to_status`. The case sets the status back to the value it read first | Happy | `test_applications.py` | Ready (written, not run) |
 
 ### Coverage (Lab 3 §7)
 
 | Required | Test cases |
 |---|---|
-| Each Lab 2 flow end to end incl. alternative and error paths | Flow 1: TC-03/04/05 + pre-submit TC-18/19/20 · Flow 2: TC-06/07/08 · Flow 3: TC-09/10 |
+| Each Lab 2 flow end to end incl. alternative and error paths | Flow 1: TC-03/04/05 + pre-submit TC-18/19/20 · Flow 2: TC-06/07/08 · Flow 3: TC-09/10/21 |
 | Sign-in · sign-out | TC-01 · TC-14 |
 | Main search / primary action | TC-03, TC-06 |
 | Each top-level tab | TC-02 |
 | Home role discovery | TC-16 |
 | Profile (edit skills, Flow 2d target) | TC-17 |
-| Each kind of detail screen | Internship Detail TC-05 · Application Detail TC-09 |
+| Each kind of detail screen | Internship Detail TC-05 · Application Detail TC-09, TC-21 |
 | Export and upload | TC-11 |
 | Remote Config values on screen | TC-12 |
 | ≥ 1 error path | TC-04, TC-10, TC-20 |
 | ≥ 1 native interaction | TC-01 (account picker), TC-10 (Quick Settings), TC-13 (notification shade), TC-15 (permission dialog), TC-19 / TC-20 (Android document picker) |
-| ≥ 1 analytics check | TC-01 (`login` in Logcat), TC-03 (`search`, `search_filter_apply`), TC-18 (`apply_start`) |
+| ≥ 1 analytics check | TC-01 (`login` in Logcat), TC-03 (`search`, `search_filter_apply`), TC-18 (`apply_start`), TC-21 (`application_update`) |
 | Exploratory session (Pro) | §5 |
 
 ## 4. Results (≥ 3 runs per test)

@@ -847,3 +847,26 @@ Findings:
 3. `functions/src/index.ts` imported `handleSelectCv` / `SELECT_RUBRIC` and defined `selectGroq`, but the merge lost the `selectCv` export; restored the callable and `npm run build` passes.
 4. `FakeUserProfileService` dropped `givenName` / `defaultCvId` on merge writes; both are now preserved.
 5. The first deploy created `selectCv` but failed with `Failed to set the IAM Policy on the Service`; an immediate retry completed successfully, so the callable is now deployed.
+
+---
+
+## Run 40: Student-reported application status (2026-11-11)
+
+**Environment:** Windows 11 · branch `feat/application-status-tracking` (from `origin/dev` `77fd7ca`) · Flutter 3.47.3 stable · Dart 3.13.3. No device or emulator was attached, so no build or E2E run.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **231 files, 3 changed** on the first pass, then 0 on the re-run |
+| 2 | `flutter analyze` | **No issues found!** (ran in 6.8 s on the second pass) |
+| 3 | `flutter test test/features/applications test/models/internship_application_test.dart` | **100 tests, all passed** |
+| 4 | `flutter test` (full suite) | **739 tests, all passed** |
+| 5 | `python -m py_compile e2e_test/test_applications.py` | **Passed** (new TC-21 syntax only) |
+| 6 | ARTEMIS TC-21 | **Not run**: no device attached; the case is written and marked `Ready` in `docs/test-plan.md` |
+| 7 | `flutter build apk --debug` | **Not run**: Android toolchain incomplete on this machine |
+
+Findings:
+
+1. The tracker had no in-app writer for `under_review` … `rejected` (G-25 #6), so the stages could only be set from the console. `ApplicationService.updateStatus` + `UpdateStatusSheet` now write them and stamp `statusUpdatedAt` (BR-T8, DC-35).
+2. `withdrawn` is deliberately excluded from the picker: Withdraw / Undo own `withdrawnAt` / `previousStatus`, and a plain status write would leave them stale. A service-level guard refuses it too.
+3. No `application_update` event is logged when the picked stage equals the stored one, so a no-op tap cannot inflate the funnel.
+4. The tracker shows `statusUpdatedAt` only for the active step of a document that has it; older documents keep showing no invented date (rule 7).

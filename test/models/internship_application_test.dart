@@ -25,6 +25,20 @@ void main() {
       expect(ApplicationStatus.fromStorage('ACCEPTED'), isNull);
       expect(ApplicationStatus.fromStorage('ghosted'), isNull);
     });
+
+    test('the student sets every stage except withdrawn', () {
+      // The tracker is student-reported (G-25 #6); withdrawn stays on the
+      // withdraw action so `previousStatus` and Undo keep working.
+      expect(ApplicationStatus.trackable, [
+        ApplicationStatus.submitted,
+        ApplicationStatus.underReview,
+        ApplicationStatus.interview,
+        ApplicationStatus.accepted,
+        ApplicationStatus.rejected,
+      ]);
+      expect(ApplicationStatus.withdrawn.isTrackable, isFalse);
+      expect(ApplicationStatus.interview.isTrackable, isTrue);
+    });
   });
 
   group('InternshipApplication.fromFirestore', () {
@@ -60,8 +74,26 @@ void main() {
       expect(application.nextStepAt, isNull);
       expect(application.applicant, isNull);
       expect(application.withdrawnAt, isNull);
+      expect(application.statusUpdatedAt, isNull);
       expect(application.cvFileName, isNull);
       expect(application.cvSizeBytes, isNull);
+    });
+
+    test('reads the date the student last set the status', () {
+      final statusUpdatedAt = DateTime(2026, 11, 9, 15, 30);
+      final application = InternshipApplication.fromFirestore('job-11', {
+        'title': 'Flutter Developer Intern',
+        'companyName': 'FPT Software',
+        'appliedAt': DateTime(2026, 11, 1),
+        'status': 'interview',
+        'statusUpdatedAt': Timestamp.fromDate(statusUpdatedAt),
+      });
+
+      expect(application.status, ApplicationStatus.interview);
+      expect(
+        application.statusUpdatedAt!.isAtSameMomentAs(statusUpdatedAt),
+        isTrue,
+      );
     });
 
     test('reads the withdrawal, the CV snapshot and the applicant', () {

@@ -927,3 +927,30 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - `flutter pub get` → dependencies resolved; `npm install` → up to date.
   - `npx firebase-tools deploy --only functions:selectCv --project prm-lab3` → **passed after one retry**: the first attempt created the function but failed to set the Cloud Run invoker IAM policy; the retry printed `Deploy complete!`; `functions:list` confirms `selectCv` (callable, `us-central1`, `nodejs22`).
 - **Decision:** Accepted and deployed.
+
+---
+
+### P-83: Student-reported application status (techjobs.vn-style tracker)
+
+- **Request:** (Command Code, 2026-11-11) "https://techjobs.vn/ dựa theo này làm phần application management có nghĩa là system chỉ ghi lại status applied thoi còn các status như interviewed hay acccepted, rejected gì đó thì user sẽ tự điều chỉnh kiểu để tracking". The app records `submitted`; every later stage is reported by the student.
+- **Output:**
+  - `lib/models/internship_application.dart` — `ApplicationStatus.trackable` (submitted, under_review, interview, accepted, rejected) and `isTrackable` (false for `withdrawn`); new optional `statusUpdatedAt`, parsed in `fromFirestore`.
+  - `lib/services/application_service.dart` — `updateStatus(jobKey, status: …)` on the interface and `FirestoreApplicationService`: merge write of `status` + server `statusUpdatedAt`, refusing `withdrawn`.
+  - `lib/features/applications/viewmodels/application_detail_viewmodel.dart` — `updateStatus`: guards a repeated tap, a missing document, a non-trackable status and an unchanged status; logs `application_update` once the write is accepted.
+  - `lib/features/applications/widgets/update_status_sheet.dart` — new `UpdateStatusSheet`: `AppSheet` with one radio row per trackable stage using the shared `ApplicationStatusBadge`; `Save status` disabled until the stage changes; the write error shows inline.
+  - `lib/features/applications/widgets/application_status_tracker.dart` — `onUpdateStatus` action (tooltip `Update status`, hidden for `withdrawn`) and the active step's date from `statusUpdatedAt`.
+  - `lib/features/applications/screens/application_detail_screen.dart` — opens the sheet from the tracker header.
+  - `test/helpers/fakes.dart` — `FakeApplicationService.statusUpdates` / `updateStatusError`.
+  - `test/models/internship_application_test.dart` — the trackable set and `statusUpdatedAt` parsing.
+  - `test/features/applications/application_detail_viewmodel_test.dart` — the write, the `application_update` parameters, the `withdrawn` refusal, the no-op guard and the failure message.
+  - `test/features/applications/application_detail_screen_test.dart` — the picker contents, the disabled `Save status`, the hidden action on a withdrawn application and the inline error.
+  - `e2e_test/test_applications.py` — TC-21 (`Ready`, not run).
+  - Docs: `business-rules.md` (BR-T8, state machine, traceability row, §6), `design-traceability.md` (DC-35, rows 11 and Flow 3), `analytics-plan.md` (row 12 trigger), `test-plan.md` (TC-21 + coverage), `handoff-gaps.md` (G-25 #6), `test-report.md` (Run 40).
+- **Verification:**
+  - `dart format lib test` → 231 files, 3 changed on the first pass, 0 on the second.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test test/features/applications test/models/internship_application_test.dart` → **102 tests, all passed**.
+  - `flutter test` → **739 tests, all passed**.
+  - `python -m py_compile e2e_test/test_applications.py` → passed.
+  - ARTEMIS TC-21 and `flutter build apk --debug`: **not run** (no device attached, Android toolchain incomplete).
+- **Decision:** Accepted. `withdrawn` stays on Withdraw / Undo so `previousStatus` and the 24-hour window keep their meaning; the app never claims an employer event, it only records what the student reports (rule 7, G-25 #6).

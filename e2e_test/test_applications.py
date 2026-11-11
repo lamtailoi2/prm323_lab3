@@ -36,6 +36,31 @@ async def test_tc09_application_detail_matches_the_list(artemis):
     assert detail["status"] == listed["status"]
 
 
+async def test_tc21_student_reports_a_stage(artemis):
+    report = await run_case(
+        artemis,
+        "TC-21",
+        f"{SIGNED_IN} Tap 'Applications' in the bottom navigation. If the "
+        "screen says 'You have not applied yet', report has_application false "
+        "and stop. Otherwise open the first application card, read its status "
+        "badge, then tap the pencil button labelled 'Update status'. In the "
+        "sheet, tap 'Interview' and then 'Save status'. Wait 2 seconds, then "
+        "read the status badge on Application Detail. Finally use the back "
+        "arrow to return to the Applications list and read the first card's "
+        "status badge.",
+        expected_output=(
+            'JSON: {"has_application": boolean, "before_status": string, '
+            '"detail_status": string, "list_status": string}'
+        ),
+    )
+    assert report["has_application"] is True, "TC-21: no application; run TC-06"
+
+    # The tracker is student-reported (BR-T8, DC-35): the app writes what the
+    # student picked and both the detail and the list follow the document.
+    assert report["detail_status"].strip() == "Interview"
+    assert report["list_status"].strip() == "Interview"
+
+
 @pytest.mark.error_path
 async def test_tc10_application_list_stays_visible_offline(artemis):
     # Firestore keeps the list in its offline cache, so offline the app shows

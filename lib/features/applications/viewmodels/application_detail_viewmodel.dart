@@ -34,6 +34,7 @@ class ApplicationDetailState {
   const ApplicationDetailState({
     this.detail = const ViewLoading(),
     this.action = const AsyncData(null),
+    this.statusAction = const AsyncData(null),
     this.canUndoWithdrawal = false,
     this.undoDeadline,
   });
@@ -42,6 +43,10 @@ class ApplicationDetailState {
 
   /// Withdraw / undo write in flight or failed.
   final AsyncValue<void> action;
+
+  /// `Update status` write in flight or failed, kept apart from [action] so
+  /// the sheet's error never shows in the withdraw bar below it.
+  final AsyncValue<void> statusAction;
 
   /// The withdrawal happened less than 24 hours ago.
   final bool canUndoWithdrawal;
@@ -52,12 +57,14 @@ class ApplicationDetailState {
   ApplicationDetailState copyWith({
     ViewState<ApplicationDetail>? detail,
     AsyncValue<void>? action,
+    AsyncValue<void>? statusAction,
     bool? canUndoWithdrawal,
     Object? undoDeadline = _keep,
   }) {
     return ApplicationDetailState(
       detail: detail ?? this.detail,
       action: action ?? this.action,
+      statusAction: statusAction ?? this.statusAction,
       canUndoWithdrawal: canUndoWithdrawal ?? this.canUndoWithdrawal,
       undoDeadline: identical(undoDeadline, _keep)
           ? this.undoDeadline
@@ -151,6 +158,42 @@ class ApplicationDetailViewModel extends Notifier<ApplicationDetailState> {
       return true;
     } on AppException catch (error, stack) {
       if (ref.mounted) state = state.copyWith(action: AsyncError(error, stack));
+      return false;
+    }
+  }
+
+  /// Records the stage the student reached (techjobs.vn-style tracker).
+  /// Returns `true` once the write is accepted; the screen then follows the
+  /// live document.
+  Future<bool> updateStatus(ApplicationStatus status) async {
+    final application = _current;
+    if (application == null ||
+        state.statusAction.isLoading ||
+        !status.isTrackable ||
+        application.status == status) {
+      return false;
+    }
+    final service = ref.read(applicationServiceProvider); // read before await
+    final analytics = ref.read(analyticsServiceProvider);
+    final previousStatus = application.status;
+    state = state.copyWith(statusAction: const AsyncLoading());
+    try {
+      await service.updateStatus(application.jobKey, status: status);
+      if (ref.mounted) {
+        state = state.copyWith(statusAction: const AsyncData(null));
+      }
+      unawaited(
+        analytics.logEvent('application_update', {
+          'internship_id': application.jobKey,
+          'from_status': previousStatus.storageValue,
+          'to_status': status.storageValue,
+        }),
+      );
+      return true;
+    } on AppException catch (error, stack) {
+      if (ref.mounted) {
+        state = state.copyWith(statusAction: AsyncError(error, stack));
+      }
       return false;
     }
   }

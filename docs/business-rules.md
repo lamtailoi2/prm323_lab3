@@ -283,10 +283,10 @@ flowchart LR
 ```mermaid
 stateDiagram-v2
   [*] --> submitted: BR-P8 record after "I've sent it"
-  submitted --> under_review: BR-T1 manual, no app UI
-  under_review --> interview: BR-T1 manual, no app UI
-  interview --> accepted: BR-T1 manual, no app UI
-  interview --> rejected: BR-T1 manual, no app UI
+  submitted --> under_review: BR-T8 student updates the stage
+  under_review --> interview: BR-T8 student updates the stage
+  interview --> accepted: BR-T8 student updates the stage
+  interview --> rejected: BR-T8 student updates the stage
   submitted --> withdrawn: BR-T4 confirm withdraw
   under_review --> withdrawn: BR-T4 confirm withdraw
   interview --> withdrawn: BR-T4 confirm withdraw
@@ -302,9 +302,10 @@ stateDiagram-v2
   end note
 ```
 
-Only `submitted` is written by the app today. `under_review`, `interview`,
-`accepted` and `rejected` have no in-app writer (G-25 #6); they are set from
-the Firebase console or an Admin SDK script for demos.
+Only `submitted` is written by the Apply flow. `under_review`, `interview`,
+`accepted` and `rejected` are **student-reported** from Application Detail
+(`Update status`, BR-T8): the app has no employer or admin side, so it never
+claims a transition on the company's behalf.
 
 ## 3. Business rules
 
@@ -380,6 +381,7 @@ used by tests and code comments.
 | BR-T5 | Undo window | Undo is available only while `withdrawnAt + 24 h > now`. It restores `previousStatus` (default `submitted`) and clears `withdrawnAt`/`previousStatus` | After 24 h the Undo control is gone | Widget tests, DC-29 |
 | BR-T6 | Submitted CV | The CV snapshot opens view-only; there is no `Replace CV` after submission. Removing that CV from the library never invalidates the snapshot: the Storage file is kept while any submitted application references it | File unavailable → viewer message; a removed library entry is not shown as an error | TC-09, BR-C4 |
 | BR-T7 | Live detail | Detail follows the live application document; `view_application` is logged once per open; load failure → error + Retry | Offline cache may keep the list (TC-10) | TC-09, TC-10 |
+| BR-T8 | Student-reported stage | `Update status` on Application Detail writes one of `submitted`, `under_review`, `interview`, `accepted`, `rejected` plus server `statusUpdatedAt`, and logs `application_update`. The picker never offers `withdrawn` (Withdraw/Undo own it, so `previousStatus` stays meaningful), `Save status` is disabled while the picked stage equals the stored one, and a tracked application's tracker shows the date the student set the current step | Write failure → message in the sheet + the sheet stays open; signed out or a stale document → the write is refused, nothing is faked | TC-09, `application_detail_viewmodel_test.dart`, `application_detail_screen_test.dart` |
 
 ### 3.7 Admin and notifications
 
@@ -474,6 +476,7 @@ used by tests and code comments.
 | BR-T5 | withdrawn → previous | Widget tests | `ApplicationDetailViewModel.undoWithdrawal` |
 | BR-T6 | view-only CV | TC-09 | `ApplicantCard`; snapshot survives library removal (BR-C4) |
 | BR-T7 | live detail | TC-09, TC-10 | `application_detail_viewmodel.dart` |
+| BR-T8 | student-set stage | TC-09, `application_detail_viewmodel_test.dart`, `application_detail_screen_test.dart` | `ApplicationService.updateStatus`, `ApplicationStatus.trackable`, `UpdateStatusSheet` |
 | BR-N1 | local only | Manual | `tools/admin-dashboard/README.md`, `server.js` |
 | BR-N2 | users list | Dashboard tests | `GET /api/users` |
 | BR-N3 | recipients | TC-13, dashboard tests | `resolveRecipients` |
@@ -492,7 +495,8 @@ used by tests and code comments.
 
 | Item | Impact on these rules | Status |
 |---|---|---|
-| G-25 #6: no employer/admin screen sets `under_review` … `rejected` | BR-T1 allows the states, but only console/Admin SDK writes them; no app test can produce them | Open |
+| G-25 #6: no employer/admin screen sets `under_review` … `rejected` | Resolved for the app: BR-T8 adds the student-facing `Update status` writer, so the stages no longer need the console (DC-35). The app still never claims an employer event, it only records what the student reports | Resolved (app writer) |
+| BR-T8 writes only `status` + `statusUpdatedAt` | A status change does not touch the CV/applicant snapshot or `appliedAt`, so tracking never rewrites what was sent; `withdrawn` stays on BR-T4/T5 | Applied |
 | DC-31: email-based Apply replaces the Apply Form and the blocking Validate CV gate | BR-P9 is optional/advisory, unlike the older `user-flow.md` wording | Applied (code is current) |
 | Admin dashboard has no authentication (BR-N1) | Acceptable only because it is local and never deployed; do not expose the port | Open by design |
 | DC-29: tracker, withdraw and undo follow the student's own status | BR-T5 restores the status that was replaced | Applied |

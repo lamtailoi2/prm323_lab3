@@ -255,6 +255,24 @@ class FakeApplicationService implements ApplicationService {
   /// Keys passed to [undoWithdrawal].
   final List<String> undone = <String>[];
 
+  /// Status writes made through [updateStatus].
+  final List<({String internshipKey, ApplicationStatus status})> statusUpdates =
+      <({String internshipKey, ApplicationStatus status})>[];
+
+  /// Thrown by the next [updateStatus].
+  Object? updateStatusError;
+
+  @override
+  Future<void> updateStatus(
+    String internshipKey, {
+    required ApplicationStatus status,
+  }) async {
+    await updateGate?.future;
+    final failure = updateStatusError ?? updateError;
+    if (failure != null) throw failure;
+    statusUpdates.add((internshipKey: internshipKey, status: status));
+  }
+
   /// Thrown by the next [withdraw] or [undoWithdrawal].
   Object? updateError;
 
