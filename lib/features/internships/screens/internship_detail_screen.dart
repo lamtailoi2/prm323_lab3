@@ -7,6 +7,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../app/router.dart';
 import '../../../core/state/view_state.dart';
+import '../../../core/utils/distinct_listings.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/company_logo.dart';
 import '../../../core/widgets/detail_section_card.dart';
@@ -45,7 +46,7 @@ class InternshipDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final args = (internshipKey: internshipKey, source: source);
     final state = ref.watch(internshipDetailViewModelProvider(args));
-    final savedIds = ref.watch(savedInternshipIdsProvider);
+    final savedJobs = ref.watch(savedJobsProvider);
     // Keeps the save ViewModel alive while a write from this screen runs.
     ref.watch(savedViewModelProvider);
 
@@ -89,13 +90,13 @@ class InternshipDetailScreen extends ConsumerWidget {
       },
       bottomNavigationBar: switch (state) {
         ViewData(:final data) => DetailBottomBar(
-          isSaved: savedIds.contains(data.internship.key),
+          isSaved: _isSaved(savedJobs, data.internship),
           onToggleSave: () => unawaited(
             _toggleSave(
               context,
               ref,
               data.internship,
-              wasSaved: savedIds.contains(data.internship.key),
+              wasSaved: _isSaved(savedJobs, data.internship),
             ),
           ),
           isApplied: data.application != null,
@@ -115,6 +116,11 @@ class InternshipDetailScreen extends ConsumerWidget {
       },
     );
   }
+
+  /// Saved when any synced copy of this job is in Saved, so a detail opened
+  /// from another copy than the one saved still shows `Saved` (CR-07).
+  static bool _isSaved(Set<String> savedJobs, Internship internship) =>
+      savedJobs.contains(jobIdentity(internship.title, internship.companyName));
 
   Future<void> _toggleSave(
     BuildContext context,
