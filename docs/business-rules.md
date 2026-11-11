@@ -128,9 +128,12 @@ flowchart LR
     U16 -- "No" --> U17["Add name in Profile"]
     U16 -- "Yes" --> U18["My Applications"]
     U18 --> U19["Application Detail"]
-    U19 --> U20{"Withdraw?<br/>BR-T3"}
-    U20 -- "Confirm — BR-T4" --> U21["Withdrawn"]
-    U20 -- "Cancel" --> U19
+    U19 --> U20{"Update the stage?<br/>BR-T8"}
+    U20 -- "Yes" --> U24["Update status → Save status"]
+    U24 --> U19
+    U20 -- "No" --> U25{"Withdraw?<br/>BR-T3"}
+    U25 -- "Confirm — BR-T4" --> U21["Withdrawn"]
+    U25 -- "Cancel" --> U19
     U21 --> U22{"Undo within 24 h?<br/>BR-T5"}
     U22 -- "Yes" --> U23["Previous status restored"]
     U22 -- "No" --> U19
@@ -145,6 +148,7 @@ flowchart LR
     A4["Validate recipient + build mailto"]
     A5["createApplication"]
     A6["withdraw / undoWithdrawal"]
+    A7["updateStatus"]
   end
 
   subgraph DATA["Firebase"]
@@ -167,6 +171,7 @@ flowchart LR
   U9 -.-> A3 --> X2
   U12 -.-> A4 --> X3
   U15 -.-> A5 --> F3
+  U24 -.-> A7 --> F3
   U21 -.-> A6 --> F3
   F3 -.-> U18
 ```

@@ -945,7 +945,7 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - `test/features/applications/application_detail_viewmodel_test.dart` — the write, the `application_update` parameters, the `withdrawn` refusal, the no-op guard and the failure message.
   - `test/features/applications/application_detail_screen_test.dart` — the picker contents, the disabled `Save status`, the hidden action on a withdrawn application and the inline error.
   - `e2e_test/test_applications.py` — TC-21 (`Ready`, not run).
-  - Docs: `business-rules.md` (BR-T8, state machine, traceability row, §6), `design-traceability.md` (DC-35, rows 11 and Flow 3), `analytics-plan.md` (row 12 trigger), `test-plan.md` (TC-21 + coverage), `handoff-gaps.md` (G-25 #6), `test-report.md` (Run 40).
+  - Docs: `business-rules.md` (BR-T8, state machine, §2.1 swimlane branch + `updateStatus` app function, traceability row, §6), `architecture.md` (ViewModel, service list, `status` / `statusUpdatedAt` field table, live-detail paragraph), `design/screen-spec.md` (Application Detail secondary action), `design-traceability.md` (DC-35, rows 11 and Flow 3), `analytics-plan.md` (row 12 trigger), `test-plan.md` (TC-21 + coverage), `handoff-gaps.md` (G-25 #6), `test-report.md` (Run 40).
 - **Verification:**
   - `dart format lib test` → 231 files, 3 changed on the first pass, 0 on the second.
   - `flutter analyze` → **No issues found!**

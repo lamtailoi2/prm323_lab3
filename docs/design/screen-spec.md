@@ -401,6 +401,7 @@ View and understand the current application status.
 
 ### Secondary Actions
 
+- Update the application status to the stage the student has reached (self-tracked; `withdrawn` stays on Withdraw).
 - Withdraw application if allowed.
 - Open confirmation dialog for withdrawal.
 - Cancel withdrawal.
