@@ -28,6 +28,7 @@ import '../viewmodels/application_detail_viewmodel.dart';
 import '../widgets/applicant_card.dart';
 import '../widgets/application_identity_card.dart';
 import '../widgets/application_status_tracker.dart';
+import '../widgets/update_status_sheet.dart';
 
 /// Application Detail (Lab 2 frames "Application Detail": submitted, under
 /// review, withdraw dialog, withdrawn, loading, error), reached from My
@@ -89,7 +90,13 @@ class ApplicationDetailScreen extends ConsumerWidget {
               listing: data.listing,
             ),
             const SizedBox(height: AppSpacing.section),
-            ApplicationStatusTracker(application: data.application),
+            ApplicationStatusTracker(
+              application: data.application,
+              onUpdateStatus: () => showAppSheet<void>(
+                context,
+                (_) => UpdateStatusSheet(internshipKey: internshipKey),
+              ),
+            ),
             if (data.application.applicant != null) ...[
               const SizedBox(height: AppSpacing.section),
               ApplicantCard(

@@ -43,6 +43,17 @@ abstract interface class ApplicationService {
     required ApplicationStatus previous,
   });
 
+  /// Records the stage the student reached (techjobs.vn-style tracker): the
+  /// app writes [status], so the tracker shows the student's own progress
+  /// instead of invented employer events.
+  ///
+  /// `withdrawn` is not offered by the UI: Withdraw and Undo own that
+  /// transition because they also keep `withdrawnAt` / `previousStatus`.
+  Future<void> updateStatus(
+    String internshipKey, {
+    required ApplicationStatus status,
+  });
+
   /// Restores the status the application had before it was withdrawn.
   Future<void> undoWithdrawal(String internshipKey);
 }
@@ -191,6 +202,26 @@ class FirestoreApplicationService implements ApplicationService {
     'withdrawnAt': FieldValue.serverTimestamp(),
     'previousStatus': previous.storageValue,
   }, action: 'withdraw this application');
+
+  @override
+  Future<void> updateStatus(
+    String internshipKey, {
+    required ApplicationStatus status,
+  }) async {
+    // Withdraw / Undo own the withdrawn transition: they also write
+    // `withdrawnAt` and `previousStatus`, which a plain status write would
+    // leave stale.
+    if (!status.isTrackable) {
+      throw const AppException(
+        AppErrorKind.unknown,
+        'Use Withdraw application to withdraw this application.',
+      );
+    }
+    await _updateApplication(internshipKey, <String, Object?>{
+      'status': status.storageValue,
+      'statusUpdatedAt': FieldValue.serverTimestamp(),
+    }, action: 'update this application');
+  }
 
   @override
   Future<void> undoWithdrawal(String internshipKey) async {

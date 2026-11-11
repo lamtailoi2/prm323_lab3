@@ -27,6 +27,23 @@ enum ApplicationStatus {
   bool get canWithdraw =>
       this == submitted || this == underReview || this == interview;
 
+  /// The statuses the student sets themselves while tracking: Internly only
+  /// records that an application was sent, every later stage is reported by
+  /// the student (G-25 #6, techjobs.vn-style tracker).
+  ///
+  /// [withdrawn] is not here: only the withdraw action writes it, so that
+  /// `previousStatus` and the 24-hour Undo stay meaningful.
+  static const List<ApplicationStatus> trackable = <ApplicationStatus>[
+    submitted,
+    underReview,
+    interview,
+    accepted,
+    rejected,
+  ];
+
+  /// `false` for [withdrawn], which the student reaches through Withdraw.
+  bool get isTrackable => this != withdrawn;
+
   /// Parses a stored value; `null` for an unknown one.
   static ApplicationStatus? fromStorage(String raw) {
     for (final status in values) {
@@ -73,6 +90,7 @@ class InternshipApplication {
     this.nextStepAt,
     this.withdrawnAt,
     this.previousStatus,
+    this.statusUpdatedAt,
     this.cvFileName,
     this.cvUrl,
     this.cvStoragePath,
@@ -102,6 +120,7 @@ class InternshipApplication {
         'previousStatus',
         ApplicationStatus.fromStorage,
       ),
+      statusUpdatedAt: reader.optionalDateTime('statusUpdatedAt'),
       cvFileName: reader.optionalString('cvFileName'),
       cvUrl: reader.optionalString('cvUrl'),
       cvStoragePath: reader.optionalString('cvStoragePath'),
@@ -144,6 +163,11 @@ class InternshipApplication {
 
   /// Status before the withdrawal, restored by `Undo`.
   final ApplicationStatus? previousStatus;
+
+  /// When the student last set [status] themselves; `null` on documents
+  /// written before this field existed and for the initial `submitted`
+  /// record (its date is [appliedAt]).
+  final DateTime? statusUpdatedAt;
 
   /// The CV actually sent, snapshotted so the record survives a Profile
   /// change: name, download URL (for `Preview`) and Storage path.

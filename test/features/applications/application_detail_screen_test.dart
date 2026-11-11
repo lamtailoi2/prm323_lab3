@@ -337,6 +337,87 @@ void main() {
     expect(find.text('Not selected'), findsOneWidget);
   });
 
+  testWidgets('Update status saves the stage the student picks', (
+    tester,
+  ) async {
+    await pumpDetail(tester);
+
+    await tester.tap(find.byTooltip('Update status'));
+    await tester.pumpAndSettle();
+    expect(find.text('Update status'), findsWidgets);
+
+    // Every stage the student can report; Withdrawn belongs to Withdraw.
+    expect(find.text('Submitted'), findsWidgets);
+    expect(find.text('Interview'), findsOneWidget);
+    expect(find.text('Withdrawn'), findsNothing);
+
+    await tester.tap(find.text('Interview'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save status'));
+    await tester.pumpAndSettle();
+
+    expect(applications.statusUpdates, [
+      (internshipKey: listing.key, status: ApplicationStatus.interview),
+    ]);
+    expect(analytics.parameters['application_update'], {
+      'internship_id': listing.key,
+      'from_status': 'under_review',
+      'to_status': 'interview',
+    });
+  });
+
+  testWidgets('Save status is disabled until the stage changes', (
+    tester,
+  ) async {
+    await pumpDetail(tester);
+
+    await tester.tap(find.byTooltip('Update status'));
+    await tester.pumpAndSettle();
+
+    final save = find.widgetWithText(FilledButton, 'Save status');
+    expect(tester.widget<FilledButton>(save).onPressed, isNull);
+
+    await tester.tap(find.text('Accepted'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+  });
+
+  testWidgets('a withdrawn application hides Update status', (tester) async {
+    applications.results = [
+      buildApplication(status: ApplicationStatus.withdrawn, withdrawn: true),
+    ];
+    await pumpDetail(tester);
+
+    expect(find.byTooltip('Update status'), findsNothing);
+  });
+
+  testWidgets('a failed status write keeps the sheet open with the message', (
+    tester,
+  ) async {
+    applications.updateStatusError = const AppException(
+      AppErrorKind.network,
+      'We could not update this application. Check your connection and try '
+      'again.',
+    );
+    await pumpDetail(tester);
+
+    await tester.tap(find.byTooltip('Update status'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rejected'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save status'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'We could not update this application. Check your connection and try '
+        'again.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Save status'), findsOneWidget);
+  });
+
   testWidgets('loading shows card skeletons', (tester) async {
     applications.gate = Completer<void>();
     await pumpDetail(tester);

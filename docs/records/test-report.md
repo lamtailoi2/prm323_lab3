@@ -917,3 +917,25 @@ Coverage: `firestore.rules.test.mjs` (9 tests) — `users/{uid}` denies signed-o
 
 Findings: the first run failed 4 Firestore cases because the tests addressed `users/alice/profile`; `users/{uid}` is the document itself and a three-segment path is invalid, so the cases now use `users/alice` and `users/alice/<collection>/<doc>`. No rule changed. Running the emulators requires a JDK on `PATH`; `JAVA_HOME` was set as well for the Storage rules runtime. The emulator prints a `sun.misc.Unsafe` warning from the Storage rules runtime on JDK 25; it did not affect results.
 
+---
+
+## Run 44: Student-reported application status (2026-11-11)
+
+**Environment:** Windows 11 · branch `feat/application-status-tracking` (merged `origin/dev` `2a5e3b0`) · Flutter 3.47.3 stable · Dart 3.13.3. No device or emulator was attached, so no build or E2E run.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **231 files, 3 changed** on the first pass, then 0 on the re-run |
+| 2 | `flutter analyze` | **No issues found!** (ran in 6.8 s on the second pass) |
+| 3 | `flutter test test/features/applications test/models/internship_application_test.dart` | **100 tests, all passed** |
+| 4 | `flutter test` (full suite) | **751 tests, all passed** (after merging `dev`) |
+| 5 | `python -m py_compile e2e_test/test_applications.py` | **Passed** (new TC-21 syntax only) |
+| 6 | ARTEMIS TC-21 | **Not run**: no device attached; the case is written and marked `Ready` in `docs/test-plan.md` |
+| 7 | `flutter build apk --debug` | **Not run**: Android toolchain incomplete on this machine |
+
+Findings:
+
+1. The tracker had no in-app writer for `under_review` … `rejected` (G-25 #6), so the stages could only be set from the console. `ApplicationService.updateStatus` + `UpdateStatusSheet` now write them and stamp `statusUpdatedAt` (BR-T8, DC-35).
+2. `withdrawn` is deliberately excluded from the picker: Withdraw / Undo own `withdrawnAt` / `previousStatus`, and a plain status write would leave them stale. A service-level guard refuses it too.
+3. No `application_update` event is logged when the picked stage equals the stored one, so a no-op tap cannot inflate the funnel.
+4. The tracker shows `statusUpdatedAt` only for the active step of a document that has it; older documents keep showing no invented date (rule 7).

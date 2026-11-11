@@ -27,9 +27,17 @@ typedef _Step = ({
 /// does not have, unlike the frame's "Expected review outcome by Oct 24"
 /// banner and per-step process notes (DC-29).
 class ApplicationStatusTracker extends StatelessWidget {
-  const ApplicationStatusTracker({super.key, required this.application});
+  const ApplicationStatusTracker({
+    super.key,
+    required this.application,
+    this.onUpdateStatus,
+  });
 
   final InternshipApplication application;
+
+  /// Opens the `Update status` sheet; hidden when null or while the
+  /// application is withdrawn (Withdraw / Undo own that state).
+  final VoidCallback? onUpdateStatus;
 
   static const List<({String title, String description})> _steps = [
     (
@@ -57,7 +65,22 @@ class ApplicationStatusTracker extends StatelessWidget {
     return DetailSectionCard(
       icon: Symbols.timeline_rounded,
       title: 'Status tracker',
-      action: ApplicationStatusBadge(status: application.status),
+      action: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ApplicationStatusBadge(status: application.status),
+          if (onUpdateStatus != null &&
+              application.status != ApplicationStatus.withdrawn) ...[
+            const SizedBox(width: AppSpacing.s8),
+            IconButton(
+              tooltip: 'Update status',
+              icon: const Icon(Symbols.edit_rounded),
+              iconSize: AppSizes.iconSmall,
+              onPressed: onUpdateStatus,
+            ),
+          ],
+        ],
+      ),
       children: [
         if (progress case final progress?) _ProgressLine(progress: progress),
         for (var i = 0; i < steps.length; i++) ...[
@@ -134,6 +157,10 @@ class ApplicationStatusTracker extends StatelessWidget {
           date: switch (i) {
             0 => formatShortDate(application.appliedAt),
             2 when interviewAt != null => formatMonthDayTime(interviewAt),
+            // The day the student set this stage themselves; absent on older
+            // documents, which then show no invented date (rule 7).
+            _ when i == activeIndex && application.statusUpdatedAt != null =>
+              formatShortDate(application.statusUpdatedAt!),
             _ => null,
           },
           description: _steps[i].description,

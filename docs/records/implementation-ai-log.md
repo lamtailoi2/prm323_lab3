@@ -1120,3 +1120,39 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - `adb` device: Medium Phone API 37 with Google Play services; app `com.group3.internly`, profile build of `42ea1e0`.
   - No functional defect observed. A1–A3, B3, B7, C9, C10 and D1–D4 were not driven and stay `Not run`; R2 (external) is still not run.
 - **Decision:** Accepted only as **internal automated evidence**, not as external UAT. It must not be presented as an `E1`–`E3` session, and the video stays out of Git.
+
+---
+
+### P-94: Student-reported application status (techjobs.vn-style tracker)
+
+- **Request:** (Command Code, 2026-11-11) "https://techjobs.vn/ dựa theo này làm phần application management có nghĩa là system chỉ ghi lại status applied thoi còn các status như interviewed hay acccepted, rejected gì đó thì user sẽ tự điều chỉnh kiểu để tracking". The app records `submitted`; every later stage is reported by the student.
+- **Output:**
+  - `lib/models/internship_application.dart` — `ApplicationStatus.trackable` (submitted, under_review, interview, accepted, rejected) and `isTrackable` (false for `withdrawn`); new optional `statusUpdatedAt`, parsed in `fromFirestore`.
+  - `lib/services/application_service.dart` — `updateStatus(jobKey, status: …)` on the interface and `FirestoreApplicationService`: merge write of `status` + server `statusUpdatedAt`, refusing `withdrawn`.
+  - `lib/features/applications/viewmodels/application_detail_viewmodel.dart` — `updateStatus`: guards a repeated tap, a missing document, a non-trackable status and an unchanged status; logs `application_update` once the write is accepted.
+  - `lib/features/applications/widgets/update_status_sheet.dart` — new `UpdateStatusSheet`: `AppSheet` with one radio row per trackable stage using the shared `ApplicationStatusBadge`; `Save status` disabled until the stage changes; the write error shows inline.
+  - `lib/features/applications/widgets/application_status_tracker.dart` — `onUpdateStatus` action (tooltip `Update status`, hidden for `withdrawn`) and the active step's date from `statusUpdatedAt`.
+  - `lib/features/applications/screens/application_detail_screen.dart` — opens the sheet from the tracker header.
+  - `test/helpers/fakes.dart` — `FakeApplicationService.statusUpdates` / `updateStatusError`.
+  - `test/models/internship_application_test.dart` — the trackable set and `statusUpdatedAt` parsing.
+  - `test/features/applications/application_detail_viewmodel_test.dart` — the write, the `application_update` parameters, the `withdrawn` refusal, the no-op guard and the failure message.
+  - `test/features/applications/application_detail_screen_test.dart` — the picker contents, the disabled `Save status`, the hidden action on a withdrawn application and the inline error.
+  - `e2e_test/test_applications.py` — TC-21 (`Ready`, not run).
+  - Docs: `business-rules.md` (BR-T8, state machine, §2.1 swimlane branch + `updateStatus` app function, traceability row, §6), `architecture.md` (ViewModel, service list, `status` / `statusUpdatedAt` field table, live-detail paragraph), `design/screen-spec.md` (Application Detail secondary action), `design-traceability.md` (DC-35, rows 11 and Flow 3), `analytics-plan.md` (row 12 trigger), `test-plan.md` (TC-21 + coverage), `handoff-gaps.md` (G-25 #6), `test-report.md` (Run 40).
+- **Verification:**
+  - `dart format lib test` → 231 files, 3 changed on the first pass, 0 on the second.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test test/features/applications test/models/internship_application_test.dart` → **102 tests, all passed**.
+  - `flutter test` → **739 tests, all passed**.
+  - `python -m py_compile e2e_test/test_applications.py` → passed.
+  - ARTEMIS TC-21 and `flutter build apk --debug`: **not run** (no device attached, Android toolchain incomplete).
+- **Decision:** Accepted. `withdrawn` stays on Withdraw / Undo so `previousStatus` and the 24-hour window keep their meaning; the app never claims an employer event, it only records what the student reports (rule 7, G-25 #6).
+
+---
+
+### P-95: State machine diagram matches the picker
+
+- **Request:** (Command Code, 2026-11-11) "update state machine diagram".
+- **Output:** `docs/business-rules.md` §2.4 — the diagram no longer implies a strict ladder. `accepted` / `rejected` lose their `[*]` terminal markers (BR-T8 can still move them to another trackable stage), the BR-T8 note says the picker offers all five stages every time, and the prose below the diagram spells out the three cases the arrows do not draw (skip a step, move back to correct a mistake, change a decided application). The `withdrawn` note keeps the 24-hour Undo rule.
+- **Verification:** all five mermaid blocks in `business-rules.md` were rendered with `@mermaid-js/mermaid-cli` 12.2.0; each produced an SVG. The state machine was also rendered to PNG and inspected: layout is readable, both notes fit, and no edge is clipped.
+- **Decision:** Accepted.
