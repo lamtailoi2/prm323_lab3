@@ -27,6 +27,8 @@ The rules commands need `firebase-tools` and a JDK on `PATH` (`java -version`), 
 
 [`business-rules.md`](business-rules.md) — User and Admin actors, actor/system map, swimlanes, `BR-xx` codes at every branch point, application state machine, exception catalogue, and BR ↔ test traceability.
 
+[`business-process-swimlane.md`](business-process-swimlane.md) — the same rules as one council-facing page: one actor/system diagram, the end-to-end student swimlane (prepare → discover → apply → track) and the admin swimlane, exception branches, state machine, and the branch ↔ state ↔ test table.
+
 ## Folders
 
 | Folder | Content |

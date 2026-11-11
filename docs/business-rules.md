@@ -15,6 +15,12 @@ Legend: **User** = signed-in student. **Admin** = operator of
 `tools/admin-dashboard` on the local machine. **System** = app, Firebase,
 Cloud Functions, external APIs.
 
+The council-facing end-to-end view of these same rules — one actor/system map, the
+student and admin swimlanes drawn as a single process, the exception branches, the
+state machine and a branch ↔ state ↔ test table — is
+[`business-process-swimlane.md`](business-process-swimlane.md). The rule text and the
+full traceability matrix below stay the single source of truth.
+
 ## 1. Actors and systems in one diagram
 
 ```mermaid
