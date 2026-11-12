@@ -1218,3 +1218,33 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - `npm run dev` → `GET /` **200**; `GET /api/status` **401** `Sign in to use the dashboard.` (the allowlist is now loaded, not 503); `/src/firebase.js` contains the web config (`VITE_*` injected).
   - **Not run:** Vercel deployment and GA4 realtime. The GA4 Admin API is disabled on `prm-lab3`, so the numeric property id was not discovered; `GA4_PROPERTY_ID` stays unset until the owner enables the Data API and adds the service account as Viewer.
 - **Decision:** Accepted. Local run is ready; the remaining steps are the Vercel import and, optionally, GA4.
+
+---
+
+### P-98: State diagrams and business flows
+
+- **Request:** (Command Code, 2026-11-12) "dựa vào project, có thể vẽ thêm giúp tôi state diagram và business flow được không".
+- **Output:**
+  - 9 state diagrams: `state-session`, `state-view-state`, `state-cv-library`, `state-application`, `state-saved`, `state-report-export`, `state-notification`, `state-sync-job`, `state-listing` (`.mmd` + PNG in `docs/records/diagrams/`).
+  - 3 business flows: `business-flow-overview`, `business-flow-report-export`, `business-flow-admin`.
+  - `docs/records/state-and-business-flows.md` maps each diagram to its code and `BR-xx`; linked from `docs/README.md` and `business-rules.md`.
+- **Verification:** every `.mmd` rendered with `@mermaid-js/mermaid-cli` (`-b white -s 2`); 12 `.mmd`/`.png` pairs checked fresh and non-empty. One CV-library label failed on a `;` statement separator and was fixed before rendering.
+- **Decision:** Accepted as documentation; no app code changed.
+
+---
+
+### P-99: Internal UAT R1-B automated follow-up
+
+- **Request:** (Command Code, 2026-11-12/13) "bạn có thể chạy hoàn thiện giúp tôi được không" after the UAT review; complete the 11 scenarios R1-A did not run.
+- **Output:**
+  - Ran R1-B on `emulator-5554` (Medium Phone API 37), build `0.1.0` (versionCode 1, installed 2026-11-12 21:27), team Google account, adb + uiautomator taps.
+  - Results: A1, A2, A3, B3, C9, C10, D1, D2, D3, D4 **Pass**; B7 **Fail** (S2, `UAT-R1B-01`: offline Saved/Search show an empty state, no error + Retry; reconnecting restores the data).
+  - Evidence: 24 full-screen captures in `evidence/uat/uat-r1b-*.png`; no continuous video.
+  - `docs/records/uat-results.md`: R1-B index row, session section with the 11 rows, defect table, slide-21 wording (23 Pass · 1 Fail · 0 Not run internal), acceptance note; R1-A remains 13 Pass · 11 Not run.
+  - Restored the team account: original CV default, headline `SWE`, skills `Docker`, preferences `Not set`, signed in; no application was added.
+- **Verification:**
+  - `adb devices` → `emulator-5554`; API 37; `dumpsys package` → versionName 0.1.0, versionCode 1.
+  - Each result asserted on visible text/state (Login, Home, `No internships found`, `Your CV passed the check.`, 9 applications, 2 saved, etc.).
+  - All 24 screenshot paths referenced by the doc exist and are non-empty.
+  - B7 reproduced with an empty Firestore cache after disabling Wi-Fi/data; reconnecting auto-restored 2 saved items and the pool.
+- **Decision:** Accepted as **internal automated evidence**, not external UAT. E1–E3 remain `Not run` (no external participants), so the acceptance checklist stays unfilled. B7 stays open S2; no fix attempted in this round.
