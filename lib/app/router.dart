@@ -10,19 +10,18 @@ import '../features/applications/screens/my_applications_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/home/screens/home_screen.dart';
+import '../features/internships/models/apply_session.dart';
 import '../features/internships/models/search_filter_criteria.dart';
-import '../features/internships/screens/application_review_screen.dart';
 import '../features/internships/screens/application_success_screen.dart';
-import '../features/internships/screens/apply_form_screen.dart';
+import '../features/internships/screens/apply_compose_screen.dart';
 import '../features/internships/screens/internship_detail_screen.dart';
 import '../features/internships/screens/search_results_screen.dart';
 import '../features/internships/screens/search_screen.dart';
-import '../features/internships/viewmodels/apply_form_viewmodel.dart'
-    show ApplySession;
 import '../features/notifications/screens/notification_center_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/firebase_demo_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
+import '../features/report_export/screens/report_export_screen.dart';
 import '../features/saved/screens/saved_screen.dart';
 import '../models/app_user.dart';
 import '../models/internship.dart';
@@ -45,6 +44,7 @@ abstract final class AppRoutes {
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
   static const String firebaseDemo = '/profile/firebase';
+  static const String reportExport = '/profile/export';
   static const String notificationCenter = notificationCenterPath;
 
   /// Internship Detail opened from the [tab] it belongs to, e.g.
@@ -65,11 +65,8 @@ abstract final class AppRoutes {
   static String applyValidation(String tab, String internshipKey) =>
       '${applyForm(tab, internshipKey)}/validation';
 
-  static String applicationReview(String tab, String internshipKey) =>
-      '${applyForm(tab, internshipKey)}/review';
-
   static String applicationSuccess(String tab, String internshipKey) =>
-      '${applicationReview(tab, internshipKey)}/success';
+      '${applyForm(tab, internshipKey)}/success';
 
   /// One application, from My Applications or `View application`.
   static String applicationDetail(String internshipKey) =>
@@ -190,6 +187,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 builder: (context, state) => const FirebaseDemoScreen(),
               ),
+              // Lab 3 "export and upload" (G-05): a PDF of the student's own
+              // applications, above the shell like the other Profile tools.
+              GoRoute(
+                path: 'export',
+                name: 'report_export',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => const ReportExportScreen(),
+              ),
               // The Notification Center opens above the shell, so Back
               // returns to the tab the bell was tapped on (G-04).
               GoRoute(
@@ -261,13 +266,15 @@ GoRoute _internshipDetail(String source) {
     routes: [
       GoRoute(
         path: 'apply',
-        name: '${source}_apply_form',
+        name: '${source}_apply_email',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => ApplyFormScreen(
+        builder: (context, state) => ApplyComposeScreen(
           internshipKey: state.pathParameters['jobKey']!,
           source: source,
         ),
         routes: [
+          // Optional, advisory CV checks: they pop back to the compose
+          // screen and never block sending the email.
           GoRoute(
             path: 'match',
             name: '${source}_cv_match',
@@ -289,28 +296,16 @@ GoRoute _internshipDetail(String source) {
             ),
           ),
           GoRoute(
-            path: 'review',
-            name: '${source}_application_review',
+            path: 'success',
+            name: '${source}_application_success',
             parentNavigatorKey: rootNavigatorKey,
-            builder: (context, state) => ApplicationReviewScreen(
-              internshipKey: state.pathParameters['jobKey']!,
-              source: source,
-              session: _applySession(state),
+            builder: (context, state) => ApplicationSuccessScreen(
+              internshipTitle: _successArgs(state)?.internshipTitle,
+              companyName: _successArgs(state)?.companyName,
+              workMode: _successArgs(state)?.workMode,
+              logoUrl: _successArgs(state)?.logoUrl,
+              submittedAt: _successArgs(state)?.submittedAt,
             ),
-            routes: [
-              GoRoute(
-                path: 'success',
-                name: '${source}_application_success',
-                parentNavigatorKey: rootNavigatorKey,
-                builder: (context, state) => ApplicationSuccessScreen(
-                  internshipTitle: _successArgs(state)?.internshipTitle,
-                  companyName: _successArgs(state)?.companyName,
-                  workMode: _successArgs(state)?.workMode,
-                  logoUrl: _successArgs(state)?.logoUrl,
-                  submittedAt: _successArgs(state)?.submittedAt,
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -318,14 +313,14 @@ GoRoute _internshipDetail(String source) {
   );
 }
 
-/// The CV and `apply_start` time handed from the Apply Form to Validate CV
-/// and Review; `null` when the location was opened directly.
+/// The CV and `apply_start` time handed from the compose screen to the
+/// optional CV Match / Validate steps; `null` when opened directly.
 ApplySession? _applySession(GoRouterState state) {
   final extra = state.extra;
   return extra is ApplySession ? extra : null;
 }
 
-/// The recap handed from Review to Success.
+/// The recap handed from the compose screen to Success.
 ApplicationSuccessArgs? _successArgs(GoRouterState state) {
   final extra = state.extra;
   return extra is ApplicationSuccessArgs ? extra : null;

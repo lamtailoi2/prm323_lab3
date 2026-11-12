@@ -10,6 +10,7 @@ import '../../../core/errors/app_exception.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/distinct_listings.dart';
+import '../../../core/utils/greeting.dart';
 import '../../../core/utils/job_role.dart';
 import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/internship_card.dart';
@@ -20,8 +21,10 @@ import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_spacing.dart';
 import '../../applications/viewmodels/applied_providers.dart';
+import '../../notifications/viewmodels/unread_notifications_provider.dart';
 import '../../saved/viewmodels/saved_providers.dart';
 import '../../saved/viewmodels/saved_viewmodel.dart';
+import '../viewmodels/greeting_name_provider.dart';
 import '../viewmodels/home_viewmodel.dart';
 import '../widgets/home_section_header.dart';
 import '../widgets/role_shortcuts.dart';
@@ -52,10 +55,18 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: MainTabAppBar(
-        title: 'Home',
+        // Home greets the student by name (Tab Header v2, DC-31).
+        // Google's given name when known, else the full account name.
+        title:
+            ref.watch(homeGivenNameProvider).value ??
+            _displayName(user?.displayName) ??
+            'Home',
+        greeting: greetingFor(DateTime.now()),
         user: user,
         onProfile: () => context.go(AppRoutes.profile),
         onNotifications: () => context.push(AppRoutes.notificationCenter),
+        unreadNotifications:
+            ref.watch(unreadNotificationCountProvider).value ?? 0,
       ),
       body: CustomScrollView(
         slivers: [
@@ -135,6 +146,12 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+/// The Google account name, or null when it is missing or blank.
+String? _displayName(String? name) {
+  final trimmed = name?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.state,
@@ -155,7 +172,7 @@ class _HomeHeader extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.screenHorizontal,
-            AppSpacing.s16,
+            AppSpacing.s8,
             AppSpacing.screenHorizontal,
             0,
           ),
@@ -205,7 +222,7 @@ class _FeedLists extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final savedIds = ref.watch(savedInternshipIdsProvider);
+    final savedJobs = ref.watch(savedJobsProvider);
     final appliedJobs =
         ref.watch(appliedJobsProvider).asData?.value ?? const <String>{};
     return Column(
@@ -213,12 +230,12 @@ class _FeedLists extends ConsumerWidget {
       children: [
         if (feed.recommended.isNotEmpty) ...[
           _sectionHeader('Recommended for you'),
-          _cards(context, ref, feed.recommended, savedIds, appliedJobs),
+          _cards(context, ref, feed.recommended, savedJobs, appliedJobs),
         ],
         if (feed.recent.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.section),
           _sectionHeader('Recently Posted'),
-          _cards(context, ref, feed.recent, savedIds, appliedJobs),
+          _cards(context, ref, feed.recent, savedJobs, appliedJobs),
         ],
         const SizedBox(height: AppSpacing.section),
       ],
@@ -245,7 +262,7 @@ class _FeedLists extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     List<Internship> internships,
-    Set<String> savedIds,
+    Set<String> savedJobs,
     Set<String> appliedJobs,
   ) {
     return Column(
@@ -267,7 +284,9 @@ class _FeedLists extends ConsumerWidget {
               tags: internship.skills,
               allowanceText: formatAllowance(internship.salary),
               postedText: internship.postedText,
-              isSaved: savedIds.contains(internship.key),
+              isSaved: savedJobs.contains(
+                jobIdentity(internship.title, internship.companyName),
+              ),
               isApplied: appliedJobs.contains(
                 jobIdentity(internship.title, internship.companyName),
               ),

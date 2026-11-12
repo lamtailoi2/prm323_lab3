@@ -49,7 +49,7 @@ The Lab 2 README mentions **four helper colors** (pressed, error container, disa
 | pressed | Reduced emphasis of the existing color (`AppTheme.pressedOpacity = 0.7`, **verify**) | Figma 05 Button: *"Pressed uses reduced emphasis, not a new color."* |
 | disabled container | `color/surface-variant` | Figma 05 disabled Button / Text Field specimens, AI log text-field spec |
 | error container | Not used: status badges use `surface-variant` | Figma 05 Application Status: *"Use surfaceVariant, never invented semantic tints."* |
-| inverse surface | `color/text/primary` `#0F172A` for the dark SnackBar surface, `surface` `#FFFFFF` for its content, `primary-container` `#DBEAFE` for its action label (`colorScheme.inverseSurface` / `onInverseSurface` / `inversePrimary`) | `AppTheme` (G-07, DC-21) |
+| inverse surface | `color/text/primary` `#0F172A` for the dark SnackBar surface, `surface` `#FFFFFF` for its content, `primary-container` `#DBEAFE` for its action label (`colorScheme.inverseSurface` / `onInverseSurface` / `inversePrimary`). `AppColors.inverseSurface` (`#0F172A`, the Figma `color/inverse-surface` value) is the tab-header scrim, used with an alpha | `AppTheme` (G-07, DC-21); `MainTabAppBar` (DC-31) |
 
 ### 1.2 Typography: Inter, 8 styles
 
@@ -175,6 +175,7 @@ App (DC-25): one line by default with the placeholder `Search role, company, ski
 
 - Content order: company logo (40 dp, `AppSizes.companyLogo`, neutral fallback) + job title (`title`, max 2 lines) + save action (top right) → company (`bodySmall`) → location + work mode with icons (`bodySmall`) → skill tags (`surfaceVariant`, radius 8) → allowance (emphasised) → posted date (`caption`).
 - Internship Detail header logo: 48 dp (`AppSizes.companyLogoLarge`, Figma 202:243), initials on `primaryContainer` as fallback; the company section reuses the 40 dp size.
+- Internship Detail header badges (DC-28): the job family and experience level reuse `AppTag` compact (radius 8, `surfaceVariant`, `bodySmall`) because page 05 has no separate Badge specimen (G-16).
 - States: Default · Pressed (reduced emphasis) · Saved (`bookmark` filled, `primary`).
 - Card surface comes from `CardThemeData`: white, 1 px `border`, radius 16, elevation 0.
 - The widget takes display-ready strings (no data model), plus an optional `badge` slot for `Applied` (Flow 2c). Inner gaps (4/8 dp) and the tag text style are **verify**.
@@ -191,7 +192,7 @@ App (DC-25): one line by default with the placeholder `Search role, company, ski
 
 Clean surface: no shadow and no bottom border. Figma overrides the 1 px border in the Stitch prompt.
 
-Bottom-navigation destinations render the same `.main` bar through `MainTabAppBar` (`core/widgets/main_tab_app_bar.dart`): title (= destination label) → notification bell → profile avatar. Only the title changes between tabs. The leading slot stays empty, so there is no brand mark and the title keeps the normal 16 dp text margin (DC-20).
+Bottom-navigation destinations use `MainTabAppBar` (`core/widgets/main_tab_app_bar.dart`), the photo header of UI v2 (DC-31): `assets/images/tab_header.jpg` behind the status bar, an `inverse-surface` scrim (55 % → 35 %), white title, glass bell (`on-primary` at 20 %) with a `color/error` count badge while notifications are unread (`9+` above nine, DC-34), and the body's rounded top (`radius/16`) painted in its last 24 dp (`MainTabAppBar.sheetOverlap`). Home passes `greeting` and shows avatar + greeting + name; the title uses the largest of `heading/large` / `heading/medium` / `title` that fits on one line, then an ellipsis; the other tabs show the title, an optional `summary` line and the avatar after the bell (DC-20); Profile shows the bell only. Replace the JPEG to change the photo; it is decoration only.
 
 ### 2.7 Bottom Navigation: 5 specimens · Themed (`NavigationBarThemeData`) + `AppShell`
 
@@ -268,6 +269,10 @@ No specimen exists yet for these three; built from the tokens so Internship Deta
 - **`CompanyLogo`** (`core/widgets/company_logo.dart`) — square logo, initials fallback on `primaryContainer` when `url` is absent or fails to load (Figma "Logo").
 - **`DetailRow`** (`core/widgets/detail_row.dart`) — one label/value pair, `Semantics` announced as `"$label: $value"` (Figma "Review Row").
 - **`DetailSectionCard`** (`core/widgets/detail_section_card.dart`) — bordered section with an icon + title header, optional `isRequired` marker and trailing `action` (Figma "Section Header").
+
+Feature-local UI v2 pieces (DC-31), built from the Figma section "Final UI v2 · All screens (Header v2)":
+
+- **`JobHeroCard`** (`features/internships/widgets/job_hero_card.dart`) — Figma "Job Hero Card": cover (`assets/images/job_cover.jpg`, `AppSizes.jobCoverHeight`), logo overlapping it (`AppSizes.companyLogoHero`), title, `Company · City`, meta chips, allowance band, work mode / job type tiles, applied badge + note.
 
 ---
 

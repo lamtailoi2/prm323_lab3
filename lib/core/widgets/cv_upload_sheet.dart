@@ -27,6 +27,11 @@ class CvUploadSheet extends StatelessWidget {
     required this.onChoose,
     required this.onRemove,
     required this.onPrimary,
+    this.title,
+    this.primaryLabel,
+    this.library = const <CvFile>[],
+    this.selectedPath,
+    this.onSelectLibrary,
     this.selectedName,
     this.selectedSizeBytes,
     this.progress,
@@ -34,6 +39,22 @@ class CvUploadSheet extends StatelessWidget {
   });
 
   final String subtitle;
+
+  /// Defaults to `Update CV` / `Upload CV`, as the Profile sheet did before
+  /// the library existed. The library's add flow says `Add CV`.
+  final String? title;
+  final String? primaryLabel;
+
+  /// The student's CV library, offered before the file picker so a CV that
+  /// already exists is one tap away (G-33). Empty everywhere except the
+  /// Apply Form sheet, which has a library to choose from.
+  final List<CvFile> library;
+
+  /// The `storagePath` of the CV currently used, so the list marks it.
+  final String? selectedPath;
+
+  /// `Choose` on a library entry. `null` hides the library part.
+  final ValueChanged<CvFile>? onSelectLibrary;
 
   /// The CV being replaced; `null` for a first upload.
   final CvFile? current;
@@ -60,17 +81,41 @@ class CvUploadSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final replacing = current != null;
+    final library = this.library;
+    final onSelectLibrary = this.onSelectLibrary;
 
     return AppSheet(
       icon: Symbols.upload_file_rounded,
-      title: replacing ? 'Update CV' : 'Upload CV',
+      title: title ?? (replacing ? 'Update CV' : 'Upload CV'),
       subtitle: subtitle,
-      primaryLabel: replacing ? 'Update CV' : 'Upload CV',
+      primaryLabel: primaryLabel ?? (replacing ? 'Update CV' : 'Upload CV'),
       primaryIcon: Symbols.sync_rounded,
       isLoading: progress != null,
       error: error,
       onPrimary: selectedName == null ? null : onPrimary,
       children: [
+        if (onSelectLibrary != null && library.isNotEmpty) ...[
+          Semantics(
+            header: true,
+            child: Text('From your library', style: textTheme.labelLarge),
+          ),
+          const SizedBox(height: AppSpacing.s8),
+          for (var i = 0; i < library.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.s12),
+            _LibraryTile(
+              cv: library[i],
+              isSelected: library[i].storagePath == selectedPath,
+              enabled: progress == null,
+              onTap: () => onSelectLibrary(library[i]),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.section),
+          Semantics(
+            header: true,
+            child: Text('Or upload a new CV', style: textTheme.labelLarge),
+          ),
+          const SizedBox(height: AppSpacing.s8),
+        ],
         if (current case final cv?) ...[
           _Panel(
             child: Column(
@@ -209,6 +254,64 @@ class _PickerArea extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One CV from the student's library, tappable to use it for this
+/// application. The selected entry carries a check and a primary outline, so
+/// the choice is never shown by colour alone.
+class _LibraryTile extends StatelessWidget {
+  const _LibraryTile({
+    required this.cv,
+    required this.isSelected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final CvFile cv;
+  final bool isSelected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '${cv.displayName}, ${isSelected ? 'selected' : 'choose'}',
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: AppRadii.mediumAll,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: AppSizes.tagLarge),
+          padding: const EdgeInsets.all(AppSpacing.s12),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: AppRadii.mediumAll,
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          child: CvFileTile(
+            fileName: cv.displayName,
+            details:
+                '${formatFileSize(cv.sizeBytes)} · '
+                'Uploaded ${formatShortDate(cv.uploadedAt)}',
+            trailing: isSelected
+                ? const Icon(
+                    Symbols.check_circle_rounded,
+                    color: AppColors.primary,
+                    size: AppSizes.iconSmall,
+                  )
+                : const Icon(
+                    Symbols.chevron_right_rounded,
+                    color: AppColors.textSecondary,
+                    size: AppSizes.iconSmall,
+                  ),
+          ),
+        ),
       ),
     );
   }

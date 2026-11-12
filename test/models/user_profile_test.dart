@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/utils/firestore_reader.dart';
+import 'package:internly/core/utils/job_level.dart';
 import 'package:internly/core/utils/job_role.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/models/user_profile.dart';
@@ -9,6 +10,14 @@ void main() {
   final uploadedAt = DateTime.utc(2026, 10, 14, 9);
 
   group('UserProfile.fromFirestore', () {
+    test('givenName is read when present and null otherwise', () {
+      expect(
+        UserProfile.fromFirestore('uid-1', {'givenName': 'Anh'}).givenName,
+        'Anh',
+      );
+      expect(UserProfile.fromFirestore('uid-1', {}).givenName, isNull);
+    });
+
     test('valid document: every section is parsed', () {
       final profile = UserProfile.fromFirestore('uid-1', {
         'fullName': 'Minh Nguyen',
@@ -19,6 +28,7 @@ void main() {
         'skills': ['Flutter', 'React', 'NestJS', 'MongoDB'],
         'preferences': {
           'targetRoles': ['mobile', 'software_engineer'],
+          'experience': 'one_to_two',
           'workModes': ['hybrid', 'on_site'],
           'location': 'Ho Chi Minh City',
         },
@@ -29,6 +39,7 @@ void main() {
           'sizeBytes': 430080,
           'uploadedAt': Timestamp.fromDate(uploadedAt),
         },
+        'defaultCvId': 'cv-1',
       });
 
       expect(profile.details.fullName, 'Minh Nguyen');
@@ -41,11 +52,13 @@ void main() {
         TargetRole.mobile,
         TargetRole.softwareEngineer,
       ]);
+      expect(profile.preferences.experience, ExperienceRange.oneToTwo);
       expect(profile.preferences.workModes, [WorkMode.hybrid, WorkMode.onSite]);
       expect(profile.preferences.location, 'Ho Chi Minh City');
       expect(profile.cv?.fileName, 'Minh_Nguyen_CV_SE.pdf');
       expect(profile.cv?.sizeBytes, 430080);
       expect(profile.cv!.uploadedAt.isAtSameMomentAs(uploadedAt), isTrue);
+      expect(profile.defaultCvId, 'cv-1');
     });
 
     test('missing document or optional fields: an empty profile', () {
@@ -66,6 +79,7 @@ void main() {
         'skills': ['Flutter', 42, ''],
         'preferences': {
           'targetRoles': ['mobile', 'astronaut'],
+          'experience': 'expert',
           'workModes': 'remote',
         },
       });
@@ -74,7 +88,21 @@ void main() {
       expect(profile.details.yearOfStudy, isNull);
       expect(profile.skills, ['Flutter']);
       expect(profile.preferences.targetRoles, [TargetRole.mobile]);
+      expect(profile.preferences.experience, isNull);
       expect(profile.preferences.workModes, isEmpty);
+    });
+
+    test('a legacy profile without an experience field reads as not set', () {
+      final profile = UserProfile.fromFirestore('uid-1', {
+        'preferences': {
+          'targetRoles': ['mobile'],
+          'workModes': ['remote'],
+        },
+      });
+
+      expect(profile.preferences.targetRoles, [TargetRole.mobile]);
+      expect(profile.preferences.experience, isNull);
+      expect(profile.preferences.toFirestore()['experience'], isNull);
     });
 
     test('a CV without its required fields is treated as no CV', () {
@@ -107,6 +135,60 @@ void main() {
     });
   });
 
+  group('CvFile library document', () {
+    test('parses the id, label and optional size', () {
+      final cv = CvFile.fromFirestore('cv-9', {
+        'fileName': 'backend.pdf',
+        'url': 'https://storage.example/cvs/backend.pdf',
+        'storagePath': 'cvs/uid-1/backend-abc.pdf',
+        'label': 'Backend CV',
+        'uploadedAt': Timestamp.fromDate(uploadedAt),
+      });
+
+      expect(cv.id, 'cv-9');
+      expect(cv.label, 'Backend CV');
+      expect(cv.displayName, 'Backend CV');
+      expect(cv.sizeBytes, 0);
+      expect(cv.fileName, 'backend.pdf');
+      expect(cv.storagePath, 'cvs/uid-1/backend-abc.pdf');
+    });
+
+    test('a malformed document names the missing required field', () {
+      expect(
+        () => CvFile.fromFirestore('cv-9', {
+          'fileName': 'backend.pdf',
+          'url': 'https://storage.example/cvs/backend.pdf',
+          'uploadedAt': Timestamp.fromDate(uploadedAt),
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('storagePath'),
+          ),
+        ),
+      );
+    });
+
+    test('copyWith changes the id or label only', () {
+      final cv = CvFile(
+        fileName: 'cv.pdf',
+        url: 'https://storage.example/cv.pdf',
+        storagePath: 'cvs/uid-1/cv.pdf',
+        sizeBytes: 2048,
+        uploadedAt: uploadedAt,
+      );
+
+      final labelled = cv.copyWith(id: 'cv-1', label: 'Mobile CV');
+      expect(labelled.id, 'cv-1');
+      expect(labelled.displayName, 'Mobile CV');
+      expect(labelled.fileName, cv.fileName);
+      expect(labelled.storagePath, cv.storagePath);
+      expect(labelled.copyWith(label: null).label, 'Mobile CV');
+      expect(labelled == cv, isFalse);
+    });
+  });
+
   group('toFirestore', () {
     test('round-trips through fromFirestore', () {
       final cv = CvFile(
@@ -127,6 +209,7 @@ void main() {
       );
       const preferences = InternshipPreferences(
         targetRoles: [TargetRole.frontend, TargetRole.qaTester],
+        experience: ExperienceRange.underOne,
         workModes: [WorkMode.remote],
         location: 'Hanoi',
       );
@@ -156,6 +239,7 @@ void main() {
       );
       expect(preferences.toFirestore(), {
         'targetRoles': ['software_engineer', 'qa_tester'],
+        'experience': null,
         'workModes': ['on_site'],
         'location': null,
       });
@@ -181,10 +265,56 @@ void main() {
     expect(TargetRole.backend.jobRoles, {JobRole.backend});
     expect(TargetRole.mobile.jobRoles, {JobRole.mobile});
     expect(TargetRole.qaTester.jobRoles, {JobRole.tester});
+    expect(TargetRole.dataAi.jobRoles, {JobRole.dataAi});
+    expect(TargetRole.devOps.jobRoles, {JobRole.devOps});
     expect(TargetRole.softwareEngineer.jobRoles, {
       JobRole.backend,
       JobRole.fullStack,
       JobRole.otherIt,
     });
+  });
+
+  test('every Home listing role is covered by a target role', () {
+    final covered = {
+      for (final target in TargetRole.values) ...target.jobRoles,
+    };
+    expect(covered, JobRole.values.toSet());
+  });
+
+  test('experience bands store snake_case and map to levels', () {
+    expect(
+      const InternshipPreferences(experience: ExperienceRange.twoPlus)
+          .toFirestore()['experience'],
+      'two_plus',
+    );
+    expect(ExperienceRange.none.levels, {JobLevel.intern});
+    expect(ExperienceRange.underOne.levels, {
+      JobLevel.intern,
+      JobLevel.fresher,
+    });
+    expect(ExperienceRange.oneToTwo.levels, {
+      JobLevel.fresher,
+      JobLevel.junior,
+    });
+    expect(ExperienceRange.twoPlus.levels, {JobLevel.junior});
+  });
+
+  test('profiles that differ only by experience are not equal', () {
+    const without = InternshipPreferences();
+    const withNone = InternshipPreferences(experience: ExperienceRange.none);
+    expect(without, isNot(withNone));
+    expect(without.hashCode, isNot(withNone.hashCode));
+  });
+
+  test('givenName and defaultCvId take part in equality', () {
+    const base = UserProfile();
+    const withName = UserProfile(givenName: 'Anh');
+    const withDefault = UserProfile(defaultCvId: 'cv-1');
+
+    expect(base, isNot(withName));
+    expect(base, isNot(withDefault));
+    expect(withName, isNot(withDefault));
+    expect(base.hashCode, isNot(withName.hashCode));
+    expect(base.hashCode, isNot(withDefault.hashCode));
   });
 }

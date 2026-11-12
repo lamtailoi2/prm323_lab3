@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../core/utils/firestore_reader.dart';
+import '../core/utils/job_level.dart';
 import '../core/utils/job_role.dart';
 import 'internship.dart' show WorkMode;
 
@@ -17,6 +18,8 @@ class UserProfile {
     this.skills = const <String>[],
     this.preferences = const InternshipPreferences(),
     this.cv,
+    this.givenName,
+    this.defaultCvId,
   });
 
   factory UserProfile.fromFirestore(String id, Map<String, Object?>? data) {
@@ -28,6 +31,8 @@ class UserProfile {
         reader.optionalMap('preferences'),
       ),
       cv: _optionalCv(reader),
+      givenName: reader.optionalString('givenName'),
+      defaultCvId: reader.optionalString('defaultCvId'),
     );
   }
 
@@ -36,7 +41,17 @@ class UserProfile {
   final InternshipPreferences preferences;
 
   /// The default CV for applications; `null` until one is uploaded.
+  ///
+  /// Also a mirror of the default document under `users/{uid}/cvs` for
+  /// backwards compatibility with builds that only knew this field.
   final CvFile? cv;
+
+  /// Google's `given_name`, used by the Home greeting while it is known.
+  final String? givenName;
+
+  /// The `id` of the default document under `users/{uid}/cvs`; `null` lets
+  /// the legacy [cv] mirror be the default.
+  final String? defaultCvId;
 
   @override
   bool operator ==(Object other) =>
@@ -44,11 +59,19 @@ class UserProfile {
       other.details == details &&
       listEquals(other.skills, skills) &&
       other.preferences == preferences &&
-      other.cv == cv;
+      other.cv == cv &&
+      other.givenName == givenName &&
+      other.defaultCvId == defaultCvId;
 
   @override
-  int get hashCode =>
-      Object.hash(details, Object.hashAll(skills), preferences, cv);
+  int get hashCode => Object.hash(
+    details,
+    Object.hashAll(skills),
+    preferences,
+    cv,
+    givenName,
+    defaultCvId,
+  );
 
   /// A malformed `cv` map is treated as "no CV" instead of hiding the whole
   /// profile: the student can still upload a new one, which overwrites it.
@@ -155,33 +178,60 @@ class ProfileDetails {
   );
 }
 
-/// Target roles offered by the Update Preferences frame, in its order.
+/// Self-reported years of experience, used only to break ranking ties.
+///
+/// Google Jobs has no structured experience field, so the bands map to the
+/// early-career levels we can read from a listing title ([JobLevel]).
+enum ExperienceRange {
+  none('No experience'),
+  underOne('Under 1 year'),
+  oneToTwo('1–2 years'),
+  twoPlus('2+ years');
+
+  const ExperienceRange(this.label);
+
+  final String label;
+
+  /// Early-career levels this band can apply to.
+  Set<JobLevel> get levels => switch (this) {
+    none => const {JobLevel.intern},
+    underOne => const {JobLevel.intern, JobLevel.fresher},
+    oneToTwo => const {JobLevel.fresher, JobLevel.junior},
+    twoPlus => const {JobLevel.junior},
+  };
+}
+
+/// Target roles offered by the Update Preferences sheet, in its order.
 enum TargetRole {
-  softwareEngineer('Software Engineer Intern', {
+  softwareEngineer('Software Engineer', {
     JobRole.backend,
     JobRole.fullStack,
     JobRole.otherIt,
   }),
-  mobile('Mobile Intern', {JobRole.mobile}),
-  frontend('Frontend Intern', {JobRole.frontend}),
-  backend('Backend Intern', {JobRole.backend}),
-  qaTester('QA / Tester Intern', {JobRole.tester});
+  mobile('Mobile', {JobRole.mobile}),
+  frontend('Frontend', {JobRole.frontend}),
+  backend('Backend', {JobRole.backend}),
+  qaTester('QA / Tester', {JobRole.tester}),
+  dataAi('Data / AI', {JobRole.dataAi}),
+  devOps('DevOps / Cloud', {JobRole.devOps});
 
   const TargetRole(this.label, this.jobRoles);
 
   final String label;
 
   /// Home's listing roles (DC-13) that this target covers, for
-  /// "Recommended for you". "Software Engineer Intern" is the general
-  /// software role: backend, full-stack and generic IT titles.
+  /// "Recommended for you". "Software Engineer" is the general software role:
+  /// backend, full-stack and generic IT titles.
   final Set<JobRole> jobRoles;
 }
 
-/// What the student is looking for: target roles, work modes and a location.
+/// What the student is looking for: target roles, experience, work modes and
+/// a location.
 @immutable
 class InternshipPreferences {
   const InternshipPreferences({
     this.targetRoles = const <TargetRole>[],
+    this.experience,
     this.workModes = const <WorkMode>[],
     this.location,
   });
@@ -194,6 +244,7 @@ class InternshipPreferences {
       targetRoles: List.unmodifiable(
         reader.stringList('targetRoles').map(_roleFor).nonNulls,
       ),
+      experience: _experienceFor(reader.optionalString('experience')),
       workModes: List.unmodifiable(
         reader.stringList('workModes').map(_workModeFor).nonNulls,
       ),
@@ -204,12 +255,20 @@ class InternshipPreferences {
   /// Roles in [TargetRole] order.
   final List<TargetRole> targetRoles;
 
+  /// `null` when the student has not answered; [ExperienceRange.none] is an
+  /// explicit "No experience" answer.
+  final ExperienceRange? experience;
+
   /// Work modes in the order the sheet shows them.
   final List<WorkMode> workModes;
   final String? location;
 
   Map<String, Object?> toFirestore() => <String, Object?>{
     'targetRoles': [for (final role in targetRoles) storageValue(role)],
+    'experience': switch (experience) {
+      final value? => storageValue(value),
+      null => null,
+    },
     'workModes': [for (final mode in workModes) storageValue(mode)],
     'location': location,
   };
@@ -218,12 +277,14 @@ class InternshipPreferences {
   bool operator ==(Object other) =>
       other is InternshipPreferences &&
       listEquals(other.targetRoles, targetRoles) &&
+      other.experience == experience &&
       listEquals(other.workModes, workModes) &&
       other.location == location;
 
   @override
   int get hashCode => Object.hash(
     Object.hashAll(targetRoles),
+    experience,
     Object.hashAll(workModes),
     location,
   );
@@ -237,22 +298,33 @@ class InternshipPreferences {
   static TargetRole? _roleFor(String raw) =>
       TargetRole.values.where((role) => storageValue(role) == raw).firstOrNull;
 
+  static ExperienceRange? _experienceFor(String? raw) {
+    if (raw == null) return null;
+    return ExperienceRange.values
+        .where((range) => storageValue(range) == raw)
+        .firstOrNull;
+  }
+
   static WorkMode? _workModeFor(String raw) =>
       WorkMode.values.where((mode) => storageValue(mode) == raw).firstOrNull;
 }
 
-/// The default CV, uploaded to Cloud Storage `cvs/{uid}/…`.
+/// One CV in the library, uploaded to Cloud Storage `cvs/{uid}/…`.
 ///
 /// Only built from an `UploadedFile` returned by `FileStorageService`, so the
-/// URL is always a real download URL (AGENTS.md rule 7).
+/// URL is always a real download URL (AGENTS.md rule 7). [id] is the
+/// `users/{uid}/cvs/{cvId}` document id, and `null` for the legacy
+/// `users/{uid}.cv` entry.
 @immutable
 class CvFile {
   const CvFile({
+    this.id,
     required this.fileName,
     required this.url,
     required this.storagePath,
     required this.sizeBytes,
     required this.uploadedAt,
+    this.label,
   });
 
   factory CvFile.fromReader(FirestoreReader reader) {
@@ -262,14 +334,47 @@ class CvFile {
       storagePath: reader.requireString('storagePath'),
       sizeBytes: reader.optionalInt('sizeBytes') ?? 0,
       uploadedAt: reader.requireDateTime('uploadedAt'),
+      label: reader.optionalString('label'),
     );
   }
 
+  /// Library document, `users/{uid}/cvs/{id}`; malformed data throws a
+  /// [FormatException] so the service can skip and log it.
+  factory CvFile.fromFirestore(String id, Map<String, Object?>? data) {
+    final reader = FirestoreReader('users/cvs/$id', data);
+    return CvFile(
+      id: id,
+      fileName: reader.requireString('fileName'),
+      url: reader.requireString('url'),
+      storagePath: reader.requireString('storagePath'),
+      sizeBytes: reader.optionalInt('sizeBytes') ?? 0,
+      uploadedAt: reader.requireDateTime('uploadedAt'),
+      label: reader.optionalString('label'),
+    );
+  }
+
+  final String? id;
   final String fileName;
   final String url;
   final String storagePath;
   final int sizeBytes;
   final DateTime uploadedAt;
+
+  /// Optional short name shown instead of the file name, e.g. "Backend CV".
+  final String? label;
+
+  /// What the student sees in the library and in the Apply picker.
+  String get displayName => label ?? fileName;
+
+  CvFile copyWith({String? id, String? label}) => CvFile(
+    id: id ?? this.id,
+    fileName: fileName,
+    url: url,
+    storagePath: storagePath,
+    sizeBytes: sizeBytes,
+    uploadedAt: uploadedAt,
+    label: label ?? this.label,
+  );
 
   Map<String, Object?> toFirestore() => <String, Object?>{
     'fileName': fileName,
@@ -277,18 +382,21 @@ class CvFile {
     'storagePath': storagePath,
     'sizeBytes': sizeBytes,
     'uploadedAt': uploadedAt,
+    'label': label,
   };
 
   @override
   bool operator ==(Object other) =>
       other is CvFile &&
+      other.id == id &&
       other.fileName == fileName &&
       other.url == url &&
       other.storagePath == storagePath &&
       other.sizeBytes == sizeBytes &&
-      other.uploadedAt == uploadedAt;
+      other.uploadedAt == uploadedAt &&
+      other.label == label;
 
   @override
   int get hashCode =>
-      Object.hash(fileName, url, storagePath, sizeBytes, uploadedAt);
+      Object.hash(id, fileName, url, storagePath, sizeBytes, uploadedAt, label);
 }

@@ -1,0 +1,16 @@
+﻿{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "4dac10ef-a9f4-4822-9f7b-cc32102b4059", "seconds": 201.0, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "59da6690-7160-42f4-85aa-c874d043e686", "seconds": 154.1, "error": null, "pytest": "failed", "failure": "AssertionError: TC-11: no structured output (trace 59da6690-7160-42f4-85aa-c874d043e686)\nassert {}"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "41e95a20-35f6-42e9-b5e2-34822687e671", "seconds": 208.6, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "b66e5ecb-b3b6-4da8-bf5e-b6c0c1c9e26d", "seconds": 408.7, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "946e46e9-59a6-40fb-87c9-391c4178a489", "seconds": 99.8, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "3511a428-cd9e-4071-8bdd-626d874b7de5", "seconds": 215.6, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "16f46a69-b7ce-450e-8783-1bdfe53c5a11", "seconds": 157.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "da0bef27-75e1-483a-a018-bdef3fa7f524", "seconds": 151.2, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "bc0782fa-3663-4ada-97f3-0dadacd0dc30", "seconds": 153.0, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "2a8ec04e-1194-4ffa-8a08-c78979209311", "seconds": 326.1, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "49ad58c3-a8fe-47f3-b02d-3aff9dff7238", "seconds": 81.6, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "6c614d54-ca51-412c-b067-11e957006c42", "seconds": 156.1, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "fbba7cf6-86b9-4157-8039-572cbaa79c36", "seconds": 2718.7, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "f27d53d0-8fdd-4526-b8e4-32e8761b5260", "seconds": 441.3, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "a4cbf99a-7d48-42cf-8613-69771de6c92e", "seconds": 264.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-11", "status": "completed", "succeeded": true, "trace_id": "0fb3220a-a91c-4032-8e5a-56a05d202ae6", "seconds": 551.2, "error": null, "pytest": "passed"}

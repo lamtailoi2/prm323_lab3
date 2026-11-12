@@ -1,0 +1,34 @@
+stateDiagram-v2
+    direction LR
+
+    state "Thư viện rỗng" as Empty
+    state "Chỉ có CV legacy users/&#123;uid&#125;.cv" as LegacyOnly
+    state "1 CV — đang là CV mặc định" as OneCv
+    state "2+ CV — có defaultCvId" as ManyCv
+
+    [*] --> Empty
+    Empty --> LegacyOnly: dữ liệu cũ có mirror
+    LegacyOnly --> OneCv: Add CV, CV legacy giữ vai trò mặc định (BR-C2/E20)
+    Empty --> OneCv: Add CV đầu tiên trở thành mặc định (BR-C2)
+    OneCv --> ManyCv: Add CV thứ hai (BR-C2)
+    ManyCv --> ManyCv: Add CV hoặc Set as default (BR-C3)
+
+    ManyCv --> ManyCv: Remove CV không phải mặc định
+    ManyCv --> OneCv: Remove CV mặc định → promote CV mới nhất (BR-C4/E22)
+    OneCv --> Empty: Remove CV cuối
+    ManyCv --> ManyCv: Remove CV đang được đơn đã nộp dùng → giữ file Storage (BR-C4/E21)
+    OneCv --> OneCv: Add CV sai loại hoặc trên 10 MB bị từ chối (BR-C2/E19)
+
+    note right of ManyCv
+      CV mặc định = defaultCvId nếu còn tồn tại,
+      ngược lại mirror legacy, ngược lại CV mới nhất (BR-C1).
+      defaultCvId lạ bị bỏ qua, không làm mất thư viện.
+      Có 0/1 CV thì Compose dùng CV mặc định;
+      2+ CV mới gọi selectCv (BR-C5/C6).
+    end note
+
+    note right of OneCv
+      Xoá entry và file Storage chỉ khi không đơn đã nộp nào
+      tham chiếu storagePath. Xoá lỗi metadata thì huỷ thao tác,
+      file vẫn còn (BR-C4).
+    end note

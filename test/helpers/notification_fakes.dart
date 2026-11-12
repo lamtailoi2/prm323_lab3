@@ -14,7 +14,7 @@ class FakeNotificationService implements NotificationService {
   Completer<void>? gate;
   int watchCalls = 0;
 
-  /// Thrown by [save] / [markRead].
+  /// Thrown by [save] / [markRead] / [markAllRead].
   AppException? writeError;
 
   final List<AppNotification> saved = <AppNotification>[];
@@ -35,6 +35,8 @@ class FakeNotificationService implements NotificationService {
       StreamController<AppNotification>.broadcast();
   final StreamController<String> _tokenRefreshes =
       StreamController<String>.broadcast();
+  final StreamController<TestCrashRequest> _testCrashes =
+      StreamController<TestCrashRequest>.broadcast();
 
   @override
   Future<NotificationPermission> requestPermission() async {
@@ -59,6 +61,9 @@ class FakeNotificationService implements NotificationService {
 
   @override
   Stream<AppNotification> openedMessages() => _opened.stream;
+
+  @override
+  Stream<TestCrashRequest> testCrashRequests() => _testCrashes.stream;
 
   @override
   Future<AppNotification?> initialMessage() async {
@@ -89,6 +94,12 @@ class FakeNotificationService implements NotificationService {
     readIds.add(id);
   }
 
+  @override
+  Future<void> markAllRead(String uid, Iterable<String> ids) async {
+    if (writeError case final failure?) throw failure;
+    readIds.addAll(ids);
+  }
+
   /// Pushes a new snapshot, as Firestore would.
   void emit(List<AppNotification> next) {
     results = next;
@@ -110,11 +121,18 @@ class FakeNotificationService implements NotificationService {
   /// A rotated FCM registration token.
   void refreshToken(String token) => _tokenRefreshes.add(token);
 
+  /// An admin-dashboard crash command.
+  void requestTestCrash({String target = 'uid', String? requestedAt}) =>
+      _testCrashes.add(
+        TestCrashRequest(target: target, requestedAt: requestedAt),
+      );
+
   Future<void> dispose() async {
     await _updates.close();
     await _foreground.close();
     await _opened.close();
     await _tokenRefreshes.close();
+    await _testCrashes.close();
   }
 }
 

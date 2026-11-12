@@ -1,0 +1,61 @@
+sequenceDiagram
+    autonumber
+    actor Student
+    participant V as ApplicationDetailScreen (View)
+    participant VM as ApplicationDetailViewModel
+    participant AS as ApplicationService
+    participant IS as InternshipService
+    participant EL as ExternalLinkService
+    participant AN as AnalyticsService
+    participant FS as Cloud Firestore
+
+    Note over V,FS: 1. Open one application
+    Student->>V: taps an Application Card
+    V->>VM: provider build (autoDispose.family<..., String>)
+    VM->>AS: watchApplications()
+    AS->>FS: users/{uid}/applications orderBy appliedAt desc
+    VM->>IS: watchByKey(jobKey)
+    IS->>FS: internships/{jobKey}
+    FS-->>VM: List<InternshipApplication> (live)
+    FS-->>VM: Internship? (null once the listing expired)
+    VM->>VM: _emit() picks the document whose jobKey matches the route
+    VM->>AN: logEvent("view_application", {internship_id, status})
+    VM-->>V: ViewData<ApplicationDetail> (application + listing)
+
+    Note over V,FS: 2. Preview the submitted CV (read-only)
+    Student->>V: taps "Preview"
+    V->>VM: previewCv()
+    VM->>EL: open(Uri(cvUrl))
+    EL-->>VM: opened, or AppException
+    VM-->>V: null (opened) / AppException (View shows message)
+
+    Note over V,FS: 3. Withdraw (Flow 3d)
+    Student->>V: taps "Withdraw application"
+    V->>V: confirmation dialog (Confirm / Cancel)
+    Student->>V: Confirm
+    V->>VM: withdraw()
+    VM->>VM: guard action.isLoading • status.canWithdraw
+    VM-->>V: state.action = AsyncLoading
+    VM->>AS: withdraw(jobKey, previous: currentStatus)
+    AS->>AS: read stored status it is replacing
+    AS->>FS: update {status: withdrawn, withdrawnAt: serverTimestamp, previousStatus}
+    alt write succeeds
+        FS-->>AS: ack
+        AS-->>VM: void
+        FS-->>VM: new snapshot (live listener)
+        VM->>VM: _emit() → canUndoWithdrawal = withdrawnAt + 24h > now
+        VM-->>V: ViewData with Withdrawn badge + Undo (24h window)
+    else error
+        FS-->>AS: FirebaseException
+        AS-->>VM: AppException "we could not withdraw this application"
+        VM-->>V: state.action = AsyncError → message + Retry
+    end
+
+    Note over V,FS: 4. Undo within the 24-hour window
+    Student->>V: taps "Undo withdrawal"
+    V->>VM: undoWithdrawal()
+    VM->>VM: guard canUndoWithdrawal (deadline from nowProvider)
+    VM->>AS: undoWithdrawal(jobKey)
+    AS->>FS: update {status: previousStatus, withdrawnAt: FieldValue.delete()}
+    FS-->>VM: snapshot with the restored status
+    VM-->>V: ViewData with the earlier badge, Undo hidden

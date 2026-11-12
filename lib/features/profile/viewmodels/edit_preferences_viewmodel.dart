@@ -15,6 +15,7 @@ import 'profile_viewmodel.dart';
 class EditPreferencesState {
   const EditPreferencesState({
     this.targetRoles = const <TargetRole>{},
+    this.experience,
     this.workModes = const <WorkMode>{},
     this.location = '',
     this.locationError,
@@ -22,6 +23,7 @@ class EditPreferencesState {
   });
 
   final Set<TargetRole> targetRoles;
+  final ExperienceRange? experience;
   final Set<WorkMode> workModes;
 
   /// As typed; trimmed on save.
@@ -66,6 +68,7 @@ class EditPreferencesViewModel extends Notifier<EditPreferencesState> {
     final preferences = profile.preferences;
     return EditPreferencesState(
       targetRoles: Set.unmodifiable(preferences.targetRoles),
+      experience: preferences.experience,
       workModes: Set.unmodifiable(preferences.workModes),
       // Both frames ask for a city; an empty internship location starts
       // from the current city of Edit profile. Stored only on save.
@@ -75,6 +78,12 @@ class EditPreferencesViewModel extends Notifier<EditPreferencesState> {
 
   void toggleRole(TargetRole role) =>
       _update(targetRoles: _toggled(state.targetRoles, role));
+
+  /// Single-select; tapping the selected band again clears the answer.
+  void selectExperience(ExperienceRange range) {
+    final next = state.experience == range ? null : range;
+    _update(experience: next, hasExperience: true);
+  }
 
   void toggleWorkMode(WorkMode mode) =>
       _update(workModes: _toggled(state.workModes, mode));
@@ -104,6 +113,7 @@ class EditPreferencesViewModel extends Notifier<EditPreferencesState> {
       targetRoles: List.unmodifiable(
         TargetRole.values.where(state.targetRoles.contains),
       ),
+      experience: state.experience,
       workModes: List.unmodifiable(
         workModeOptions.where(state.workModes.contains),
       ),
@@ -116,6 +126,7 @@ class EditPreferencesViewModel extends Notifier<EditPreferencesState> {
         'section': 'preferences',
         'item_count':
             preferences.targetRoles.length +
+            (preferences.experience == null ? 0 : 1) +
             preferences.workModes.length +
             (preferences.location == null ? 0 : 1),
       });
@@ -134,8 +145,13 @@ class EditPreferencesViewModel extends Notifier<EditPreferencesState> {
   );
 
   /// [locationError] is cleared by every change unless it is passed.
+  ///
+  /// [hasExperience] distinguishes "leave the band unchanged" from an explicit
+  /// `null` that clears the answer.
   void _update({
     Set<TargetRole>? targetRoles,
+    ExperienceRange? experience,
+    bool hasExperience = false,
     Set<WorkMode>? workModes,
     String? location,
     String? locationError,
@@ -143,6 +159,7 @@ class EditPreferencesViewModel extends Notifier<EditPreferencesState> {
   }) {
     state = EditPreferencesState(
       targetRoles: targetRoles ?? state.targetRoles,
+      experience: hasExperience ? experience : state.experience,
       workModes: workModes ?? state.workModes,
       location: location ?? state.location,
       locationError: locationError,

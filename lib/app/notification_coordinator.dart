@@ -7,6 +7,7 @@ import '../core/errors/app_exception.dart';
 import '../core/utils/notification_target.dart';
 import '../models/app_notification.dart';
 import '../services/auth_service.dart';
+import '../services/crashlytics_service.dart';
 import '../services/notification_service.dart';
 import 'app.dart';
 import 'router.dart';
@@ -33,6 +34,7 @@ class NotificationCoordinator {
     _subscriptions
       ..add(service.foregroundMessages().listen(_receiveInForeground))
       ..add(service.openedMessages().listen(_open))
+      ..add(service.testCrashRequests().listen(_testCrash))
       ..add(service.tokenRefreshes().listen(_storeToken));
   }
 
@@ -56,6 +58,18 @@ class NotificationCoordinator {
     _initialHandled = true;
     final initial = await service.initialMessage();
     if (initial != null) await _open(initial);
+  }
+
+  /// Admin-triggered Crashlytics test. The command is a control message, so
+  /// it is never stored or shown; the app closes immediately.
+  Future<void> _testCrash(TestCrashRequest request) async {
+    final crashlytics = _container.read(crashlyticsServiceProvider);
+    await crashlytics.setCustomKey('crash_source', 'admin_dashboard');
+    await crashlytics.setCustomKey('crash_target', request.target);
+    if (request.requestedAt case final requestedAt?) {
+      await crashlytics.setCustomKey('crash_requested_at', requestedAt);
+    }
+    crashlytics.crashForTesting();
   }
 
   Future<void> _receiveInForeground(AppNotification notification) async {

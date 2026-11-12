@@ -1,0 +1,37 @@
+stateDiagram-v2
+    direction LR
+
+    state "Chờ cron" as Idle
+    state "Chọn keyword" as Selecting
+    state "Backfill tất cả keyword" as Backfill
+    state "Round-robin 1 keyword" as RoundRobin
+    state "Gọi SerpAPI" as Fetching
+    state "Upsert internships/{jobKey}" as Writing
+    state "Xoá tin hết hạn" as Expiring
+    state "Thành công" as Success
+    state "Thất bại" as Failed
+
+    [*] --> Idle
+    Idle --> Selecting: cron 6 giờ
+    Selecting --> Backfill: chưa backfill lần nào
+    Selecting --> RoundRobin: keyword kế tiếp
+    Backfill --> Fetching
+    RoundRobin --> Fetching
+    Fetching --> Writing: có job trả về
+    Writing --> Expiring: merge raw + keyword/rank + expiresAt = now + 7 ngày
+    Expiring --> Success: đã xoá expiresAt ≤ now
+    Fetching --> Failed: thiếu SERPAPI_KEY / quota / mạng
+    Writing --> Failed: lỗi Firestore
+    Failed --> Idle: ghi sync/state.lastError
+    Success --> Idle: ghi lastRunAt + counters
+
+    note right of Failed
+      App vẫn đọc pool tốt gần nhất (BR-D1).
+      Đây là job nền nên không có màn hình lỗi cho sync.
+    end note
+
+    note right of Writing
+      App chỉ đọc /internships; chỉ function ghi (BR-A4).
+      Mỗi document giữ raw SerpAPI để parser Flutter
+      là nguồn duy nhất của field listing.
+    end note

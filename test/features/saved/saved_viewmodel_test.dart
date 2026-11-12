@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/errors/app_exception.dart';
+import 'package:internly/core/utils/distinct_listings.dart';
+import 'package:internly/features/saved/viewmodels/saved_providers.dart';
 import 'package:internly/features/saved/viewmodels/saved_viewmodel.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/saved_internship_service.dart';
@@ -264,5 +266,81 @@ void main() {
     expect((await first).done, isTrue);
     expect(saved.removeCalls, 1);
     expect(saved.savedKeys, [other.key]);
+  });
+
+  group('another synced copy of a saved job (CR-07)', () {
+    // The same job synced under two keywords: same title and company, a key
+    // per copy. Lists keep one copy, which may not be the saved one.
+    final savedCopy = testInternship(
+      '10',
+      title: 'Flutter Developer Intern',
+      companyName: 'FPT Software',
+    );
+    final cardCopy = testInternship(
+      '11',
+      title: 'Flutter Developer Intern',
+      companyName: 'FPT Software',
+    );
+
+    test('savedJobsProvider holds the job, not the key of one copy', () async {
+      saved.seed([savedCopy]);
+      container.listen(savedJobsProvider, (_, _) {});
+      await settle();
+      await settle();
+
+      final savedJobs = container.read(savedJobsProvider);
+      expect(savedJobs, {
+        jobIdentity('Flutter Developer Intern', 'FPT Software'),
+      });
+      expect(
+        savedJobs.contains(jobIdentity(cardCopy.title, cardCopy.companyName)),
+        isTrue,
+      );
+    });
+
+    test('toggling the copy on the card unsaves the saved copy', () async {
+      saved.seed([savedCopy]);
+      final viewModel = listen();
+      await settle();
+      await settle();
+
+      await viewModel.toggle(cardCopy, source: 'search');
+
+      // No second save of the same job, and the saved copy is removed.
+      expect(saved.saveCalls, 0);
+      expect(saved.removeCalls, 1);
+      expect(saved.savedKeys, isEmpty);
+      expect(analytics.events, isEmpty);
+    });
+
+    test('two copies saved before the fix are both removed', () async {
+      saved.seed([savedCopy, cardCopy]);
+      final viewModel = listen();
+      await settle();
+      await settle();
+
+      await viewModel.toggle(cardCopy, source: 'home');
+
+      expect(saved.removeCalls, 2);
+      expect(saved.savedKeys, isEmpty);
+    });
+
+    test('a job with the same title at another company is saved', () async {
+      saved.seed([savedCopy]);
+      final viewModel = listen();
+      await settle();
+      await settle();
+      final otherCompany = testInternship(
+        '12',
+        title: 'Flutter Developer Intern',
+        companyName: 'VNG Corporation',
+      );
+
+      await viewModel.toggle(otherCompany, source: 'search');
+
+      expect(saved.saveCalls, 1);
+      expect(saved.removeCalls, 0);
+      expect(saved.savedKeys, [savedCopy.key, otherCompany.key]);
+    });
   });
 }

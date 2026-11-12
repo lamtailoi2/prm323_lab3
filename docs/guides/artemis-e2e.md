@@ -27,11 +27,18 @@ uv sync --python 3.12
 cp .env.example .env        # then set GEMINI_API_KEY=<your key> in ~/artemis/.env
 ```
 
-Optional, for the live screen and video replays (`brew` also installs `ffmpeg`):
+Optional, for the live screen and video replays, **and required for ARTEMIS to record a session** (`scrcpy` captures, `ffmpeg` remuxes the `.mkv` to `.mp4`):
 
 ```bash
+# macOS (`scrcpy` pulls in ffmpeg)
 brew install scrcpy
+
+# Windows (PowerShell); ARTEMIS looks for both on PATH
+winget install Genymobile.scrcpy
+winget install Gyan.FFmpeg
 ```
+
+Start the daemon from a shell whose `PATH` already contains both, otherwise it logs `Failed to start scrcpy recording: [WinError 2] The system cannot find the file specified` and the run has no video. Check with `scrcpy --version` and `ffmpeg -version` first.
 
 You do not need `./start.sh`. It also upgrades Node.js, builds the Angular console with npm and offers to install MCP configs into every IDE. That is heavy on an 8 GB machine and can break the Node 22 used by `functions/`. The daemon in §3 serves a prebuilt console anyway.
 
@@ -83,11 +90,17 @@ Use a separate terminal for each long-running step.
    ```bash
    adb shell pm grant com.group3.internly android.permission.POST_NOTIFICATIONS
    ```
-3. Start the ARTEMIS daemon and leave it running. It reads `~/artemis/.env` and the config only at startup, so restart it after changing either.
+3. Seed the CV library once: the Apply cases need at least two CVs. The suite's helper pushes two fictional PDFs to the device, then add both in the app (Profile → `CV library` → `Add CV` → `Choose file` → `Downloads`).
+   ```bash
+   cd e2e_test && uv run python -c "import conftest; conftest.push_sample_cvs()"
+   adb shell ls /sdcard/Download/Sample_CV.pdf /sdcard/Download/Sample_CV_Backend.pdf
+   ```
+   In `CV library`, upload `Sample_CV.pdf` and `Sample_CV_Backend.pdf`; the header must read `2 files` and one file must carry `Default for applications`. TC-19 fails with a message naming this step when fewer than two CVs exist. TC-18 needs Gmail signed in; it replaces the recipient with the test account before sending.
+4. Start the ARTEMIS daemon and leave it running. It reads `~/artemis/.env` and the config only at startup, so restart it after changing either.
    ```bash
    cd ~/artemis && uv run python -m artemis ui --no-open
    ```
-4. Check the setup. Every row must be ✔:
+5. Check the setup. Every row must be ✔:
    ```bash
    cd ~/artemis && uv run python -m artemis doctor
    ```
@@ -122,6 +135,7 @@ What `conftest.py` does for every test:
   curl -s http://127.0.0.1:8000/api/sessions/<trace_id>/steps
   ```
   Logs and the replay video are in `~/artemis/traces/`.
+- **Record a video for every test batch.** Show the emulator, the ARTEMIS console and the Terminal that runs the command; start recording before typing the `uv run pytest … --count 3 -v` command and stop after `3 passed`. Keep one file per test (`TC-18_Compose_CV.mp4`, `TC-06_Apply.mp4`, …), upload it to the [Record Artemis Test - PRM323](https://drive.google.com/drive/folders/1B44bE_K5JY06eAhTU0FrJZrbmcfe7LCf) Drive folder, and add its link, size and counted trace IDs to the Recordings table in the evidence file. Videos show the test account, so they stay outside the repository. When `scrcpy` and `ffmpeg` are on the daemon's `PATH` (§1), ARTEMIS also writes one full-length `recording.mp4` per session to `~/artemis/traces/web_<id>_<trace>_<status>_<time>/` — copy it out per test as the backup, or when no desktop recorder is available.
 - Record every run, passed or failed (AGENTS.md, "Logs and evidence"):
   1. Copy the day's lines of `runs.jsonl` to `evidence/artemis/runs-YYYYMMDD.jsonl`.
   2. Fill `test-plan.md` §4: runs, passed, pass rate, average time, trace IDs.

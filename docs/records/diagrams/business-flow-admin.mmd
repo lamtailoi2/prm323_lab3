@@ -1,0 +1,62 @@
+flowchart LR
+  subgraph ADMIN["① Admin"]
+    direction TB
+    D0(["Mở dashboard<br/>127.0.0.1 hoặc Vercel"]) --> D1["Google sign-in"]
+    D1 --> D2{"Email trong ADMIN_EMAILS?<br/>BR-N1"}
+    D2 -- "không" --> D3["401 / 403"]
+    D2 -- "có" --> D4{"Tác vụ"}
+    D4 -- "Send" --> D5["Chọn 1 user hoặc all<br/>BR-N3"]
+    D4 -- "History" --> D6["Đọc / xoá history<br/>BR-N7"]
+    D4 -- "Crash" --> D7["Tick xác nhận + dialog<br/>BR-N8"]
+    D5 --> D8["Nhập title / body / route<br/>BR-N4"]
+    D8 --> D9{"Hợp lệ?"}
+    D9 -- "không" --> D10["400 + rule"]
+    D10 --> D8
+    D9 -- "có" --> D11["Gửi"]
+  end
+
+  subgraph SERVER["② Dashboard server"]
+    direction TB
+    S1["verify ID token + allowlist"]
+    S2["resolveRecipients<br/>1 uid hoặc all ≤ 1000"]
+    S3["validateRoute + requireText"]
+    S4["deliver theo lô 500<br/>BR-N5"]
+    S5["ghi history theo message ID<br/>lỗi → historyError<br/>BR-N6"]
+  end
+
+  subgraph FIREBASE["③ Firebase"]
+    direction TB
+    B1["Auth + users<br/>BR-N2"]
+    B2["FCM tokens<br/>BR-N10"]
+    B3["users/&#123;uid&#125;/notifications"]
+  end
+
+  subgraph DEVICE["④ Máy học sinh"]
+    direction TB
+    V1["Nhận notification<br/>hoặc data-only command"]
+    V2{"Route hợp lệ?<br/>BR-N11"}
+    V3["Mở đúng tab"]
+    V4["Notification Center + badge<br/>BR-N7/N13"]
+    V5["Crashlytics fatal lần mở sau<br/>BR-N8"]
+    V6["Không có thông báo<br/>BR-N9/E16"]
+  end
+
+  D1 -.-> S1
+  D5 -.-> S2
+  S2 --> B1
+  S2 -- "0 người nhận" --> D12["409 + lý do<br/>BR-N3/E13"]
+  D8 -.-> S3
+  S3 -- "sai" --> D10
+  D11 -.-> S4
+  S4 --> B2
+  S4 -.-> S5
+  S5 --> B3
+  D6 -.-> B3
+  D7 -.->|"data-only test_crash"| S4
+  B2 --> V1
+  V1 --> V2
+  V1 --> V4
+  V2 -- "hợp lệ" --> V3
+  V2 -- "sai / URL ngoài" --> V4
+  B2 -.-> V5
+  B2 -.-> V6

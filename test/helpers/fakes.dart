@@ -3,24 +3,30 @@ import 'dart:typed_data';
 
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/core/utils/job_key.dart';
+import 'package:internly/features/internships/models/cover_letter_draft.dart';
 import 'package:internly/features/internships/models/search_history_entry.dart';
 import 'package:internly/models/app_user.dart';
 import 'package:internly/models/cv_match_result.dart';
+import 'package:internly/models/cv_selection.dart';
 import 'package:internly/models/cv_validation_result.dart';
+import 'package:internly/models/exported_report.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/models/internship_application.dart';
 import 'package:internly/models/user_profile.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
+import 'package:internly/services/cover_letter_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
 import 'package:internly/services/cv_match_service.dart';
+import 'package:internly/services/cv_select_service.dart';
 import 'package:internly/services/cv_validation_service.dart';
 import 'package:internly/services/document_picker_service.dart';
 import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/file_storage_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
+import 'package:internly/services/report_export_service.dart';
 import 'package:internly/services/saved_internship_service.dart';
 import 'package:internly/services/search_history_service.dart';
 import 'package:internly/services/user_profile_service.dart';
@@ -157,11 +163,13 @@ typedef CreatedApplication = ({
   String internshipKey,
   String title,
   String companyName,
-  String cvStoragePath,
-  String cvFileName,
-  String cvUrl,
-  int cvSizeBytes,
+  String? cvStoragePath,
+  String? cvFileName,
+  String? cvUrl,
+  int? cvSizeBytes,
   ApplicationApplicant applicant,
+  String? recipientEmail,
+  ApplicationChannel appliedVia,
 });
 
 /// In-memory [ApplicationService] backed by a broadcast stream. Tests set
@@ -177,6 +185,21 @@ class FakeApplicationService implements ApplicationService {
 
   /// Documents [createApplication] would have written, oldest first.
   final List<CreatedApplication> created = <CreatedApplication>[];
+
+  /// Extra paths returned by [cvStoragePaths], as older applications would.
+  final Set<String> cvPaths = <String>{};
+
+  /// Thrown by the next [cvStoragePaths].
+  AppException? cvPathsError;
+
+  @override
+  Future<Set<String>> cvStoragePaths() async {
+    if (cvPathsError case final failure?) throw failure;
+    return {
+      ...cvPaths,
+      for (final application in results) ?application.cvStoragePath,
+    };
+  }
 
   /// Thrown by the next [createApplication]; usually an [AppException].
   Object? createError;
@@ -202,11 +225,13 @@ class FakeApplicationService implements ApplicationService {
     required String internshipKey,
     required String title,
     required String companyName,
-    required String cvStoragePath,
-    required String cvFileName,
-    required String cvUrl,
-    required int cvSizeBytes,
+    String? cvStoragePath,
+    String? cvFileName,
+    String? cvUrl,
+    int? cvSizeBytes,
     required ApplicationApplicant applicant,
+    String? recipientEmail,
+    required ApplicationChannel appliedVia,
   }) async {
     await createGate?.future;
     final failure = createError;
@@ -220,6 +245,8 @@ class FakeApplicationService implements ApplicationService {
       cvUrl: cvUrl,
       cvSizeBytes: cvSizeBytes,
       applicant: applicant,
+      recipientEmail: recipientEmail,
+      appliedVia: appliedVia,
     ));
   }
 
@@ -229,6 +256,24 @@ class FakeApplicationService implements ApplicationService {
 
   /// Keys passed to [undoWithdrawal].
   final List<String> undone = <String>[];
+
+  /// Status writes made through [updateStatus].
+  final List<({String internshipKey, ApplicationStatus status})> statusUpdates =
+      <({String internshipKey, ApplicationStatus status})>[];
+
+  /// Thrown by the next [updateStatus].
+  Object? updateStatusError;
+
+  @override
+  Future<void> updateStatus(
+    String internshipKey, {
+    required ApplicationStatus status,
+  }) async {
+    await updateGate?.future;
+    final failure = updateStatusError ?? updateError;
+    if (failure != null) throw failure;
+    statusUpdates.add((internshipKey: internshipKey, status: status));
+  }
 
   /// Thrown by the next [withdraw] or [undoWithdrawal].
   Object? updateError;
@@ -335,6 +380,9 @@ class FakeAuthService implements AuthService {
   /// Completes the next sign-in only when the test calls `complete()`.
   Completer<void>? signInGate;
 
+  /// The account the next sign-in returns.
+  AppUser signInUser = testUser;
+
   /// Emits the current user first, then every change. Subscribes to the
   /// change stream synchronously on listen, so no event can be lost.
   @override
@@ -363,8 +411,8 @@ class FakeAuthService implements AuthService {
     await signInGate?.future;
     final error = signInError;
     if (error != null) throw error;
-    _emit(testUser);
-    return testUser;
+    _emit(signInUser);
+    return signInUser;
   }
 
   @override
@@ -590,8 +638,20 @@ class FakeUserProfileService implements UserProfileService {
   int watchCalls = 0;
   final List<String> writes = <String>[];
 
+  /// `users/{uid}/cvs`, newest first.
+  final List<CvFile> cvs = <CvFile>[];
+  String? defaultCvId;
+  AppException? cvLoadError;
+  AppException? cvSaveError;
+  Completer<void>? cvLoadGate;
+  Completer<void>? cvSaveGate;
+  int cvWatchCalls = 0;
+  int _nextCvId = 0;
+
   final StreamController<UserProfile?> _updates =
       StreamController<UserProfile?>.broadcast();
+  final StreamController<List<CvFile>> _cvUpdates =
+      StreamController<List<CvFile>>.broadcast();
 
   @override
   Stream<UserProfile?> watchProfile(String uid) async* {
@@ -602,6 +662,102 @@ class FakeUserProfileService implements UserProfileService {
     yield profile;
     yield* _updates.stream;
   }
+
+  @override
+  Stream<List<CvFile>> watchCvs(String uid) async* {
+    cvWatchCalls++;
+    await cvLoadGate?.future;
+    final failure = cvLoadError;
+    if (failure != null) throw failure;
+    yield List<CvFile>.unmodifiable(cvs);
+    yield* _cvUpdates.stream;
+  }
+
+  @override
+  Future<CvFile> addCv(String uid, CvFile cv) async {
+    await cvSaveGate?.future;
+    if (cvSaveError case final failure?) throw failure;
+    final added = cv.id == null ? cv.copyWith(id: 'cv-${_nextCvId++}') : cv;
+    cvs.insert(0, added);
+    final current = profile ?? const UserProfile();
+    final first = defaultCvId == null;
+    if (first) defaultCvId = added.id;
+    _setProfile(
+      UserProfile(
+        details: current.details,
+        skills: current.skills,
+        preferences: current.preferences,
+        cv: first ? added : current.cv,
+        givenName: current.givenName,
+        defaultCvId: defaultCvId,
+      ),
+    );
+    writes.add('cv add');
+    _emitCvs();
+    return added;
+  }
+
+  @override
+  Future<void> setDefaultCv(String uid, String cvId) async {
+    await cvSaveGate?.future;
+    if (cvSaveError case final failure?) throw failure;
+    final cv = cvs.where((entry) => entry.id == cvId).firstOrNull;
+    if (cv == null) {
+      throw const AppException(
+        AppErrorKind.notFound,
+        'That CV is no longer in your library.',
+      );
+    }
+    defaultCvId = cvId;
+    final current = profile ?? const UserProfile();
+    _setProfile(
+      UserProfile(
+        details: current.details,
+        skills: current.skills,
+        preferences: current.preferences,
+        cv: cv,
+        givenName: current.givenName,
+        defaultCvId: cvId,
+      ),
+    );
+    writes.add('cv setDefault');
+    _emitCvs();
+  }
+
+  @override
+  Future<void> removeCv(String uid, String cvId) async {
+    await cvSaveGate?.future;
+    if (cvSaveError case final failure?) throw failure;
+    cvs.removeWhere((entry) => entry.id == cvId);
+    final wasDefault = defaultCvId == cvId || defaultCvId == null;
+    CvFile? next;
+    if (wasDefault) {
+      final remaining = [...cvs]
+        ..sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
+      next = remaining.firstOrNull;
+      defaultCvId = next?.id;
+    }
+    final current = profile ?? const UserProfile();
+    _setProfile(
+      UserProfile(
+        details: current.details,
+        skills: current.skills,
+        preferences: current.preferences,
+        cv: wasDefault ? next : current.cv,
+        givenName: current.givenName,
+        defaultCvId: defaultCvId,
+      ),
+    );
+    writes.add('cv remove');
+    _emitCvs();
+  }
+
+  void _setProfile(UserProfile next) {
+    profile = next;
+    _updates.add(next);
+  }
+
+  void _emitCvs() => _cvUpdates.add(List<CvFile>.unmodifiable(cvs));
 
   @override
   Future<void> updateDetails(String uid, ProfileDetails details) =>
@@ -645,6 +801,19 @@ class FakeUserProfileService implements UserProfileService {
   Future<void> updateCv(String uid, CvFile cv) =>
       _write('cv', (current) => _copy(current, cv: cv));
 
+  @override
+  Future<void> updateGivenName(String uid, String givenName) => _write(
+    'given name',
+    (current) => UserProfile(
+      details: current.details,
+      skills: current.skills,
+      preferences: current.preferences,
+      cv: current.cv,
+      givenName: givenName,
+      defaultCvId: current.defaultCvId,
+    ),
+  );
+
   Future<void> _write(
     String section,
     UserProfile Function(UserProfile current) change,
@@ -669,6 +838,8 @@ class FakeUserProfileService implements UserProfileService {
     skills: skills ?? current.skills,
     preferences: preferences ?? current.preferences,
     cv: cv ?? current.cv,
+    givenName: current.givenName,
+    defaultCvId: current.defaultCvId,
   );
 
   Future<void> dispose() => _updates.close();
@@ -701,6 +872,17 @@ class FakeFileStorageService implements FileStorageService {
   AppException? error;
   Completer<void>? gate;
   final List<String> uploadedNames = <String>[];
+  final List<String> deletedPaths = <String>[];
+  AppException? deleteError;
+  Completer<void>? deleteGate;
+
+  @override
+  Future<void> deletePdf(String storagePath) async {
+    await deleteGate?.future;
+    final failure = deleteError;
+    if (failure != null) throw failure;
+    deletedPaths.add(storagePath);
+  }
 
   @override
   Future<UploadedFile> uploadPdf({
@@ -723,6 +905,80 @@ class FakeFileStorageService implements FileStorageService {
       uploadedAt: DateTime(2026, 10, 28),
     );
   }
+}
+
+/// Records report exports instead of reaching Cloud Storage or Firestore.
+class FakeReportExportService implements ReportExportService {
+  List<ExportedReport> reports = const <ExportedReport>[];
+
+  /// Thrown by the next [watchReports] subscription.
+  Object? error;
+  Completer<void>? gate;
+  int watchCalls = 0;
+
+  /// Thrown by the next [export]; usually an [AppException].
+  Object? exportError;
+
+  /// Holds [export] open, as an offline upload never completes.
+  Completer<void>? exportGate;
+
+  /// Applications passed to [export], newest call last.
+  final List<List<InternshipApplication>> exported =
+      <List<InternshipApplication>>[];
+  final List<String> studentNames = <String>[];
+
+  final StreamController<List<ExportedReport>> _updates =
+      StreamController<List<ExportedReport>>.broadcast();
+
+  @override
+  Stream<List<ExportedReport>> watchReports() async* {
+    watchCalls++;
+    await gate?.future;
+    final failure = error;
+    if (failure != null) throw failure;
+    yield reports;
+    yield* _updates.stream;
+  }
+
+  @override
+  Future<ExportedReport> export({
+    required List<InternshipApplication> applications,
+    required String studentName,
+    DateTime? generatedAt,
+    void Function(double progress)? onProgress,
+  }) async {
+    onProgress?.call(0.5);
+    await exportGate?.future;
+    final failure = exportError;
+    if (failure != null) throw failure;
+    onProgress?.call(1);
+    exported.add(applications);
+    studentNames.add(studentName);
+    final report = ExportedReport(
+      id: 'report-1',
+      fileName: 'application-report-2026-11-12.pdf',
+      url: 'https://storage.example/reports/uid-123/report.pdf',
+      storagePath: 'reports/uid-123/report.pdf',
+      sizeBytes: 20480,
+      itemCount: applications.length,
+      createdAt: generatedAt ?? DateTime(2026, 11, 12),
+    );
+    return report;
+  }
+
+  /// Pushes a new snapshot, as Firestore would.
+  void emit(List<ExportedReport> next) {
+    reports = next;
+    _updates.add(next);
+  }
+
+  /// Pushes a listener error.
+  void fail(Object failure) {
+    error = failure;
+    _updates.addError(failure);
+  }
+
+  Future<void> dispose() => _updates.close();
 }
 
 /// Records CV validation calls instead of reaching Cloud Functions.
@@ -791,6 +1047,7 @@ class FakeCvMatchService implements CvMatchService {
 /// Records opened links instead of launching them.
 class FakeExternalLinkService implements ExternalLinkService {
   final List<Uri> opened = <Uri>[];
+  final List<Uri> openedEmails = <Uri>[];
   AppException? error;
 
   @override
@@ -798,5 +1055,80 @@ class FakeExternalLinkService implements ExternalLinkService {
     final failure = error;
     if (failure != null) throw failure;
     opened.add(uri);
+  }
+
+  @override
+  Future<void> openEmail(Uri uri) async {
+    final failure = error;
+    if (failure != null) throw failure;
+    openedEmails.add(uri);
+  }
+}
+
+/// Records cover letter drafting calls instead of reaching Cloud Functions.
+class FakeCoverLetterService implements CoverLetterService {
+  CoverLetterDraft draft = const CoverLetterDraft(
+    subject: 'Application for Flutter Intern',
+    body:
+        'Dear Hiring Team,\n\nI would like to apply for the Flutter Intern '
+        'position.\n\nBest regards,\nMinh Nguyen',
+    usedAi: true,
+  );
+  AppException? error;
+
+  /// Completes the next draft only when the test calls `complete()`.
+  Completer<void>? gate;
+
+  int calls = 0;
+  final List<String> internshipKeys = <String>[];
+  final List<String?> storagePaths = <String?>[];
+  final List<String?> studentNames = <String?>[];
+
+  @override
+  Future<CoverLetterDraft> compose({
+    required String internshipKey,
+    String? storagePath,
+    String? studentName,
+  }) async {
+    calls++;
+    internshipKeys.add(internshipKey);
+    storagePaths.add(storagePath);
+    studentNames.add(studentName);
+    await gate?.future;
+    final failure = error;
+    if (failure != null) throw failure;
+    return draft;
+  }
+}
+
+/// Fake [CvSelectService] for the Apply Form auto-select (G-33 item 8).
+class FakeCvSelectService implements CvSelectService {
+  CvSelection result = const CvSelection(
+    storagePath: 'cvs/uid-1/a.pdf',
+    percent: 100,
+    matchedCount: 2,
+    totalRequired: 2,
+    reason: 'This CV covers every skill the internship lists.',
+    cvReadable: true,
+  );
+  AppException? error;
+  Completer<void>? gate;
+  int calls = 0;
+  final List<String> paths = <String>[];
+  final List<String> internshipKeys = <String>[];
+
+  @override
+  Future<CvSelection> select({
+    required String internshipKey,
+    required List<String> storagePaths,
+    String? defaultPath,
+  }) async {
+    calls++;
+    paths.addAll(storagePaths);
+    internshipKeys.add(internshipKey);
+    await gate?.future;
+    final failure = error;
+    if (failure != null) throw failure;
+    return result;
   }
 }

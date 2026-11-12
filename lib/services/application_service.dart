@@ -17,17 +17,23 @@ abstract interface class ApplicationService {
   /// signed out.
   Stream<List<InternshipApplication>> watchApplications();
 
+  /// Storage paths of the CVs snapshotted by submitted applications, so
+  /// removing a CV from the library never breaks an application preview.
+  Future<Set<String>> cvStoragePaths();
+
   /// Records a submitted application (Flow 2 end). Writing the same listing
   /// again overwrites its document instead of creating a duplicate.
   Future<void> createApplication({
     required String internshipKey,
     required String title,
     required String companyName,
-    required String cvStoragePath,
-    required String cvFileName,
-    required String cvUrl,
-    required int cvSizeBytes,
+    String? cvStoragePath,
+    String? cvFileName,
+    String? cvUrl,
+    int? cvSizeBytes,
     required ApplicationApplicant applicant,
+    String? recipientEmail,
+    required ApplicationChannel appliedVia,
   });
 
   /// Withdraws an application (Flow 3d): keeps the status it had so
@@ -35,6 +41,17 @@ abstract interface class ApplicationService {
   Future<void> withdraw(
     String internshipKey, {
     required ApplicationStatus previous,
+  });
+
+  /// Records the stage the student reached (techjobs.vn-style tracker): the
+  /// app writes [status], so the tracker shows the student's own progress
+  /// instead of invented employer events.
+  ///
+  /// `withdrawn` is not offered by the UI: Withdraw and Undo own that
+  /// transition because they also keep `withdrawnAt` / `previousStatus`.
+  Future<void> updateStatus(
+    String internshipKey, {
+    required ApplicationStatus status,
   });
 
   /// Restores the status the application had before it was withdrawn.
@@ -97,15 +114,37 @@ class FirestoreApplicationService implements ApplicationService {
   }
 
   @override
+  Future<Set<String>> cvStoragePaths() async {
+    final uid = _uid;
+    if (uid == null || uid.isEmpty) return const <String>{};
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('applications')
+          .get();
+      return {
+        for (final doc in snapshot.docs)
+          if (doc.data()['cvStoragePath'] case final String path)
+            if (path.isNotEmpty) path,
+      };
+    } on FirebaseException catch (error) {
+      throw _toAppException(error);
+    }
+  }
+
+  @override
   Future<void> createApplication({
     required String internshipKey,
     required String title,
     required String companyName,
-    required String cvStoragePath,
-    required String cvFileName,
-    required String cvUrl,
-    required int cvSizeBytes,
+    String? cvStoragePath,
+    String? cvFileName,
+    String? cvUrl,
+    int? cvSizeBytes,
     required ApplicationApplicant applicant,
+    String? recipientEmail,
+    required ApplicationChannel appliedVia,
   }) async {
     final uid = _uid;
     if (uid == null || uid.isEmpty) {
@@ -115,27 +154,34 @@ class FirestoreApplicationService implements ApplicationService {
       );
     }
 
+    final recipient = recipientEmail?.trim();
+    final fields = <String, Object?>{
+      // Snapshot of what the list shows: listings expire from the shared
+      // pool (G-25 #5).
+      'title': title,
+      'companyName': companyName,
+      'appliedAt': FieldValue.serverTimestamp(),
+      'status': ApplicationStatus.submitted.storageValue,
+      'appliedVia': appliedVia.storageValue,
+      if (recipient != null && recipient.isNotEmpty)
+        'recipientEmail': recipient,
+      // Only written when a CV was sent, so older-style documents never gain
+      // empty CV keys.
+      'cvStoragePath': ?cvStoragePath,
+      'cvFileName': ?cvFileName,
+      'cvUrl': ?cvUrl,
+      'cvSizeBytes': ?cvSizeBytes,
+      // What the student sent: the profile can change later.
+      'applicant': applicant.toFirestore(),
+    };
+
     try {
       await _firestore
           .collection('users')
           .doc(uid)
           .collection('applications')
           .doc(internshipKey)
-          .set(<String, Object?>{
-            // Snapshot of what the list shows: listings expire from the
-            // shared pool (G-25 #5).
-            'title': title,
-            'companyName': companyName,
-            'appliedAt': FieldValue.serverTimestamp(),
-            'status': ApplicationStatus.submitted.storageValue,
-            'cvStoragePath': cvStoragePath,
-            // The CV can no longer be replaced, so it is stored here too.
-            'cvFileName': cvFileName,
-            'cvUrl': cvUrl,
-            'cvSizeBytes': cvSizeBytes,
-            // What the student sent: the profile can change later.
-            'applicant': applicant.toFirestore(),
-          });
+          .set(fields);
     } on FirebaseException catch (error) {
       throw _toWriteAppException(error, action: 'submit your application');
     } on Exception catch (error) {
@@ -156,6 +202,26 @@ class FirestoreApplicationService implements ApplicationService {
     'withdrawnAt': FieldValue.serverTimestamp(),
     'previousStatus': previous.storageValue,
   }, action: 'withdraw this application');
+
+  @override
+  Future<void> updateStatus(
+    String internshipKey, {
+    required ApplicationStatus status,
+  }) async {
+    // Withdraw / Undo own the withdrawn transition: they also write
+    // `withdrawnAt` and `previousStatus`, which a plain status write would
+    // leave stale.
+    if (!status.isTrackable) {
+      throw const AppException(
+        AppErrorKind.unknown,
+        'Use Withdraw application to withdraw this application.',
+      );
+    }
+    await _updateApplication(internshipKey, <String, Object?>{
+      'status': status.storageValue,
+      'statusUpdatedAt': FieldValue.serverTimestamp(),
+    }, action: 'update this application');
+  }
 
   @override
   Future<void> undoWithdrawal(String internshipKey) async {

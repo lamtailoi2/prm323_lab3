@@ -27,9 +27,17 @@ typedef _Step = ({
 /// does not have, unlike the frame's "Expected review outcome by Oct 24"
 /// banner and per-step process notes (DC-29).
 class ApplicationStatusTracker extends StatelessWidget {
-  const ApplicationStatusTracker({super.key, required this.application});
+  const ApplicationStatusTracker({
+    super.key,
+    required this.application,
+    this.onUpdateStatus,
+  });
 
   final InternshipApplication application;
+
+  /// Opens the `Update status` sheet; hidden when null or while the
+  /// application is withdrawn (Withdraw / Undo own that state).
+  final VoidCallback? onUpdateStatus;
 
   static const List<({String title, String description})> _steps = [
     (
@@ -57,7 +65,22 @@ class ApplicationStatusTracker extends StatelessWidget {
     return DetailSectionCard(
       icon: Symbols.timeline_rounded,
       title: 'Status tracker',
-      action: ApplicationStatusBadge(status: application.status),
+      action: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ApplicationStatusBadge(status: application.status),
+          if (onUpdateStatus != null &&
+              application.status != ApplicationStatus.withdrawn) ...[
+            const SizedBox(width: AppSpacing.s8),
+            IconButton(
+              tooltip: 'Update status',
+              icon: const Icon(Symbols.edit_rounded),
+              iconSize: AppSizes.iconSmall,
+              onPressed: onUpdateStatus,
+            ),
+          ],
+        ],
+      ),
       children: [
         if (progress case final progress?) _ProgressLine(progress: progress),
         for (var i = 0; i < steps.length; i++) ...[
@@ -134,6 +157,10 @@ class ApplicationStatusTracker extends StatelessWidget {
           date: switch (i) {
             0 => formatShortDate(application.appliedAt),
             2 when interviewAt != null => formatMonthDayTime(interviewAt),
+            // The day the student set this stage themselves; absent on older
+            // documents, which then show no invented date (rule 7).
+            _ when i == activeIndex && application.statusUpdatedAt != null =>
+              formatShortDate(application.statusUpdatedAt!),
             _ => null,
           },
           description: _steps[i].description,
@@ -205,69 +232,85 @@ class _StepRow extends StatelessWidget {
     };
     final muted = step.state == _StepState.upcoming;
 
+    final active = step.state == _StepState.active;
+    final row = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: AppSizes.icon, color: color),
+        const SizedBox(width: AppSpacing.s12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      step.title,
+                      style: textTheme.labelLarge?.copyWith(
+                        color: muted ? AppColors.textSecondary : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (step.state == _StepState.active) ...[
+                    const SizedBox(width: AppSpacing.s8),
+                    const _ActiveChip(),
+                  ],
+                  if (step.date case final date?) ...[
+                    const SizedBox(width: AppSpacing.s8),
+                    Text(
+                      date,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: AppSpacing.s4),
+              Text(
+                step.description,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: muted ? AppColors.textSecondary : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
     return Semantics(
       container: true,
       label: [
         step.title,
         ?step.date,
         step.description,
-        if (step.state == _StepState.active) 'Active step',
+        if (active) 'Active step',
       ].join('. '),
       excludeSemantics: true,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: AppSizes.icon, color: color),
-          const SizedBox(width: AppSpacing.s12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        step.title,
-                        style: textTheme.labelLarge?.copyWith(
-                          color: muted ? AppColors.textSecondary : null,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (step.state == _StepState.active) ...[
-                      const SizedBox(width: AppSpacing.s8),
-                      const _ActiveChip(),
-                    ],
-                    if (step.date case final date?) ...[
-                      const SizedBox(width: AppSpacing.s8),
-                      Text(
-                        date,
-                        style: textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                        textAlign: TextAlign.right,
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.s4),
-                Text(
-                  step.description,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: muted ? AppColors.textSecondary : null,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      // The current step is tinted so it stands out (Application Detail v2,
+      // DC-31).
+      child: active
+          ? DecoratedBox(
+              decoration: const BoxDecoration(
+                color: AppColors.primaryContainer,
+                borderRadius: AppRadii.mediumAll,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.s8),
+                child: row,
+              ),
+            )
+          : row,
     );
   }
 }
 
-/// `Active step` pill of the frame, in the primary container.
+/// `Active step` pill of the frame, white on the tinted step row.
 class _ActiveChip extends StatelessWidget {
   const _ActiveChip();
 
@@ -275,7 +318,7 @@ class _ActiveChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: const BoxDecoration(
-        color: AppColors.primaryContainer,
+        color: AppColors.surface,
         borderRadius: AppRadii.fullAll,
       ),
       child: Padding(

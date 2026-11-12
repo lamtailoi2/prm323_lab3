@@ -380,6 +380,21 @@ Environment: Windows 11 × Flutter 3.47.8 / Dart 3.13.7, Android emulator `sdk g
 
 ---
 
+## Run 24: Track evidence — DC-09 deviation, application_update/application_delete (2026-11-05)
+
+Branch `chore/analytics-evidence-artemis` (off `main`, worktree). Environment: Windows 11 × Flutter 3.47.3 / Dart 3.13.3 (no device or emulator attached).
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `dart format lib test` | formatted (2 files changed: `application_detail_viewmodel.dart`, `application_detail_viewmodel_test.dart`) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test test/features/applications/application_detail_viewmodel_test.dart` | **10 passed**, including the two new tests for `application_update` / `application_delete` on withdraw, and `application_update` on undo |
+| 4 | `flutter test` (full suite) | **585 tests, all passed** (`All tests passed!`) |
+
+Scope: row 5 (DC-09 CV Match Check recorded as a deviation in `design-traceability.md` §4 and `handoff-gaps.md` G-24, no code change) and row 16 (logged `application_update` / `application_delete` on withdraw / undo in `ApplicationDetailViewModel`, per `docs/analytics-plan.md` rows 12-13). DebugView screenshots for these two events, and for rows 14-15 and 20 (auth console), are a separate manual step — not captured in this run; recorded as **Not run** until a device/emulator session is available.
+
+---
+
 ## Run 24: Flow 3 Application Detail audit (2026-11-04)
 
 Branch `feat/application-detail` on Windows 11. Environment: Flutter 3.47.8 / Dart 3.13.7 (no device or emulator attached).
@@ -592,6 +607,47 @@ Findings:
 2. After a failing router test, `flutter test` waited instead of exiting;
    passing runs exit normally. Not investigated in this change.
 
+## Run 35: Home greeting uses the Google given name; long names fit (2026-11-07)
+
+Branch `feat/home-given-name` from `dev` `8f1f174`, uncommitted working tree.
+Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable. No device run.
+AI log P-78.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | 0 files changed |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` | `+663: All tests passed!` (6 new: given name saved / not written / save failure ignored, `givenName` parsing, long-name heading at 360 and 412 dp) |
+| 4 | Sign in on a device and check the Home name | **Not run** |
+
+Findings: `LoginViewModel` now reads `userProfileServiceProvider`, so the
+Login screen and ViewModel tests override it with `FakeUserProfileService`.
+The `676` in the UI v2 run below was the compact reporter's running counter,
+not the number of tests.
+
+## Run 33: UI v2 headers, Job Hero Card, Application Detail tweaks (2026-11-06)
+
+Branch `feat/ui-v2` from `dev` `ab6c8d3`, uncommitted working tree.
+Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable. No device run.
+AI log P-73.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | 0 files changed (after the edits were formatted) |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` | 676 / 676 passed (final state: Home without the summary) |
+| 4 | Device / emulator check of the new headers and cards | **Not run** |
+
+Findings:
+
+1. 36 tests failed on the first run: they asserted the old UI. The avatar
+   was then kept on the non-Home tabs (DC-20), and the tests were updated for
+   `Company · City` on one line, the student's name on Home, three
+   `Not disclosed` facts instead of four, and a taller header that shows
+   fewer application cards (the count line is checked instead).
+2. Two Internship Detail taps needed an extra scroll so the link was not
+   under the bottom action bar.
+
 ## Run 32: Job type / allowance chips; Edit skills from the Apply Form (2026-11-06)
 
 Branch `fix/filter-chips-and-skills-sheet` from `dev` `b08b47f`, uncommitted
@@ -630,6 +686,92 @@ Follow-ups: capture `evidence/crashlytics/` (dashboard with fatal + non-fatal, u
 
 ---
 
+## Run 33: Admin dashboard refactor + admin crash command — 2026-11-06
+
+Environment: Windows 11 · Flutter 3.47.8 · Node 24 · `emulator-5554` (1080 × 2400) · Firebase project `prm-lab3` · signed-in test account.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd tools/admin-dashboard && npm test` | **9 passed** |
+| 2 | `node --check server.js`, `lib/admin.js`, `public/app.js` | Clean |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **676 passed** |
+| 5 | `POST /api/test-crash` to the signed-in UID | `successCount: 1`; logcat showed `FATAL EXCEPTION: FirebaseCrashlyticsTestCrash` on the app PID, then the app closed |
+| 6 | Rebuilt and reinstalled the APK; Profile → Diagnostics | Both `Simulate app crash` and `Firebase demo` are present |
+| 7 | `agent-browser` visual check | Recipient select lists all 9 users plus `Everyone with a token (5)`; no-token users are disabled; selecting `Mai Duy Lập` enabled `Send notification` and changed the chip to `To Mai Duy Lập`; the crash acknowledgment enabled `Send test crash` |
+| 8 | Crashlytics dashboard for the admin crash | **Not checked** (the fatal report uploads on the next launch) |
+
+Notes: the app must be rebuilt after the `test_crash` handler lands; the first attempt used the earlier APK and did not close. The dashboard is served only on `127.0.0.1:4317`.
+
+---
+
+## Run 34: Email-based apply flow (DC-31) — 2026-11-06
+
+Environment: Windows 11 · Flutter 3.47.8 · Dart 3.13.3 · Node 24.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Formatted 216 files (8 changed on the first run, then clean) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **653 passed** |
+| 4 | `cd functions && npm test` | **59 passed** (`npm run build` + `node --test`; 13 new for `composeCoverLetter`) |
+| 5 | Unit: `contact_email_test.dart`, `mailto_test.dart`, `cover_letter_service_test.dart` | Passed (in the 653) |
+| 6 | ViewModel: `apply_compose_viewmodel_test.dart` | Passed: prefill from the JD, AI draft, empty / invalid recipient, `mailto:`, `I've sent it` record fields (`appliedVia: email`, `recipientEmail`, cover letter, optional CV), repeated tap, failed draft, no name, late profile snapshot, `buildSession` |
+| 7 | Widget: `apply_compose_screen_test.dart` | Passed at 360 / 412 dp: drafted subject and letter, found / absent address helper, CV card, error + Retry, `Open email app` hands the draft to the fake mail service, 48 dp guideline |
+| 8 | Router: `router_test.dart` | `home_apply_email` for `Apply now`; new `/apply/match`, `/apply/validation`, `/apply/success` paths |
+| 9 | Deploy `composeCoverLetter` / a real Groq call | **Not run** (no owner deploy or secret in this session) |
+| 10 | Device walk (open Gmail, attach the CV, `I've sent it`) | **Not run** (no device session owned by this agent) |
+| 11 | `cover_letter_generate` / `application_create` in DebugView | **Not run** |
+| 12 | `uv run --no-sync python -m py_compile e2e_test/test_apply.py e2e_test/test_apply_form.py e2e_test/conftest.py` | Clean (TC-06 / TC-18 / TC-19 rewritten for the email flow; TC-20 removed with the form) |
+
+Notes: the compose screen replaces the six-field Application Form and the Review step (DC-31, G-33). The callable's unit tests cover the AI path, the template fallback (blank key, model error, unparseable JSON), Vietnamese listings, a missing internship / key / auth, another user's CV path and a failed CV read.
+
+---
+
+## Run 36: SerpAPI fresher/junior keywords + Detail role/level badges (2026-11-07)
+
+Environment: Windows 11 · Flutter 3.47.6 / Dart 3.13.5 · Node 24.6.0 (functions declare Node 22) · merge of `dev` (UI v2, compose apply flow) into the feature branch. Changes: P-79, DC-28.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd functions && npm test` | **20 tests, all passed** (config keywords, rotation and quota) |
+| 2 | `dart format lib test` | **222 files formatted, 0 changed** |
+| 3 | `flutter analyze` | **No issues found!** |
+| 4 | `flutter test` | **687 tests, all passed** (full suite after the merge; includes the level parser, `Internship.level` and the Detail badge assertions at 360 / 412 dp) |
+| 5 | Deployed `syncInternshipsJob` + manual Cloud Scheduler run (2026-11-07) | **Real backfill passed**: `sync/state` → `backfill=true`, `fetched=65`, `written=65`, `expiredDeleted=0`, all eight keywords, no `lastError`; Firestore shows 10 `IT fresher Vietnam` and 10 `IT junior Vietnam` listings; the Pixel 6 emulator shows the `DevOps/Cloud` + `Intern` badges on Detail. Evidence: `evidence/sync/2026-11-07-p46-sync.md` + screenshot (files keep the original P-46 label) |
+
+---
+
+## Run 37: Experience band + ranking tiebreaker (2026-11-07)
+
+Environment: Windows 11 · Flutter 3.47.6 / Dart 3.13.5 · no device or Firebase project on this machine. Changes: P-80, DC-32, DC-33.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **222 files formatted, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **687 tests, all passed** (full suite after the merge). Coverage: `user_profile_test.dart` (parse/store, legacy profile without `experience`, band → level mapping, equality/hashCode by experience); `profile_viewmodels_test.dart` (seeded band, single-select + clear, other fields keep the draft, save with `item_count`, unanswered experience stored null and not counted, failed save keeps the draft); `recommendation_test.dart` (level matrix incl. `null`, experience does not change the score); `home_viewmodel_test.dart` (level match beats sync rank, no experience keeps sync order, level cannot outrank a better role/skill score); `profile_screen_test.dart` (the Update preferences sheet runs at 360 and 412 dp and saves an experience chip; Profile asserts the `1–2 years` tag and four "Not set" groups) |
+| 4 | Not run | On-device sheet/tag screenshots, Firestore round trip on a real project, DebugView for the new `profile_update.item_count` (no device / Firebase project here) |
+
+---
+
+## Run 38: Unread badge on the bell + Mark all as read (2026-11-08)
+
+Branch `feat/notification-unread-badge` from `dev` `88b3382`, uncommitted
+working tree. Environment: macOS 26.7.1 (Apple M1) · Flutter 3.47.6 stable.
+AI log P-81.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format --output=none --set-exit-if-changed lib test` | 0 changed |
+| 2 | `flutter analyze` | No issues found! |
+| 3 | `flutter test` (full suite) | **697 tests, all passed** (+10: header badge with 3 and `9+`, none at 0; unread count follows snapshots and is 0 signed out; `markAllRead` marks only the unread, ignores loading / all read, retries after a failure; Notification Center shows `Mark all as read` only while something is unread and hides it after the snapshot) |
+| 4 | Profile build of this branch on emulator `Pixel_API_36`, 1 unread notification | **Passed**: red badge `1` on the bell of Home, Saved and Profile |
+| 5 | Device: bell → Notifications | **Passed**: `Mark all as read` shown in the app bar; the unread item has its dot |
+| 6 | Device: tap `Mark all as read` | **Passed**: the item reads `Read`, the action disappears; Back to Profile shows the bell without a badge |
+
+---
+
 ## Run template
 
 ```markdown
@@ -645,3 +787,221 @@ Environment: <OS, Flutter, device / emulator, commit>
 
 Failures and follow-ups: <links to issues / commits>
 ```
+
+## Run 32: CV library (G-33) — 2026-11-07
+
+**Environment:** Windows 11 Home Single Language 10.0.26200 · Flutter 3.47.3 stable · Dart 3.13.3 · branch `feat/cv-library`. No Firebase project or device configured on this machine; build/device runs happen on another machine.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **Completed**; 215 files, 0 changed (already formatted) |
+| 2 | `flutter analyze` | **No issues found!** (strict casts / inference / raw types, extra lint rules from `analysis_options.yaml`) |
+| 3 | `flutter test` | **687 tests, all passed** (`All tests passed!`); new/changed: `test/core/utils/cv_library_test.dart`, `test/models/user_profile_test.dart`, `test/services/file_storage_service_test.dart`, `test/features/profile/profile_viewmodels_test.dart` (CV library add/set default/remove + referenced-file guard), `test/features/profile/profile_screen_test.dart` (CV library section at 360/412 dp) |
+| 4 | `flutter build apk --debug` | **Not run**: Android toolchain incomplete on this machine. Run on the device-owner machine before opening the PR. |
+| 5 | App launch / Firebase (Auth, Storage, Firestore `users/{uid}/cvs`) on device | **Not run**: Firebase not configured here; requires the device-owner machine. |
+
+Findings:
+
+1. Two `removeCv` bugs were found while reviewing the work-in-progress before logging, and fixed in this session: (a) removing a non-default CV promoted another CV to default even when the legacy `users/{uid}.cv` mirror was the active default (`defaultCvId == null`); (b) removing the legacy mirror cleared `cv` to `null` while library entries survived, so the Apply Form prefill went empty. The legacy-mirror branch now promotes the newest library entry to `defaultCvId` + mirror, and the library-entry branch leaves a surviving legacy mirror as the default. Tests still pass after the fix.
+2. DebugView evidence for `cv_library_change` (`action`, `cv_count`, `kept_file`) is **not captured here**; it needs a running app + Firebase Console and is recorded separately by the device-owner.
+
+---
+
+## Run 33: CV auto-select (G-33 item 8) — 2026-11-08
+
+**Environment:** Windows 11 Home Single Language 10.0.26200 · Flutter 3.47.3 stable · Dart 3.13.3 · branch `feat/cv-library`. No Firebase project or device configured on this machine.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **Completed**; 215 files, 0 changed |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **687 tests, all passed**; existing apply-form tests still pass after ViewModel refactor |
+| 4 | `npm run build && npm test` (Cloud Functions) | **57/57 tests passed** including new `select-cv.test.ts` (12 cases) |
+| 5 | `flutter build apk --debug` | **Not run**: Android toolchain incomplete on this machine |
+
+Findings:
+
+1. Two ViewModel logic bugs discovered during review and fixed: `removeCv` guard for legacy-mirror default (2026-11-07); `_onProfile` and `_applyLibrary` ordering that caused `profileCv` to go null when the CV library stream arrived (2026-11-08).
+2. `cv_auto_select` event now Implemented; DebugView screenshot still pending device run.
+
+---
+
+## Run 39: Post-merge CV/profile regression fixes (2026-11-08)
+
+**Environment:** Windows 11 · branch `feat/cv-library`, HEAD `3f5eb24` plus an uncommitted working tree. No Firebase login on this machine.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **230 files, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` (full suite) | **729 tests, all passed** |
+| 4 | `npm run build && npm test` (`functions/`) | **72/72 tests passed** |
+| 5 | `flutter pub get` | **Got dependencies** (37 newer versions held back by constraints) |
+| 6 | `npm install` (`functions/`) | **up to date**, 259 packages audited (9 vulnerabilities reported by npm) |
+| 7 | `npx firebase-tools deploy --only functions:selectCv --project prm-lab3` | **Passed after one retry**: the first attempt created the function but failed to set the Cloud Run invoker IAM policy; the second run printed `Deploy complete!`, and `functions:list` shows `selectCv` (callable, `us-central1`, `nodejs22`) |
+
+Findings:
+
+1. The merge with `dev` dropped `UserProfile.givenName` / `UserProfile.defaultCvId` from the model fields, `fromFirestore`, `==` and `hashCode`; this broke the Home greeting and Profile default-CV selection. Restored all four places and added an equality regression test.
+2. The merge kept two `updateCv` implementations; removed the old mirror-only one so uploads add to the library and set the new CV as default.
+3. `functions/src/index.ts` imported `handleSelectCv` / `SELECT_RUBRIC` and defined `selectGroq`, but the merge lost the `selectCv` export; restored the callable and `npm run build` passes.
+4. `FakeUserProfileService` dropped `givenName` / `defaultCvId` on merge writes; both are now preserved.
+5. The first deploy created `selectCv` but failed with `Failed to set the IAM Policy on the Service`; an immediate retry completed successfully, so the callable is now deployed.
+
+---
+
+## Run 40: Compose CV auto-select + manual Change CV (2026-11-09)
+
+**Environment:** Windows 11 → Flutter 3.47.3 stable / Dart 3.13.3 → branch `feat/cv-library` with an uncommitted working tree. No Firebase project or device configured on this machine.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **230 files, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` (full suite) | **735 tests, all passed** (+6: auto-select success, failed fallback, manual choice during the comparison, one-CV skip, and the screen suggestion + `Change CV` sheet at 360 and 412 dp) |
+| 4 | DebugView for `cv_auto_select` | **Not run** (no Firebase project / device here) |
+
+Findings:
+
+1. The earlier auto-select only existed in the removed Apply Form; the Compose flow now owns the library, the suggestion and the manual override. Drafting waits for the comparison so the cover letter is composed against the chosen CV.
+2. `Change CV` applies to this application only. The Profile default is never written from Compose (DC-35).
+
+---
+
+## Run 41: Test docs sync + admin dashboard analytics (2026-11-10)
+
+**Environment:** Windows 11 · Node 24.22.1 · npm 11.19.1 · branch `dev`, HEAD `5c27ddd` (documentation, E2E suite and admin dashboard changes). No Flutter or ARTEMIS run in this session.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd tools/admin-dashboard && npm test` | **14 tests, all passed** (`node --test test/*.test.js`): the 9 cases from Run 33 plus 5 in `analytics.test.js` (GA4 realtime totals, row fallback, event-only rows, malformed reports, quota bucket) |
+| 2 | `flutter analyze` / `flutter test` | **Not re-run**: `5c27ddd` changes no `lib/` or `test/` Dart file, so Run 40 (735 tests) remains the latest full suite |
+| 3 | ARTEMIS suite | **Run separately** on 2026-11-09/10 (TC-06, TC-07, TC-09, TC-14, TC-17, TC-19). Results, counted traces and causes are in `test-plan.md` §4 and [`evidence/artemis/e2e-environment-20261110.md`](../../evidence/artemis/e2e-environment-20261110.md); the day's lines were copied to [`runs-20261110.jsonl`](../../evidence/artemis/runs-20261110.jsonl) because `e2e_test/artifacts/` is git-ignored |
+
+Findings: TC-06, TC-07, TC-09 and TC-17 now have 3 of 3 counted passes; TC-14 (2 of 4) and TC-19 (0 of 3) still need a counted batch. The two title-check failures (TC-07 `c67149d6`, TC-09 `cee108da`) were test expectations, fixed by `_same_position`, not app defects.
+
+---
+
+## Run 42: CR-07 Saved part + CR-11 filter count (2026-11-11)
+
+**Environment:** macOS 26 (Apple M1) → Flutter 3.47.6 stable / Dart 3.13.5 → branch `fix/cr-07-cr-11-saved-identity-filter-count` from `dev` `1317527`: CR-07 committed as `1f591c3`, CR-11 and these records in the `fix(CR-11)` commit after it. No Firebase project or device used.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **230 files, 0 changed** |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` (full suite) | **741 tests, all passed** (+6: `saved_viewmodel_test` CR-07 group — identity provider, unsave of another copy, two legacy copies removed, same title at another company still saved; Search Results card saved under another copy; Search filter sheet opened before the pool loads) |
+| 4 | New screen tests against the old `lib/` (`git stash push -- lib`) | **Both fail as expected**: CR-07 finds no `Remove from saved` bookmark; CR-11 stays at `Show 0 results →`. Restored with `git stash pop` before row 3 |
+| 5 | Device run / ARTEMIS | **Not run** |
+
+Findings:
+
+1. CR-07 (Saved part): the Save Toggle on Home, Search Results and Detail now reads `savedJobsProvider` (job identities). `SavedViewModel.toggleAndReport` removes the saved copies of the job, not the key of the copy on the card, so the job can no longer be saved twice.
+2. CR-11: `SearchResultsFilterSheet.show` takes `listingsChanged` (the provider the listings live in) and rebuilds from it; the criteria being edited stay in the sheet's `State`.
+
+---
+
+## Run 43: Firestore and Storage rules tests (2026-11-11)
+
+**Environment:** Windows 11 · Node 24.22.1 · npm 11.19.1 · firebase-tools 15.34.1 · JDK 25.0.3 (Android Studio `jbr`, added to `PATH`; the CLI checks `java -version` and ignores `JAVA_HOME` alone) · branch `dev`, HEAD `1317527` with an uncommitted working tree. Emulators only (`demo-internly`); no Firebase project, device or network data.
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `npm --prefix firebase/tests install` | **136 packages installed** (`@firebase/rules-unit-testing` 6.0.0, `firebase` 13.2.0). These are `dependencies`, not `devDependencies`, because this machine sets `omit=dev` |
+| 2 | `firebase emulators:exec --only firestore,storage --project demo-internly "npm --prefix firebase/tests test"` | **15 tests, 15 passed, 0 failed** (`node --test --test-concurrency=1`, 2.9 s): all 15 in the two new files |
+| 3 | `firebase emulators:exec --only firestore,storage --project demo-internly "node firebase/tests/demo/server.mjs --self-test"` | **19/19 demo scenarios passed, 0 failed** (1.8 s) — the same rules exercised through the browser harness, including the 50/51-field boundary and the Storage content-type/size checks |
+| 4 | Demo smoke test under the same `emulators:exec` | `GET /` → **200**, 10,327 bytes, page renders the table; `GET /run` → **200**, plan 19 rows, 19 results, summary `19/19 passed, 0 failed, 1772 ms` |
+| 5 | `flutter analyze` / `flutter test` | **Not re-run**: no Dart file changed; Run 42's 741 tests remain the latest full suite |
+
+Coverage: `firestore.rules.test.mjs` (9 tests) — `users/{uid}` denies signed-out and other users, allows the owner on the document and its subcollections, and rejects a 51-field write while accepting 50; `internships/{key}` reads only when signed in and never accepts a client write (create, update, delete); `sync/**` is closed. `storage.rules.test.mjs` (6 tests) — `reports/{uid}` and `cvs/{uid}` allow the owner's PDF, reject another user, a signed-out client, non-PDF content, a PDF over 10 MB and every other path. `demo/server.mjs` exposes the same decisions as 19 rows on a local page (`http://localhost:5500`) so a screen recording can be used as evidence; the page and the node:test files both read the rules from `firebase/`.
+
+Findings: the first run failed 4 Firestore cases because the tests addressed `users/alice/profile`; `users/{uid}` is the document itself and a three-segment path is invalid, so the cases now use `users/alice` and `users/alice/<collection>/<doc>`. No rule changed. Running the emulators requires a JDK on `PATH`; `JAVA_HOME` was set as well for the Storage rules runtime. The emulator prints a `sun.misc.Unsafe` warning from the Storage rules runtime on JDK 25; it did not affect results.
+
+---
+
+## Run 44: Student-reported application status (2026-11-11)
+
+**Environment:** Windows 11 · branch `feat/application-status-tracking` (merged `origin/dev` `2a5e3b0`) · Flutter 3.47.3 stable · Dart 3.13.3. No device or emulator was attached, so no build or E2E run.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | **231 files, 3 changed** on the first pass, then 0 on the re-run |
+| 2 | `flutter analyze` | **No issues found!** (ran in 6.8 s on the second pass) |
+| 3 | `flutter test test/features/applications test/models/internship_application_test.dart` | **100 tests, all passed** |
+| 4 | `flutter test` (full suite) | **751 tests, all passed** (after merging `dev`) |
+| 5 | `python -m py_compile e2e_test/test_applications.py` | **Passed** (new TC-21 syntax only) |
+| 6 | ARTEMIS TC-21 | **Not run**: no device attached; the case is written and marked `Ready` in `docs/test-plan.md` |
+| 7 | `flutter build apk --debug` | **Not run**: Android toolchain incomplete on this machine |
+
+Findings:
+
+1. The tracker had no in-app writer for `under_review` … `rejected` (G-25 #6), so the stages could only be set from the console. `ApplicationService.updateStatus` + `UpdateStatusSheet` now write them and stamp `statusUpdatedAt` (BR-T8, DC-35).
+2. `withdrawn` is deliberately excluded from the picker: Withdraw / Undo own `withdrawnAt` / `previousStatus`, and a plain status write would leave them stale. A service-level guard refuses it too.
+3. No `application_update` event is logged when the picked stage equals the stored one, so a no-op tap cannot inflate the funnel.
+4. The tracker shows `statusUpdatedAt` only for the active step of a document that has it; older documents keep showing no invented date (rule 7).
+
+---
+
+## Run 45: React admin dashboard + Vercel deployment preparation (2026-11-11)
+
+**Environment:** Windows 11 · Node 24.22.1 · npm 11.19.1 (global `NODE_ENV=production`, npm `omit=dev`) · branch `dev`. No Firebase project, device or Vercel deployment used.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd tools/admin-dashboard && npm install --include=dev` | **64 dev packages added**; plain `npm install` installed production dependencies only because of `NODE_ENV=production` |
+| 2 | `npm test` | **16 tests, all passed** (14 existing + `test/auth.test.js`: allowlist parsing and verified-email check) |
+| 3 | `npm run build` | **Vite 7.3.8 build succeeded in 1.59 s**: `dist/index.html` 0.45 kB, CSS 12.23 kB, JS 343.93 kB |
+| 4 | `npm run dev` → `GET /` | **200**, React page with `/src/main.jsx`; Express + Vite middleware share port 4317 |
+| 5 | `npm run dev` → `GET /api/status` (no `ADMIN_EMAILS`) | **503** `ADMIN_EMAILS is not set, so no account may use the dashboard.` with the env-var hint |
+| 6 | Second instance on 4318 with `ADMIN_EMAILS=test@example.com` → `GET /api/status` | **401** `Sign in to use the dashboard.` |
+| 7 | Vercel deployment | **Not run** (no Vercel account/project access here); setup is documented in `tools/admin-dashboard/README.md` |
+| 8 | `flutter analyze` / `flutter test` | **Not re-run**: no Dart file changed |
+
+Findings: the auth gate is the first middleware on `/api`, so no Firestore/Auth/FCM code runs before the token and allowlist checks. The browser bundle contains only the public Firebase web config; the service account is read from the server environment or the local default file. React StrictMode double-invokes the initial load in development, which only repeats read-only GETs.
+
+---
+
+## Run 46: Firebase Web App + dashboard env (2026-11-11)
+
+**Environment:** Windows 11 · Node 24.22.1 · npm 11.19.1 · firebase-tools 15.34.1 · project `prm-lab3`, branch `dev`. No Vercel deployment and no GA4 call.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `firebase apps:list --project prm-lab3` (before) | **2 apps**: Android and iOS only; no web app |
+| 2 | `firebase apps:create WEB "Internly Ops" --project prm-lab3` | Created app **`1:888219308403:web:0aa12a147b36ae2dc03506`** |
+| 3 | `firebase apps:sdkconfig WEB 1:888219308403:web:0aa12a147b36ae2dc03506` | Returned `apiKey`, `authDomain=prm-lab3.firebaseapp.com`, `projectId=prm-lab3`, `appId`, `measurementId=G-17R0TX3PRF` |
+| 4 | `firebase login:list` | Logged in as **`lap262005@gmail.com`** (used for `ADMIN_EMAILS`) |
+| 5 | Google provider probe: `POST identitytoolkit/v1/accounts:createAuthUri` with `providerId=google.com` | **200** with an `authUri`, so Google sign-in is enabled |
+| 6 | `GET identitytoolkit/admin/v2/projects/prm-lab3/config` | Authorized domains were **`localhost`, `prm-lab3.firebaseapp.com`, `prm-lab3.web.app`**; `127.0.0.1` was missing |
+| 7 | `PATCH .../config?updateMask=authorizedDomains` adding `127.0.0.1`, then `createAuthUri` with `continueUri=http://127.0.0.1:4317` | **PATCH 200**; the probe then returned **200** with an `authUri` |
+| 8 | GA4 Admin API probe with the service account | **403 SERVICE_DISABLED** for `analyticsadmin.googleapis.com`; no property id found, so `GA4_PROPERTY_ID` stays unset |
+| 9 | `npm run dev` → `GET /` / `GET /api/status` | **200** / **401 `Sign in to use the dashboard.`** (previously 503 `ADMIN_EMAILS is not set`) |
+| 10 | `GET /src/firebase.js` through Vite | Contains `VITE_FIREBASE_API_KEY` and the web `appId`, so the React build receives the config |
+| 11 | Vercel deployment | **Not run** |
+
+Findings: the local API now reads `.env.local` because `server/local.js` copies Vite's `loadEnv` result into `process.env`; without that the browser had the config but `ADMIN_EMAILS` was invisible to Express. The dashboard is ready to sign in locally with `lap262005@gmail.com`. The `auth/unauthorized-domain` error came from opening `127.0.0.1` while only `localhost` was authorized; `127.0.0.1` is now added. GA4 remains optional and needs the Data API enabled, the service account added as Viewer, and the numeric property id.
+
+---
+
+## Run 47: Report export (G-05, DC-36) — 2026-11-12
+
+**Environment:** Windows 11 · Flutter 3.47.8 stable · Dart 3.13.7 · branch `dev`. New dependency `pdf` 3.13.1. No device session, no Firebase deployment and no ARTEMIS run.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `flutter pub add pdf` | Added `pdf 3.13.1` (+ `barcode`, `image`, `path_parsing`, `petitparser`, `qr`, `xml`, `posix`); `pubspec.yaml` and `pubspec.lock` updated |
+| 2 | `dart format lib test` | Formatted; 0 changed (239 files) |
+| 3 | `flutter analyze` | **No issues found!** (ran in 8.9 s) |
+| 4 | `flutter test` | **773 tests, all passed** (`All tests passed!`), including the 31 new ones |
+| 5 | New tests: `test/core/utils/application_report_pdf_test.dart` | 5 passed: file name from the date, a real `%PDF-` document with two rows, one row, `ArgumentError` on an empty list (no empty report is ever written), and the bundled Inter faces render a Vietnamese name (the exact asset paths the service loads) |
+| 6 | New tests: `test/features/report_export/report_export_viewmodel_test.dart` | 10 passed: loading → data, empty applications, progress → report + `export_report` parameters, repeated tap blocked, upload failure keeps a message and logs no event, no-application guard, report stream error + retry, `open` via the link service, a viewer failure returned instead of thrown |
+| 7 | New tests: `test/features/report_export/report_export_screen_test.dart` | 6 passed: the card and list at 360 / 412 dp, export → `Last exported` and `Export again`, empty state instead of the action, load error + `Retry`, `Open` hands the URL to the link service, 48 dp tap targets |
+| 8 | Updated test: `test/features/profile/firebase_demo_screen_test.dart` | Passed: the row reads `A PDF of your applications.` and opens `/profile/export` |
+| 9 | Real upload to Cloud Storage + metadata in `users/{uid}/reports` | **Passed** (2026-11-12 23:20–23:42, ARTEMIS TC-11): the PDF is uploaded, `Last exported` appears and `Your reports` lists the file with `Open` |
+| 10 | `export_report` in DebugView | **Not run** |
+| 11 | ARTEMIS TC-11 (`test_report_export.py`) | **Passed 3/3** — traces `f27d53d0` (441.3 s), `a4cbf99a` (264.4 s), `0fb3220a` (551.2 s); batch `3 passed in 1299.88s`. Recorded desktop video (emulator + ARTEMIS workspace + terminal): `e2e_test/artifacts/recordings/20261112/TC-11_Report_Export_recorded.mp4`, 1343.8 s, 71.8 MiB |
+| 12 | `Open` on a device without a PDF viewer | **Not run** (unit-tested failure path only) |
+
+Notes: the PDF is built from the student's own `users/{uid}/applications` documents, so an account with no applications gets the empty state and no file is uploaded (AGENTS.md rule 7). A report document is written only after the upload returns a real download URL. The built-in Helvetica cannot render Vietnamese, so the service loads the bundled Inter faces when available and falls back to the default font instead of failing.
+
+Two fixes came out of the ARTEMIS runs, both verified by the counted batch: `final_report()` in `e2e_test/conftest.py` now retries the step-history read (run `59da6690` failed with `no structured output` although the agent's JSON was valid), and the metadata document id is now `application-report-YYYY-MM-DD` so exporting twice in one day replaces the row instead of duplicating it. Full record: [`../evidence/artemis/e2e-environment-20261112.md`](../evidence/artemis/e2e-environment-20261112.md).

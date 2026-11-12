@@ -5,6 +5,11 @@ import { defineSecret } from 'firebase-functions/params';
 import { onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 
+import {
+  COVER_LETTER_RUBRIC,
+  handleComposeCoverLetter,
+  loadProfileFromFirestore,
+} from './compose-cover-letter';
 import { syncInternships } from './sync';
 import { askGroq } from './groq';
 import {
@@ -13,6 +18,10 @@ import {
   loadProfileSkillsFromFirestore,
   MATCH_RUBRIC,
 } from './match-cv';
+import {
+  handleSelectCv,
+  SELECT_RUBRIC,
+} from './select-cv';
 import { SKILL_EXTRACTION_RUBRIC } from './skill-extraction';
 import {
   askGemini,
@@ -101,6 +110,9 @@ const matchGroq = (prompt: string, apiKey: string) =>
 const extractGroq = (prompt: string, apiKey: string) =>
   askGroq({ prompt, apiKey, system: SKILL_EXTRACTION_RUBRIC });
 
+const selectGroq = (prompt: string, apiKey: string) =>
+  askGroq({ prompt, apiKey, system: SELECT_RUBRIC });
+
 /**
  * Advisory CV Match Check (G-24/DC-09).
  *
@@ -124,6 +136,61 @@ export const matchCv = onCall(
         askModel: matchGroq,
         loadInternship: loadInternshipFromFirestore,
         loadProfileSkills: loadProfileSkillsFromFirestore,
+      },
+      groqApiKey.value(),
+    ),
+);
+
+/**
+ * Automatic CV selection for the Apply Form (G-33 item 8).
+ *
+ * Every candidate CV is scored deterministically from its text, the internship
+ * requirements and the Profile skills; Groq only writes the reason. The call is
+ * advisory and the app falls back to the default CV on any failure.
+ */
+export const selectCv = onCall(
+  {
+    secrets: [groqApiKey],
+    timeoutSeconds: 60,
+    memory: '256MiB',
+  },
+  (request) =>
+    handleSelectCv(
+      request,
+      {
+        downloadPdf: downloadPdfFromStorage,
+        extractText: extractPdfText,
+        askModel: selectGroq,
+        loadInternship: loadInternshipFromFirestore,
+        loadProfileSkills: loadProfileSkillsFromFirestore,
+      },
+      groqApiKey.value(),
+    ),
+);
+
+const coverLetterGroq = (prompt: string, apiKey: string) =>
+  askGroq({ prompt, apiKey, system: COVER_LETTER_RUBRIC });
+
+/**
+ * Drafts the application email (subject + cover letter) for the email-based
+ * Apply flow. Groq writes it from the listing and the Profile; any failure
+ * returns a deterministic template, so the flow never dead-ends.
+ */
+export const composeCoverLetter = onCall(
+  {
+    secrets: [groqApiKey],
+    timeoutSeconds: 60,
+    memory: '256MiB',
+  },
+  (request) =>
+    handleComposeCoverLetter(
+      request,
+      {
+        loadInternship: loadInternshipFromFirestore,
+        loadProfile: loadProfileFromFirestore,
+        downloadPdf: downloadPdfFromStorage,
+        extractText: extractPdfText,
+        askModel: coverLetterGroq,
       },
       groqApiKey.value(),
     ),

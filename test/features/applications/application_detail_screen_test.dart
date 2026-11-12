@@ -130,11 +130,11 @@ void main() {
 
       expect(find.text('Application Detail'), findsOneWidget);
       expect(find.text('Flutter Developer Intern'), findsOneWidget);
-      expect(find.text('FPT Software'), findsOneWidget);
+      // The city joins the company line (DC-31).
+      expect(find.text('FPT Software · Ho Chi Minh City'), findsOneWidget);
       expect(find.text('Submitted Oct 11, 2026'), findsWidgets);
       expect(find.text('5-7M VND / mo'), findsOneWidget);
       expect(find.text('Work mode Remote'), findsOneWidget);
-      expect(find.text('Ho Chi Minh City'), findsOneWidget);
 
       // Status tracker, from the status the student set: 4 steps, with
       // progress (`underReview` = step 2 of 4, 50%).
@@ -335,6 +335,87 @@ void main() {
 
     expect(find.text('Withdraw application'), findsNothing);
     expect(find.text('Not selected'), findsOneWidget);
+  });
+
+  testWidgets('Update status saves the stage the student picks', (
+    tester,
+  ) async {
+    await pumpDetail(tester);
+
+    await tester.tap(find.byTooltip('Update status'));
+    await tester.pumpAndSettle();
+    expect(find.text('Update status'), findsWidgets);
+
+    // Every stage the student can report; Withdrawn belongs to Withdraw.
+    expect(find.text('Submitted'), findsWidgets);
+    expect(find.text('Interview'), findsOneWidget);
+    expect(find.text('Withdrawn'), findsNothing);
+
+    await tester.tap(find.text('Interview'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save status'));
+    await tester.pumpAndSettle();
+
+    expect(applications.statusUpdates, [
+      (internshipKey: listing.key, status: ApplicationStatus.interview),
+    ]);
+    expect(analytics.parameters['application_update'], {
+      'internship_id': listing.key,
+      'from_status': 'under_review',
+      'to_status': 'interview',
+    });
+  });
+
+  testWidgets('Save status is disabled until the stage changes', (
+    tester,
+  ) async {
+    await pumpDetail(tester);
+
+    await tester.tap(find.byTooltip('Update status'));
+    await tester.pumpAndSettle();
+
+    final save = find.widgetWithText(FilledButton, 'Save status');
+    expect(tester.widget<FilledButton>(save).onPressed, isNull);
+
+    await tester.tap(find.text('Accepted'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+  });
+
+  testWidgets('a withdrawn application hides Update status', (tester) async {
+    applications.results = [
+      buildApplication(status: ApplicationStatus.withdrawn, withdrawn: true),
+    ];
+    await pumpDetail(tester);
+
+    expect(find.byTooltip('Update status'), findsNothing);
+  });
+
+  testWidgets('a failed status write keeps the sheet open with the message', (
+    tester,
+  ) async {
+    applications.updateStatusError = const AppException(
+      AppErrorKind.network,
+      'We could not update this application. Check your connection and try '
+      'again.',
+    );
+    await pumpDetail(tester);
+
+    await tester.tap(find.byTooltip('Update status'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rejected'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save status'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'We could not update this application. Check your connection and try '
+        'again.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Save status'), findsOneWidget);
   });
 
   testWidgets('loading shows card skeletons', (tester) async {

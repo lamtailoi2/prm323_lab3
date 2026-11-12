@@ -10,7 +10,9 @@ import 'package:internly/models/internship.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/application_service.dart';
 import 'package:internly/services/auth_service.dart';
+import 'package:internly/services/cover_letter_service.dart';
 import 'package:internly/services/crashlytics_service.dart';
+import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
 import 'package:internly/services/saved_internship_service.dart';
@@ -77,18 +79,22 @@ void main() {
   });
 
   group('AppRoutes · Flow 2', () {
-    test('Validate CV, Review and Success nest under the Apply Form', () {
+    test('CV checks and Success nest under the compose screen', () {
+      expect(
+        AppRoutes.applyForm('/home', 'abc'),
+        '/home/internships/abc/apply',
+      );
+      expect(
+        AppRoutes.applyMatch('/home', 'abc'),
+        '/home/internships/abc/apply/match',
+      );
       expect(
         AppRoutes.applyValidation('/home', 'abc'),
         '/home/internships/abc/apply/validation',
       );
       expect(
-        AppRoutes.applicationReview('/search', 'abc'),
-        '/search/internships/abc/apply/review',
-      );
-      expect(
         AppRoutes.applicationSuccess('/saved', 'abc'),
-        '/saved/internships/abc/apply/review/success',
+        '/saved/internships/abc/apply/success',
       );
       expect(AppRoutes.applicationDetail('abc'), '/applications/abc');
     });
@@ -116,6 +122,8 @@ void main() {
       final searchHistory = FakeSearchHistoryService();
       final profiles = FakeUserProfileService();
       final applications = FakeApplicationService();
+      final coverLetters = FakeCoverLetterService();
+      final links = FakeExternalLinkService();
       addTearDown(auth.dispose);
       addTearDown(profiles.dispose);
       addTearDown(internships.dispose);
@@ -134,6 +142,8 @@ void main() {
             userProfileServiceProvider.overrideWithValue(profiles),
             applicationServiceProvider.overrideWithValue(applications),
             savedInternshipServiceProvider.overrideWithValue(saved),
+            coverLetterServiceProvider.overrideWithValue(coverLetters),
+            externalLinkServiceProvider.overrideWithValue(links),
           ],
           child: const InternlyApp(),
         ),
@@ -317,7 +327,7 @@ void main() {
       expect(find.text('1 saved'), findsOneWidget);
     });
 
-    testWidgets('Apply now opens the Apply Form; Back returns to the Detail', (
+    testWidgets('Apply now opens the compose screen; Back returns to Detail', (
       tester,
     ) async {
       final listing = testInternship('1', title: 'Flutter Developer Intern');
@@ -330,9 +340,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Apply now'));
       await tester.pumpAndSettle();
-      expect(find.text('Apply Form'), findsOneWidget);
+      expect(find.text('Apply by email'), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
-      expect(analytics.screens, contains('home_apply_form'));
+      expect(analytics.screens, contains('home_apply_email'));
       expect(analytics.parameters['apply_start'], {
         'internship_id': listing.key,
         'source': 'home',

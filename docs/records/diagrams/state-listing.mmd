@@ -1,0 +1,17 @@
+stateDiagram-v2
+    direction LR
+
+    state "Active — expiresAt > now" as Active
+    state "Expired — expiresAt ≤ now" as Expired
+
+    [*] --> Active: sync upsert, expiresAt = now + 7 ngày
+    Active --> Active: cùng jobKey sync lại → merge + gia hạn
+    Active --> Active: sync dưới keyword khác → vẫn 1 document
+    Active --> Expired: hết 7 ngày
+    Expired --> [*]: lần sync kế tiếp xoá
+
+    note right of Active
+      App chỉ đọc Active (BR-D1).
+      Saved snapshot và application snapshot sống độc lập,
+      nên tin hết hạn không làm mất dữ liệu người dùng (G-25).
+    end note

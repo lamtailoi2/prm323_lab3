@@ -10,11 +10,10 @@ import '../../../core/state/view_state.dart';
 import '../../../core/utils/allowance.dart';
 import '../../../core/utils/distinct_listings.dart';
 import '../../../core/widgets/app_search_field.dart';
-import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/internship_card.dart';
+import '../../../core/widgets/main_tab_app_bar.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/state_view.dart';
-import '../../../models/app_user.dart';
 import '../../../models/internship.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_colors.dart';
@@ -22,6 +21,7 @@ import '../../../theme/app_radii.dart';
 import '../../../theme/app_sizes.dart';
 import '../../../theme/app_spacing.dart';
 import '../../applications/viewmodels/applied_providers.dart';
+import '../../notifications/viewmodels/unread_notifications_provider.dart';
 import '../../saved/viewmodels/saved_providers.dart';
 import '../../saved/viewmodels/saved_viewmodel.dart';
 import '../models/search_filter_criteria.dart';
@@ -92,7 +92,8 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
       context: context,
       currentCriteria: state.criteria,
       matchingCountCalculator: viewModel.countMatching,
-      suggestedSkills: viewModel.suggestedSkills,
+      suggestedSkills: () => viewModel.suggestedSkills,
+      listingsChanged: searchResultsViewModelProvider,
       onApply: viewModel.setCriteria,
     );
   }
@@ -128,24 +129,19 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
       (_, query) => ref.read(searchViewModelProvider.notifier).syncQuery(query),
     );
     final user = ref.watch(authStateChangesProvider).value;
-    final savedIds = ref.watch(savedInternshipIdsProvider);
+    final savedJobs = ref.watch(savedJobsProvider);
     final appliedJobs =
         ref.watch(appliedJobsProvider).asData?.value ?? const <String>{};
 
     return Scaffold(
-      appBar: AppTopBar.main(
+      // Results stay in the Search tab, so they keep its header (DC-31).
+      appBar: MainTabAppBar(
         title: 'Search',
-        actions: [
-          IconButton(
-            tooltip: 'Notifications',
-            icon: const Icon(Symbols.notifications_rounded),
-            onPressed: () => context.push(AppRoutes.notificationCenter),
-          ),
-          _ProfileAction(
-            user: user,
-            onPressed: () => context.go(AppRoutes.profile),
-          ),
-        ],
+        user: user,
+        onProfile: () => context.go(AppRoutes.profile),
+        onNotifications: () => context.push(AppRoutes.notificationCenter),
+        unreadNotifications:
+            ref.watch(unreadNotificationCountProvider).value ?? 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -211,7 +207,7 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
                   internships: data,
                   query: state.query,
                   sortBy: state.sortBy,
-                  savedIds: savedIds,
+                  savedJobs: savedJobs,
                   appliedJobs: appliedJobs,
                   onSortChanged: viewModel.setSortBy,
                   onSaveToggle: (internship) =>
@@ -372,7 +368,7 @@ class _ResultsListView extends StatelessWidget {
     required this.internships,
     required this.query,
     required this.sortBy,
-    required this.savedIds,
+    required this.savedJobs,
     required this.appliedJobs,
     required this.onSortChanged,
     required this.onSaveToggle,
@@ -381,7 +377,9 @@ class _ResultsListView extends StatelessWidget {
   final List<Internship> internships;
   final String query;
   final SearchSortBy sortBy;
-  final Set<String> savedIds;
+
+  /// Jobs ([jobIdentity]) in Saved, shown with a filled bookmark (CR-07).
+  final Set<String> savedJobs;
 
   /// Jobs ([jobIdentity]) tracked in My Applications, shown with the
   /// `Applied` badge.
@@ -495,7 +493,9 @@ class _ResultsListView extends StatelessWidget {
             tags: internship.skills,
             allowanceText: formatAllowance(internship.salary),
             postedText: internship.postedText,
-            isSaved: savedIds.contains(internship.key),
+            isSaved: savedJobs.contains(
+              jobIdentity(internship.title, internship.companyName),
+            ),
             isApplied: appliedJobs.contains(
               jobIdentity(internship.title, internship.companyName),
             ),
@@ -562,45 +562,6 @@ class _LoadingView extends StatelessWidget {
         SizedBox(height: AppSpacing.betweenCards),
         InternshipCardSkeleton(),
       ],
-    );
-  }
-}
-
-class _ProfileAction extends StatelessWidget {
-  const _ProfileAction({required this.user, required this.onPressed});
-
-  final AppUser? user;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final photoUrl = user?.photoUrl;
-    return IconButton(
-      tooltip: 'Profile',
-      onPressed: onPressed,
-      icon: ClipOval(
-        child: SizedBox.square(
-          dimension: AppSizes.profileAvatar,
-          child: ColoredBox(
-            color: AppColors.primaryContainer,
-            child: photoUrl == null
-                ? const Icon(
-                    Symbols.person_rounded,
-                    size: AppSizes.iconSmall,
-                    color: AppColors.primary,
-                  )
-                : Image.network(
-                    photoUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const Icon(
-                      Symbols.person_rounded,
-                      size: AppSizes.iconSmall,
-                      color: AppColors.primary,
-                    ),
-                  ),
-          ),
-        ),
-      ),
     );
   }
 }

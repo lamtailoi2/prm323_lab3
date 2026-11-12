@@ -1,0 +1,59 @@
+flowchart TB
+  subgraph HOCSINH["① Học sinh"]
+    direction TB
+    R0(["Profile → Report export<br/>/profile/export"]) --> R1{"Applications đã tải?"}
+    R1 -- "loading" --> R2["Skeleton"]
+    R1 -- "lỗi" --> R3["StateView.error + Retry<br/>BR-D6"]
+    R3 --> R1
+    R1 -- "rỗng" --> R4["Nothing to export yet<br/>'Apply first'"]
+    R1 -- "có dữ liệu" --> R5{"Bấm Export report"}
+    R5 --> R6["Progress 0–100%"]
+    R6 --> R7{"Kết quả?"}
+    R7 -- "lỗi" --> R8["FormMessage + Retry<br/>vẫn ở màn hình"]
+    R7 -- "thành công" --> R9["Last exported: file.pdf"]
+    R9 --> R10["'Your reports' có row mới"]
+    R10 --> R11{"Open"}
+    R11 -- "mở được" --> R12["PDF viewer của máy"]
+    R11 -- "lỗi" --> R13["Snackbar message"]
+  end
+
+  subgraph APP["② App (MVVM · Riverpod)"]
+    direction TB
+    A1["ReportExportViewModel.build<br/>watch applications + reports<br/>user-scoped BR-A3"]
+    A2["ApplicationService.watchApplications<br/>BR-T2"]
+    A3["ReportExportService.watchReports<br/>orderBy createdAt desc"]
+    A4["export(): guard isEmpty + isExporting"]
+    A5["buildApplicationReportPdf<br/>Inter font, fallback Helvetica"]
+    A6["FileStorageService.uploadPdf<br/>reports/&#123;uid&#125;/application-report-YYYY-MM-DD.pdf<br/>PDF ≤ 10 MB"]
+    A7["Firestore set users/&#123;uid&#125;/reports/&#123;id&#125;<br/>id = fileName bỏ .pdf → 1 doc/ngày"]
+    A8["Analytics export_report<br/>analytics row 14"]
+    A9["ExternalLinkService.open(url)"]
+  end
+
+  subgraph DATA["③ Firebase"]
+    direction TB
+    F1["users/&#123;uid&#125;/applications"]
+    F2[("Cloud Storage<br/>reports/&#123;uid&#125;/…")]
+    F3["users/&#123;uid&#125;/reports<br/>(metadata)"]
+  end
+
+  R0 -.-> A1
+  A1 --> A2
+  A2 --> F1
+  A1 --> A3
+  A3 --> F3
+  F3 -.-> R10
+  R5 -.-> A4
+  A4 --> A5
+  A5 --> A6
+  A6 --> F2
+  A6 --> A7
+  A7 --> F3
+  A7 --> A8
+  A4 --> R6
+  A7 --> R9
+  R11 -.-> A9
+
+  subgraph NOTE["Ghi chú"]
+    N1["PDF chỉ được tạo từ application thật của user.<br/>Metadata chỉ ghi sau khi upload thành công,<br/>nên không có URL giả (AGENTS rule 7).<br/>Export lại trong cùng ngày ghi đè cùng document."]
+  end

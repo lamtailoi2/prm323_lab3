@@ -1,0 +1,38 @@
+stateDiagram-v2
+    direction LR
+
+    state "Chưa xin quyền" as NotRequested
+    state "Đã cấp quyền" as Granted
+    state "Bị từ chối" as Denied
+    state "FCM message đến" as Received
+    state "Đã lưu — chưa đọc" as Unread
+    state "Đã đọc" as Read
+    state "Mở route" as Opened
+    state "Notification Center" as Center
+    state "Crash cố ý" as Crash
+
+    [*] --> NotRequested
+    NotRequested --> Granted: Android 13+ Allow (BR-N9)
+    NotRequested --> Denied: Deny
+    Denied --> Denied: app vẫn chạy, không có thông báo (BR-N9/E16)
+
+    Granted --> Received: notification hoặc data-only message
+    Received --> Crash: type = test_crash (BR-N8)
+    Received --> Unread: ghi users/&#123;uid&#125;/notifications, read = false (BR-N6/N7)
+    Unread --> Opened: tap + route hợp lệ (BR-N11)
+    Unread --> Center: tap + route sai hoặc URL ngoài
+    Unread --> Read: Mark as read / Mark all as read (BR-N7)
+    Opened --> Read: markRead sau khi mở, không chặn mở
+    Center --> Read: mở từ danh sách → markRead
+    Read --> Read: giữ trạng thái đã đọc
+
+    note right of Unread
+      Badge mọi tab đọc cùng stream 50 mục mới nhất
+      với Notification Center, nên badge và list luôn khớp (BR-N13).
+      1–9 hiện số, > 9 hiện 9+, 0 ẩn badge.
+    end note
+
+    note right of Granted
+      Token FCM lưu ở users/&#123;uid&#125; khi đăng nhập và khi refresh (BR-N10).
+      Không có token → dashboard trả 409 (BR-N3).
+    end note

@@ -18,9 +18,16 @@ dart format lib test            # format (CI expects formatted code)
 flutter analyze                 # must print "No issues found!"
 flutter test                    # all tests must pass
 flutter run -d <device> --dart-define-from-file=.env   # needs Firebase config + .env (docs/guides/firebase-setup.md)
+
+# Rules tests (emulators only; run from the repository root)
+npm --prefix firebase/tests install                    # once
+firebase emulators:exec --only firestore,storage --project demo-internly "npm --prefix firebase/tests test"
+firebase emulators:exec --only firestore,storage --project demo-internly "npm --prefix firebase/tests run demo"   # http://localhost:5500
 ```
 
 Run `dart format`, `flutter analyze` and `flutter test` before every commit you ask someone to review. Paste the real results in the PR; never claim a result you did not see.
+
+The rules commands need `firebase-tools` and a JDK on `PATH` (`java -version` must work; the CLI ignores `JAVA_HOME` alone). Details and troubleshooting: [`firebase/tests/README.md`](firebase/tests/README.md).
 
 ## Golden rules
 
@@ -47,6 +54,7 @@ Run `dart format`, `flutter analyze` and `flutter test` before every commit you 
 | A widget used by 2+ features | `lib/core/widgets/` | Must map to a Figma component |
 | A model used by 2+ features | `lib/models/` | Otherwise `features/<feature>/models/` |
 | Firebase / HTTP access | `lib/services/<name>_service.dart` | Interface + implementation + provider in one file. SerpAPI only through the scheduled function in `functions/`; app reads only through `InternshipService`; uploads only through `FileStorageService` |
+| A Firestore / Storage rules test | `firebase/tests/<rules>.rules.test.mjs` | `node --test`; add the same decision to `demo/server.mjs` when it should appear in the recorded demo |
 | A pure helper | `lib/core/utils/` | Unit-tested |
 | A route | `lib/app/router.dart` | Under the owning tab branch, always with a `name` |
 | A design token | `lib/theme/` | Only from DESIGN.md / Figma, and update `design-system.md` |
@@ -115,6 +123,7 @@ The View watches the provider, renders the state with shared components, and cal
 - Every ViewModel: tests with `ProviderContainer.test` and fakes from `test/helpers/fakes.dart` (success, empty, error, repeated tap where relevant).
 - Every screen or shared widget: widget tests at both widths (`checkWidths`, `pumpThemed`) asserting visible text and states, plus `meetsGuideline(androidTapTargetGuideline)` for interactive widgets.
 - Models / parsing: valid document, missing optional fields, invalid required fields.
+- Rules: every change to `firebase/*.rules` extends `firebase/tests/` (allowed and denied case) and keeps `demo/server.mjs` in sync; the emulator suite must pass.
 - No test may depend on a real Firebase project or network.
 - E2E: ARTEMIS tests in `e2e_test/` follow `docs/test-plan.md` §6 (one instruction per test, JSON report, assertions on reported values, ≥ 3 runs).
 
@@ -124,8 +133,11 @@ The View watches the provider, renders the state with shared components, and cal
 |---|---|
 | Deviate from the design, or finish / change a screen, route or component | `docs/design-traceability.md` (+ Figma) |
 | Find or resolve a missing requirement | `docs/records/handoff-gaps.md` |
+| Change a business rule, branch point, state transition or admin behaviour | `docs/business-rules.md` (keep the `BR-xx` ID and §5 traceability row) |
 | Add an analytics event | `docs/analytics-plan.md` |
 | Run Flutter tests for the PR | `docs/records/test-report.md` |
+| Change `firebase/*.rules` | `firebase/tests/` (tests + demo) and a run row in `docs/records/test-report.md` |
+| Run a UAT session | `docs/records/uat-results.md` and `evidence/uat/` |
 | Use an AI tool, get a review, verify a Firebase feature, run E2E tests | See "Logs and evidence required by Lab 3" below |
 
 ## Logs and evidence required by Lab 3
@@ -161,6 +173,7 @@ Commits follow the Lab 3 stage order (Plan → Architect → Integrate → Instr
 - [ ] Matches Figma and `screen-spec.md` at 360 and 412 dp (verification checklist in `design-traceability.md` §5)
 - [ ] `ViewState` loading / empty / error / data + validation states implemented
 - [ ] ViewModel and widget tests added; `flutter analyze` clean; `flutter test` green
+- [ ] Rules tests green if `firebase/*.rules` changed
 - [ ] All Firestore data under `users/{uid}/…` (no rules change needed)
 - [ ] Analytics events from the plan implemented and verified in DebugView
 - [ ] Docs updated (table above); ARTEMIS test cases for the feature added to `e2e_test/`

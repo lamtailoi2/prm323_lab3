@@ -9,12 +9,13 @@ result and failure) for the evidence table in docs/test-plan.md.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
 import subprocess
 import time
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -38,8 +39,8 @@ SIGNED_IN = (
 )
 SIGNED_OUT = (
     "Open the Internly app. If the bottom navigation bar is visible, tap "
-    "'Profile', scroll down to 'Settings & support', tap 'Sign out' and wait "
-    "for the Login screen."
+    "'Profile', scroll down past 'CV library' and 'Technical skills' to "
+    "'Settings & support', tap 'Sign out' and wait for the Login screen."
 )
 
 # ARTEMIS 351ca84 accepts `expected_output` but never runs its Outputter, so a
@@ -79,13 +80,14 @@ async def run_case(
     instruction: str,
     *,
     expected_output: str,
+    locked_app_package: str | None = APP_PACKAGE,
 ) -> dict[str, Any]:
     """Runs one instruction and returns the agent's structured report."""
     started = time.monotonic()
     result = await artemis.run(
         f"{instruction}{REPORT_AS_JSON}{expected_output}",
         expected_output=expected_output,
-        locked_app_package=APP_PACKAGE,
+        locked_app_package=locked_app_package,
     )
     _record(test_id, result, time.monotonic() - started)
     assert result.succeeded, (
@@ -98,15 +100,25 @@ async def run_case(
     return report
 
 
-async def final_report(artemis: ArtemisClient, task_id: str) -> str | None:
+async def final_report(
+    artemis: ArtemisClient, task_id: str, *, attempts: int = 10
+) -> str | None:
     """Explanation of the agent's last `report_task_status` step, read from the
-    daemon's step history (`GET /api/sessions/{id}/steps`)."""
-    # The pinned client has no public call for the step history.
-    steps = await artemis._request("GET", f"/api/sessions/{task_id}/steps")
-    for step in reversed(steps if isinstance(steps, list) else []):
-        action = step.get("action_taken") or {}
-        if action.get("action") == "report_task_status":
-            return (action.get("args") or {}).get("explanation")
+    daemon's step history (`GET /api/sessions/{id}/steps`).
+
+    The last step can land a moment after the run reports completion, so the
+    read is retried briefly instead of failing the case with "no structured
+    output" (seen on TC-11 run `59da6690`, 2026-11-12).
+    """
+    for attempt in range(1, attempts + 1):
+        # The pinned client has no public call for the step history.
+        steps = await artemis._request("GET", f"/api/sessions/{task_id}/steps")
+        for step in reversed(steps if isinstance(steps, list) else []):
+            action = step.get("action_taken") or {}
+            if action.get("action") == "report_task_status":
+                return (action.get("args") or {}).get("explanation")
+        if attempt < attempts:
+            await asyncio.sleep(1)
     return None
 
 
@@ -191,14 +203,23 @@ def logged_analytics_events() -> list[str]:
     return re.findall(r"Logging event: origin=app,name=([a-z0-9_]+)", dump)
 
 
-# ---- Device setup for the Apply Form cases (Flow 1 pre-submit) ------------
+def logged_screen_views() -> list[str]:
+    """Analytics screen names the app logged, in order, since the last
+    `enable_analytics_debug()` (one per route the app actually showed)."""
+    dump = _adb("logcat", "-d", "-s", "FA", "FA-SVC")
+    return re.findall(r"Logging screen view with name, class: ([a-z0-9_]+)", dump)
+
+
+# ---- Sample CV on the device ------------------------------------------------
 
 SAMPLE_CV_NAME = "Sample_CV.pdf"
+SECOND_SAMPLE_CV_NAME = "Sample_CV_Backend.pdf"
 
 # Fictional details only. The structure (contact, education, skills,
 # projects) is what the `validateCv` Gemini rubric accepts as a CV, and the
-# text is well over its 50-character minimum, so a case that continues past
-# the Apply Form reaches Review instead of "We could not use this CV".
+# text is well over its 50-character minimum, so `Validate CV` accepts it.
+# Used to seed the CV library before the Apply cases run; the agent picks
+# these files in the Android document picker.
 SAMPLE_CV_LINES = [
     "Test Student - Software Engineering Intern",
     "Email: test.student@example.com | Phone: 0900 000 000 | Ho Chi Minh City",
@@ -218,7 +239,7 @@ SAMPLE_CV_LINES = [
 ]
 
 
-def _sample_pdf() -> bytes:
+def _sample_pdf(lines: Sequence[str] = SAMPLE_CV_LINES) -> bytes:
     """A one-page PDF CV with fictional data, to upload as a test CV."""
 
     def literal(line: str) -> bytes:
@@ -227,7 +248,7 @@ def _sample_pdf() -> bytes:
 
     content = (
         b"BT /F1 11 Tf 16 TL 56 760 Td "
-        + b" ".join(literal(line) for line in SAMPLE_CV_LINES)
+        + b" ".join(literal(line) for line in lines)
         + b" ET"
     )
     objects = [
@@ -254,13 +275,15 @@ def _sample_pdf() -> bytes:
     return bytes(out)
 
 
-def push_sample_cv() -> None:
-    """Puts `Sample_CV.pdf` in the device's Downloads, where the Android
-    document picker lists it."""
+def push_sample_cv(
+    name: str = SAMPLE_CV_NAME, lines: Sequence[str] = SAMPLE_CV_LINES
+) -> None:
+    """Puts `name` in the device's Downloads, where the Android document
+    picker lists it."""
     ARTIFACTS.mkdir(exist_ok=True)
-    local = ARTIFACTS / SAMPLE_CV_NAME
-    local.write_bytes(_sample_pdf())
-    _adb("push", str(local), f"/sdcard/Download/{SAMPLE_CV_NAME}")
+    local = ARTIFACTS / name
+    local.write_bytes(_sample_pdf(lines))
+    _adb("push", str(local), f"/sdcard/Download/{name}")
     _adb(
         "shell",
         "am",
@@ -268,31 +291,14 @@ def push_sample_cv() -> None:
         "-a",
         "android.intent.action.MEDIA_SCANNER_SCAN_FILE",
         "-d",
-        f"file:///sdcard/Download/{SAMPLE_CV_NAME}",
+        f"file:///sdcard/Download/{name}",
     )
 
 
-# Instruction parts shared by the cases that go through the Apply Form.
-
-# Fills only what the test account's Profile left empty, so `Continue to
-# review` is decided by the CV alone.
-FILL_PERSONAL = (
-    "In 'Personal information' fill only the fields that are empty: "
-    "'Full name' type 'Test Student', 'Phone number' type '0908123456', "
-    "'University' tap it and choose 'FPT University', 'Year of study' tap it "
-    "and choose 'Year 3'."
-)
-
-# Needs `push_sample_cv()` first. The fictional CV passes Validate CV, and the
-# account's own CV is never sent to the `validateCv` function.
-UPLOAD_SAMPLE_CV = (
-    "The 'CV / Resume' section may already show a CV; replace it anyway with "
-    "the sample file. Tap 'Replace' (or 'Upload CV' if there is no file). In "
-    "the sheet tap 'Choose file'. In the Android file picker "
-    f"choose '{SAMPLE_CV_NAME}' (open Downloads if it is not listed). Back in "
-    "the sheet tap the blue 'Update CV' (or 'Upload CV') button and wait "
-    "until the sheet closes."
-)
+def push_sample_cvs() -> None:
+    """Pushes both sample CVs for the CV library precondition."""
+    push_sample_cv()
+    push_sample_cv(SECOND_SAMPLE_CV_NAME)
 
 
 def set_network(enabled: bool) -> None:

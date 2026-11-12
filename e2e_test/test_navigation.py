@@ -22,4 +22,9 @@ async def test_tc02_each_tab_opens_its_screen(artemis):
     assert [v["tapped"] for v in visits] == TABS[1:] + TABS[:1]
     for visit in visits:
         assert visit["selected_tab"] == visit["tapped"]
-        assert visit["app_bar_title"] == visit["tapped"]
+        # Home's header shows a greeting and the student's name (UI v2,
+        # DC-31); the other tabs show their own name.
+        if visit["tapped"] != "Home":
+            assert visit["app_bar_title"] == visit["tapped"]
+        else:
+            assert visit["app_bar_title"] not in TABS[1:]

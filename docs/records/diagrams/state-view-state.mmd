@@ -1,0 +1,29 @@
+stateDiagram-v2
+    direction LR
+
+    state "ViewLoading" as Loading
+    state "ViewEmpty" as Empty
+    state "ViewError(AppException)" as Error
+    state "ViewData(T)" as Data
+
+    [*] --> Loading: ViewModel build / retry
+
+    Loading --> Data: snapshot có dữ liệu
+    Loading --> Empty: snapshot rỗng
+    Loading --> Error: lỗi SDK / mạng / quyền
+
+    Data --> Data: snapshot cập nhật (live)
+    Data --> Empty: phần tử cuối bị xoá
+    Data --> Loading: refresh / đổi bộ lọc
+    Empty --> Loading: Retry / Clear filters
+    Error --> Loading: Retry
+
+    note right of Error
+      Chỉ chứa AppException.message an toàn để hiển thị.
+      Không render dữ liệu giả (BR-D6).
+    end note
+
+    note right of Empty
+      StateView.empty + CTA cụ thể,
+      không bao giờ là màn hình trắng.
+    end note

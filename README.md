@@ -20,19 +20,19 @@ This repository is the PRM393 **Lab 3** implementation (Flutter + Firebase, grad
 
 ### User flows
 
-One journey in three flows: **search → apply (now, or later via Saved) → track**. Revised in Lab 3: Save is a sub-flow of Apply (DC-08), and Apply has a CV match check (DC-09).
+One journey in three flows: **search → apply (now, or later via Saved) → track**. Revised in Lab 3: Save is a sub-flow of Apply (DC-08), and Apply is the **email-based Compose flow** (DC-31) with optional CV match (DC-30) and validation (DC-19) checks.
 
 | Flow | Path | Alternative / error paths |
 |---|---|---|
 | **1. Search** | Home → Search → Filters → Results → Internship Detail | No results → Clear filters; results / detail load error → Retry |
-| **2. Apply** | Internship Detail → Apply → Application Form → **CV Match Check** → Review → Success | CV upload error + Retry; empty profile; already applied; CV gaps → suggestions → improve or continue; **2e Save for later** → Saved → open → Apply (unsave + Undo, empty list, save error + Retry) |
+| **2. Apply** | Internship Detail → Apply → **Compose application** (recipient + AI subject/letter) → Open email app → I've sent it → Success | Missing recipient email; AI draft failure → template; already applied; empty profile CV (optional); CV gaps → suggestions → improve or continue; **2e Save for later** → Saved → open → Apply (unsave + Undo, empty list, save error + Retry) |
 | **3. Track** | Applications → Application Detail → status | No applications; list / detail load errors; withdraw + Undo |
 
 Details: [`user-flow.md`](docs/design/user-flow.md) · screens: [`screen-spec.md`](docs/design/screen-spec.md) · route / widget / data source per screen: [`design-traceability.md`](docs/design-traceability.md).
 
 ### Screens
 
-Bottom navigation (fixed): **Home · Search · Saved · Applications · Profile**. Lab 2 screens: Home, Search, Search Results, Internship Detail, Saved Internships, Application Form, Application Review, Application Success, My Applications, Application Detail, Profile. Lab 3 additions: Login, CV Match Check, and a **Firebase demo area on Profile** (Notification Center, report export and upload, Remote Config values, Crashlytics test actions).
+Bottom navigation (fixed): **Home · Search · Saved · Applications · Profile**. Lab 2 screens: Home, Search, Search Results, Internship Detail, Saved Internships, Application Form, Application Review, Application Success, My Applications, Application Detail, Profile. Lab 3 additions: Login, the Profile **CV library** (several CVs, one default), CV Match Check, and a **Firebase demo area on Profile** (Notification Center, report export and upload, Remote Config values, Crashlytics test actions). The Lab 2 Application Form / Review / Success screens were replaced by the email-based Compose flow (DC-31).
 
 ## Tech stack and pinned versions
 
@@ -102,12 +102,26 @@ dart format lib test        # format
 flutter analyze             # must print "No issues found!"
 flutter test                # unit, ViewModel, widget and routing tests
 
+# Firebase security rules (emulators only; no project or credentials needed)
+npm --prefix firebase/tests install                     # once
+firebase emulators:exec --only firestore,storage --project demo-internly "npm --prefix firebase/tests test"
+
+# The same rule decisions on a local page, for a recorded demo
+firebase emulators:exec --only firestore,storage --project demo-internly "npm --prefix firebase/tests run demo"
+# then open http://localhost:5500 and press "Run all checks"
+
 # End-to-end (Google ARTEMIS, Android device, see docs/guides/artemis-e2e.md)
 cd e2e_test && cp .env.example .env && uv sync
 uv run pytest --count 3 -v  # every test 3 times
 ```
 
-Results: [`docs/records/test-report.md`](docs/records/test-report.md) (Flutter) and [`docs/test-plan.md`](docs/test-plan.md) §4 (ARTEMIS).
+Run the rules commands from the repository root. They need `firebase-tools` and a JDK on `PATH` (the Firebase CLI checks `java -version`); setup, the demo page and troubleshooting are in [`firebase/tests/README.md`](firebase/tests/README.md).
+
+Results: [`docs/records/test-report.md`](docs/records/test-report.md) (Flutter and rules tests) and [`docs/test-plan.md`](docs/test-plan.md) §4 (ARTEMIS).
+
+### User acceptance testing
+
+[`docs/uat-plan.md`](docs/uat-plan.md) holds the two rounds (internal, then external participants), the 24 scenarios with the exact expected copy, and the acceptance criteria. Sessions are recorded in [`docs/records/uat-results.md`](docs/records/uat-results.md) with evidence in [`evidence/uat/`](evidence/uat/README.md).
 
 ## Deliverables map
 
@@ -118,6 +132,8 @@ Results: [`docs/records/test-report.md`](docs/records/test-report.md) (Flutter) 
 | Architecture | [`docs/architecture.md`](docs/architecture.md) |
 | Analytics event plan | [`docs/analytics-plan.md`](docs/analytics-plan.md) |
 | Test plan + ARTEMIS suite | [`docs/test-plan.md`](docs/test-plan.md), [`e2e_test/`](e2e_test/) |
+| Firestore/Storage rules tests + demo page | [`firebase/tests/`](firebase/tests/README.md) |
+| UAT plan, scenarios and results | [`docs/uat-plan.md`](docs/uat-plan.md), [`docs/records/uat-results.md`](docs/records/uat-results.md) |
 | AI code review record | [`docs/code-review.md`](docs/code-review.md) |
 | Firebase config and rules | [`firebase/`](firebase/) (`firestore.rules`, `storage.rules`, `remote-config-defaults.json`), `android/app/google-services.json` |
 | Scheduled internship sync | [`functions/`](functions/) (TypeScript Cloud Function, SerpAPI → Firestore) |
@@ -146,21 +162,26 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 | Document | Purpose |
 |---|---|
 | [`docs/design/design-system.md`](docs/design/design-system.md) | Tokens and components, Figma ↔ code cross-check, contrast results |
-| [`docs/guides/firebase-setup.md`](docs/guides/firebase-setup.md) | Firebase, Google Sign-In, Storage, Remote Config, SerpAPI sync secret |
+| [`docs/guides/firebase-setup.md`](docs/guides/firebase-setup.md) | Firebase, Google Sign-In, Storage, Remote Config, SerpAPI sync secret, rules tests |
+| [`firebase/tests/README.md`](firebase/tests/README.md) | How to run the Firestore/Storage rules tests and the recorded demo page |
+| [`docs/business-rules.md`](docs/business-rules.md) | User and Admin actors, swimlanes, `BR-xx` branch codes, application state machine and test traceability |
+| [`docs/business-process-swimlane.md`](docs/business-process-swimlane.md) | Council view: one actor/system map, the end-to-end student and admin swimlanes with every `BR-xx` branch and exception, state machine, branch ↔ test table |
 | [`docs/records/handoff-gaps.md`](docs/records/handoff-gaps.md) | Missing / conflicting requirements and decisions |
 | [`docs/records/implementation-ai-log.md`](docs/records/implementation-ai-log.md) | Prompts, outputs, verification and decisions for AI-assisted work |
-| [`tools/admin-dashboard/README.md`](tools/admin-dashboard/README.md) | Local admin dashboard: send FCM notifications, find device tokens, inspect/delete notification history |
+| [`tools/admin-dashboard/README.md`](tools/admin-dashboard/README.md) | Admin dashboard (React + Express, local or Vercel): send FCM notifications, find device tokens, inspect/delete notification history |
 
 ## AI tools used
 
 | Tool | Purpose |
 |---|---|
 | Google Stitch | Lab 2 screen generation (design phase) |
-| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements; Profile feature (P-21); Login screen from the Login frame (P-31); Saved empty state opens Search (P-33); Internship Detail, Search filters and analytics, Apply Form, Job type and Applied badge (P-34 – P-43); fixes from the AI review (P-44); ARTEMIS host setup, E2E harness fixes, the run guide and ARTEMIS cases (P-57, P-59 – P-61) ([log](docs/records/implementation-ai-log.md)) |
-| OpenCode (`deepseek-v4.1-flash-free`) | Home UI, scheduled SerpAPI → Firestore sync, rules and docs for the Home slice; Saved list, the Home Save Toggle, unsave with Undo and the Saved loading state; Search bookmark merged onto the Saved write path (P-58) ([log](docs/records/implementation-ai-log.md)) |
-| Command Code | CV validation vertical slice: callable `validateCv` + Gemini free tier, `CvValidationService`, ViewModel, step widget, tests and docs (P-32); work mode read from the listing text so the Search filter no longer returns an empty list (P-45); Filter Skills from the current pool instead of a fixed list (P-46); Flow 2 completion: Validate CV screen, Application Review, Success, `ApplicationService.createApplication()` and `application_create` (P-47); FCM in all three app states and the Notification Center (P-50, P-51); local admin dashboard for FCM, users and notification history (P-52) ([log](docs/records/implementation-ai-log.md)) |
+| Claude Code (Opus 5.5) | Repository initialization: theme, shared widgets, services, routing, tests, documentation; review of the Lab 3 requirements; Profile feature (P-21); Login screen from the Login frame (P-31); Saved empty state opens Search (P-33); Internship Detail, Search filters and analytics, Apply Form, Job type and Applied badge (P-34 – P-43); fixes from the AI review (P-44); ARTEMIS host setup, E2E harness fixes, the run guide and ARTEMIS cases (P-57, P-59 – P-61); CR-07 Saved part and CR-11 fixes (P-89) ([log](docs/records/implementation-ai-log.md)) |
+| OpenCode (`deepseek-v4.1-flash-free`) | Home UI, scheduled SerpAPI → Firestore sync, rules and docs for the Home slice; Saved list, the Home Save Toggle, unsave with Undo and the Saved loading state; Search bookmark merged onto the Saved write path (P-58); Compose CV auto-select and `Change CV` (P-83) ([log](docs/records/implementation-ai-log.md)) |
+| Command Code | CV validation vertical slice: callable `validateCv` + Gemini free tier, `CvValidationService`, ViewModel, step widget, tests and docs (P-32); work mode read from the listing text so the Search filter no longer returns an empty list (P-45); Filter Skills from the current pool instead of a fixed list (P-46); Flow 2 completion: Validate CV screen, Application Review, Success, `ApplicationService.createApplication()` and `application_create` (P-47); FCM in all three app states and the Notification Center (P-50, P-51); local admin dashboard for FCM, users and notification history (P-52); email-based Apply flow: Compose application, callable `composeCoverLetter` (Groq + template fallback), `mailto:` draft and optional CV checks (P-74); SerpAPI fresher/junior keywords and Detail role/level badges (P-79); Profile experience band and Home ranking tiebreaker (P-80); ARTEMIS CV-library cases TC-06/07/09/14/17/18/19 with the two-CV seed and video-run guide (P-84); GA4 realtime card on the admin dashboard (P-85); testing-doc sync for the 2026-11-09/10 ARTEMIS batch (P-86); TC-19 case fix and the counted TC-19 / TC-14 ARTEMIS reruns (P-87); scrcpy/ffmpeg setup so ARTEMIS records each session, with TC-19 / TC-14 rerun on video (P-88); Firestore and Storage emulator rules tests (P-90); UAT plan, 24-scenario script and result template (P-91); run documentation for the rules tests, demo and UAT (P-92); automated internal UAT walkthrough with screen recording (P-93) ([log](docs/records/implementation-ai-log.md)) |
 | Google ARTEMIS + Gemini (free tier) | End-to-end tests and the exploratory session |
+| Command Code (report export) | Report export (G-05): applications PDF, `ReportExportService`, screen at `/profile/export`, tests and docs (P-71); state diagrams and business flows (P-98); R1-B automated UAT follow-up (P-99) ([log](docs/records/implementation-ai-log.md)) |
 | Claude Code review subagents (Opus 5.5) | AI code review R1 of PRs #11–#15: 20 findings, decisions and fixes ([`code-review.md`](docs/code-review.md), raw output in `evidence/code-review/`) |
+| Claude Code (Sonnet 5) | DC-09 deviation record, `application_update` / `application_delete` logging on withdraw / undo (P-48) ([log](docs/records/implementation-ai-log.md)) |
 
 ## Known limitations
 

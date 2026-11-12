@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_exception.dart';
+import '../../../core/utils/distinct_listings.dart';
 import '../../../models/internship.dart';
 import '../../../services/analytics_service.dart';
 import '../../../services/saved_internship_service.dart';
@@ -25,7 +26,10 @@ final savedViewModelProvider =
     );
 
 class SavedViewModel extends Notifier<AsyncValue<void>> {
-  Set<String> _savedIds = const <String>{};
+  /// Saved document keys per job ([jobIdentity]). The card may show another
+  /// synced copy of the job than the one saved, and saves made before CR-07
+  /// can hold two copies of one job, so [toggleAndReport] unsaves every copy.
+  Map<String, List<String>> _savedKeysByJob = const <String, List<String>>{};
 
   /// Serialises saved writes across screens, so a double tap never creates
   /// two Firestore writes (and two SnackBars) for the same action.
@@ -33,13 +37,16 @@ class SavedViewModel extends Notifier<AsyncValue<void>> {
 
   @override
   AsyncValue<void> build() {
-    // Mirror the saved keys so `toggle` knows which way to flip, and stay in
-    // sync with the bookmark the card is showing.
+    // Mirror the saved jobs so `toggle` knows which way to flip, and stay in
+    // sync with the bookmark the card is showing (`savedJobsProvider`).
     ref.listen(savedInternshipsProvider, (previous, next) {
-      _savedIds = {
-        for (final internship in next.asData?.value ?? const <Internship>[])
-          internship.key,
-      };
+      final byJob = <String, List<String>>{};
+      for (final internship in next.asData?.value ?? const <Internship>[]) {
+        byJob
+            .putIfAbsent(_jobOf(internship), () => <String>[])
+            .add(internship.key);
+      }
+      _savedKeysByJob = byJob;
     }, fireImmediately: true);
 
     return const AsyncData(null);
@@ -76,12 +83,15 @@ class SavedViewModel extends Notifier<AsyncValue<void>> {
 
     final service = ref.read(savedInternshipServiceProvider);
     final analytics = ref.read(analyticsServiceProvider);
-    final isSaved = _savedIds.contains(internship.key);
+    final savedKeys = _savedKeysByJob[_jobOf(internship)] ?? const <String>[];
 
     _writing = true;
     try {
-      if (isSaved) {
-        await service.remove(internship.key);
+      if (savedKeys.isNotEmpty) {
+        // Remove the saved copies, not the key of the copy on the card (CR-07).
+        for (final key in savedKeys) {
+          await service.remove(key);
+        }
       } else {
         await service.save(internship);
         await analytics.logEvent('internship_save', {
@@ -144,4 +154,7 @@ class SavedViewModel extends Notifier<AsyncValue<void>> {
       _writing = false;
     }
   }
+
+  static String _jobOf(Internship internship) =>
+      jobIdentity(internship.title, internship.companyName);
 }

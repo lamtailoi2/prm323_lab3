@@ -142,6 +142,42 @@ void main() {
     );
   });
 
+  test('withdraw logs application_update and application_delete '
+      '(docs/analytics-plan.md rows 12-13)', () async {
+    final container = build();
+    await settle();
+
+    expect(await viewModel(container).withdraw(), isTrue);
+
+    expect(analytics.parameters['application_update'], {
+      'internship_id': key,
+      'from_status': 'under_review',
+      'to_status': 'withdrawn',
+    });
+    expect(analytics.parameters['application_delete'], {
+      'internship_id': key,
+      'status': 'under_review',
+    });
+  });
+
+  test(
+    'undoWithdrawal logs application_update back to the restored status',
+    () async {
+      applications.results = [withdrawn];
+      final container = build(now: withdrawnAt.add(const Duration(hours: 1)));
+      await settle();
+      await settle();
+
+      expect(await viewModel(container).undoWithdrawal(), isTrue);
+
+      expect(analytics.parameters['application_update'], {
+        'internship_id': key,
+        'from_status': 'withdrawn',
+        'to_status': 'under_review',
+      });
+    },
+  );
+
   test('Undo is offered for 24 hours only', () async {
     applications.results = [withdrawn];
 
@@ -214,6 +250,69 @@ void main() {
     applications.updateGate!.complete();
     expect(await first, isTrue);
     expect(applications.withdrawn, hasLength(1));
+  });
+
+  test(
+    'updateStatus writes the chosen stage and logs application_update',
+    () async {
+      final container = build();
+      await settle();
+
+      expect(
+        await viewModel(container).updateStatus(ApplicationStatus.interview),
+        isTrue,
+      );
+      expect(applications.statusUpdates, [
+        (internshipKey: key, status: ApplicationStatus.interview),
+      ]);
+      expect(analytics.parameters['application_update'], {
+        'internship_id': key,
+        'from_status': 'under_review',
+        'to_status': 'interview',
+      });
+    },
+  );
+
+  test('updateStatus leaves withdrawn to the withdraw action', () async {
+    final container = build();
+    await settle();
+
+    expect(
+      await viewModel(container).updateStatus(ApplicationStatus.withdrawn),
+      isFalse,
+    );
+    expect(applications.statusUpdates, isEmpty);
+    expect(applications.withdrawn, isEmpty);
+  });
+
+  test('updateStatus ignores the status the document already has', () async {
+    final container = build();
+    await settle();
+
+    expect(
+      await viewModel(container).updateStatus(ApplicationStatus.underReview),
+      isFalse,
+    );
+    expect(applications.statusUpdates, isEmpty);
+    expect(analytics.events, isNot(contains('application_update')));
+  });
+
+  test('a failed status write reports a status-specific message', () async {
+    applications.updateStatusError = const AppException(
+      AppErrorKind.network,
+      'We could not update this application. Check your connection and try '
+      'again.',
+    );
+    final container = build();
+    await settle();
+
+    expect(
+      await viewModel(container).updateStatus(ApplicationStatus.accepted),
+      isFalse,
+    );
+    final action = read(container).statusAction;
+    final error = (action as AsyncError<void>).error as AppException;
+    expect(error.message, contains('update this application'));
   });
 
   test('preview opens the submitted CV', () async {

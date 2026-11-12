@@ -1,0 +1,96 @@
+sequenceDiagram
+    autonumber
+    actor Student
+    participant V as ApplyComposeScreen (View)
+    participant VM as ApplyComposeViewModel
+    participant CL as CoverLetterService
+    participant CS as CvSelectService
+    participant CM as CvMatchService
+    participant CV as CvValidationService
+    participant AS as ApplicationService
+    participant UP as UserProfileService
+    participant EL as ExternalLinkService
+    participant AN as AnalyticsService
+    participant FS as Cloud Firestore
+    participant FN as Cloud Functions
+    participant MAIL as Device mail app
+
+    Note over V,FS: 1. Open the form (prefill from Profile)
+    Student->>V: taps "Apply now"
+    V->>VM: provider build (autoDispose.family)
+    VM->>UP: watchProfile(uid) + watchCvs(uid)
+    UP->>FS: users/{uid} + users/{uid}/cvs
+    FS-->>VM: UserProfile + List<CvFile>
+    VM-->>V: ApplyComposeState (library, defaultCvFile)
+    VM->>AN: logEvent("apply_start", {internship_id, source})
+
+    Note over V,CS: 2. Optional AI CV suggestion (best CV for this listing)
+    VM->>CS: select(internshipKey, storagePaths, defaultPath)
+    CS->>FN: callable selectCv
+    FN-->>VM: CvSelection (percent, matched, reason, cvReadable)
+    VM-->>V: autoSelection • student may override with selectLibraryCv()
+
+    Note over V,CL: 3. Compose the email (AI draft, editable)
+    VM->>CL: compose(internshipKey, storagePath, studentName)
+    CL->>FN: callable composeCoverLetter
+    FN-->>VM: CoverLetterDraft (subject, body, usedAi)
+    VM-->>V: regenerate() is AsyncLoading while in flight
+    Student->>V: edits subject / body / recipient
+    V->>VM: setSubject / setBody / setRecipient
+
+    Note over V,CV: 4a. Branch — Validate CV (always) or Match CV first
+    alt "Check my match" button
+        V->>VM: buildSession()
+        VM-->>V: ApplySession (cv, startedAt, email, details, skills, body)
+        V->>VM: push /apply/match with extra = session
+    end
+
+    Note over CM,CV: 5. CV Match (advisory, never blocks)
+    CM->>FN: callable matchCv(cvStoragePath, internshipKey)
+    FN-->>CM: CvMatchResult (percent, matched, missing, suggestions)
+    CM->>AN: logEvent("cv_match_check", {result, matched_count, missing_count})
+    CM-->>V: ViewData<CvMatchResult> → Continue to Validate CV
+
+    Note over CV,FN: 6. Validate CV (blocking quality gate)
+    CV->>FN: callable validateCv(storagePath)
+    FN->>FN: assertOwnedCvPath(uid, path)
+    FN->>FN: download PDF → extract text → min 50 chars
+    FN->>FN: askGemini(rubric, temperature 0)
+    FN-->>CV: {isValid, reason?}
+    CV->>AN: logEvent("cv_validation_result", {is_valid: 1|0})
+    CV-->>V: ViewData / ViewError → Update CV or Retry
+
+    Note over V,MAIL: 7. Send through the employer channel
+    Student->>V: taps "Open email app"
+    V->>VM: openEmail()
+    VM->>VM: Validators.email(recipient)
+    VM->>EL: openEmail(mailto: recipient?subject&body)
+    EL->>MAIL: launch compose window
+    MAIL-->>Student: student sends the mail themselves
+    VM->>AN: logEvent("cover_letter_open", {...})
+
+    Note over V,FS: 8. Record the application (the real write)
+    Student->>V: taps "I sent it" (markSent)
+    V->>VM: markSent()
+    VM->>VM: guard isSending • _listing != null • fullName not empty
+    VM-->>V: state.send = AsyncLoading (button disabled)
+    VM->>AS: createApplication(internshipKey, title, companyName, cv*, applicant, recipientEmail, appliedVia: email)
+    AS->>FS: users/{uid}/applications/{jobKey}.set({... status: submitted})
+    alt write succeeds
+        FS-->>AS: ack
+        AS-->>VM: void
+        VM->>UP: updateApplyDetails(uid, details) + updateSkills(uid, skills)
+        Note over VM,UP: a Profile sync failure is logged to Crashlytics only,<br/>it never turns a stored submission into an error
+        VM->>AN: logEvent("application_create", {internship_id, channel, cv_source, duration_sec})
+        VM-->>V: ApplicationSent (submittedAt, internship)
+        V->>V: pushReplacement success route with recap extra
+    else Firestore / permission / network error
+        FS-->>AS: FirebaseException
+        AS-->>VM: throw AppException(kind, userMessage)
+        VM-->>V: state.send = AsyncError
+        V->>Student: error.message + Retry (no raw SDK error rendered)
+    end
+
+    Note over V,Student: 9. Application Success (stateless, no ViewModel)
+    V->>V: ApplicationSuccessScreen renders recap from extra
+    Student->>V: "View my applications" → /applications<br/>or "Back to Home" → /home

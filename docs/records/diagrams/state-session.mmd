@@ -1,0 +1,28 @@
+stateDiagram-v2
+    direction LR
+
+    state "Firebase chưa cấu hình" as NotConfigured
+    state "Signed out — chỉ /login" as SignedOut
+    state "Signed in — app shell" as SignedIn
+
+    [*] --> Splash: mở app / bootstrap
+
+    Splash --> NotConfigured: Firebase config là placeholder
+    Splash --> SignedOut: auth event đầu tiên = null
+    Splash --> SignedIn: auth event đầu tiên = user
+
+    SignedOut --> SignedOut: huỷ picker (info) hoặc lỗi cấu hình / mạng (BR-A2)
+    SignedOut --> SignedIn: Google sign-in thành công (BR-A2)
+    SignedIn --> SignedOut: Sign out, xoá session (BR-A3)
+
+    note right of SignedOut
+      authRedirect chặn mọi route khác:
+      chỉ /login truy cập được (BR-A1).
+      Lỗi auth stream cũng giữ user ở đây.
+    end note
+
+    note right of SignedIn
+      5 tab: Home · Search · Saved · Applications · Profile.
+      Mỗi tab giữ stack go_router riêng.
+      Provider theo uid rebuild khi đổi tài khoản (BR-A3).
+    end note

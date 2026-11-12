@@ -19,14 +19,17 @@ async def test_tc01_google_sign_in_opens_home(artemis):
         "TC-01",
         f"{SIGNED_OUT} On the Login screen tap 'Continue with Google'. In the "
         f"Google account picker choose '{TEST_ACCOUNT_EMAIL}'. Wait until the "
-        "app finishes signing in. Report which screen is shown and the labels "
-        "of the bottom navigation bar from left to right.",
+        "app finishes signing in. Report which bottom navigation item is "
+        "highlighted and the labels of the bottom navigation bar from left to "
+        "right.",
         expected_output=(
-            'JSON: {"screen_title": string, "bottom_nav_labels": [string], '
+            'JSON: {"selected_tab": string, "bottom_nav_labels": [string], '
             '"login_button_visible": boolean}'
         ),
     )
-    assert report["screen_title"] == "Home"
+    # Home's header shows a greeting and the student's name (UI v2, DC-31),
+    # not the word "Home", so the highlighted tab says where sign-in landed.
+    assert report["selected_tab"] == "Home"
     assert report["bottom_nav_labels"] == [
         "Home",
         "Search",
@@ -43,15 +46,15 @@ async def test_tc14_sign_out_returns_to_login(artemis):
     report = await run_case(
         artemis,
         "TC-14",
-        f"{SIGNED_IN} Tap 'Profile' in the bottom navigation, scroll down to "
-        "'Settings & support' and tap 'Sign out'. Note whether the Login "
-        "screen with 'Continue with Google' appears. Press the Android Back "
-        "button once and note what is on screen now: the Internly Login "
-        "screen, the Android home screen with app icons, or another Internly "
-        "screen; and whether a bottom navigation bar is visible. If the "
-        "Internly app is no longer on screen, open the Internly app again. "
-        "Finally note whether the Login screen with 'Continue with Google' "
-        "is shown.",
+        f"{SIGNED_IN} Tap 'Profile' in the bottom navigation, scroll down past "
+        "'CV library' and 'Technical skills' to 'Settings & support' and tap "
+        "'Sign out'. Note whether the Login screen with 'Continue with Google' "
+        "appears. Press the Android Back button once and note what is on "
+        "screen now: the Internly Login screen, the Android home screen with "
+        "app icons, or another Internly screen; and whether a bottom "
+        "navigation bar is visible. If the Internly app is no longer on "
+        "screen, open the Internly app again. Finally note whether the Login "
+        "screen with 'Continue with Google' is shown.",
         expected_output=(
             'JSON: {"login_after_sign_out": boolean, '
             '"after_back": "login" | "android_home" | "other_app_screen", '

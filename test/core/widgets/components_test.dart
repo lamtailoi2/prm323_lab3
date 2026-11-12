@@ -415,8 +415,111 @@ void main() {
       });
     }
 
+    for (final (count, label) in [(3, '3'), (12, '9+')]) {
+      testWidgets('$count unread shows a red badge with $label', (
+        tester,
+      ) async {
+        setScreenSize(tester);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light(),
+            home: Scaffold(
+              appBar: MainTabAppBar(
+                title: 'Saved',
+                user: testUser,
+                onProfile: () {},
+                onNotifications: () {},
+                unreadNotifications: count,
+              ),
+            ),
+          ),
+        );
+
+        final badge = tester.widget<Badge>(find.byType(Badge));
+        expect(badge.isLabelVisible, isTrue);
+        expect(badge.backgroundColor, AppColors.error);
+        expect(find.text(label), findsOneWidget);
+        // The tooltip is unchanged; the count is the button's value.
+        expect(find.byTooltip('Notifications'), findsOneWidget);
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics &&
+                widget.properties.value == '$count unread',
+          ),
+          findsOneWidget,
+        );
+      });
+    }
+
+    testWidgets('no unread notifications shows no badge', (tester) async {
+      await pumpBar(tester, user: testUser);
+      expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isFalse);
+    });
+
     testWidgets('touch targets are at least 48 dp', (tester) async {
       await pumpBar(tester, user: testUser);
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    });
+
+    for (final width in checkWidths) {
+      testWidgets('a long name steps down the heading at $width dp', (
+        tester,
+      ) async {
+        setScreenSize(tester, width: width);
+        Future<double?> sizeFor(String name) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: AppTheme.light(),
+              home: Scaffold(
+                appBar: MainTabAppBar(
+                  title: name,
+                  greeting: 'Good evening',
+                  user: testUser,
+                  onProfile: () {},
+                  onNotifications: () {},
+                ),
+              ),
+            ),
+          );
+          return tester.widget<Text>(find.text(name)).style?.fontSize;
+        }
+
+        expect(await sizeFor('Anh'), 24);
+        expect(await sizeFor('Phạm Nguyễn Hoàng Anh'), lessThan(24));
+        expect(
+          await sizeFor('Phạm Nguyễn Hoàng Anh Christopher Alexander'),
+          18,
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('Home: greeting and avatar; the avatar opens Profile', (
+      tester,
+    ) async {
+      setScreenSize(tester);
+      var opened = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            appBar: MainTabAppBar(
+              title: 'Test Student',
+              greeting: 'Good morning',
+              user: testUser,
+              onProfile: () => opened = true,
+              onNotifications: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Good morning'), findsOneWidget);
+      expect(find.text('Test Student'), findsOneWidget);
+      await tester.tap(find.byTooltip('Profile'));
+      expect(opened, isTrue);
+      expect(tester.takeException(), isNull);
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     });
   });

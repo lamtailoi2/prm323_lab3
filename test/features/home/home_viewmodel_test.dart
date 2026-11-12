@@ -348,6 +348,79 @@ void main() {
     });
   });
 
+  group('experience tiebreaker', () {
+    // The same frontend role and no skills, so every score is 3; only the
+    // title level differs.
+    final pool = [
+      testInternship('1', title: 'Junior Frontend Developer', searchRank: 0),
+      testInternship('2', title: 'Fresher Frontend Developer', searchRank: 1),
+      testInternship('3', title: 'Frontend Developer Intern', searchRank: 2),
+    ];
+
+    List<String> recommendedIds() =>
+        feed().recommended.map((i) => i.jobId).toList();
+
+    test('a matching level comes before a better sync rank', () async {
+      profiles.profile = const UserProfile(
+        preferences: InternshipPreferences(
+          targetRoles: [TargetRole.frontend],
+          experience: ExperienceRange.underOne,
+        ),
+      );
+      internships.results = pool;
+      listen();
+      await settle();
+
+      // job-1 shares the role but is junior, so it drops below the matching
+      // fresher and intern listings even though it ranks first in the sync.
+      expect(recommendedIds(), ['job-2', 'job-3', 'job-1']);
+    });
+
+    test('no experience answer keeps the sync order on equal scores', () async {
+      profiles.profile = const UserProfile(
+        preferences: InternshipPreferences(targetRoles: [TargetRole.frontend]),
+      );
+      internships.results = pool;
+      listen();
+      await settle();
+
+      expect(recommendedIds(), ['job-1', 'job-2', 'job-3']);
+    });
+
+    test(
+      'a level never lifts a lower role score above a better match',
+      () async {
+        profiles.profile = const UserProfile(
+          skills: ['React'],
+          preferences: InternshipPreferences(
+            targetRoles: [TargetRole.frontend],
+            experience: ExperienceRange.underOne,
+          ),
+        );
+        internships.results = [
+          testInternship(
+            '1',
+            title: 'Fresher Backend Developer',
+            searchRank: 0,
+            skills: const ['React'],
+          ),
+          testInternship(
+            '2',
+            title: 'Junior Frontend Developer',
+            searchRank: 1,
+          ),
+        ];
+        listen();
+        await settle();
+
+        // The frontend listing scores 3 and the backend one 0 + 1 skill, so the
+        // better role/skill match stays first even though only the backend
+        // listing matches the experience band.
+        expect(recommendedIds(), ['job-2', 'job-1']);
+      },
+    );
+  });
+
   test('the same job under several sync keywords is shown once', () async {
     internships.results = [
       testInternship(

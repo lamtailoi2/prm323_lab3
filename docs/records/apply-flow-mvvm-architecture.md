@@ -1,11 +1,14 @@
-# Apply flow (Flow 2/4): architecture requirement & MVVM proof
+# Apply flow (Flow 2): architecture requirement & MVVM proof
 
-This note documents the Apply submission slice (Apply Form → Validate CV →
-Review → Success) that was added on top of `docs/architecture.md`, and shows
-— with file and line evidence from the current `lib/` tree — that it follows
-the same strict MVVM layering as the rest of Internly (AGENTS.md rule 2).
-Nothing here redefines the architecture; it is the proof that the new code
-obeys it.
+This note documents the current Apply slice — **Compose application → email
+draft → `I've sent it` → Success** (DC-31) — and shows, with file evidence
+from the current `lib/` tree, that it follows the strict MVVM layering of the
+rest of Internly (AGENTS.md rule 2). Nothing here redefines the architecture;
+it is the proof that the new code obeys it.
+
+The previous form-based slice (Application Form → Validate CV → Review →
+Success) was removed in the same change; the optional CV Match / Validate
+screens remain and pop back to the compose screen.
 
 ## 1. Architecture requirement (recap)
 
@@ -28,20 +31,27 @@ Riverpod 3 is the only DI/state mechanism; data screens expose
 `ViewState<T>`, one-shot actions expose `AsyncValue<void>` (architecture.md
 §3).
 
-## 2. What was built for Flow 2 submission
+## 2. What was built for Flow 2
 
 ```
-lib/features/internships/screens/apply_form_screen.dart         (View)
-lib/features/internships/viewmodels/apply_form_viewmodel.dart   (ViewModel)
-lib/features/applications/screens/cv_validation_screen.dart     (View)
-lib/features/applications/widgets/cv_validation_step.dart       (View, shared)
-lib/features/applications/viewmodels/cv_validation_viewmodel.dart (ViewModel)
-lib/features/internships/screens/application_review_screen.dart (View)
-lib/features/internships/viewmodels/application_review_viewmodel.dart (ViewModel)
+lib/features/internships/screens/apply_compose_screen.dart      (View)
+lib/features/internships/viewmodels/apply_compose_viewmodel.dart (ViewModel)
+lib/features/internships/widgets/apply_compose_parts.dart        (View, feature-local)
+lib/features/internships/widgets/apply_summary_card.dart         (View, feature-local)
+lib/features/internships/models/apply_session.dart               (Model, optional CV checks)
+lib/features/internships/models/cover_letter_draft.dart          (Model)
+lib/features/applications/screens/cv_match_screen.dart           (View, optional)
+lib/features/applications/screens/cv_validation_screen.dart      (View, optional)
 lib/features/internships/screens/application_success_screen.dart (View, stateless)
-lib/services/application_service.dart                           (Service)
-lib/services/cv_validation_service.dart                         (Service)
-lib/models/internship_application.dart                          (Model: InternshipApplication, ApplicationApplicant, ApplicationStatus)
+lib/services/cover_letter_service.dart                           (Service)
+lib/services/application_service.dart                            (Service)
+lib/services/cv_match_service.dart                               (Service, optional)
+lib/services/cv_validation_service.dart                          (Service, optional)
+lib/services/external_link_service.dart                          (Service, opens mailto:)
+lib/core/utils/contact_email.dart                                (pure helper)
+lib/core/utils/mailto.dart                                       (pure helper)
+lib/models/internship_application.dart                           (Model: channel, recipient, applicant)
+functions/src/compose-cover-letter.ts                            (callable, Groq + template fallback)
 ```
 
 ### 2.1 Layered flowchart (this slice)
@@ -49,234 +59,228 @@ lib/models/internship_application.dart                          (Model: Internsh
 ```mermaid
 flowchart TB
     subgraph View["View layer — no Firebase import, no business logic"]
-        AF["ApplyFormScreen"]
-        CVS["CvValidationScreen + CvValidationStep"]
-        ARS["ApplicationReviewScreen"]
+        AC["ApplyComposeScreen"]
+        CVS["CvMatchScreen / CvValidationScreen (optional, pop back)"]
         ASS["ApplicationSuccessScreen (stateless, no ViewModel)"]
     end
 
     subgraph ViewModel["ViewModel layer — Riverpod Notifier, owns ViewState/AsyncValue"]
-        AFVM["ApplyFormViewModel\n(CV pick/upload, builds ApplySession)"]
-        CVVM["CvValidationViewModel\n(ViewState<CvValidationResult>)"]
-        ARVM["ApplicationReviewViewModel\n(ViewState<Internship> + AsyncValue<void> submit)"]
+        ACVM["ApplyComposeViewModel\n(draft, recipient, open mailto, mark sent)"]
+        CVVM["CvMatchViewModel / CvValidationViewModel\n(optional checks)"]
     end
 
     subgraph Service["Service layer — wraps SDK/HTTP, returns models, throws AppException"]
-        FSS["FileStorageService"]
-        UPS["UserProfileService"]
-        CVVS["CvValidationService\n(callable validateCv)"]
+        CLS["CoverLetterService\n(callable composeCoverLetter)"]
         APPS["ApplicationService\n.createApplication()"]
         ISV["InternshipService"]
+        UPS["UserProfileService"]
+        ELS["ExternalLinkService\n(openEmail → mailto:)"]
         ANS["AnalyticsService"]
     end
 
     subgraph Model["Model layer — plain Dart, @immutable"]
-        M1["ApplySession / ApplyCv"]
-        M2["InternshipApplication / ApplicationApplicant / ApplicationStatus"]
-        M3["Internship, UserProfile"]
+        M1["CoverLetterDraft / ApplySession"]
+        M2["InternshipApplication / ApplicationApplicant / ApplicationChannel"]
+        M3["Internship, UserProfile, CvFile"]
     end
 
-    FB[("Firebase: Storage, Firestore\nusers/{uid}/applications/{jobKey}")]
-    FN[("Callable Cloud Function\nvalidateCv → Gemini")]
+    FB[("Firebase: Firestore\nusers/{uid}/applications/{jobKey}")]
+    FN[("Callable Cloud Function\ncomposeCoverLetter → Groq")]
 
-    AF -- "user events (pick/upload CV, Continue)" --> AFVM
-    AFVM -- "ApplyFormState (ViewState)" --> AF
-    AFVM --> FSS
-    AFVM --> UPS
-    AFVM -.-> M1
+    AC -- "user events (edit, regenerate, open, sent)" --> ACVM
+    ACVM -- "ApplyComposeState (ViewState + AsyncValue)" --> AC
+    ACVM --> CLS
+    ACVM --> APPS
+    ACVM --> ISV
+    ACVM --> UPS
+    ACVM --> ELS
+    ACVM --> ANS
+    ACVM -.-> M1
+    ACVM -.-> M2
+    ACVM -.-> M3
 
-    CVS -- "runs check" --> CVVM
-    CVVM -- "ViewState<CvValidationResult>" --> CVS
-    CVVM --> CVVS
-    CVVS --> FN
-
-    ARS -- "submit()" --> ARVM
-    ARVM -- "submit: AsyncValue<void>" --> ARS
-    ARVM --> APPS
-    ARVM --> ISV
-    ARVM --> UPS
-    ARVM --> ANS
-    ARVM -.-> M2
-    ARVM -.-> M3
-
+    CLS --> FN
     APPS --> FB
     ISV --> FB
     UPS --> FB
 
-    ASS -. "stateless, only navigation, no ViewModel needed" .-> ARS
+    CVS -- "optional check" --> CVVM
+    CVVM --> CLS
+    CVS -. "pop back with a result" .-> AC
+
+    ASS -. "stateless, only navigation, no ViewModel needed" .-> AC
 ```
 
-### 2.2 Sequence: submitting an application (Review → Success)
+### 2.2 Sequence: composing and recording an application
 
 ```mermaid
 sequenceDiagram
     actor Student
-    participant V as ApplicationReviewScreen (View)
-    participant VM as ApplicationReviewViewModel
+    participant V as ApplyComposeScreen (View)
+    participant VM as ApplyComposeViewModel
+    participant CL as CoverLetterService
+    participant EL as ExternalLinkService
     participant AS as ApplicationService
-    participant UP as UserProfileService
     participant AN as AnalyticsService
     participant FS as Cloud Firestore
 
-    Student->>V: taps "Submit application"
-    V->>VM: submit(session)
-    VM->>VM: guard: state.submit.isLoading? ignore repeated tap
-    VM->>VM: read providers BEFORE first await (AGENTS.md async rule)
-    VM-->>V: state.submit = AsyncLoading() (button shows spinner, disabled)
-    VM->>AS: createApplication(jobKey, title, companyName, cvStoragePath, cvFileName, cvUrl, applicant)
-    AS->>FS: users/{uid}/applications/{jobKey}.set({...status: submitted...})
+    Student->>V: taps "Apply now" (Internship Detail)
+    V->>VM: provider build (autoDispose)
+    VM->>VM: read providers BEFORE first await (AGENTS.md)
+    Note over VM: wait for the listing + Profile, then draft once
+    VM->>CL: compose(internshipKey, storagePath, studentName)
+    CL->>FS: (server) read internships/{key} + users/{uid}
+    CL->>CL: Groq draft, or deterministic template on any failure
+    CL-->>VM: CoverLetterDraft(subject, body, usedAi)
+    VM->>AN: cover_letter_generate {internship_id, source}
+    VM-->>V: state (recipient from JD, subject, body)
+    Student->>V: edits the draft / recipient (or Regenerate)
+    V->>VM: setRecipient / setSubject / setBody / regenerate
+    Student->>V: taps "Open email app"
+    V->>VM: openEmail()
+    VM->>VM: validate a non-empty address; buildMailtoUri()
+    VM->>EL: openEmail(mailto:)
+    EL-->>VM: opened / AppException
+    VM->>AN: cover_letter_open_email {internship_id, has_recipient}
+    VM-->>V: emailOpened = true
+    Student->>V: taps "I've sent it"
+    V->>VM: markSent()
+    VM->>AS: createApplication(appliedVia: email, recipientEmail, applicant, CV?)
+    AS->>FS: users/{uid}/applications/{jobKey}.set({...})
     alt write succeeds
         FS-->>AS: ack
-        AS-->>VM: void
-        VM->>AN: logEvent("application_create", {internship_id, cv_source, duration_sec})
-        VM->>UP: updateApplyDetails(uid, details) / updateSkills(uid, skills)
-        Note over VM,UP: profile sync failure is logged to Crashlytics only;<br/>it never turns a stored submission into an error
-        VM->>VM: check ref.mounted before touching state
-        VM-->>V: state.submit = AsyncData(null), returns submittedAt
-        V->>V: context.go(success route) with recap (title, company, submittedAt)
-    else Firestore/permission/network error
-        FS-->>AS: FirebaseException
-        AS-->>VM: throw AppException(kind, userMessage, cause)
-        VM-->>V: state.submit = AsyncError(AppException)
-        V->>V: shows error.message + "Retry" (no raw exception ever rendered)
+        VM->>AN: application_create {internship_id, channel, cv_source, duration_sec}
+        VM-->>V: ApplicationSent(submittedAt, internship)
+        V->>V: pushReplacement('/…/apply/success', recap)
+    else Firestore / permission / network error
+        AS-->>VM: AppException(kind, userMessage)
+        VM-->>V: send = AsyncError(AppException)
+        V->>V: error.message in the bottom bar; "I've sent it" again
     end
 ```
 
 ## 3. Proof: layering rules are respected (checked against the code)
 
-The claims below were verified by reading the files, not assumed.
-
 ### 3.1 Views never import Firebase or call services directly
 
-```
-$ grep -rn "package:cloud_firestore\|package:firebase_" \
-    lib/features/internships/screens/apply_form_screen.dart \
-    lib/features/internships/screens/application_review_screen.dart \
-    lib/features/internships/screens/application_success_screen.dart \
-    lib/features/applications/screens/cv_validation_screen.dart
-(no matches)
-```
+`apply_compose_screen.dart`, `cv_match_screen.dart`,
+`cv_validation_screen.dart` and `application_success_screen.dart` import
+only `flutter/material.dart`, `flutter_riverpod`, `go_router`,
+`material_symbols_icons`, `core/widgets`, `theme`, models and their own
+ViewModel/provider. No `package:cloud_firestore`, `package:firebase_*`,
+`package:cloud_functions` or `package:url_launcher` import exists in any of
+them. The compose screen forwards user events to
+`applyComposeViewModelProvider` and renders the state with shared widgets
+(`AppTopBar`, `ApplySummaryCard`, `DetailSectionCard`, `CvFileTile`,
+`AppButton`, `FormMessage`, `StateView`, skeletons).
 
-- `ApplyFormScreen`, `ApplicationReviewScreen`, `CvValidationScreen` only
-  `ref.watch`/`ref.read` their own `*ViewModelProvider` (e.g.
-  `application_review_screen.dart:54-57`) and render the `ViewState` /
-  `AsyncValue` they get back with shared `core/widgets` (`StateView`,
-  `AppButton`, `CvFileTile`, `AppTopBar`).
-- `ApplicationSuccessScreen` is a plain `StatelessWidget` with **no**
-  ViewModel at all — correct per architecture.md, because it only recaps
-  data handed to it through the router `extra` and offers two `context.go`
-  navigations; it has no business logic or state to own.
+`ApplicationSuccessScreen` is a plain `StatelessWidget` with **no**
+ViewModel: it recaps data handed through the router `extra` and offers two
+`context.go` navigations.
 
 ### 3.2 ViewModels never import widgets or hold a `BuildContext`
 
+`apply_compose_viewmodel.dart` imports:
+
 ```
-$ grep -n "^import" apply_form_viewmodel.dart application_review_viewmodel.dart
-package:flutter/foundation.dart      ← @immutable only, not widgets
+package:flutter/foundation.dart       ← @immutable / debug only
 package:flutter_riverpod/flutter_riverpod.dart
 core/errors, core/state, core/utils, models/*, services/*
 ```
 
-```
-$ grep -rn "BuildContext" apply_form_viewmodel.dart application_review_viewmodel.dart cv_validation_viewmodel.dart
-(no matches)
-```
+It has no `flutter/material.dart`, no `core/widgets`, and no
+`BuildContext`. `markSent()` returns an `ApplicationSent?` record to the
+caller instead of navigating; the View decides to
+`pushReplacement('/…/apply/success')`. `openEmail()` returns nothing but
+stores `openError` in the state; the View shows it. This is the same
+pattern as `EditProfileViewModel.save()` returning `bool`.
 
-`ApplicationReviewViewModel.submit()` (application_review_viewmodel.dart:84)
-returns a `DateTime?` to the caller instead of navigating itself — the View
-decides what to do with the result (push the success route). This is the
-same pattern as `EditProfileViewModel.save()` returning `bool`.
+### 3.3 Services are the only layer that touches Firebase / HTTP
 
-### 3.3 Services are the only layer that touches Firebase/HTTP
-
-- `ApplicationService.createApplication()` (`lib/services/application_service.dart:22-30`
-  interface, implementation ~line 96-140) is the **only** place that writes
-  to `users/{uid}/applications/{jobKey}`. It:
-  - checks auth itself and throws `AppException(permissionDenied, ...)` if
-    signed out (line 108-114),
-  - wraps `FirebaseException` into `AppException` via `_toWriteAppException`
-    (never lets a raw SDK exception escape the service boundary),
-  - returns `void`/throws — no `ViewState` or widget type crosses into the
-    service.
-- `CvValidationService.validate()` (`lib/services/cv_validation_service.dart:13-16`)
-  is the only caller of the `validateCv` Cloud Function; the Gemini key
-  never reaches the app (G-26), consistent with architecture.md §8.
+- `CoverLetterService.compose()` is the only caller of the
+  `composeCoverLetter` callable; it parses the result defensively and maps
+  every `FirebaseFunctionsException.code` to an `AppException`. The Groq
+  key never reaches the app (architecture §8).
+- `ApplicationService.createApplication()` is the only writer of
+  `users/{uid}/applications/{jobKey}`. It checks auth itself, writes
+  `appliedVia` / `recipientEmail` / the optional CV snapshot, and wraps
+  `FirebaseException` in `AppException`.
+- `ExternalLinkService.openEmail()` is the only `mailto:` launcher; the
+  ViewModel passes a `Uri` built by the pure `buildMailtoUri` helper.
+- `contact_email.dart` / `mailto.dart` are pure `core/utils` functions with
+  no SDK dependency.
 
 ### 3.4 Models are plain, immutable data holders
 
-- `InternshipApplication`, `ApplicationApplicant`, `ApplicationStatus`
-  (`lib/models/internship_application.dart`) are `@immutable`, parse through
-  `FirestoreReader.requireX/optionalX` (never raw `data['x'] as String`), and
-  throw `FormatException` on a missing required field — the service, not the
-  model, decides to skip and log it (architecture.md §6 rule 4).
-- `ApplySession` / `ApplyCv` (`apply_form_viewmodel.dart:32-37, 77-92`) carry
-  the in-memory form state from Apply Form to Review through the router
-  `extra`, with no Firestore or Storage dependency.
+- `InternshipApplication`, `ApplicationApplicant`, `ApplicationStatus` and
+  `ApplicationChannel` are `@immutable`, parse through
+  `FirestoreReader.requireX/optionalX`, and throw `FormatException` on a
+  missing required field; the service decides to skip and log it.
+- `CoverLetterDraft` and `ApplySession` carry in-memory data only (no
+  Firestore / Storage dependency). `ApplySession` is handed to the optional
+  CV checks through the route `extra`.
+- `appliedVia` defaults to `ApplicationChannel.inApp` when absent, so
+  documents written before the email flow still load.
 
 ### 3.5 Riverpod-only state, no singletons, user-scoped data
 
-- Every Notifier here is `NotifierProvider.autoDispose(.family)` —
-  `applyFormViewModelProvider`, `cvValidationViewModelProvider`,
-  `applicationReviewViewModelProvider` — never a global singleton.
-- `ApplicationReviewViewModel.build()` calls
-  `ref.watch(currentUserIdProvider)` (line 67) purely to rebuild and drop
-  state on sign-out, per AGENTS.md rule 11.
-- Async rule compliance: `submit()` reads `applicationServiceProvider`,
-  `analyticsServiceProvider`, `userProfileServiceProvider`,
-  `crashlyticsServiceProvider`, `currentUserIdProvider` **before** the first
-  `await` (lines 90-94), then checks `ref.mounted` after every `await`
-  before touching `state` (lines 130, 134, 137).
-- Repeated taps are ignored: `if (state.submit.isLoading) return null;`
-  (line 85), matching the `SavedViewModel`/`EditProfileViewModel` pattern.
+- `applyComposeViewModelProvider` is
+  `NotifierProvider.autoDispose.family` — never a global singleton.
+- `build()` calls `ref.watch(currentUserIdProvider)` so another account
+  drops the draft (AGENTS.md rule 11). The listing subscription is started
+  once and the profile subscription is re-created only when the uid
+  changes, so an auth-stream rebuild (null → signed-in) cannot cancel a
+  subscription whose error is already in flight.
+- Async rule compliance: `markSent()` reads
+  `applicationServiceProvider`, `analyticsServiceProvider`,
+  `currentUserIdProvider`, `authStateChangesProvider` and `_profile`
+  **before** the first `await`, then checks `ref.mounted` after every
+  `await` before touching `state`.
+- Repeated taps are ignored: `if (state.isSending) return null;` and
+  `if (state.generate.isLoading) return;`.
 
 ### 3.6 Navigation stays declarative and outside the ViewModel
 
-`go_router` route names/paths for this slice
-(`lib/app/router.dart:51-63`):
+`go_router` routes for this slice (`lib/app/router.dart`):
 
 ```
-.../apply                → ApplyFormScreen
-.../apply/validation      → CvValidationScreen
-.../apply/review          → ApplicationReviewScreen
-.../apply/review/success  → ApplicationSuccessScreen
+.../apply                   → ApplyComposeScreen   ({tab}_apply_email)
+.../apply/match             → CvMatchScreen        ({tab}_cv_match, optional)
+.../apply/validation        → CvValidationScreen   ({tab}_cv_validation, optional)
+.../apply/success           → ApplicationSuccessScreen ({tab}_application_success)
 ```
 
-All nested under `rootNavigatorKey` (hides bottom navigation during Apply,
-per architecture.md §5). Every `context.go` / `context.push` call lives in a
-**View** (`cv_validation_screen.dart:46-64`,
-`application_review_screen.dart:76-83`,
-`application_success_screen.dart:106-113`) — never inside a ViewModel.
+All nested under `rootNavigatorKey` (hides the bottom navigation during
+Apply). Every `context.push` / `context.pushReplacement` / `context.go`
+call lives in a **View** (`apply_compose_screen.dart`,
+`cv_match_screen.dart`, `cv_validation_screen.dart`,
+`application_success_screen.dart`) — never inside a ViewModel.
 
 ## 4. Why this satisfies "there is an MVVM architecture requirement, and the implementation follows it"
 
-1. **Requirement exists and is written down**: `docs/architecture.md` §1
-   and AGENTS.md rule 2 define MVVM with the exact dependency direction and
-   forbidden imports, before this feature was built.
-2. **The new screens/ViewModels/services/models added for Apply submission
-   map 1:1 onto the four layers** (table in §2), with no cross-layer
-   shortcut (no Firebase in a View, no widget in a ViewModel, no UI state in
-   a Service).
-3. **Static evidence, not description**: the `grep` results in §3.1–3.2 show
-   zero Firebase imports in Views and zero widget/BuildContext imports in
-   ViewModels for every file touched by this slice.
-4. **Behavioural evidence**: the sequence diagram in §2.2 traces a real user
-   action (Submit) through exactly View → ViewModel → Service → Firebase and
-   back, with errors translated to `AppException` only inside the Service
-   and rendered only inside the View — never a raw SDK type crossing a
-   layer boundary.
-5. **Consistent with the rest of the codebase**: the same
-   `ViewState`/`AsyncValue`, Riverpod `NotifierProvider.autoDispose`, and
-   "read-before-await / check-ref.mounted-after-await" patterns used in
-   `EditProfileViewModel`, `HomeViewModel` and `MyApplicationsViewModel` are
-   reused here, not reinvented.
+1. **The requirement exists and is written down**: `docs/architecture.md`
+   §1 and AGENTS.md rule 2 define MVVM with the exact dependency direction
+   and forbidden imports.
+2. **The new screens / ViewModel / services / models map 1:1 onto the four
+   layers** (table in §2), with no cross-layer shortcut.
+3. **Static evidence**: §3.1–3.2 list the imports; no Firebase in a View,
+   no widget / `BuildContext` in a ViewModel.
+4. **Behavioural evidence**: the sequence in §2.2 traces a real action
+   (`I've sent it`) through View → ViewModel → Service → Firestore and back,
+   with errors translated to `AppException` only inside the Service and
+   rendered only inside the View.
+5. **Consistency**: the same `ViewState` / `AsyncValue`, Riverpod
+   `NotifierProvider.autoDispose` and "read-before-await /
+   check-ref.mounted-after-await" patterns used by `EditProfileViewModel`,
+   `HomeViewModel` and `MyApplicationsViewModel` are reused, not
+   reinvented.
 
 ## 5. Open follow-ups (not blocking this proof)
 
-- `docs/architecture.md` §3's ViewModel table still lists `ApplyViewModel`
-  as one row covering Form/Match/Review/Success and marks it "Planned" — it
-  should be split into `ApplyFormViewModel` (Done), `CvValidationViewModel`
-  (Done) and `ApplicationReviewViewModel` (Done, Success has none by design)
-  and the Status column updated in the same PR that lands this slice, per
-  AGENTS.md "Documentation to update in the same PR".
-- `docs/design-traceability.md` rows for Application Review (#8) and
-  Application Success (#9) should move from ⬜ to ✅ with their actual
-  route names.
+- The compose screen has no Figma frame (DC-31); it is built from existing
+  components and tokens.
+- The optional CV checks still need a frame (DC-19, DC-30); their route and
+  pop-back behaviour are covered by tests.
+- `docs/records/test-report.md` records the real commands run for this
+  slice; the device walk, a real Groq call and DebugView screenshots are
+  still open (no device/credentials in this session).

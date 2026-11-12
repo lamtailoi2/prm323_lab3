@@ -222,7 +222,7 @@ Also seen: `Choose file` often needed a second tap before the Android picker ope
 
 ## TC-08, TC-10, TC-15 (12:50 – 14:30)
 
-Runs 66–87 in [`runs-20261106.jsonl`](runs-20261106.jsonl), 438 model calls. Records done with Claude Code (P-72).
+Runs 66–87 in [`runs-20261106.jsonl`](runs-20261106.jsonl), 438 model calls. Records done with Claude Code (P-76; first logged as P-72, see the AI log).
 
 ### Environment
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,19 @@ import 'crashlytics_service.dart';
 
 /// Result of the Android 13+ / iOS notification permission prompt.
 enum NotificationPermission { granted, denied }
+
+/// A data-only command from the local admin dashboard that asks this device to
+/// run the Crashlytics test crash. It never becomes a notification.
+@immutable
+class TestCrashRequest {
+  const TestCrashRequest({required this.target, this.requestedAt});
+
+  /// `all` for a broadcast, `uid` for one user.
+  final String target;
+
+  /// When the dashboard sent the command.
+  final String? requestedAt;
+}
 
 /// Cloud Messaging and notification-history boundary.
 ///
@@ -44,6 +58,11 @@ abstract interface class NotificationService {
   /// The message that launched the app while it was terminated.
   Future<AppNotification?> initialMessage();
 
+  /// Explicit crash commands from the admin dashboard. Kept separate from
+  /// [foregroundMessages] so a command never appears in the history or as a
+  /// SnackBar.
+  Stream<TestCrashRequest> testCrashRequests();
+
   /// `users/{uid}/notifications`, newest first.
   Stream<List<AppNotification>> watchNotifications(String uid);
 
@@ -53,6 +72,9 @@ abstract interface class NotificationService {
 
   /// Marks one notification as read.
   Future<void> markRead(String uid, String id);
+
+  /// Marks the given notifications read in one batch (`Mark all as read`).
+  Future<void> markAllRead(String uid, Iterable<String> ids);
 }
 
 final notificationServiceProvider = Provider<NotificationService>(
@@ -145,23 +167,37 @@ class FirebaseNotificationService implements NotificationService {
   }
 
   @override
-  Stream<AppNotification> foregroundMessages() =>
-      FirebaseMessaging.onMessage.map(notificationFromMessage);
+  Stream<AppNotification> foregroundMessages() => FirebaseMessaging.onMessage
+      .where((message) => !isTestCrashMessage(message))
+      .map(notificationFromMessage);
 
   @override
-  Stream<AppNotification> openedMessages() =>
-      FirebaseMessaging.onMessageOpenedApp.map(notificationFromMessage);
+  Stream<AppNotification> openedMessages() => FirebaseMessaging
+      .onMessageOpenedApp
+      .where((message) => !isTestCrashMessage(message))
+      .map(notificationFromMessage);
 
   @override
   Future<AppNotification?> initialMessage() async {
     try {
       final message = await _messaging.getInitialMessage();
-      return message == null ? null : notificationFromMessage(message);
+      if (message == null || isTestCrashMessage(message)) return null;
+      return notificationFromMessage(message);
     } catch (error) {
       debugPrint('Could not read the initial FCM message: $error');
       return null;
     }
   }
+
+  @override
+  Stream<TestCrashRequest> testCrashRequests() => FirebaseMessaging.onMessage
+      .where(isTestCrashMessage)
+      .map(
+        (message) => TestCrashRequest(
+          target: _nonEmpty(message.data['target']) ?? 'uid',
+          requestedAt: _nonEmpty(message.data['requestedAt']),
+        ),
+      );
 
   @override
   Stream<List<AppNotification>> watchNotifications(String uid) {
@@ -216,6 +252,26 @@ class FirebaseNotificationService implements NotificationService {
     }
   }
 
+  @override
+  Future<void> markAllRead(String uid, Iterable<String> ids) async {
+    // One batch: at most the 50 shown in the history, under Firestore's
+    // 500-write limit, and either every dot clears or none does.
+    final batch = _firestore.batch();
+    var writes = 0;
+    for (final id in ids) {
+      batch.update(_notifications(uid).doc(id), <String, Object?>{
+        'read': true,
+      });
+      writes++;
+    }
+    if (writes == 0) return;
+    try {
+      await batch.commit();
+    } on FirebaseException catch (error) {
+      throw _toAppException(error);
+    }
+  }
+
   CollectionReference<Map<String, Object?>> _notifications(String uid) =>
       _firestore.collection('users').doc(uid).collection('notifications');
 
@@ -229,6 +285,15 @@ class FirebaseNotificationService implements NotificationService {
     );
   }
 }
+
+/// The admin dashboard sends a data-only message with `type=test_crash`.
+/// Visible for tests.
+const String _commandTypeKey = 'type';
+const String _testCrashCommand = 'test_crash';
+
+@visibleForTesting
+bool isTestCrashMessage(RemoteMessage message) =>
+    message.data[_commandTypeKey] == _testCrashCommand;
 
 /// Maps an FCM message to the history document shape.
 ///
@@ -281,6 +346,24 @@ String? _nonEmpty(Object? value) {
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     if (Firebase.apps.isEmpty) await Firebase.initializeApp();
+
+    // A crash command is not a notification: record why it happened, then
+    // crash the process so Crashlytics uploads a fatal report on next launch.
+    if (isTestCrashMessage(message)) {
+      final crashlytics = FirebaseCrashlytics.instance;
+      await crashlytics.setCustomKey('crash_source', 'admin_dashboard');
+      await crashlytics.setCustomKey(
+        'crash_target',
+        _nonEmpty(message.data['target']) ?? 'uid',
+      );
+      final requestedAt = _nonEmpty(message.data['requestedAt']);
+      if (requestedAt != null) {
+        await crashlytics.setCustomKey('crash_requested_at', requestedAt);
+      }
+      crashlytics.crash();
+      return;
+    }
+
     final uid =
         _nonEmpty(message.data['uid']) ??
         FirebaseAuth.instance.currentUser?.uid;

@@ -5,28 +5,36 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:internly/core/errors/app_exception.dart';
 import 'package:internly/features/auth/viewmodels/login_viewmodel.dart';
 import 'package:internly/features/auth/viewmodels/sign_out_viewmodel.dart';
+import 'package:internly/models/app_user.dart';
 import 'package:internly/services/analytics_service.dart';
 import 'package:internly/services/auth_service.dart';
+import 'package:internly/services/user_profile_service.dart';
 
 import '../../helpers/fakes.dart';
 
 void main() {
   late FakeAuthService auth;
   late FakeAnalyticsService analytics;
+  late FakeUserProfileService profiles;
   late ProviderContainer container;
 
   setUp(() {
     auth = FakeAuthService();
     analytics = FakeAnalyticsService();
+    profiles = FakeUserProfileService();
     container = ProviderContainer.test(
       overrides: [
         authServiceProvider.overrideWithValue(auth),
         analyticsServiceProvider.overrideWithValue(analytics),
+        userProfileServiceProvider.overrideWithValue(profiles),
       ],
     );
   });
 
-  tearDown(() => auth.dispose());
+  tearDown(() async {
+    await auth.dispose();
+    await profiles.dispose();
+  });
 
   group('LoginViewModel', () {
     LoginViewModel listen() {
@@ -59,6 +67,41 @@ void main() {
         expect(analytics.events, ['login:google']);
       },
     );
+
+    test('saves Google given name for the Home greeting (DC-31)', () async {
+      final vm = listen();
+      auth.signInUser = const AppUser(
+        uid: 'uid-123',
+        displayName: 'Phạm Nguyễn Hoàng Anh',
+        givenName: 'Anh',
+      );
+
+      await vm.signInWithGoogle();
+
+      expect(profiles.writes, ['given name']);
+      expect(profiles.profile?.givenName, 'Anh');
+      expect(container.read(loginViewModelProvider).hasError, isFalse);
+    });
+
+    test('without a given name nothing is written', () async {
+      final vm = listen();
+      await vm.signInWithGoogle();
+      expect(profiles.writes, isEmpty);
+    });
+
+    test('a failed given-name save does not fail sign-in', () async {
+      final vm = listen();
+      auth.signInUser = const AppUser(uid: 'uid-123', givenName: 'Anh');
+      profiles.saveError = const AppException(
+        AppErrorKind.network,
+        'We could not reach Internly.',
+      );
+
+      await vm.signInWithGoogle();
+
+      expect(container.read(loginViewModelProvider).hasError, isFalse);
+      expect(analytics.events, ['login:google']);
+    });
 
     test('ignores taps while a sign-in is in progress', () async {
       final vm = listen();

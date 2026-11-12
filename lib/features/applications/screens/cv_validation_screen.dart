@@ -5,8 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../app/router.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/state_view.dart';
-import '../../internships/viewmodels/apply_form_viewmodel.dart'
-    show ApplySession;
+import '../../internships/models/apply_session.dart';
 import '../widgets/cv_validation_step.dart';
 
 /// Validate CV (G-24, DC-19): the gate between the Apply Form and
@@ -40,9 +39,9 @@ class CvValidationScreen extends StatelessWidget {
           icon: Symbols.description_rounded,
           title: 'Choose a CV first',
           message:
-              'Start the application from the Apply Form so we know which CV '
-              'to check.',
-          actionLabel: 'Back to the form',
+              'Start the application from Apply now so we know which CV to '
+              'check.',
+          actionLabel: 'Back to apply',
           onAction: () =>
               context.go(AppRoutes.applyForm('/$source', internshipKey)),
         ),
@@ -55,12 +54,9 @@ class CvValidationScreen extends StatelessWidget {
         child: SingleChildScrollView(
           child: CvValidationStep(
             storagePath: session.cv.file.storagePath,
-            // Replaces this step, so Back from Review returns to the form
-            // and the check does not run again.
-            onValid: () => context.pushReplacement(
-              AppRoutes.applicationReview('/$source', internshipKey),
-              extra: session,
-            ),
+            // Returns to the compose screen with the result, so it can show
+            // the outcome and the student continues with the email.
+            onValid: () => Navigator.of(context).pop(true),
             onUpdateCv: () => Navigator.of(context).maybePop(),
           ),
         ),

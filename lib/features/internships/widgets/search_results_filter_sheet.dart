@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/widgets/app_button.dart';
@@ -27,12 +29,16 @@ class SearchResultsFilterSheet extends StatefulWidget {
   /// chip narrows the list instead of offering a fixed vocabulary.
   final List<String> suggestedSkills;
 
+  /// Opens the sheet. [matchingCountCalculator] and [suggestedSkills] read the
+  /// caller's listings; [listingsChanged] is the provider those listings live
+  /// in, so the count and the skill chips follow it while the sheet is open.
   static Future<void> show({
     required BuildContext context,
     required SearchFilterCriteria currentCriteria,
     required int Function(SearchFilterCriteria) matchingCountCalculator,
     required ValueChanged<SearchFilterCriteria> onApply,
-    required List<String> suggestedSkills,
+    required List<String> Function() suggestedSkills,
+    required ProviderListenable<Object?> listingsChanged,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -45,11 +51,20 @@ class SearchResultsFilterSheet extends StatefulWidget {
       ),
       builder: (context) => FractionallySizedBox(
         heightFactor: 0.85,
-        child: SearchResultsFilterSheet(
-          initialCriteria: currentCriteria,
-          matchingCountCalculator: matchingCountCalculator,
-          onApply: onApply,
-          suggestedSkills: suggestedSkills,
+        // Rebuilt when the listings change: opened before the first pool
+        // snapshot, the sheet otherwise kept `Show 0 results` and no skill
+        // chips until the next selection (CR-11). The State below keeps the
+        // criteria being edited across rebuilds.
+        child: Consumer(
+          builder: (context, ref, _) {
+            ref.watch(listingsChanged);
+            return SearchResultsFilterSheet(
+              initialCriteria: currentCriteria,
+              matchingCountCalculator: matchingCountCalculator,
+              onApply: onApply,
+              suggestedSkills: suggestedSkills(),
+            );
+          },
         ),
       ),
     );

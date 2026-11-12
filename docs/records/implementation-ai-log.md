@@ -407,6 +407,16 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
+---
+
+### P-48: Tú's grading-sheet tasks (DC-09 deviation, application_update/application_delete, evidence plan)
+- **Request:** the pasted task breakdown for Tú (5 items: row 5 CV Match Check/DC-09, rows 14-15 DebugView evidence, row 16 log Planned events, row 20 auth evidence) plus the ARTEMIS Flow 3 review assignment; asked to read the repo and plan the work, branching off `feat/application-detail` if needed.
+- **Output:** explored the repo (DC-09/G-24 status, analytics event implementation vs plan, ARTEMIS Flow 3 test status) before planning. User decided: record DC-09 as a deviation rather than build the separate CV Match Check screen; branch `chore/analytics-evidence-artemis` off `main`; scope row 16 to only `application_update`/`application_delete` (the other three Planned events have no UI hook yet). Changes made: `docs/design-traceability.md` row 7 and DC-09 (§4) marked Superseded, pointing to the existing Skill match summary (DC-24); `docs/records/handoff-gaps.md` G-24 marked Resolved with a 2026-11-05 note; `ApplicationDetailViewModel.withdraw()` now logs `application_update` (status → `withdrawn`) and `application_delete` (G-08: a withdrawal is this entity's delete), `undoWithdrawal()` logs `application_update` back to the restored status; `docs/analytics-plan.md` rows 12-13 flipped Planned → Implemented, rows 9/14/15 (`cv_match_check`, `export_report`, `notification_center_open`) annotated with why they stay blocked. Two new ViewModel tests added. Rows 14-15 (DebugView screenshots) and row 20 (auth console screenshots) and the ARTEMIS Flow 3 UI-copy review are manual steps left for Tú to run on a device — not done by the agent.
+- **Verification:** `dart format lib test` → 2 files formatted; `flutter analyze` → `No issues found!`; `flutter test test/features/applications/application_detail_viewmodel_test.dart` → 10 passed; `flutter test` full suite → **585 tests, all passed** (Run 24, `docs/records/test-report.md`).
+- **Decision:** Accepted (user chose this plan via AskUserQuestion before implementation). Not done in this session: capturing the actual DebugView/auth-console screenshots (needs a running device/emulator and Firebase Console access) and the ARTEMIS Flow 3 UI-copy re-check against the live app.
+
+---
+
 ### P-48: Flow 3 Application Detail audit and gap closure
 - **Request:** read the current source, check the Flow 3 plan (`plan-flow3-implement.md`) for mistakes or missing items, supplement it, and implement what remains.
 - **Output:** the audit found the feature already implemented on `feat/application-detail` — `ApplicationDetailScreen` (`ApplicationIdentityCard`, `ApplicationStatusTracker`, `ApplicantCard`), `ApplicationDetailViewModel` (`ViewState`, retry, withdraw + Undo within 24 h, `view_application` once), route `application_detail`, card / `Review offer` / `View application` navigation, model snapshot fields (`cvFileName` / `cvUrl` / `cvStoragePath`, `applicant`, `withdrawnAt` / `previousStatus`) and `ApplicationService.watchApplications()` + `withdraw` / `undoWithdrawal`. The plan was stale in several places (it deferred withdraw, assumed a `watchApplication(jobKey)` method and `CvFile` / `ApplicantSnapshot` models that do not exist, and reused deviation ID DC-27, which belongs to Review / Success). Closed the real gaps: added `e2e_test/test_applications.py` (TC-09 happy path, TC-10 airplane-mode recovery); corrected `analytics-plan` row 11 to Implemented; marked TC-09/TC-10 Ready (not run) and added their result rows in `test-plan.md`; defined the missing DC-29 in `design-traceability.md`, superseded DC-22 (d)–(f) and updated DC-24 item 11; updated the application schema and status rules in `architecture.md`; added Withdrawn to the badge table in `design-system.md` and resolved G-18 in `handoff-gaps.md`; recorded Run 24. `plan-flow3-implement.md` §2, §4–§7, §10.1 and §15 were corrected to the as-built contract.
@@ -710,7 +720,64 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 
 ---
 
-### P-72: TC-08 without Undo, TC-15 single launch, TC-13 hint; TC-08 / TC-10 / TC-15 runs
+### P-72: Firebase demo area, Remote Config source fix and the Profile crash control
+- **Request:** "kiểm tra xem tôi đã làm những tính năng hay task này chưa, nếu chưa hướng dẫn tôi từng bước" then "làm hoàn thiện luôn từng bước giúp tôi"; later "giữ lại giúp tôi nút crash ở profile người dùng đi".
+- **Output:**
+  - `FirebaseDemoScreen` + `FirebaseDemoViewModel` at `/profile/firebase`: Remote Config key/value/source, live `onUpdated` refresh, `Send a non-fatal error`, `Simulate app crash`, `Copy FCM token`, Notification Center link, and a disabled Report export row until G-05. Route `firebase_demo`; Profile → Diagnostics keeps the `Simulate app crash` tile and adds the `Firebase demo` entry.
+  - **Bug found on device:** `RemoteConfigValue.source.name` returns `valueRemote` / `valueDefault` / `valueStatic`, so the screen labelled remote values `In-app default`. `FirebaseRemoteConfigService.snapshot()` now maps them through `sourceName()`; tests cover the mapping and the `From Firebase` label.
+  - Tests: `firebase_demo_viewmodel_test.dart`, `firebase_demo_screen_test.dart` (360/412 dp, live update, non-fatal, crash confirmation, links, FCM token, tap targets), restored Profile crash test, `remote_config_defaults_test.dart` source mapping.
+  - Docs: design traceability, architecture, G-06, Run 31, evidence images.
+- **Verification:** `flutter analyze` → No issues found; `flutter test` → **676 passed**. Device walk on `emulator-5554`: all three parameters show `From Firebase` (`6 / 10 / true`); non-fatal showed its SnackBar; the Profile Diagnostics section shows both `Simulate app crash` and `Firebase demo`. Evidence: `evidence/remote-config/remote-config-app-from-firebase-20261106.png`, `evidence/crashlytics/crashlytics-nonfatal-sent-20261106.png`. The test crash and Crashlytics dashboard screenshots are not part of this entry.
+- **Decision:** Accepted. The source mapping lives in the service so the SDK enum never leaks into UI code. The Profile crash control stays after the user's correction; the FCM token remains on the demo screen.
+
+---
+
+### P-73: Admin dashboard refactor, explicit recipients and admin-triggered crash
+- **Request:** "dựa vào skill UI vừa cài, refactor lại UI của dashboard admin", fix "user đang không chọn chỉ định được ai sẽ được gửi notification", remove the UI slop, and add a crash control so the admin can test the whole app without opening each user's Profile.
+- **Output:**
+  - **Backend:** `lib/admin.js` gains `normaliseTarget()` and `buildTestCrashData()`; `server.js` extracts `resolveRecipients()` and `deliver()` (one user or every unique token, 500-per-batch) and adds `POST /api/test-crash`, which sends a **data-only** FCM command `{type: 'test_crash', source: 'admin_dashboard', target, requestedAt}` with high Android priority and no notification block.
+  - **App:** `NotificationService.testCrashRequests()` exposes `TestCrashRequest`; foreground/opened/initial messages filter control messages out of the history; `NotificationCoordinator` sets `crash_source`, `crash_target` and `crash_requested_at` then calls `crashForTesting()`; the background isolate does the same through `FirebaseCrashlytics.instance.crash()`. No Firestore rules change.
+  - **UI:** rewritten `public/index.html`, `styles.css`, `app.js` as a warm-paper ops desk: explicit recipient picker (everyone or one student; no-token students disabled with the reason), title/body/route, delivery and history panels, skeleton/empty/error states, focus rings, 44 dp targets, reduced-motion support, and a crash panel with an acknowledgment checkbox plus a native confirmation dialog. The full-page screenshot sticky-header duplication is a capture artifact; the viewport render is clean.
+  - README updated with the new recipient and crash workflows.
+- **Verification:**
+  - `cd tools/admin-dashboard && npm test` → **9 passed**; `node --check` on `server.js`, `lib/admin.js` and `public/app.js` → clean.
+  - `flutter analyze` → No issues found; `flutter test` → **676 passed** (includes the admin crash coordinator test).
+  - End-to-end on `emulator-5554`: `POST /api/test-crash` to `mgqfiZkcaaRbV5zEsad9bODhKvu1` returned `successCount: 1`; logcat showed `FATAL EXCEPTION` / `FirebaseCrashlyticsTestCrash` on the app PID, which then closed. The app was rebuilt and reinstalled before this run.
+  - `agent-browser` (via `npx agent-browser 0.41.2`) rendered the dashboard: the recipient select lists all 9 users plus `Everyone with a token (5)`; no-token users are disabled; selecting `Mai Duy Lập` enabled `Send notification` and changed the chip to `To Mai Duy Lập`; the crash acknowledgment enabled `Send test crash`.
+- **Decision:** Accepted. A data-only FCM command avoids a new Firestore collection and rules change, works from the dashboard, and is recognised before the notification handlers so it never writes history or shows a banner. The remote crash is destructive, so it requires the acknowledgment and a confirmation dialog and is only reachable on the localhost-bound dashboard. The existing Profile crash control remains for on-device testing.
+
+---
+
+### P-74: Email-based Apply flow (AI cover letter + `mailto:`)
+- **Request:** "phần application, giờ tôi muốn chỉnh sửa như sau. Thay vì phải điền form để điền như những nền tảng khác, giờ nếu được có thể dẫn tới email, soạn mail và cover letter dựa trên JD của job đó được không". Answers to the design questions: read the recipient from the JD and allow editing; draft with AI through a Cloud Function; auto-save the record behind an `I've sent it` button.
+- **Output:**
+  - **App:** `ApplyComposeScreen` + `ApplyComposeViewModel` replace the six-field `ApplyFormScreen` and the Review step at `/{tab}/internships/:jobKey/apply` (route name `{tab}_apply_email`); `apply_compose_parts.dart` and the extracted `apply_summary_card.dart`; `core/utils/contact_email.dart` (prefers `hr` / `recruit` / `tuyendung` / `career` / `job` / `apply` / `contact`, drops `noreply`); `core/utils/mailto.dart` (RFC 6068, `%20` / `%0A`); `services/cover_letter_service.dart`; `models/apply_session.dart` and `models/cover_letter_draft.dart`; `ExternalLinkService.openEmail()`; `ApplicationService.createApplication` now takes nullable CV fields plus `recipientEmail` / `appliedVia`; `InternshipApplication` gains `ApplicationChannel`, `appliedVia` and `recipientEmail`, and Application Detail shows `Sent to` and the cover letter; the optional CV Match / Validate screens now pop back to the compose screen.
+  - **Backend:** `functions/src/compose-cover-letter.ts` (callable, `GROQ_API_KEY`, 120–170-word letter in the listing's language, JSON `{subject, body}`, deterministic template on a blank key / model failure / unparseable output, CV text optional and ownership-checked); registered in `index.ts`.
+  - **Platform/docs:** Android `<queries>` for `SENDTO` + `mailto`; DC-31, G-33, architecture (ViewModel, service, schema, integration, secrets), analytics rows 8/10/17/19/20 and the Apply funnel, `test-report.md` Run 34, and the rewritten `apply-flow-mvvm-architecture.md`.
+- **Verification:** `dart format lib test` → 216 files (8 changed, then clean); `flutter analyze` → **No issues found!**; `flutter test` → **653 passed**; `cd functions && npm test` → **59 passed** (13 new). New tests: contact-email and mailto helpers, cover-letter service parsing/error mapping, `ApplyComposeViewModel` (prefill, AI draft, `mailto:`, record fields, repeated tap, failure, no name, late snapshot, session), the compose screen at 360/412 dp, the router paths, and the `ApplicationChannel` model. Deploy, a real Groq call, a device walk (Gmail + CV attachment + `I've sent it`) and DebugView were **not run**.
+- **Decision:** Accepted. The recipient is extracted but never invented, and an empty field still opens a draft with an empty `To`. The callable keeps the model key off the device and returns a deterministic template on any failure, so the flow never dead-ends. The CV is attached manually because `mailto:` cannot attach files; the screen says so. CV Match / Validate remain as optional actions so the G-24 evidence stays reachable without blocking the email.
+
+---
+
+### P-75: ARTEMIS cases reviewed against UI v2 and the email apply flow; TC-12 written
+- **Request:** (Claude Code, Opus 5.5, 2026-11-07; operator Phạm Nguyễn Hoàng Anh) "rà lại toàn bộ project để xem test case và test artemis viết đúng chưa", after PR #33 (UI v2, DC-31) and PR #34 (email apply flow) reached `dev` `b5d1209`.
+- **Output:**
+  - Every UI label quoted in `e2e_test/*.py` was checked against `lib/`, and each flow and assertion was read against the screens.
+  - `test_auth.py` TC-01: asserts the highlighted tab `Home`; the Home header now shows a greeting and the name, not "Home".
+  - `test_navigation.py` TC-02: app bar title == tab except for Home.
+  - `test_applications.py` TC-09: no longer creates an application through the removed Apply Form/Review screens; it reports `has_application` and stops if there is none (TC-06 creates one).
+  - `test_apply_form.py` TC-18 / TC-19: open the first card with no `Applied` badge, so an applied listing cannot show `View application`.
+  - `conftest.py`: removed `FILL_PERSONAL` and `UPLOAD_SAMPLE_CV`, which named Apply Form fields that no longer exist; the sample CV helper is kept for the coming CV library.
+  - New `test_profile.py` TC-12: reads `home_recommended_limit` (`N · source`) on Profile → Firebase demo and checks Home shows N recommended cards.
+  - `docs/test-plan.md`: rows TC-01, TC-02, TC-09, TC-12, TC-18; the 2026-11-06 TC-18/19/20 results are marked as the old Apply Form.
+  - The other cases (TC-03, 04, 05, 07, 08, 10, 13, 14, 15, 16, 17) still match the labels in `lib/`.
+- **Verification:** `py_compile` OK; `pytest --collect-only` → 18 tests. Not run on a device yet.
+- **Decision:** Accepted.
+
+---
+
+### P-76: TC-08 without Undo, TC-15 single launch, TC-13 hint; TC-08 / TC-10 / TC-15 runs
+- **Note:** first recorded as P-72 in `9ec4978` (PR #31); the PR #34 merge kept another P-72, so it is restored here under a new ID.
 - **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) "Run them now" (TC-08, TC-10, TC-15), "Rewrite TC-08" → "Yes, fix them", "Switch to 3.5", then "done giờ viết docs và commit đi". The operator's teacher asked for a recording of each ARTEMIS batch with its terminal command.
 - **Output:**
   - `e2e_test/test_saved.py` TC-08 (`test_tc08_save_then_unsave`): numbered steps; no `Undo` and no `Saved to your list` (ARTEMIS needs 5–15 s per step, the Snackbar lasts 4 s; widget tests cover both); reports the title of the detail opened from Saved; button label checked with `startswith("Saved")` (the agent may read the accessibility label); the case unsaves the card it saved.
@@ -724,6 +791,87 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - `py_compile` and `pytest --collect-only` (18 tests) OK.
 - **Decision:** Accepted. Two API keys borrowed from team members' free-tier projects; a third, prepaid one was refused (G-26).
 
+### P-77: UI v2 — photo tab headers, Job Hero Card, Application Detail tweaks
+- **Note:** first logged as P-73 on `feat/ui-v2` (`4396a12`); the entry was lost when PR #33 and the admin dashboard work (also P-73) were merged into `dev`, so it is restored here under a free number.
+- **Request:** (Claude Code, Opus 5.5, 2026-11-06; operator Phạm Nguyễn Hoàng Anh) Redesign the headers and Application Detail in Figma in a new section without touching the old frames, iterate on the look with banking-app references (ACB, Sacombank), use a header photo different from the Login one, then "giờ cứ sửa lại code theo UI mới đi nào tui có Idea hình thì replace lại".
+- **Output:**
+  - Figma: sections "Final UI v2 · Headers & Application Detail (proposal)" and "Final UI v2 · All screens (Header v2)" (47 frames, old frames unchanged); two images generated with Figma AI (Ho Chi Minh City skyline, abstract blue cover).
+  - Code: `MainTabAppBar` photo hero (`assets/images/tab_header.jpg`), Home greeting (a summary card, header chips and a summary bar were tried and dropped at the operator's request), Profile and Search results on the same header, `JobHeroCard` (`assets/images/job_cover.jpg`) replacing the Detail header / Key facts / Applied banner, Application Detail identity card and active-step tint; `AppColors.inverseSurface`, `AppSizes.companyLogoHero`, `AppSizes.jobCoverHeight`; `greetingFor()`; removed the unused `DetailMetaTile` and `DetailAppliedBanner`.
+  - Docs: DC-31, `design-system.md` §1.1 / §2.6 / §2.15, test-report Run 33.
+- **Verification:** `dart format` clean, `flutter analyze` no issues, `flutter test` 676 / 676 on the final state (Run 33). Not checked on a device or emulator.
+- **Decision:** Accepted with changes: the avatar stays on the non-Home tabs (DC-20), the unread dot and the `under review` count from the frames are not built (no data behind them), pushed screens keep the white `AppTopBar.back`.
+
+---
+
+### P-78: Home greeting by given name; long names fit
+- **Request:** (Claude Code, Opus 5.5, 2026-11-07; operator Phạm Nguyễn Hoàng Anh) The Home header cut "Phạm Nguyễn Hoàng…"; asked for options, chose "C + A": Google's given name, with a fit-to-width fallback.
+- **Output:** `AuthService.signInWithGoogle` reads `given_name` from `additionalUserInfo.profile` into `AppUser.givenName`; `LoginViewModel` saves it with the new `UserProfileService.updateGivenName` (`users/{uid}.givenName`, merge write, best effort); `UserProfile.givenName`; `homeGivenNameProvider`; Home title = given name → full name → `Home`; `MainTabAppBar` title steps 24 → 20 → 18 before an ellipsis. Tests and fakes updated; DC-31, `design-system.md` §2.6, test-report Run 35.
+- **Verification:** `flutter analyze` no issues; `flutter test` 663 passed (Run 35). Not checked on a device; existing accounts get the given name only after their next sign-in.
+- **Decision:** Accepted. Rejected: guessing the given name from word order (wrong for "given family" order and foreign names) and a new Edit profile field (out of scope).
+
+---
+
+### P-79: SerpAPI fresher/junior keywords + Detail role and level badges
+- **Request:** "sửa lại search keyword của SerpAPI không chỉ có jobs intern phải có cả fresher và junior. Lưu ý tui đang sử dụng free tier của SerpAPI nên phải tối ưu, đồng thời trong details phải có badge hiển thị role của job đó" — then, asked what "role" means, the user chose **both**: job family and experience level. Renumbered from P-46 after `dev` used that number for the Filter skills change.
+- **Output:** `functions/src/config.ts` adds `IT fresher Vietnam` and `IT junior Vietnam` to the six intern queries (eight total; the 6-hour schedule, one keyword per run and one page are unchanged, so the first month is about 132 of 250 searches and each keyword refreshes every ~2 days, inside the 7-day expiry); `functions/src/config.test.ts` guards the level coverage and computes the quota. `lib/core/utils/job_level.dart` (`JobLevel` + `jobLevelFor`, folded title only, `fresher`/`junior` before `intern`, senior/lead/manager titles treated as no level, no match inside "international") and `Internship.level`. After the UI v2 merge the job family (`Internship.role`) and level (`Internship.level`) render as compact `AppTag` badges under the title in `JobHeroCard`, only for an IT listing, each hidden when the listing gives no signal, with `Role: …` / `Experience: …` semantics. `accountant`/`accountants`/`accountancy` added to the non-IT words so junior/fresher queries cannot bring accounting jobs into Home. Docs: G-25 quota/coverage, `firebase-setup.md` §13, architecture pool note, design-system badge note, traceability row 4 + DC-28, Run 36.
+- **Verification:** `cd functions && npm test` → **20 tests passed**; `dart format lib test` → **222 files, 0 changed**; `flutter analyze` → **No issues found!**; `flutter test` → **687 tests, all passed**. Real sync on 2026-11-07: `sync/state` → `backfill=true`, `fetched=65`, `written=65`, `expiredDeleted=0`, all eight keywords, no `lastError`; Firestore has 10 `IT fresher Vietnam` and 10 `IT junior Vietnam` listings, and the Pixel 6 emulator shows the `DevOps/Cloud` + `Intern` badges on Detail (`evidence/sync/2026-11-07-p46-sync.md`, raw files keep the original P-46 label).
+- **Decision:** Accepted. The level is inferred in the app like the role (no sync/Firestore field change). Two badges are shown because the user chose both; the Figma frame has no badge row, recorded as DC-28 and reusing `AppTag` rather than inventing a new component. Round-1 AI review showed the sync-keyword fallback would label senior roles returned by an intern query as Intern, so the level now reads the title only and the negative badge test asserts on semantics.
+
+---
+
+### P-80: Experience band in Profile + ranking tiebreaker, target-role labels
+- **Request:** "Ranking: giữ recommendationScore = role + skills; level là tiebreaker: sort score desc → levelMatch desc → syncRank. Không filter, không đổi thứ tự khi profile chưa có experience." Plus the four experience bands, `null` vs `none`, `Data / AI` and `DevOps / Cloud` target roles, the persistence/equality/analytics wiring, tests, and the known limits. Renumbered from P-47 after `dev` used that number for the Flow 2 completion.
+- **Output:** `ExperienceRange` (`none` / `underOne` / `oneToTwo` / `twoPlus`, labels `No experience` / `Under 1 year` / `1–2 years` / `2+ years`, `levels` mapping to `JobLevel`); `InternshipPreferences.experience` in `fromReader`, `toFirestore` (`none` / `under_one` / `one_to_two` / `two_plus`, absent = `null`), `==` / `hashCode`; `EditPreferencesState.experience`, `selectExperience` (single-select, tapping again sends `null` through a separate `hasExperience` sentinel so other field edits keep the draft), and `save` (persisted plus one `profile_update.item_count` item when set, not when `null`); `EditPreferencesSheet` Experience group; Profile preferences section tag; `TargetRole` labels without the " Intern" suffix plus `dataAi` / `devOps`; `matchesWantedLevel` (`lib/core/utils/recommendation.dart`); `HomeViewModel` second sort key (`levelMatch` desc) before `compareBySyncRank`, with no filtering and no score change. Docs: G-23 update + known limits, architecture profile field/ranking note, analytics `item_count`, traceability row 1/12 + DC-32/DC-33, this log, Run 37. Tests: model storage/equality/legacy, recommendation level matrix, ViewModel clear/save/analytics, Home tiebreaker/no-experience order/score-first, Profile section and the sheet at 360/412 dp.
+- **Verification:** `dart format lib test` → **222 files, 0 changed**; `flutter analyze` → **No issues found!**; `flutter test` → **687 tests, all passed**. Not run: a device or emulator screenshot of the new sheet/tag, a Firestore round trip on a real project (no device/Firebase project on this machine).
+- **Decision:** Accepted with the scope limits recorded in G-23: experience is a tiebreaker only (never a filter, never part of `recommendationScore`), `null` and `none` are distinct, and listings whose title gives no early-career level (`JobLevel == null`, including senior titles) get no level signal. No `scheduleType` fallback in this scope. `Data / AI` and `DevOps / Cloud` deliberately differ from `JobRole.label` (`Data/AI`, `DevOps/Cloud`) and are recorded as DC-32.
+
+---
+
+### P-81: Unread count badge on the bell; Mark all as read
+- **Request:** (Claude Code, Opus 5.5, 2026-11-08; operator Phạm Nguyễn Hoàng Anh) "sao khi có thông báo icon chuông ở header hông hiện nút đỏ or tag nhỏ số thông báo", then "tôi làm luôn và thêm marked read all btn nữa đi". The Notification Center belongs to Lập's area; the operator chose to build it.
+- **Output:**
+  - `NotificationService.markAllRead(uid, ids)`: one Firestore batch setting `read: true`, at most the 50 shown.
+  - `unreadNotificationCountProvider` (`features/notifications/viewmodels/unread_notifications_provider.dart`): counts unread items from the same history stream as the list. It is user-scoped and 0 when signed out.
+  - `MainTabAppBar.unreadNotifications`: Material `Badge` on the bell (`color/error`, `9+` above nine). The tooltip stays `Notifications`, so existing finders and ARTEMIS cases still match; the count is the button's semantics value. All six tab screens pass the count.
+  - `NotificationCenterViewModel.markAllRead()` plus a `Mark all as read` text button in the app bar, shown only while something is unread. A failure leaves the dots and allows a retry.
+  - Docs: DC-34 and the Notification Center row in `design-traceability.md`; G-04 updated; design-system header note; test-report Run 38.
+- **Verification:** format 0 changed; `flutter analyze` clean; `flutter test` 697 passed (+10). On the emulator (profile build): badge `1` on Home, Saved and Profile; `Mark all as read` cleared the dot, hid itself and removed the badge (test-report Run 38).
+- **Decision:** Accepted; Figma frames still to update (DC-34).
+
+---
+
+### P-82: UI v2 ARTEMIS runs (2026-11-08); TC-13 checks the route in Logcat
+- **Request:** (Claude Code, Opus 5.5, 2026-11-08; operator Phạm Nguyễn Hoàng Anh) "Update TC-13", then "Write the evidence" after the operator recorded the batch. The cases waiting on the CV library are Lập's.
+- **Output:**
+  - `e2e_test/test_notifications.py` TC-13: the instruction waits 3 s after the tap and asks for the bell, not the profile photo. The landing screen is asserted from the app's `screen_view` in Logcat; the agent's reading stays in the report only. `conftest.py` gains `logged_screen_views()`.
+  - `evidence/artemis/e2e-environment-20261108.md` and `runs-20261108.jsonl` (38 runs, lines 99–136 of `runs.jsonl`).
+  - `docs/test-plan.md`: TC-01, 02, 03, 04, 05, 08, 10, 12, 13, 15, 16 Done (3/3, 2026-11-08); §4 rows and causes; TC-13 row.
+  - Seven TC-13 runs moved to `practice-runs.jsonl` with notes; their notifications deleted from the account at the operator's request.
+- **Verification:** every counted run checked against its ARTEMIS step history (TC-08: open from Saved → Back → `Remove from saved`, count 9 → 10 → 9). For TC-13, Logcat showed the route opening about 2 s after each tap. `py_compile` OK.
+- **Decision:** Accepted. The TC-13 failures before the change were the wrong route and the agent's timing, not the app.
+
+### P-71: Report export (G-05) — PDF của đơn ứng tuyển, upload lên `reports/{uid}`
+
+- **Request:** (Command Code, 2026-11-12; operator Mai Duy Lập) "kiểm tra giúp tôi chỗ nào đang có TC liên quan đến export file… liệu có nên xóa không" → "vậy export ở đây nên export gì" → "vậy bắt đầu làm giúp tôi".
+- **Output:**
+  - `pubspec.yaml`: thêm `pdf: ^3.13.1` (package duy nhất phải thêm; `image`, `xml`, `qr`… là phụ thuộc kéo theo).
+  - `lib/core/utils/application_report_pdf.dart` (mới): hàm thuần `Future<Uint8List> buildApplicationReportPdf` + `reportFileName`. Nội dung PDF: `Internly.` + `Application report`, tên sinh viên + ngày tạo, tổng số đơn kèm breakdown theo status, bảng `Position · Company · Applied · Status · Next step` (cột cuối chỉ xuất hiện khi có `nextStepAt`), header/footer có số trang. Nhận `pw.Font` tuỳ chọn để dùng Inter (tiếng Việt).
+  - `lib/models/exported_report.dart` (mới): `ExportedReport` + `fromFirestore` qua `FirestoreReader` (required `fileName`, `url`, `storagePath`, `createdAt`).
+  - `lib/services/report_export_service.dart` (mới): interface + `FirestoreReportExportService` + provider. Sinh PDF → `FileStorageService.uploadPdf(folder: reports)` → mới ghi `users/{uid}/reports/{id}` với URL thật, size, `itemCount`, `createdAt`; lỗi map sang `AppException`; đọc danh sách report qua listener, bỏ qua document hỏng và log Crashlytics.
+  - `lib/features/report_export/viewmodels/report_export_viewmodel.dart` (mới): `ViewState` cho applications và reports, progress 0–1, chặn double-tap, `export_report` (row 14) sau khi upload + metadata cùng thành công, `open()` qua `ExternalLinkService`.
+  - `lib/features/report_export/screens/report_export_screen.dart` (mới): card `Application report`, `Export report` / `Export again`, progress, error + `Retry`, skeleton/empty/error, danh sách `Your reports` với `Open`.
+  - `lib/app/router.dart`: route `/profile/export` (name `report_export`, root navigator). `lib/features/profile/screens/firebase_demo_screen.dart`: row `Report export` bỏ `enabled: false`, điều hướng tới route.
+  - Tests: `test/core/utils/application_report_pdf_test.dart`, `test/features/report_export/report_export_viewmodel_test.dart`, `test/features/report_export/report_export_screen_test.dart` (360/412 dp + tap target 48 dp), `FakeReportExportService` trong `test/helpers/fakes.dart`, cập nhật `firebase_demo_screen_test.dart`.
+  - Docs: `design-traceability.md` (row Report export + DC-36), `architecture.md`, `analytics-plan.md` row 14, `handoff-gaps.md` G-05/G-06, `data-model-erd.md` + `diagrams/internly-erd.mmd` (REPORT), `test-plan.md` TC-11, `uat-plan.md`, `e2e_test/test_report_export.py`, `test-report.md` Run 47.
+- **Verification:**
+  - `dart format lib test` → formatted.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **773 tests, all passed** (`All tests passed!`), trong đó 31 test mới.
+  - ARTEMIS TC-11 (`test_report_export.py`, profile build, `emulator-5554`, `gemini-3.5-flash-lite`): **3/3 passed** — `f27d53d0` (441.3 s), `a4cbf99a` (264.4 s), `0fb3220a` (551.2 s), batch `3 passed in 1299.88s`. Desktop video 1343.8 s, 71.8 MiB (`e2e_test/artifacts/recordings/20261112/TC-11_Report_Export_recorded.mp4`), quay đồng thời emulator + ARTEMIS workspace + terminal. Chi tiết: `evidence/artemis/e2e-environment-20261112.md`, `runs-20261112.jsonl`.
+  - Sửa 2 lỗi phát hiện khi chạy thật: `final_report()` trong `e2e_test/conftest.py` retry 10 lần (run `59da6690` fail `no structured output` dù JSON hợp lệ), và id document report = `application-report-YYYY-MM-DD` để export lại trong ngày không tạo dòng trùng.
+  - **Not run:** DebugView cho `export_report`; nút `Open` trên máy không có PDF viewer. Video cần upload lên Drive (git-ignored, hiện tài khoản test).
+- **Decision:** Accepted. Phạm vi giữ tối thiểu: chỉ PDF của đơn ứng tuyển (dữ liệu thật của chính user), dùng lại toàn bộ component/token hiện có, không thêm màn hình phát minh mới ngoài DC-36. `deletePdf` vẫn chỉ nhận `cvs/{uid}/` nên report chưa xoá được từ app — ghi nhận là việc sau.
+
 ---
 
 ## Entry template
@@ -735,3 +883,368 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 - **Verification:** <commands + real results, manual checks, or "not verified">
 - **Decision:** Accepted / Modified (<how>) / Rejected (<why>)
 ```
+
+---
+
+### P-70: CV library (G-33) — thêm kho CV nhiều file cho Profile
+
+- **Request:** (Claude Code, Sonnet 5, 2026-11-07; operator Phạm Nguyễn Tú) "làm tiếp các bước trong plan / các file đang làm dang dở, kiểm tra xem có sai sót thì cũng sửa luôn". Agent trước hết context sau khi đã viết phần lớn code PR 1 (`feat/cv-library`); agent này rà soát lại toàn bộ, phát hiện lỗi, sửa, ghi tài liệu.
+- **Output:**
+  - Phát hiện và sửa 2 lỗi logic trong `FirestoreUserProfileService.removeCv` (`lib/services/user_profile_service.dart`):
+    1. Nhánh xoá CV thường: guard `if (!removingDefault && currentDefault != null)` bỏ sót trường hợp legacy mirror là default (`defaultCvId == null`) — đã sửa thành `currentDefault != null || mirrorPath != null`.
+    2. Nhánh xoá legacy mirror: chỉ xoá `cv` và `defaultCvId`, để Apply Form không có CV dù library còn file — đã refactor thành `_newestCv()` helper để promote entry còn lại lên default.
+  - Thêm helper `_newestCv(String uid)` trong `FirestoreUserProfileService` để tìm CV mới nhất trong subcollection.
+  - Cập nhật `docs/records/test-report.md`: Run 32 (`flutter analyze` → No issues, `flutter test` → 687/687 passed).
+  - File thay đổi: `lib/services/user_profile_service.dart`, `docs/records/test-report.md`, `docs/records/implementation-ai-log.md`.
+- **Verification:**
+  - `dart format lib test` → 0 changed.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **687 tests, all passed** (profile, services, models, core/utils, full suite).
+  - Kiểm tra logic thủ công: legacy-mirror branch bây giờ promote CV còn lại; library-entry branch không promote khi legacy mirror còn tồn tại làm default.
+- **Decision:** Accepted.
+
+---
+
+### P-71: CV auto-select + library picker trong Apply Form (G-33 item 8)
+
+- **Request:** (Claude Code, Sonnet 5, 2026-11-08; operator Phạm Nguyễn Tú) "Tính năng tự động chọn CV phù hợp nhất khi apply internship" + "khi Replace cv file ở apply form thì show cả cv library của profile để replace cho nhanh chóng". Chọn: picker từ library + auto-select; CV chọn chỉ cho đơn hiện tại.
+- **Output:**
+  - `functions/src/select-cv.ts` — callable `selectCv`: chấm điểm tất định (reuse `findKnownSkills` + `scoreMatch` + `requirementsFromInternship`), Groq chỉ viết lý do 1 câu, timeout 60s, `GROQ_API_KEY` secret, tối đa 10 CV, tie-break ưu tiên default CV.
+  - `functions/src/select-cv.test.ts` — 12 test case (happy path, tie-break, CV không đọc được, model fail, 1 CV skip model, auth guard, max 10 CV, internship not found, parseSelectionReason, fallbackReason).
+  - `functions/src/index.ts` — thêm callable `selectCv`.
+  - `lib/models/cv_selection.dart` — model kết quả.
+  - `lib/services/cv_select_service.dart` — interface + `FirebaseCvSelectService` + `mapCvSelectError` + `parseSelectionResult`.
+  - `lib/features/internships/viewmodels/apply_form_viewmodel.dart` — thêm `library`, `chosenCv`, `autoSelection`, `autoSelecting` vào `ApplyFormState`; `_subscribeCvs`, `_onCvs`, `_applyLibrary`, `_resolveDefaultCv`, `_maybeAutoSelect`, `_autoSelect`, `selectLibraryCv`; sửa `useProfileCv` và `_upload` để set `_cvChosenByStudent`; log `cv_auto_select`.
+  - `lib/core/widgets/cv_upload_sheet.dart` — thêm `library`, `selectedPath`, `onSelectLibrary`; render `_LibraryTile` trước file picker.
+  - `lib/features/internships/widgets/apply_cv_sheet.dart` — truyền library + `onSelectLibrary` vào sheet.
+  - `lib/features/internships/widgets/apply_form_parts.dart` — render `matchReason` (FormMessage info) khi auto-select chọn CV.
+  - `test/helpers/fakes.dart` — thêm `FakeCvSelectService`, import `CvSelection`, `CvSelectService`.
+  - `docs/analytics-plan.md` — `cv_auto_select` chuyển từ Planned → Implemented.
+  - Bug fix: `_onProfile` trước đây ghi đè `profileCv` bằng `profile?.cv` thay vì dùng kết quả `_resolveDefaultCv()`, gây `profileCv` null khi `_applyLibrary` chạy (test phát hiện).
+- **Verification:**
+  - `dart format lib test` → 0 changed.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **687 tests, all passed** (bao gồm tất cả apply-form tests).
+  - `npm run build && npm test` (Cloud Functions) → **57/57 tests passed** kể cả 12 test mới `select-cv.test.ts`.
+- **Decision:** Accepted.
+
+---
+
+### P-82: Fix post-merge CV/profile regressions and restore `selectCv`
+
+- **Request:** (opencode, deepseek-v4.1-flash-free, 2026-11-08; operator Phạm Nguyễn Tú) "Sửa bug các file sau: `lib/features/home/viewmodels/greeting_name_provider.dart`, `lib/features/profile/viewmodels/profile_viewmodel.dart`, `lib/models/user_profile.dart`, `test/helpers/fakes.dart` nói chung là fix bug các file mới git pull origin dev, a xem plan có vẻ sai do conflict hay sao ấy. Với nhớ chạy cài đặt nx ( mấy cái callable function như selectCv chưa deploy)".
+- **Output:**
+  - `lib/models/user_profile.dart`: restored the `givenName` and `defaultCvId` fields, parsed them in `fromFirestore`, and included both in `==` / `hashCode`.
+  - `lib/services/user_profile_service.dart`: removed the duplicate merge-only `updateCv`; uploads keep the library behaviour (add + set default).
+  - `functions/src/index.ts`: restored the missing `export const selectCv` callable using `handleSelectCv`, `SELECT_RUBRIC` and `selectGroq`.
+  - `test/helpers/fakes.dart`: preserved `givenName` and `defaultCvId` on add / set default / remove / given-name writes.
+  - `lib/features/profile/screens/profile_screen.dart`: fixed import ordering.
+  - `test/models/user_profile_test.dart`: added an equality regression test for `givenName` and `defaultCvId`.
+  - `docs/records/test-report.md`: added Run 39 with the real command results.
+- **Verification:**
+  - `dart format lib test` → 230 files, 0 changed.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **729 tests, all passed**.
+  - `npm run build && npm test` (`functions/`) → **72/72 tests passed**.
+  - `flutter pub get` → dependencies resolved; `npm install` → up to date.
+  - `npx firebase-tools deploy --only functions:selectCv --project prm-lab3` → **passed after one retry**: the first attempt created the function but failed to set the Cloud Run invoker IAM policy; the retry printed `Deploy complete!`; `functions:list` confirms `selectCv` (callable, `us-central1`, `nodejs22`).
+- **Decision:** Accepted and deployed.
+
+---
+
+### P-83: Compose CV auto-select + manual Change CV
+
+- **Request:** (opencode, deepseek-v4.1-flash-free, 2026-11-09; operator Phạm Nguyễn Tú) Implement the team member's requirement: auto-select the CV that best matches the internship, show a note that the choice is only a suggestion, and allow manual selection with `Change CV`. The member's original wording is in the team chat; the operator added "Không hiểu thì hỏi, không được tự động đoán. Không đọc lại file nhiều lần."
+- **Output:**
+  - `lib/features/internships/viewmodels/apply_compose_viewmodel.dart`: added `library`, `defaultCvFile`, `chosenCv`, `autoSelection`, `autoSelecting` and `cv` to the state; added `_subscribeCvs`, `_applyLibrary`, `_resolveDefaultCv`, `_maybeAutoSelect`, `_autoSelect` and `selectLibraryCv`. Drafting now waits for the comparison (or its fallback) and uses `state.cv` for `composeCoverLetter`, `markSent` and `buildSession`.
+  - `lib/features/internships/widgets/apply_compose_parts.dart`: the CV card shows the auto-selection reason plus "This is only a suggestion, so you can change it before you send.", a comparing message while `selectCv` runs, and a `Change CV` button; new `ApplyCvPickerSheet` lists the library with a check mark on the current file.
+  - `lib/features/internships/screens/apply_compose_screen.dart`: opens the picker and forwards the choice to the ViewModel; the CV checks now appear whenever the chosen/default CV exists.
+  - `test/features/internships/apply_compose_viewmodel_test.dart`: auto-select success, failed fallback, manual choice winning over a late response, and one-CV skip.
+  - `test/features/internships/apply_compose_screen_test.dart`: suggestion text, `Change CV` sheet, and choosing another library CV at 360 and 412 dp.
+  - `docs/analytics-plan.md`, `docs/business-rules.md`, `docs/design-traceability.md` (row 6 and DC-35), `docs/records/test-report.md` (Run 40), `README.md`, `docs/code-review.md`.
+- **Verification:**
+  - `dart format lib test` → 230 files, 0 changed.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **735 tests, all passed**.
+  - DebugView / device run → **not run** (no Firebase project or device on this machine).
+- **Decision:** Accepted.
+
+---
+
+### P-84: ARTEMIS cases for the CV library (TC-06/07/09/14/17/18/19)
+
+- **Request:** (Command Code, 2026-11-09; operator Phạm Nguyễn Tú) "lên plan cho những TC này" after the CV library merge, with the requirement that each batch is recorded on video so the execution can be reviewed.
+- **Output:**
+  - `e2e_test/conftest.py`: `push_sample_cv(name, lines)`, `push_sample_cvs()`, `SECOND_SAMPLE_CV_NAME` for the two-CV precondition; `SIGNED_OUT` scrolls past `CV library` and `Technical skills`.
+  - `e2e_test/test_apply_form.py`: TC-18 reads the top draft banner and the placeholder-aware `To` value, then taps `Open email app` and accepts either a mail app or the `No email app…` message; TC-19 scrolls to `CV / Resume`, changes to another library CV, and asserts the card follows the choice.
+  - `e2e_test/test_apply.py`: TC-06 asserts the prefilled CV; TC-07 searches `Developer` (the listings TC-06 applies to) and asserts `Applicant & Submitted CV`, `Preview` and no `Replace CV`.
+  - `e2e_test/test_applications.py`: TC-09 asserts the same submitted-CV block on Application Detail.
+  - `e2e_test/test_auth.py` TC-14 and `e2e_test/test_profile_skills.py` TC-17 scroll past the CV section.
+  - `docs/test-plan.md` (CV precondition, §3 rows, exploratory charter), `docs/guides/artemis-e2e.md` (two-CV seed and video recording), `docs/business-rules.md` (BR-C5/P3/T6 links and §5 traceability).
+- **Verification:** `uv run pytest --collect-only -q` collects every module; `uv run python -c "import conftest; conftest.push_sample_cvs()"` writes two valid `%PDF-` files. On the emulator, TC-18 smoke `3658371e` passed, then counted runs `5e99ca80`, `2adcba49`, `fd62333f` passed 3/3 (150.2 / 148.0 / 157.3 s) with `gemini-3.5-flash-lite` after `3.1` hit 180 s timeouts. The full flow opened Gmail, replaced `To` with `lap262005@gmail.com`, sent, returned and pressed `I've sent it`; the success screen matched. Video `e2e_test/artifacts/recordings/20261109/TC-18_Compose_CV.mp4`; automated mail used only the test account.
+- **Decision:** Accepted; TC-18 Done 3/3, the other listed TCs still pending.
+
+---
+
+### P-85: GA4 realtime card on the local admin dashboard
+
+- **Request:** (Command Code, 2026-11-09; operator Phạm Nguyễn Tú) "thêm tab Analytics vào dashboard admin ... server endpoint + UI + test + README", then "hướng dẫn tôi cách cấu hình chi tiết" and confirmation to implement the dashboard changes.
+- **Output:**
+  - `tools/admin-dashboard/lib/analytics.js`: `parseRealtimeReport` (totals, row fallback, malformed values) and `quotaRemaining`.
+  - `tools/admin-dashboard/test/analytics.test.js`: 4 unit tests for the parser and quota helper.
+  - `tools/admin-dashboard/server.js`: `GET /api/analytics/realtime` using `@google-analytics/data`; two `runRealtimeReport` calls (totals `activeUsers`/`eventCount`, top `eventName`/`eventCount`), a 10 s server cache, `GA4_PROPERTY_ID`, GA4-specific error hints, and a `GoogleAuth`/`JWT` client built from the service-account JSON (no deprecated `keyFilename`).
+  - `tools/admin-dashboard/public/index.html` + `app.js`: Analytics card with active users, top events and quota; 15 s polling paused while the tab is hidden.
+  - `tools/admin-dashboard/README.md`: GA4 setup (numeric property id, Data API, Viewer access), env vars, limits and troubleshooting.
+  - `tools/admin-dashboard/package.json` + lock: `@google-analytics/data@7.3.0`.
+- **Verification:** `npm test` → **14/14 tests passed**; `node --check` on `server.js`, `public/app.js` and `lib/analytics.js` → OK; `GET /api/status` → 200; `GET /api/analytics/realtime` without `GA4_PROPERTY_ID` → the expected 503 with the property/Viewer hint; with a test property id the GA4 call returned `403 PERMISSION_DENIED` with the same hint and no `keyFilename` deprecation warning. A real GA4 report was **not run** (the service account has no GA4 property access on this machine).
+- **Decision:** Accepted; the operator only needs to set `GA4_PROPERTY_ID` and add the service account as Viewer in GA4.
+
+---
+
+### P-86: Sync the testing docs with the 2026-11-09/10 ARTEMIS batch
+
+- **Request:** (Command Code, 2026-11-10; operator Phạm Nguyễn Tú) "kiểm tra giúp tôi docs liên quan đến kiểm thử xem đã cập nhật mới nhất chưa", then "cập nhật lại tất cả giúp tôi".
+- **Output:**
+  - `docs/test-plan.md`: updated TC-06, TC-07, TC-09, TC-14, TC-17 and TC-19 statuses; added the 2026-11-09 night – 2026-11-10 result table (25 runs, counted traces); added the two title-check failures and the cancelled runs to the flaky table; removed the stale TC-20 references and the Android document-picker claim from the coverage table; marked TC-11 as not written; recorded the Pro exploratory session as not run/recorded.
+  - `evidence/artemis/e2e-environment-20261110.md`: environment, 25-run table, counted results, recordings and failure causes.
+  - `evidence/artemis/runs-20261110.jsonl`: 25 lines copied from the git-ignored `e2e_test/artifacts/runs.jsonl`.
+  - `docs/records/test-report.md`: Run 41 with the real `npm test` result and the note that Run 40 remains the latest Flutter suite.
+  - `README.md` and `docs/code-review.md`: the Command Code disclosure row now lists P-86.
+- **Verification:**
+  - Source check: `runs.jsonl` (mtime 2026-11-10 00:37) held TC-06/07/09/14/17/19 runs newer than `test-plan.md` (2026-11-09 23:47); `git log` shows `5c27ddd` as HEAD.
+  - `cd tools/admin-dashboard && npm test` → **14/14 passed**.
+  - `flutter analyze` / `flutter test` and ARTEMIS → **not re-run** (no Dart file changed by `5c27ddd`; no ARTEMIS host in this session).
+- **Decision:** Accepted; TC-14 and TC-19 stay **Ready** until they have a counted 3/3.
+
+---
+
+### P-87: Fix TC-19 and complete the TC-14 counted runs
+
+- **Request:** (Command Code, 2026-11-10; operator Phạm Nguyễn Tú) "làm lại TC-19 giúp tôi, hiện tại hình như đang bị lỗi, và TC-14 đang thiếu số lần chạy, tìm hiểu luồng trong code hiện tại như thế nào trước, rồi sau đó mới chạy artemis, vừa chạy vừa quay lại từng TC".
+- **Output:**
+  - `e2e_test/test_apply_form.py` TC-19: matched the case to the screen's real behaviour — the `Change CV` sheet closes as soon as a CV row is tapped (the old wording asked for a `Done` that can never be the confirming step); scroll to the bottom for `CV / Resume`; read the chosen name again; and assert the letter contains the typed `Test line.` (`letter_edited`) instead of reading its last words, because ARTEMIS taps a screen point rather than a caret position.
+  - `docs/test-plan.md`: TC-19 and TC-14 marked Done with their counted traces; new "Rerun 2026-11-10 evening" result table; the flaky table records the real cause of `83edba2d` (emulator dropped off ADB) and the new `f1779886` test-side failure.
+  - `evidence/artemis/e2e-environment-20261110-rerun.md` + `evidence/artemis/runs-20261110-rerun.jsonl` (10 lines); a pointer added to `evidence/artemis/e2e-environment-20261110.md`.
+  - `README.md` and `docs/code-review.md`: the Command Code disclosure row lists P-87.
+- **Verification:**
+  - `uv run pytest test_apply_form.py -k tc19 -v` → **1 passed** (smoke `09d195fb`, 292.6 s).
+  - `uv run pytest test_apply_form.py -k tc19 --count 3 -v` → **3 passed** (`09f62a37` 198.4 s, `1927e4f8` 371.1 s, `23c38220` 119.4 s). An earlier batch passed 2 of 3: `f1779886` failed the then-stricter last-words assertion, which is why the counted batch was rerun after the fix.
+  - `uv run pytest test_auth.py -k tc14 --count 3 -v` → **3 passed** (`29074354` 41.3 s, `f88d29bc` 171.6 s, `4d59b7cd` 90.9 s).
+  - Step history of all six counted runs read through `GET /api/sessions/{id}/steps`; each run performed the steps the table claims (TC-19: `Change CV` → other CV → letter edit; TC-14: Sign out → Back → relaunch → Login).
+  - Device screen recorded with `adb shell screenrecord` (170 s segments) into `e2e_test/artifacts/recordings/20261110/{tc19-batch1,tc19-counted,tc14-counted}/`; ARTEMIS's own scrcpy recording fails on this host. The ARTEMIS console and terminal were not captured.
+  - `flutter analyze` / `flutter test` → **not run** (no Dart file changed).
+- **Decision:** Accepted; TC-19 and TC-14 are Done 3/3. The operator still has to upload the recordings to the Drive folder.
+
+---
+
+### P-88: Enable ARTEMIS screen recording and re-run TC-19 / TC-14 with video
+
+- **Request:** (Command Code, 2026-11-10; operator Phạm Nguyễn Tú) "quay lại giúp tôi TC-19, VÀ tc-14. ARTEMIS không record được trên máy này vì thiếu scrcpy chạy luôn phần này".
+- **Output:**
+  - Host: `winget install Genymobile.scrcpy` (5.0.1) and `winget install Gyan.FFmpeg` (9.0.2 full build); the daemon is started with both directories on `PATH`, because ARTEMIS records with `scrcpy --record <file>.mkv` and remuxes with `ffmpeg`.
+  - `docs/guides/artemis-e2e.md`: Windows install commands for both tools, the "start the daemon from a shell whose PATH has them" warning, and where ARTEMIS writes the per-session `recording.mp4` (§1 and §5).
+  - `docs/test-plan.md`: TC-14 and TC-19 statuses now point at the recorded traces; new "Recorded rerun 2026-11-10" table; the earlier evening batch stays as history.
+  - `evidence/artemis/e2e-environment-20261110-rerun.md`: new section with the host setup, the 7 runs, per-video durations and file names; `evidence/artemis/runs-20261110-recorded.jsonl` (7 lines).
+  - The three counted runs of each test were merged into one video per test with `ffmpeg -f concat -c copy` (lossless): `TC-19_Change_CV.mp4` (436.3 s, 24.4 MiB) and `TC-14_Sign_out.mp4` (269.3 s, 13.7 MiB) in `e2e_test/artifacts/recordings/20261110/artemis/`.
+  - `README.md` and `docs/code-review.md`: the Command Code disclosure row lists P-88.
+- **Verification:**
+  - `scrcpy --version` → 5.0.1; `ffmpeg -version` → 9.0.2; a probe with ARTEMIS's flags (`--no-window --record … .mkv --record-format mkv --video-bit-rate 2M --capture-orientation=@`) produced a 4.33 s MKV that `ffmpeg -c copy` remuxed to MP4.
+  - `uv run pytest test_apply_form.py -k tc19 -v` → **1 passed** (smoke `05bb60a9`, 236.1 s) with `recording.mp4` in its trace (223.9 s, 1080 × 2400, h264 + opus).
+  - `uv run pytest test_apply_form.py -k tc19 --count 3 -v` → **3 passed** (`0dcf9e76` 140.2 s, `a3b7aa33` 179.3 s, `8304537f` 140.4 s), each with a full-length video.
+  - `uv run pytest test_auth.py -k tc14 --count 3 -v` → **3 passed** (`8f5fb339` 71.5 s, `ca206198` 114.5 s, `7103ec00` 106.0 s), each with a full-length video.
+  - Final reports and action lists read from `GET /api/sessions/{id}/steps` for all six counted runs; the videos were probed with `ffprobe` (durations 63.4–171.6 s) and copied to `e2e_test/artifacts/recordings/20261110/artemis/`.
+  - `flutter analyze` / `flutter test` → **not run** (no Dart file changed).
+- **Decision:** Accepted; ARTEMIS now records every session on this host. The videos cover the device screen only (no ARTEMIS console/terminal); the operator still uploads them to the Drive folder.
+
+---
+
+### P-89: Fix CR-07 (Saved part) and CR-11 from the AI code review
+
+- **Request:** (Claude Code, Opus 5.5 `claude-opus-5-5`, 2026-11-11; operator Phạm Nguyễn Hoàng Anh) "sửa code để sửa bug cr-07 và cr-11 đi" — fix the two findings left open in G-32.
+- **Output:**
+  - `lib/features/saved/viewmodels/saved_providers.dart`: `savedInternshipIdsProvider` (keys) replaced by `savedJobsProvider` (`jobIdentity` of each saved listing), the rule `appliedJobsProvider` already used.
+  - `lib/features/saved/viewmodels/saved_viewmodel.dart`: mirrors saved keys per job; `toggleAndReport` removes every saved copy of the job before it would save a new one.
+  - `lib/features/home/screens/home_screen.dart`, `lib/features/internships/screens/search_results_screen.dart`, `lib/features/internships/screens/internship_detail_screen.dart`: the Save Toggle and Detail's `Saved` state compare job identities; `applied_providers.dart` doc comment renamed.
+  - `lib/features/internships/widgets/search_results_filter_sheet.dart`: `show` takes `suggestedSkills` as a reader and a required `listingsChanged` provider; the sheet is wrapped in a `Consumer` that watches it. `search_screen.dart` passes `searchViewModelProvider`, `search_results_screen.dart` passes `searchResultsViewModelProvider`.
+  - Tests: `test/features/saved/saved_viewmodel_test.dart` (CR-07 group, 4 tests), `test/features/internships/search_results_screen_test.dart` (saved under another copy), `test/features/internships/search_screen_test.dart` (sheet opened before the pool loads).
+  - Records: `docs/code-review.md` (CR-07, CR-11, disclosure row), `docs/records/handoff-gaps.md` (G-32), `docs/business-rules.md` (BR-S2), `docs/records/test-report.md` (Run 42), `README.md`.
+- **Verification:**
+  - `dart format lib test` → 230 files, 0 changed.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **741 tests, all passed**.
+  - The two new screen tests fail on the old `lib/` (stashed): no `Remove from saved` bookmark (CR-07); `Show 0 results →` remains (CR-11).
+  - Device run / ARTEMIS → **not run**.
+- **Decision:** Accepted by the operator ("Commit 2 lần"). Committed as two commits (AGENTS.md, one per finding): `1f591c3` `fix(CR-07): match saved jobs by identity across synced copies` (740 tests passed on that commit alone) and `fix(CR-11): …` with the CR-11 change, its test and these records.
+
+### P-90: Firestore and Storage rules tests
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "kiểm tra giúp tôi, giờ tôi muốn test luôn cả phần firebase rule test thì làm như thế nào".
+- **Output:**
+  - `firebase/tests/`: new Node package (`package.json`, `README.md`) with `@firebase/rules-unit-testing` 6.0.0 and `firebase` 13.2.0 as regular `dependencies` (this machine sets `omit=dev`, which skips `devDependencies`).
+  - `firebase/tests/firestore.rules.test.mjs` (9 tests): `users/{uid}` owner-only on the document and its subcollections, the 50-field write limit, signed-out and other-user denial; `internships/{key}` readable only when signed in and never writable by a client; `sync/**` closed.
+  - `firebase/tests/storage.rules.test.mjs` (6 tests): `reports/{uid}` and `cvs/{uid}` owner-only, PDF only, non-empty, at most 10 MB; every other path denied.
+  - `firebase/tests/demo/` (`server.mjs`, `index.html`): a local page on `http://localhost:5500` that runs the same decisions as 19 rows and streams PASS/FAIL, so the run can be recorded as video evidence; `--self-test` runs it in the terminal; `npm run demo` / `npm run demo:check` in `firebase/tests/package.json`.
+  - `firebase.json`: Storage emulator added on port 9199 so both rule files can be tested in one run.
+  - `.gitignore`: ignores `firebase/tests/node_modules/`.
+  - `docs/records/test-report.md`: Run 43 with the real command output.
+- **Verification:**
+  - `npm --prefix firebase/tests install` → **136 packages installed**.
+  - `firebase emulators:exec --only firestore,storage --project demo-internly "npm --prefix firebase/tests test"` → **15 tests, 15 passed, 0 failed** (2.9 s).
+  - First attempt failed 4 tests: they addressed `users/alice/profile`, but `users/{uid}` is the document itself and a three-segment path is invalid. Test paths fixed; no rule changed. An earlier attempt failed before the tests because the Firebase CLI requires `java` on `PATH` (it ignores `JAVA_HOME` alone), so the Android Studio JDK was added to `PATH`.
+  - `firebase emulators:exec ... "node firebase/tests/demo/server.mjs --self-test"` → **19/19 demo scenarios passed** (1.8 s). The first self-test run reported 14 failures because the runner awaited each operation directly instead of wrapping denied rows in `assertFails`; the harness was fixed, the rules were not touched.
+  - Demo HTTP smoke test under the same command → `GET /` **200** (10,327 bytes, table present); `GET /run` **200**, 19 plan rows, 19 results, `19/19 passed, 0 failed, 1772 ms`.
+  - `flutter analyze` / `flutter test` → **not run** (no Dart file changed).
+- **Decision:** Accepted. The rules tests run against emulators only (demo project) and need no Firebase credentials. They close the open item in `test-report.md` Run 1 row 8.
+
+---
+
+### P-91: UAT plan, scenario script and result template
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "oke, giờ tiếp tục chuyển qua làm phần UAT", with the choices: plan + scenarios + result record; both an internal and an external round; the four main flows.
+- **Output:**
+  - `docs/uat-plan.md`: two rounds (2 internal team members, 3 external students), roles, consent and anonymisation, build/device/test-data setup, session procedure, severity scale, five-statement questionnaire, 24 scenarios (A1–A3 sign in/out, B1–B7 search and save, C1–C10 apply by email and track, D1–D4 profile and CV library), acceptance criteria, and UAT → BR → ARTEMIS traceability. Every expected string was read from the current code, not from the stale `docs/design/user-flow.md`.
+  - `docs/records/uat-results.md`: blank per-session record (environment, 24 result rows, defect log, questionnaire, sign-off) and the acceptance checklist. No row is pre-filled; an unrun session stays `Not run`.
+  - `evidence/uat/README.md`: capture and naming rules; `docs/README.md` and `evidence/README.md` index rows.
+  - Report export is recorded as out of scope because the Profile row is disabled and reads `Coming soon.` (G-05); notifications stay with TC-13 / TC-15.
+- **Verification:**
+  - Copy checked against `apply_compose_screen.dart`, `apply_compose_parts.dart`, `detail_bottom_bar.dart`, `internship_detail_screen.dart`, `saved_screen.dart`, `my_applications_screen.dart`, `application_detail_screen.dart`, `application_status_tracker.dart`, `profile_screen.dart`, `profile_sections.dart`, `profile_header_card.dart`, `add_cv_sheet.dart`, `edit_profile_screen.dart`, `home_screen.dart`, `search_results_screen.dart` and `search_results_filter_sheet.dart`.
+  - No Dart or rules file changed. No UAT session was executed, so `uat-results.md` has no results; `flutter analyze` / `flutter test` / rules tests were **not run** (nothing executable changed).
+- **Decision:** Accepted as the UAT plan and record; the team and the external participants still have to run the sessions and fill the results.
+
+---
+
+### P-92: Run documentation for the rules tests, demo and UAT
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "cập nhật docs giúp tôi với những gì đã làm, cả cách chạy luôn để người khác có thể biết để chạy".
+- **Output:**
+  - `README.md`: rules commands (install, suite, demo) and the UAT section added under Tests; deliverables and "Other documentation" rows for `firebase/tests/` and the UAT files.
+  - `AGENTS.md`: rules commands in § Commands with the JDK/`firebase-tools` note; new "Where code goes" row for a rules test; rules-test bullet in § Testing rules; two rows in the docs-to-update table; a "rules tests green" line in the feature definition of done.
+  - `docs/guides/firebase-setup.md` §16: prerequisites, the three commands, the Emulator UI port, the Windows JDK block, and a troubleshooting table (java, wrong directory, port taken, split command, `omit=dev`, `sun.misc.Unsafe`).
+  - `firebase/tests/README.md`: rewritten with prerequisites, install, suite, demo, `demo:check`, layout, how to add a case to the test and to the demo, and the same troubleshooting table.
+  - `docs/README.md`: "How to run" table for Flutter, rules tests, rules demo, ARTEMIS and UAT; `docs/uat-plan.md`: "Quick start" (build, test data, record template, recorder, evidence).
+- **Verification:**
+  - Every command in the new documentation is one that was executed earlier in this session: `15 tests, 15 passed`; demo `19/19` and `demo:check` `19/19`; `GET /` 200 and `GET /run` 200 with 19 results.
+  - The Java and port troubleshooting rows come from the two failures hit and fixed here (CLI ignores `JAVA_HOME` alone; a leftover emulator held 8080).
+  - Docs-only change: no Dart, rules or test file modified, so `flutter analyze` / `flutter test` and the rules suite were **not re-run**.
+- **Decision:** Accepted. A teammate can now install, run and record the rules checks and start a UAT session from the README, `AGENTS.md` and `firebase/tests/README.md`.
+
+---
+
+### P-93: Automated internal UAT walkthrough with screen recording
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "bạn có thể làm tự động phần uat này giúp tôi và quay lại video cho phần test đó được không", then choosing to use the real account and count it as UAT for the course report.
+- **Output:**
+  - An adb-driven script outside the repository (`uat.mjs` in the session scratchpad): dumps the UI hierarchy, finds elements by text/content-desc, taps, types, swipes and asserts the expected copy; starts and stops `adb shell screenrecord`.
+  - `docs/records/uat-results.md`: session **R1-A (internal, automated walkthrough)** with a disclosure that no human participant used the app, 13 `Pass` rows with times and video offsets, 11 `Not run` rows with reasons, and a note that the account's data changed.
+  - Recording kept at `e2e_test/artifacts/recordings/uat-r1-20261111.mp4` (241 s, 9.3 MB, git-ignored because the team account's name, email and CV are on screen).
+- **Verification:**
+  - Full run: **13/13 automated scenarios passed** (B1, B2, B4–B6, C1–C8); `ffprobe` reports 241.07 s and 9,764,320 bytes.
+  - `adb` device: Medium Phone API 37 with Google Play services; app `com.group3.internly`, profile build of `42ea1e0`.
+  - No functional defect observed. A1–A3, B3, B7, C9, C10 and D1–D4 were not driven and stay `Not run`; R2 (external) is still not run.
+- **Decision:** Accepted only as **internal automated evidence**, not as external UAT. It must not be presented as an `E1`–`E3` session, and the video stays out of Git.
+
+---
+
+### P-94: Student-reported application status (techjobs.vn-style tracker)
+
+- **Request:** (Command Code, 2026-11-11) "https://techjobs.vn/ dựa theo này làm phần application management có nghĩa là system chỉ ghi lại status applied thoi còn các status như interviewed hay acccepted, rejected gì đó thì user sẽ tự điều chỉnh kiểu để tracking". The app records `submitted`; every later stage is reported by the student.
+- **Output:**
+  - `lib/models/internship_application.dart` — `ApplicationStatus.trackable` (submitted, under_review, interview, accepted, rejected) and `isTrackable` (false for `withdrawn`); new optional `statusUpdatedAt`, parsed in `fromFirestore`.
+  - `lib/services/application_service.dart` — `updateStatus(jobKey, status: …)` on the interface and `FirestoreApplicationService`: merge write of `status` + server `statusUpdatedAt`, refusing `withdrawn`.
+  - `lib/features/applications/viewmodels/application_detail_viewmodel.dart` — `updateStatus`: guards a repeated tap, a missing document, a non-trackable status and an unchanged status; logs `application_update` once the write is accepted.
+  - `lib/features/applications/widgets/update_status_sheet.dart` — new `UpdateStatusSheet`: `AppSheet` with one radio row per trackable stage using the shared `ApplicationStatusBadge`; `Save status` disabled until the stage changes; the write error shows inline.
+  - `lib/features/applications/widgets/application_status_tracker.dart` — `onUpdateStatus` action (tooltip `Update status`, hidden for `withdrawn`) and the active step's date from `statusUpdatedAt`.
+  - `lib/features/applications/screens/application_detail_screen.dart` — opens the sheet from the tracker header.
+  - `test/helpers/fakes.dart` — `FakeApplicationService.statusUpdates` / `updateStatusError`.
+  - `test/models/internship_application_test.dart` — the trackable set and `statusUpdatedAt` parsing.
+  - `test/features/applications/application_detail_viewmodel_test.dart` — the write, the `application_update` parameters, the `withdrawn` refusal, the no-op guard and the failure message.
+  - `test/features/applications/application_detail_screen_test.dart` — the picker contents, the disabled `Save status`, the hidden action on a withdrawn application and the inline error.
+  - `e2e_test/test_applications.py` — TC-21 (`Ready`, not run).
+  - Docs: `business-rules.md` (BR-T8, state machine, §2.1 swimlane branch + `updateStatus` app function, traceability row, §6), `architecture.md` (ViewModel, service list, `status` / `statusUpdatedAt` field table, live-detail paragraph), `design/screen-spec.md` (Application Detail secondary action), `design-traceability.md` (DC-35, rows 11 and Flow 3), `analytics-plan.md` (row 12 trigger), `test-plan.md` (TC-21 + coverage), `handoff-gaps.md` (G-25 #6), `test-report.md` (Run 40).
+- **Verification:**
+  - `dart format lib test` → 231 files, 3 changed on the first pass, 0 on the second.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test test/features/applications test/models/internship_application_test.dart` → **102 tests, all passed**.
+  - `flutter test` → **739 tests, all passed**.
+  - `python -m py_compile e2e_test/test_applications.py` → passed.
+  - ARTEMIS TC-21 and `flutter build apk --debug`: **not run** (no device attached, Android toolchain incomplete).
+- **Decision:** Accepted. `withdrawn` stays on Withdraw / Undo so `previousStatus` and the 24-hour window keep their meaning; the app never claims an employer event, it only records what the student reports (rule 7, G-25 #6).
+
+---
+
+### P-95: State machine diagram matches the picker
+
+- **Request:** (Command Code, 2026-11-11) "update state machine diagram".
+- **Output:** `docs/business-rules.md` §2.4 — the diagram no longer implies a strict ladder. `accepted` / `rejected` lose their `[*]` terminal markers (BR-T8 can still move them to another trackable stage), the BR-T8 note says the picker offers all five stages every time, and the prose below the diagram spells out the three cases the arrows do not draw (skip a step, move back to correct a mistake, change a decided application). The `withdrawn` note keeps the 24-hour Undo rule.
+- **Verification:** all five mermaid blocks in `business-rules.md` were rendered with `@mermaid-js/mermaid-cli` 12.2.0; each produced an SVG. The state machine was also rendered to PNG and inspected: layout is readable, both notes fit, and no edge is clipped.
+- **Decision:** Accepted.
+
+---
+
+### P-96: Admin dashboard ported to React and prepared for Vercel
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "có thể chuyển giúp tôi phần dashboard được viết thành react được không để tôi có thể deploy", then choosing Vercel, Google sign-in with an `ADMIN_EMAILS` allowlist, and converting inside `tools/admin-dashboard`.
+- **Output:**
+  - `tools/admin-dashboard/src/`: React 19 UI (`App.jsx`, `Topbar`, `UsersRail`, `ComposePanel`, `CrashPanel`, `AnalyticsPanel`, `DeliveryPanel`, `HistoryPanel`, `CrashDialog`, `LoginScreen`), the existing ops-desk `styles.css`, a Firebase Auth client and an API client that sends the ID token. The old `public/index.html`, `public/app.js` and `public/styles.css` were removed.
+  - `server/app.js`: the Express API moved out of `server.js`, with a new auth gate — `ADMIN_EMAILS` allowlist, `verifyIdToken`, 401 without a token, 403 for a non-allowlisted account, 503 when the allowlist or credential is missing. Credentials can come from `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_SERVICE_ACCOUNT_BASE64`, `INTERNLY_ADMIN_SA`, `GOOGLE_APPLICATION_CREDENTIALS` or the local default file.
+  - `server/local.js` (Vite middleware on 4317), `api/[...path].js` (Vercel function), `vite.config.js`, `index.html`, `.env.example`.
+  - `lib/auth.js` + `lib/credentials.js` and `test/auth.test.js`; `lib/admin.js` and `lib/analytics.js` unchanged.
+  - Docs: dashboard README rewritten with local and Vercel setup, environment variables, base64 key command, authorised domain and troubleshooting; `business-rules.md` BR-N1, actor rows, diagram and traceability updated; `README.md`, `architecture.md`, `uat-plan.md`, `technology-stack.md` synced.
+- **Verification:**
+  - `npm install --include=dev` → devDependencies installed (the shell has `NODE_ENV=production` and npm `omit=dev`, so plain `npm install` skipped Vite).
+  - `npm test` → **16 tests, all passed** (14 existing + 2 auth allowlist cases).
+  - `npm run build` → Vite **built in 1.59 s**, `dist/index.html`, 12.23 kB CSS, 343.93 kB JS.
+  - `npm run dev` → `GET /` **200** with the Vite React page; `GET /api/status` **503** `ADMIN_EMAILS is not set` (the credential existed locally).
+  - Second instance on port 4318 with `ADMIN_EMAILS=test@example.com` → `GET /api/status` **401** `Sign in to use the dashboard.`
+  - **Not deployed**: no Vercel account/project access in this session, so the deployment steps are documented but not executed. Firebase Google sign-in and the authorised domain still have to be configured by the owner.
+- **Decision:** Accepted for the code and local verification. Deployment remains a manual owner step.
+
+---
+
+### P-97: Firebase Web App and local env wiring for the dashboard
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "giờ cần phải bổ sung những gì thì mới chạy được, và hướng dẫn chi tiết từng cái giúp tôi".
+- **Output:**
+  - Created the Firebase Web App **Internly Ops** in `prm-lab3` with `firebase apps:create WEB` (app id `1:888219308403:web:0aa12a147b36ae2dc03506`); the project previously had only the Android and iOS apps, so the dashboard had no web `apiKey`/`appId`.
+  - Printed the web config with `firebase apps:sdkconfig WEB` and wrote the real values, plus `ADMIN_EMAILS=lap262005@gmail.com`, to the gitignored `tools/admin-dashboard/.env.local`.
+  - `server/local.js` now calls Vite's `loadEnv` and copies `.env.local` into `process.env` before importing the Express app, so `ADMIN_EMAILS`, `GA4_PROPERTY_ID` and credential overrides reach the API (Vite alone only feeds `import.meta.env` to the browser).
+  - Dashboard README: the existing web app, its app id, the `apps:sdkconfig` command and the project's four `VITE_` values are documented; the Vercel table points at them.
+- **Verification:**
+  - `firebase apps:list --project prm-lab3` → **3 apps** (Android, iOS, Internly Ops web).
+  - `firebase apps:sdkconfig WEB 1:888219308403:web:0aa12a147b36ae2dc03506` → `projectId`, `appId`, `apiKey`, `authDomain prm-lab3.firebaseapp.com`.
+  - `firebase login:list` → `lap262005@gmail.com`; the local service-account key exists at `%USERPROFILE%\.internly-admin\service-account.json` (`firebase-adminsdk-fbsvc@prm-lab3.iam.gserviceaccount.com`).
+  - Google provider check: `POST identitytoolkit accounts:createAuthUri` with `providerId=google.com` → **200** and an `authUri`, so Google sign-in is already enabled.
+  - Authorized domains check: `GET identitytoolkit/admin/v2/projects/prm-lab3/config` → `localhost`, `prm-lab3.firebaseapp.com`, `prm-lab3.web.app` only, which caused `auth/unauthorized-domain` when the dashboard was opened at `http://127.0.0.1:4317`. `PATCH` with `updateMask=authorizedDomains` added `127.0.0.1`; the same `createAuthUri` call with `continueUri=http://127.0.0.1:4317` then returned **200** with an `authUri`.
+  - `npm run dev` → `GET /` **200**; `GET /api/status` **401** `Sign in to use the dashboard.` (the allowlist is now loaded, not 503); `/src/firebase.js` contains the web config (`VITE_*` injected).
+  - **Not run:** Vercel deployment and GA4 realtime. The GA4 Admin API is disabled on `prm-lab3`, so the numeric property id was not discovered; `GA4_PROPERTY_ID` stays unset until the owner enables the Data API and adds the service account as Viewer.
+- **Decision:** Accepted. Local run is ready; the remaining steps are the Vercel import and, optionally, GA4.
+
+---
+
+### P-98: State diagrams and business flows
+
+- **Request:** (Command Code, 2026-11-12) "dựa vào project, có thể vẽ thêm giúp tôi state diagram và business flow được không".
+- **Output:**
+  - 9 state diagrams: `state-session`, `state-view-state`, `state-cv-library`, `state-application`, `state-saved`, `state-report-export`, `state-notification`, `state-sync-job`, `state-listing` (`.mmd` + PNG in `docs/records/diagrams/`).
+  - 3 business flows: `business-flow-overview`, `business-flow-report-export`, `business-flow-admin`.
+  - `docs/records/state-and-business-flows.md` maps each diagram to its code and `BR-xx`; linked from `docs/README.md` and `business-rules.md`.
+- **Verification:** every `.mmd` rendered with `@mermaid-js/mermaid-cli` (`-b white -s 2`); 12 `.mmd`/`.png` pairs checked fresh and non-empty. One CV-library label failed on a `;` statement separator and was fixed before rendering.
+- **Decision:** Accepted as documentation; no app code changed.
+
+---
+
+### P-99: Internal UAT R1-B automated follow-up
+
+- **Request:** (Command Code, 2026-11-12/13) "bạn có thể chạy hoàn thiện giúp tôi được không" after the UAT review; complete the 11 scenarios R1-A did not run.
+- **Output:**
+  - Ran R1-B on `emulator-5554` (Medium Phone API 37), build `0.1.0` (versionCode 1, installed 2026-11-12 21:27), team Google account, adb + uiautomator taps.
+  - Results: A1, A2, A3, B3, C9, C10, D1, D2, D3, D4 **Pass**; B7 **Fail** (S2, `UAT-R1B-01`: offline Saved/Search show an empty state, no error + Retry; reconnecting restores the data).
+  - Evidence: 24 full-screen captures in `evidence/uat/uat-r1b-*.png`; no continuous video.
+  - `docs/records/uat-results.md`: R1-B index row, session section with the 11 rows, defect table, slide-21 wording (23 Pass · 1 Fail · 0 Not run internal), acceptance note; R1-A remains 13 Pass · 11 Not run.
+  - Restored the team account: original CV default, headline `SWE`, skills `Docker`, preferences `Not set`, signed in; no application was added.
+- **Verification:**
+  - `adb devices` → `emulator-5554`; API 37; `dumpsys package` → versionName 0.1.0, versionCode 1.
+  - Each result asserted on visible text/state (Login, Home, `No internships found`, `Your CV passed the check.`, 9 applications, 2 saved, etc.).
+  - All 24 screenshot paths referenced by the doc exist and are non-empty.
+  - B7 reproduced with an empty Firestore cache after disabling Wi-Fi/data; reconnecting auto-restored 2 saved items and the pool.
+- **Decision:** Accepted as **internal automated evidence**, not external UAT. E1–E3 remain `Not run` (no external participants), so the acceptance checklist stays unfilled. B7 stays open S2; no fix attempted in this round.

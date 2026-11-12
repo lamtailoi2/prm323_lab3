@@ -1,0 +1,38 @@
+stateDiagram-v2
+    direction LR
+
+    [*] --> submitted: I've sent it (BR-P8), appliedVia = email
+
+    submitted --> under_review: Update status (BR-T8)
+    under_review --> interview: Update status
+    interview --> accepted: Update status
+    interview --> rejected: Update status
+
+    submitted --> withdrawn: Withdraw + xác nhận (BR-T4)
+    under_review --> withdrawn: Withdraw + xác nhận
+    interview --> withdrawn: Withdraw + xác nhận
+
+    withdrawn --> submitted: Undo ≤ 24 h (BR-T5, mặc định)
+    withdrawn --> under_review: Undo ≤ 24 h, previousStatus
+    withdrawn --> interview: Undo ≤ 24 h, previousStatus
+
+    accepted --> under_review: sửa lại stage (BR-T8)
+    rejected --> interview: sửa lại stage (BR-T8)
+
+    note right of submitted
+      Update status cho chọn cả 5 stage trackable:
+      nhảy cóc hoặc lùi lại, không phải bậc thang cứng.
+      Mỗi lần đổi ghi statusUpdatedAt.
+    end note
+
+    note right of withdrawn
+      Chỉ rút được từ submitted / under_review / interview (BR-T3/E11).
+      accepted / rejected không rút được.
+      Undo hết hạn sau 24 h (BR-T5/E12).
+    end note
+
+    note right of accepted
+      Không có trạng thái kết thúc: sinh viên có thể sửa stage.
+      App chỉ ghi điều sinh viên báo, không tự nhận sự kiện
+      từ nhà tuyển dụng (BR-T8).
+    end note
