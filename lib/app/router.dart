@@ -21,6 +21,7 @@ import '../features/notifications/screens/notification_center_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/firebase_demo_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
+import '../features/report_export/screens/report_export_screen.dart';
 import '../features/saved/screens/saved_screen.dart';
 import '../models/app_user.dart';
 import '../models/internship.dart';
@@ -43,6 +44,7 @@ abstract final class AppRoutes {
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
   static const String firebaseDemo = '/profile/firebase';
+  static const String reportExport = '/profile/export';
   static const String notificationCenter = notificationCenterPath;
 
   /// Internship Detail opened from the [tab] it belongs to, e.g.
@@ -184,6 +186,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 name: 'firebase_demo',
                 parentNavigatorKey: rootNavigatorKey,
                 builder: (context, state) => const FirebaseDemoScreen(),
+              ),
+              // Lab 3 "export and upload" (G-05): a PDF of the student's own
+              // applications, above the shell like the other Profile tools.
+              GoRoute(
+                path: 'export',
+                name: 'report_export',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => const ReportExportScreen(),
               ),
               // The Notification Center opens above the shell, so Back
               // returns to the tab the bell was tapped on (G-04).

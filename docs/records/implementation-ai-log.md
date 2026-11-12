@@ -850,6 +850,28 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 - **Verification:** every counted run checked against its ARTEMIS step history (TC-08: open from Saved → Back → `Remove from saved`, count 9 → 10 → 9). For TC-13, Logcat showed the route opening about 2 s after each tap. `py_compile` OK.
 - **Decision:** Accepted. The TC-13 failures before the change were the wrong route and the agent's timing, not the app.
 
+### P-71: Report export (G-05) — PDF của đơn ứng tuyển, upload lên `reports/{uid}`
+
+- **Request:** (Command Code, 2026-11-12; operator Mai Duy Lập) "kiểm tra giúp tôi chỗ nào đang có TC liên quan đến export file… liệu có nên xóa không" → "vậy export ở đây nên export gì" → "vậy bắt đầu làm giúp tôi".
+- **Output:**
+  - `pubspec.yaml`: thêm `pdf: ^3.13.1` (package duy nhất phải thêm; `image`, `xml`, `qr`… là phụ thuộc kéo theo).
+  - `lib/core/utils/application_report_pdf.dart` (mới): hàm thuần `Future<Uint8List> buildApplicationReportPdf` + `reportFileName`. Nội dung PDF: `Internly.` + `Application report`, tên sinh viên + ngày tạo, tổng số đơn kèm breakdown theo status, bảng `Position · Company · Applied · Status · Next step` (cột cuối chỉ xuất hiện khi có `nextStepAt`), header/footer có số trang. Nhận `pw.Font` tuỳ chọn để dùng Inter (tiếng Việt).
+  - `lib/models/exported_report.dart` (mới): `ExportedReport` + `fromFirestore` qua `FirestoreReader` (required `fileName`, `url`, `storagePath`, `createdAt`).
+  - `lib/services/report_export_service.dart` (mới): interface + `FirestoreReportExportService` + provider. Sinh PDF → `FileStorageService.uploadPdf(folder: reports)` → mới ghi `users/{uid}/reports/{id}` với URL thật, size, `itemCount`, `createdAt`; lỗi map sang `AppException`; đọc danh sách report qua listener, bỏ qua document hỏng và log Crashlytics.
+  - `lib/features/report_export/viewmodels/report_export_viewmodel.dart` (mới): `ViewState` cho applications và reports, progress 0–1, chặn double-tap, `export_report` (row 14) sau khi upload + metadata cùng thành công, `open()` qua `ExternalLinkService`.
+  - `lib/features/report_export/screens/report_export_screen.dart` (mới): card `Application report`, `Export report` / `Export again`, progress, error + `Retry`, skeleton/empty/error, danh sách `Your reports` với `Open`.
+  - `lib/app/router.dart`: route `/profile/export` (name `report_export`, root navigator). `lib/features/profile/screens/firebase_demo_screen.dart`: row `Report export` bỏ `enabled: false`, điều hướng tới route.
+  - Tests: `test/core/utils/application_report_pdf_test.dart`, `test/features/report_export/report_export_viewmodel_test.dart`, `test/features/report_export/report_export_screen_test.dart` (360/412 dp + tap target 48 dp), `FakeReportExportService` trong `test/helpers/fakes.dart`, cập nhật `firebase_demo_screen_test.dart`.
+  - Docs: `design-traceability.md` (row Report export + DC-36), `architecture.md`, `analytics-plan.md` row 14, `handoff-gaps.md` G-05/G-06, `data-model-erd.md` + `diagrams/internly-erd.mmd` (REPORT), `test-plan.md` TC-11, `uat-plan.md`, `e2e_test/test_report_export.py`, `test-report.md` Run 47.
+- **Verification:**
+  - `dart format lib test` → formatted.
+  - `flutter analyze` → **No issues found!**
+  - `flutter test` → **773 tests, all passed** (`All tests passed!`), trong đó 31 test mới.
+  - ARTEMIS TC-11 (`test_report_export.py`, profile build, `emulator-5554`, `gemini-3.5-flash-lite`): **3/3 passed** — `f27d53d0` (441.3 s), `a4cbf99a` (264.4 s), `0fb3220a` (551.2 s), batch `3 passed in 1299.88s`. Desktop video 1343.8 s, 71.8 MiB (`e2e_test/artifacts/recordings/20261112/TC-11_Report_Export_recorded.mp4`), quay đồng thời emulator + ARTEMIS workspace + terminal. Chi tiết: `evidence/artemis/e2e-environment-20261112.md`, `runs-20261112.jsonl`.
+  - Sửa 2 lỗi phát hiện khi chạy thật: `final_report()` trong `e2e_test/conftest.py` retry 10 lần (run `59da6690` fail `no structured output` dù JSON hợp lệ), và id document report = `application-report-YYYY-MM-DD` để export lại trong ngày không tạo dòng trùng.
+  - **Not run:** DebugView cho `export_report`; nút `Open` trên máy không có PDF viewer. Video cần upload lên Drive (git-ignored, hiện tài khoản test).
+- **Decision:** Accepted. Phạm vi giữ tối thiểu: chỉ PDF của đơn ứng tuyển (dữ liệu thật của chính user), dùng lại toàn bộ component/token hiện có, không thêm màn hình phát minh mới ngoài DC-36. `deletePdf` vẫn chỉ nhận `cvs/{uid}/` nên report chưa xoá được từ app — ghi nhận là việc sau.
+
 ---
 
 ## Entry template

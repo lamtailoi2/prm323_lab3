@@ -29,6 +29,8 @@ The rules commands need `firebase-tools` and a JDK on `PATH` (`java -version`), 
 
 [`business-process-swimlane.md`](business-process-swimlane.md) — the same rules as one council-facing page: one actor/system diagram, the end-to-end student swimlane (prepare → discover → apply → track) and the admin swimlane, exception branches, state machine, and the branch ↔ state ↔ test table.
 
+[`records/state-and-business-flows.md`](records/state-and-business-flows.md) — the state diagrams (session, `ViewState`, CV library, application, saved, report export, notification, sync, listing) and the business flows (student end to end, report export, admin), each mapped to code and `BR-xx`, with the PNG render command.
+
 ## Folders
 
 | Folder | Content |

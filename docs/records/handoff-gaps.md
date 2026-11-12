@@ -14,7 +14,7 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 | G-02 | Product name: "Internship Finder" (Lab 2) vs "Internly" (Lab 3) | Team | Assumed |
 | G-03 | No Login screen in Lab 2 | Auth owner | Resolved (Login frame received 2026-10-28; DC-18) |
 | G-04 | No Notification Center screen in Lab 2 | Notifications owner | Resolved (built 2026-11-05 from shared components: `/profile/notifications`, bell on every app bar) |
-| G-05 | No PDF report export in Lab 2 | Report owner | Assumed (Firebase demo area on Profile, per Lab 3 §3) |
+| G-05 | No PDF report export in Lab 2 | Report owner | Resolved (applications PDF at `/profile/export`, DC-36) |
 | G-06 | No place in the UI for Remote Config values and Crashlytics test controls | Profile owner | Resolved (Firebase demo area on Profile, Lab 3 §3) |
 | G-07 | Component values not documented (estimated from screenshots) | Design owner | Open (verify in Figma) |
 | G-08 | Main entity for a CRUD requirement not defined | Team | Resolved (not required by the Lab 3 handout) |
@@ -67,13 +67,14 @@ Status legend: **Open** (decision needed) · **Assumed** (working assumption, co
 - **Needed:** list layout, empty/error states, read/unread treatment, and navigation target per notification type. Build it from existing components and log it in the change log.
 
 ### G-05: PDF report export
+- **Resolved (2026-11-12):** `/profile/export` → `ReportExportScreen` (`ReportExportViewModel`, `ReportExportService`). The report is a PDF of the student's own applications: name and generation date, the application count with a per-status breakdown, then a table of `Position · Company · Applied · Status · Next step`. It is uploaded to Cloud Storage `reports/{uid}/…` through `FileStorageService` and only then written to `users/{uid}/reports/{id}` with the real URL, file name, size, item count and timestamp; the screen lists earlier reports with `Open`, shows upload progress, an empty state and an error with `Retry`, and logs `export_report`. Built from existing components and tokens (DC-36); `pubspec.yaml` gains `pdf` 3.13.1.
 - **Found:** not in Lab 2 (no screen, entry point or report content).
 - **Needed:** entry point (e.g. My Applications app bar action or Profile → Settings), report content (built from real user data, e.g. the applications list with statuses), branding, and a "View report" action. Upload and metadata must follow G-12. Never save a placeholder URL as a real result.
 
 ### G-06: Remote Config display and Crashlytics controls
 - **Found:** Lab 3 requires displaying current Remote Config values, a handled-exception demo and an explicit test-crash control. Lab 2 has no place for them.
 - **Proposal:** a "Diagnostics" group in Profile → "Settings & Support" (the Stitch Profile final already has this section). Never trigger a crash at startup.
-- **Resolved (2026-11-06):** `FirebaseDemoScreen` at `/profile/firebase`, opened from Profile → Diagnostics → `Firebase demo`. It shows every Remote Config parameter with its value and source, refreshes on live updates, and offers `Send a non-fatal error` and `Simulate app crash` (confirmation first). It links to the Notification Center; the Report export row is disabled (`Coming soon.`) until G-05.
+- **Resolved (2026-11-06):** `FirebaseDemoScreen` at `/profile/firebase`, opened from Profile → Diagnostics → `Firebase demo`. It shows every Remote Config parameter with its value and source, refreshes on live updates, and offers `Send a non-fatal error` and `Simulate app crash` (confirmation first). It links to the Notification Center; the Report export row opens `/profile/export` since 2026-11-12 (G-05).
 
 ### G-07: Values not documented in the handoff
 Values below are **estimated from the Figma screenshots** or left at Material defaults. Verify each in Figma inspect mode and update the code and [`design-system.md`](../design/design-system.md).

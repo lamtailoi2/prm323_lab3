@@ -1,0 +1,27 @@
+stateDiagram-v2
+    direction LR
+
+    state "Chưa lưu" as NotSaved
+    state "Đã lưu (snapshot)" as Saved
+    state "Lưu lỗi" as SaveError
+    state "Đã bỏ lưu — snackbar Undo" as UndoWindow
+
+    [*] --> NotSaved
+    NotSaved --> Saved: Save thành công (BR-S1)
+    NotSaved --> SaveError: write lỗi (BR-S4)
+    SaveError --> NotSaved: Retry hoặc đóng thông báo
+    Saved --> Saved: Save lần nữa → cùng document id (BR-S2)
+    Saved --> UndoWindow: Unsave (BR-S3)
+    UndoWindow --> Saved: Undo trong lúc snackbar còn
+    UndoWindow --> NotSaved: snackbar hết hạn
+
+    note right of Saved
+      UI chỉ hiện Saved sau khi write thành công (BR-S4).
+      Một job sync dưới nhiều key là một saved job (jobIdentity):
+      bỏ lưu xoá mọi bản copy (BR-S2).
+    end note
+
+    note right of UndoWindow
+      Snapshot đã lưu vẫn dùng được khi tin hết hạn khỏi pool (BR-D5).
+      Undo sau khi snackbar mất thì không còn.
+    end note

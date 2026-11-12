@@ -179,3 +179,5 @@ What they would change first:
 **Decision:** `<accepted / accepted with conditions / rejected>` — date, names.
 
 **Known gaps accepted at sign-off:** `Report export` is disabled and reads `Coming soon.` (G-05), and notifications are covered by TC-13 / TC-15 rather than UAT.
+
+**Afterwards (2026-11-12):** the report export gap above is closed — `Profile → Firebase demo → Report export` now opens `/profile/export` and exports a PDF of the student's applications (G-05, DC-36, P-71). The sessions above were not re-run; the feature is covered by ARTEMIS TC-11 and the Flutter tests instead.

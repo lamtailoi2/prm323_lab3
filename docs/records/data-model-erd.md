@@ -123,6 +123,17 @@ handlers so the history is the same in every app state (G-13).
 `where('term', isEqualTo:)`) so a repeat search moves to the top instead of
 duplicating.
 
+### REPORT — `users/{uid}/reports/{fileNameWithoutExtension}`
+
+`lib/models/exported_report.dart:14-63`, written by
+`report_export_service.dart` (`export`) after the PDF upload succeeds
+(G-05). Required: `fileName`, `url`, `storagePath`, `createdAt`.
+`sizeBytes` and `itemCount` default to 0 on documents without them. The file
+itself is the Storage object `reports/{uid}/{fileName}` (below); `url` is the
+download URL Cloud Storage returned, never a placeholder. The document id is
+`application-report-YYYY-MM-DD`, so one report per day: exporting again the
+same day replaces it instead of adding a duplicate row.
+
 ### INTERNSHIP — `internships/{key}`
 
 `lib/models/internship.dart:43-167`, written **only** by the scheduled
@@ -153,7 +164,8 @@ cursor over the five keywords; `state` records the last run's counts and
 
 `firebase/storage.rules:27-35`. `cvs/{uid}/{fileName}` and
 `reports/{uid}/{fileName}`, PDF only, 1 byte – 10 MB, owner-only. Metadata lives
-in Firestore (`CV_LIBRARY`, and the CV snapshot on `APPLICATION`), never here.
+in Firestore (`CV_LIBRARY`, the CV snapshot on `APPLICATION`, and `REPORT`),
+never here.
 
 ## 3. Why each relationship exists
 
@@ -165,6 +177,7 @@ in Firestore (`CV_LIBRARY`, and the CV snapshot on `APPLICATION`), never here.
 | USER → APPLICATION | 1 : N | `application_service.dart:85-88` | Self-tracked applications (G-25 #6 — there is no employer side) |
 | USER → SAVED_INTERNSHIP | 1 : N | `saved_internship_service.dart:46-48` | Save is a step toward applying (Flow 2e) |
 | USER → NOTIFICATION | 1 : N | `notification_service.dart:205-208` | Client-written history so the center works without a backend |
+| USER → REPORT | 1 : N | `report_export_service.dart` (`export`) | One metadata document per exported PDF, so earlier reports can be reopened (G-05) |
 | USER → SEARCH_HISTORY | 1 : N | `search_history_service.dart:34` | Recent searches, capped at 10 |
 | INTERNSHIP → APPLICATION | 1 : N (per student) | `application_service.dart:169` | `jobKey` is both the FK and the document id; listings expire, so `title` and `companyName` are copied |
 | INTERNSHIP → SAVED_INTERNSHIP | 1 : N (per student) | `saved_internship_service.dart:95-110` | Same expiry problem: the saved item is a full copy |

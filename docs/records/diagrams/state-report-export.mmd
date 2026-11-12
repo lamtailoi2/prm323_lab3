@@ -1,0 +1,39 @@
+stateDiagram-v2
+    direction LR
+
+    state "Đang tải applications + reports" as Loading
+    state "Không có gì để export" as Nothing
+    state "Sẵn sàng export" as Ready
+    state "Lỗi tải" as LoadError
+    state "Đang export (progress 0–1)" as Exporting
+    state "PDF đã upload" as Uploaded
+    state "Report đã lưu" as Saved
+    state "Export lỗi" as ExportFailed
+
+    [*] --> Loading
+    Loading --> Ready: applications có dữ liệu
+    Loading --> Nothing: applications ViewEmpty
+    Loading --> LoadError: AppException → Retry
+    LoadError --> Loading: Retry
+    Nothing --> Ready: có application mới (stream live)
+
+    Ready --> Exporting: Export report / Export again
+    Nothing --> Nothing: bấm Export bị chặn "nothing to export"
+    Exporting --> ExportFailed: build PDF hoặc upload lỗi
+    Exporting --> Uploaded: upload Storage đạt 100%
+    Uploaded --> Saved: ghi metadata users/&#123;uid&#125;/reports OK
+    Uploaded --> ExportFailed: ghi metadata lỗi (file còn, chưa có row)
+    Saved --> Ready: reports stream có row mới
+    ExportFailed --> Exporting: Retry
+    Saved --> Saved: Export lại cùng ngày → cùng doc id, ghi đè
+
+    note right of Exporting
+      Bấm lặp bị bỏ qua khi progress != null.
+      Progress lấy từ FileStorageService.uploadPdf.
+    end note
+
+    note right of Saved
+      Chỉ lưu metadata sau khi upload thành công: không có URL giả.
+      Một document mỗi ngày (id = tên file bỏ .pdf).
+      export_report chỉ log khi report đã tồn tại (analytics row 14).
+    end note

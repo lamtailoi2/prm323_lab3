@@ -47,6 +47,11 @@ void main() {
           builder: (context, state) =>
               const Scaffold(body: Text('Notifications opened')),
         ),
+        GoRoute(
+          path: '/profile/export',
+          builder: (context, state) =>
+              const Scaffold(body: Text('Report export opened')),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -88,7 +93,7 @@ void main() {
       expect(find.text('Simulate app crash'), findsOneWidget);
       expect(find.text('Notification Center'), findsOneWidget);
       expect(find.text('Report export'), findsOneWidget);
-      expect(find.text('Coming soon.'), findsOneWidget);
+      expect(find.text('A PDF of your applications.'), findsOneWidget);
       expect(find.text('Copy FCM token'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -161,6 +166,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Notifications opened'), findsOneWidget);
+  });
+
+  testWidgets('opens the Report export screen', (tester) async {
+    await pumpDemo(tester);
+
+    await tester.tap(find.text('Report export'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Report export opened'), findsOneWidget);
   });
 
   testWidgets('Copy FCM token copies the device token', (tester) async {

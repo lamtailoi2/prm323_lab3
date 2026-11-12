@@ -9,6 +9,7 @@ result and failure) for the evidence table in docs/test-plan.md.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -99,15 +100,25 @@ async def run_case(
     return report
 
 
-async def final_report(artemis: ArtemisClient, task_id: str) -> str | None:
+async def final_report(
+    artemis: ArtemisClient, task_id: str, *, attempts: int = 10
+) -> str | None:
     """Explanation of the agent's last `report_task_status` step, read from the
-    daemon's step history (`GET /api/sessions/{id}/steps`)."""
-    # The pinned client has no public call for the step history.
-    steps = await artemis._request("GET", f"/api/sessions/{task_id}/steps")
-    for step in reversed(steps if isinstance(steps, list) else []):
-        action = step.get("action_taken") or {}
-        if action.get("action") == "report_task_status":
-            return (action.get("args") or {}).get("explanation")
+    daemon's step history (`GET /api/sessions/{id}/steps`).
+
+    The last step can land a moment after the run reports completion, so the
+    read is retried briefly instead of failing the case with "no structured
+    output" (seen on TC-11 run `59da6690`, 2026-11-12).
+    """
+    for attempt in range(1, attempts + 1):
+        # The pinned client has no public call for the step history.
+        steps = await artemis._request("GET", f"/api/sessions/{task_id}/steps")
+        for step in reversed(steps if isinstance(steps, list) else []):
+            action = step.get("action_taken") or {}
+            if action.get("action") == "report_task_status":
+                return (action.get("args") or {}).get("explanation")
+        if attempt < attempts:
+            await asyncio.sleep(1)
     return None
 
 

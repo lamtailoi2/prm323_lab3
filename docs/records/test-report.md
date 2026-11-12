@@ -980,3 +980,28 @@ Findings: the auth gate is the first middleware on `/api`, so no Firestore/Auth/
 | 11 | Vercel deployment | **Not run** |
 
 Findings: the local API now reads `.env.local` because `server/local.js` copies Vite's `loadEnv` result into `process.env`; without that the browser had the config but `ADMIN_EMAILS` was invisible to Express. The dashboard is ready to sign in locally with `lap262005@gmail.com`. The `auth/unauthorized-domain` error came from opening `127.0.0.1` while only `localhost` was authorized; `127.0.0.1` is now added. GA4 remains optional and needs the Data API enabled, the service account added as Viewer, and the numeric property id.
+
+---
+
+## Run 47: Report export (G-05, DC-36) — 2026-11-12
+
+**Environment:** Windows 11 · Flutter 3.47.8 stable · Dart 3.13.7 · branch `dev`. New dependency `pdf` 3.13.1. No device session, no Firebase deployment and no ARTEMIS run.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `flutter pub add pdf` | Added `pdf 3.13.1` (+ `barcode`, `image`, `path_parsing`, `petitparser`, `qr`, `xml`, `posix`); `pubspec.yaml` and `pubspec.lock` updated |
+| 2 | `dart format lib test` | Formatted; 0 changed (239 files) |
+| 3 | `flutter analyze` | **No issues found!** (ran in 8.9 s) |
+| 4 | `flutter test` | **773 tests, all passed** (`All tests passed!`), including the 31 new ones |
+| 5 | New tests: `test/core/utils/application_report_pdf_test.dart` | 5 passed: file name from the date, a real `%PDF-` document with two rows, one row, `ArgumentError` on an empty list (no empty report is ever written), and the bundled Inter faces render a Vietnamese name (the exact asset paths the service loads) |
+| 6 | New tests: `test/features/report_export/report_export_viewmodel_test.dart` | 10 passed: loading → data, empty applications, progress → report + `export_report` parameters, repeated tap blocked, upload failure keeps a message and logs no event, no-application guard, report stream error + retry, `open` via the link service, a viewer failure returned instead of thrown |
+| 7 | New tests: `test/features/report_export/report_export_screen_test.dart` | 6 passed: the card and list at 360 / 412 dp, export → `Last exported` and `Export again`, empty state instead of the action, load error + `Retry`, `Open` hands the URL to the link service, 48 dp tap targets |
+| 8 | Updated test: `test/features/profile/firebase_demo_screen_test.dart` | Passed: the row reads `A PDF of your applications.` and opens `/profile/export` |
+| 9 | Real upload to Cloud Storage + metadata in `users/{uid}/reports` | **Passed** (2026-11-12 23:20–23:42, ARTEMIS TC-11): the PDF is uploaded, `Last exported` appears and `Your reports` lists the file with `Open` |
+| 10 | `export_report` in DebugView | **Not run** |
+| 11 | ARTEMIS TC-11 (`test_report_export.py`) | **Passed 3/3** — traces `f27d53d0` (441.3 s), `a4cbf99a` (264.4 s), `0fb3220a` (551.2 s); batch `3 passed in 1299.88s`. Recorded desktop video (emulator + ARTEMIS workspace + terminal): `e2e_test/artifacts/recordings/20261112/TC-11_Report_Export_recorded.mp4`, 1343.8 s, 71.8 MiB |
+| 12 | `Open` on a device without a PDF viewer | **Not run** (unit-tested failure path only) |
+
+Notes: the PDF is built from the student's own `users/{uid}/applications` documents, so an account with no applications gets the empty state and no file is uploaded (AGENTS.md rule 7). A report document is written only after the upload returns a real download URL. The built-in Helvetica cannot render Vietnamese, so the service loads the bundled Inter faces when available and falls back to the default font instead of failing.
+
+Two fixes came out of the ARTEMIS runs, both verified by the counted batch: `final_report()` in `e2e_test/conftest.py` now retries the step-history read (run `59da6690` failed with `no structured output` although the agent's JSON was valid), and the metadata document id is now `application-report-YYYY-MM-DD` so exporting twice in one day replaces the row instead of duplicating it. Full record: [`../evidence/artemis/e2e-environment-20261112.md`](../evidence/artemis/e2e-environment-20261112.md).

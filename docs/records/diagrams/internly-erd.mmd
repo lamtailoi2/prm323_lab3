@@ -4,12 +4,15 @@ erDiagram
     USER ||--o{ SAVED_INTERNSHIP : "users/{uid}/savedInternships"
     USER ||--o{ APPLICATION : "users/{uid}/applications"
     USER ||--o{ NOTIFICATION : "users/{uid}/notifications"
+    USER ||--o{ REPORT : "users/{uid}/reports"
     USER ||--o{ SEARCH_HISTORY : "users/{uid}/searchHistory"
     USER ||--o{ STORAGE_CV : "cvs/{uid}/file.pdf"
     USER ||--o{ STORAGE_REPORT : "reports/{uid}/file.pdf"
 
     PROFILE }o--o| CV_LIBRARY : "defaultCvId"
     PROFILE ||--o| CV_MIRROR : "legacy cv map"
+
+    APPLICATION }o--o{ REPORT : "listed in"
 
     INTERNSHIP ||--o{ SAVED_INTERNSHIP : "internship snapshot"
     INTERNSHIP ||--o{ APPLICATION : "title + companyName snapshot"
@@ -96,6 +99,15 @@ erDiagram
         string id PK "auto id"
         string term "required, unique per user"
         timestamp searchedAt "required"
+    }
+    REPORT {
+        string id PK "application-report-YYYY-MM-DD (one per day)"
+        string fileName "required, application-report-YYYY-MM-DD.pdf"
+        string url "required download URL from Storage"
+        string storagePath FK "reports/{uid}/fileName"
+        int sizeBytes "optional, 0 when absent"
+        int itemCount "applications in the report"
+        timestamp createdAt "server timestamp"
     }
     INTERNSHIP {
         string key PK "FNV-1a jobKey"

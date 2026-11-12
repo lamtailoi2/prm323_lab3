@@ -21,6 +21,12 @@ state machine and a branch ↔ state ↔ test table — is
 [`business-process-swimlane.md`](business-process-swimlane.md). The rule text and the
 full traceability matrix below stay the single source of truth.
 
+The other state machines the code exposes (session, `ViewState`, CV library, saved,
+report export, notification, sync, listing lifetime) and the report export and admin
+business flows are drawn in
+[`records/state-and-business-flows.md`](records/state-and-business-flows.md), each
+mapped to its `BR-xx` and source file.
+
 ## 1. Actors and systems in one diagram
 
 ```mermaid

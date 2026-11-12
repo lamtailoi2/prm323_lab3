@@ -46,6 +46,7 @@ class FirebaseDemoScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.section),
           _LinksSection(
             onNotifications: () => context.push(AppRoutes.notificationCenter),
+            onReportExport: () => context.push(AppRoutes.reportExport),
           ),
           const SizedBox(height: AppSpacing.section),
           _ConsoleSection(onCopyToken: () => _copyFcmToken(context, ref)),
@@ -246,12 +247,15 @@ class _CrashlyticsSection extends StatelessWidget {
   }
 }
 
-/// The two Lab 3 screens. The report export has no route yet (G-05), so its
-/// row is disabled instead of faking a destination.
+/// The two Lab 3 screens. The report export sits at `/profile/export` (G-05).
 class _LinksSection extends StatelessWidget {
-  const _LinksSection({required this.onNotifications});
+  const _LinksSection({
+    required this.onNotifications,
+    required this.onReportExport,
+  });
 
   final VoidCallback onNotifications;
+  final VoidCallback onReportExport;
 
   @override
   Widget build(BuildContext context) {
@@ -273,11 +277,12 @@ class _LinksSection extends StatelessWidget {
             onTap: onNotifications,
           ),
           const Divider(),
-          const ListTile(
-            enabled: false,
-            leading: Icon(Symbols.download_rounded),
-            title: Text('Report export'),
-            subtitle: Text('Coming soon.'),
+          ListTile(
+            leading: const Icon(Symbols.download_rounded),
+            title: const Text('Report export'),
+            subtitle: const Text('A PDF of your applications.'),
+            trailing: chevron,
+            onTap: onReportExport,
           ),
         ],
       ),

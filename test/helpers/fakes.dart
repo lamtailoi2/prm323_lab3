@@ -9,6 +9,7 @@ import 'package:internly/models/app_user.dart';
 import 'package:internly/models/cv_match_result.dart';
 import 'package:internly/models/cv_selection.dart';
 import 'package:internly/models/cv_validation_result.dart';
+import 'package:internly/models/exported_report.dart';
 import 'package:internly/models/internship.dart';
 import 'package:internly/models/internship_application.dart';
 import 'package:internly/models/user_profile.dart';
@@ -25,6 +26,7 @@ import 'package:internly/services/external_link_service.dart';
 import 'package:internly/services/file_storage_service.dart';
 import 'package:internly/services/internship_service.dart';
 import 'package:internly/services/remote_config_service.dart';
+import 'package:internly/services/report_export_service.dart';
 import 'package:internly/services/saved_internship_service.dart';
 import 'package:internly/services/search_history_service.dart';
 import 'package:internly/services/user_profile_service.dart';
@@ -903,6 +905,80 @@ class FakeFileStorageService implements FileStorageService {
       uploadedAt: DateTime(2026, 10, 28),
     );
   }
+}
+
+/// Records report exports instead of reaching Cloud Storage or Firestore.
+class FakeReportExportService implements ReportExportService {
+  List<ExportedReport> reports = const <ExportedReport>[];
+
+  /// Thrown by the next [watchReports] subscription.
+  Object? error;
+  Completer<void>? gate;
+  int watchCalls = 0;
+
+  /// Thrown by the next [export]; usually an [AppException].
+  Object? exportError;
+
+  /// Holds [export] open, as an offline upload never completes.
+  Completer<void>? exportGate;
+
+  /// Applications passed to [export], newest call last.
+  final List<List<InternshipApplication>> exported =
+      <List<InternshipApplication>>[];
+  final List<String> studentNames = <String>[];
+
+  final StreamController<List<ExportedReport>> _updates =
+      StreamController<List<ExportedReport>>.broadcast();
+
+  @override
+  Stream<List<ExportedReport>> watchReports() async* {
+    watchCalls++;
+    await gate?.future;
+    final failure = error;
+    if (failure != null) throw failure;
+    yield reports;
+    yield* _updates.stream;
+  }
+
+  @override
+  Future<ExportedReport> export({
+    required List<InternshipApplication> applications,
+    required String studentName,
+    DateTime? generatedAt,
+    void Function(double progress)? onProgress,
+  }) async {
+    onProgress?.call(0.5);
+    await exportGate?.future;
+    final failure = exportError;
+    if (failure != null) throw failure;
+    onProgress?.call(1);
+    exported.add(applications);
+    studentNames.add(studentName);
+    final report = ExportedReport(
+      id: 'report-1',
+      fileName: 'application-report-2026-11-12.pdf',
+      url: 'https://storage.example/reports/uid-123/report.pdf',
+      storagePath: 'reports/uid-123/report.pdf',
+      sizeBytes: 20480,
+      itemCount: applications.length,
+      createdAt: generatedAt ?? DateTime(2026, 11, 12),
+    );
+    return report;
+  }
+
+  /// Pushes a new snapshot, as Firestore would.
+  void emit(List<ExportedReport> next) {
+    reports = next;
+    _updates.add(next);
+  }
+
+  /// Pushes a listener error.
+  void fail(Object failure) {
+    error = failure;
+    _updates.addError(failure);
+  }
+
+  Future<void> dispose() => _updates.close();
 }
 
 /// Records CV validation calls instead of reaching Cloud Functions.
