@@ -1,23 +1,18 @@
-// Internly admin dashboard — local only.
+// Internly admin API. Runs locally through server/local.js and as a Vercel
+// function through api/[...path].js.
 //
-// Node + Firebase Admin SDK. The browser UI talks to this server, which holds
-// the only privileged credential. The service-account key is never part of the
-// repository: it is read from INTERNLY_ADMIN_SA, GOOGLE_APPLICATION_CREDENTIALS
-// or ~/.internly-admin/service-account.json.
-//
-// Run: npm install && npm start → http://127.0.0.1:4317
+// The browser never holds a Firebase credential: it signs in with Google,
+// sends the ID token, and this server verifies the token against ADMIN_EMAILS
+// before touching Firestore, Auth, FCM or GA4.
 
-import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import express from 'express';
 import admin from 'firebase-admin';
 import { GoogleAuth, JWT } from 'google-auth-library';
 
-import { parseRealtimeReport, quotaRemaining } from './lib/analytics.js';
 import {
   buildTestCrashData,
   chunk,
@@ -26,11 +21,14 @@ import {
   requireText,
   toIso,
   validateRoute,
-} from './lib/admin.js';
+} from '../lib/admin.js';
+import { parseRealtimeReport, quotaRemaining } from '../lib/analytics.js';
+import { isAllowedAdmin, parseAdminEmails } from '../lib/auth.js';
+import {
+  readEnvServiceAccount,
+  readFileServiceAccount,
+} from '../lib/credentials.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = Number(process.env.PORT || 4317);
-const HOST = '127.0.0.1';
 const PROJECT_ID = process.env.INTERNLY_PROJECT_ID || null;
 const GA4_PROPERTY_ID = (process.env.GA4_PROPERTY_ID || '')
   .trim()
@@ -48,15 +46,22 @@ const credentialPath =
   process.env.GOOGLE_APPLICATION_CREDENTIALS ||
   DEFAULT_CREDENTIAL_PATH;
 
-const credentialFound = fs.existsSync(credentialPath);
+const envCredential = readEnvServiceAccount();
+const fileServiceAccount = envCredential.serviceAccount
+  ? null
+  : readFileServiceAccount(credentialPath);
+const serviceAccount = envCredential.serviceAccount ?? fileServiceAccount;
+const credentialFound = Boolean(serviceAccount);
+const credentialSource = envCredential.serviceAccount
+  ? envCredential.source
+  : fileServiceAccount
+    ? credentialPath
+    : 'application-default';
 
-let initError = null;
-let serviceAccount = null;
-let credentialSource = credentialFound ? credentialPath : 'application-default';
-
+let initError = envCredential.error;
+if (initError) initError.hint = credentialHint();
 try {
-  if (credentialFound) {
-    serviceAccount = JSON.parse(fs.readFileSync(credentialPath, 'utf8'));
+  if (serviceAccount) {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       projectId: PROJECT_ID || serviceAccount.project_id,
@@ -65,8 +70,11 @@ try {
     admin.initializeApp(PROJECT_ID ? { projectId: PROJECT_ID } : undefined);
   }
 } catch (error) {
+  error.hint = error.hint || credentialHint();
   initError = error;
 }
+
+const allowedEmails = parseAdminEmails(process.env.ADMIN_EMAILS);
 
 const db = () => admin.firestore();
 const messaging = () => admin.messaging();
@@ -120,16 +128,18 @@ function analyticsHint(status) {
   return null;
 }
 
-const app = express();
-app.use(express.json({ limit: '64kb' }));
-app.use(express.static(path.join(__dirname, 'public')));
-
 function credentialHint() {
   return (
-    'Create a service-account key in Firebase Console → Project settings → ' +
-    'Service accounts → Generate new private key, save it as ' +
-    `${DEFAULT_CREDENTIAL_PATH} (never inside the repository), then restart ` +
-    'the dashboard.'
+    'Set FIREBASE_SERVICE_ACCOUNT (the service-account JSON) or ' +
+    'FIREBASE_SERVICE_ACCOUNT_BASE64 in the deployment environment. Locally, ' +
+    `save the key as ${DEFAULT_CREDENTIAL_PATH} instead. Never commit it.`
+  );
+}
+
+function authHint() {
+  return (
+    'Set ADMIN_EMAILS to the comma-separated Google account emails that may ' +
+    'use this dashboard, then redeploy.'
   );
 }
 
@@ -289,9 +299,59 @@ async function deliver(recipients, message) {
   return results;
 }
 
+const app = express();
+
+// Vercel may hand the function a pre-parsed body; only parse the stream when
+// it did not.
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') return next();
+  return express.json({ limit: '64kb' })(req, res, next);
+});
+
+app.use('/api', async (req, res, next) => {
+  const notReady = readinessError();
+  if (notReady) {
+    sendError(res, notReady);
+    return;
+  }
+  if (allowedEmails.size === 0) {
+    res.status(503).json({
+      error: 'ADMIN_EMAILS is not set, so no account may use the dashboard.',
+      hint: authHint(),
+    });
+    return;
+  }
+
+  const header = req.get('authorization') ?? '';
+  const token = header.startsWith('Bearer ')
+    ? header.slice('Bearer '.length).trim()
+    : '';
+  if (!token) {
+    res.status(401).json({ error: 'Sign in to use the dashboard.' });
+    return;
+  }
+
+  try {
+    const decoded = await auth().verifyIdToken(token);
+    if (!isAllowedAdmin(decoded, allowedEmails)) {
+      res.status(403).json({
+        error: 'This Google account is not allowed to use the dashboard.',
+        hint: `Add ${decoded.email ?? 'this account'} to ADMIN_EMAILS.`,
+      });
+      return;
+    }
+    req.admin = decoded;
+    next();
+  } catch {
+    res.status(401).json({
+      error: 'Your session is no longer valid. Sign in again.',
+    });
+  }
+});
+
 app.get(
   '/api/status',
-  handle(async (_req, res) => {
+  handle(async (req, res) => {
     let projectId = PROJECT_ID;
     try {
       projectId = admin.app().options.projectId || projectId;
@@ -306,9 +366,15 @@ app.get(
         found: credentialFound,
         defaultPath: DEFAULT_CREDENTIAL_PATH,
         envOverride: Boolean(
-          process.env.INTERNLY_ADMIN_SA ||
+          process.env.FIREBASE_SERVICE_ACCOUNT ||
+            process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 ||
+            process.env.INTERNLY_ADMIN_SA ||
             process.env.GOOGLE_APPLICATION_CREDENTIALS,
         ),
+      },
+      admin: {
+        email: req.admin?.email ?? null,
+        uid: req.admin?.uid ?? null,
       },
       error: initError ? initError.message : null,
       hint: readinessError()?.hint ?? null,
@@ -639,11 +705,4 @@ app.post(
   }),
 );
 
-app.listen(PORT, HOST, () => {
-  console.log(`Internly admin dashboard → http://${HOST}:${PORT}`);
-  console.log(
-    credentialFound
-      ? `Credential: ${credentialSource}`
-      : 'No service-account file found; falling back to application-default credentials.',
-  );
-});
+export default app;

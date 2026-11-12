@@ -168,7 +168,7 @@ Coding rules for people and AI agents: [`AGENTS.md`](AGENTS.md).
 | [`docs/business-process-swimlane.md`](docs/business-process-swimlane.md) | Council view: one actor/system map, the end-to-end student and admin swimlanes with every `BR-xx` branch and exception, state machine, branch ↔ test table |
 | [`docs/records/handoff-gaps.md`](docs/records/handoff-gaps.md) | Missing / conflicting requirements and decisions |
 | [`docs/records/implementation-ai-log.md`](docs/records/implementation-ai-log.md) | Prompts, outputs, verification and decisions for AI-assisted work |
-| [`tools/admin-dashboard/README.md`](tools/admin-dashboard/README.md) | Local admin dashboard: send FCM notifications, find device tokens, inspect/delete notification history |
+| [`tools/admin-dashboard/README.md`](tools/admin-dashboard/README.md) | Admin dashboard (React + Express, local or Vercel): send FCM notifications, find device tokens, inspect/delete notification history |
 
 ## AI tools used
 

@@ -939,3 +939,44 @@ Findings:
 2. `withdrawn` is deliberately excluded from the picker: Withdraw / Undo own `withdrawnAt` / `previousStatus`, and a plain status write would leave them stale. A service-level guard refuses it too.
 3. No `application_update` event is logged when the picked stage equals the stored one, so a no-op tap cannot inflate the funnel.
 4. The tracker shows `statusUpdatedAt` only for the active step of a document that has it; older documents keep showing no invented date (rule 7).
+
+---
+
+## Run 45: React admin dashboard + Vercel deployment preparation (2026-11-11)
+
+**Environment:** Windows 11 · Node 24.22.1 · npm 11.19.1 (global `NODE_ENV=production`, npm `omit=dev`) · branch `dev`. No Firebase project, device or Vercel deployment used.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `cd tools/admin-dashboard && npm install --include=dev` | **64 dev packages added**; plain `npm install` installed production dependencies only because of `NODE_ENV=production` |
+| 2 | `npm test` | **16 tests, all passed** (14 existing + `test/auth.test.js`: allowlist parsing and verified-email check) |
+| 3 | `npm run build` | **Vite 7.3.8 build succeeded in 1.59 s**: `dist/index.html` 0.45 kB, CSS 12.23 kB, JS 343.93 kB |
+| 4 | `npm run dev` → `GET /` | **200**, React page with `/src/main.jsx`; Express + Vite middleware share port 4317 |
+| 5 | `npm run dev` → `GET /api/status` (no `ADMIN_EMAILS`) | **503** `ADMIN_EMAILS is not set, so no account may use the dashboard.` with the env-var hint |
+| 6 | Second instance on 4318 with `ADMIN_EMAILS=test@example.com` → `GET /api/status` | **401** `Sign in to use the dashboard.` |
+| 7 | Vercel deployment | **Not run** (no Vercel account/project access here); setup is documented in `tools/admin-dashboard/README.md` |
+| 8 | `flutter analyze` / `flutter test` | **Not re-run**: no Dart file changed |
+
+Findings: the auth gate is the first middleware on `/api`, so no Firestore/Auth/FCM code runs before the token and allowlist checks. The browser bundle contains only the public Firebase web config; the service account is read from the server environment or the local default file. React StrictMode double-invokes the initial load in development, which only repeats read-only GETs.
+
+---
+
+## Run 46: Firebase Web App + dashboard env (2026-11-11)
+
+**Environment:** Windows 11 · Node 24.22.1 · npm 11.19.1 · firebase-tools 15.34.1 · project `prm-lab3`, branch `dev`. No Vercel deployment and no GA4 call.
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `firebase apps:list --project prm-lab3` (before) | **2 apps**: Android and iOS only; no web app |
+| 2 | `firebase apps:create WEB "Internly Ops" --project prm-lab3` | Created app **`1:888219308403:web:0aa12a147b36ae2dc03506`** |
+| 3 | `firebase apps:sdkconfig WEB 1:888219308403:web:0aa12a147b36ae2dc03506` | Returned `apiKey`, `authDomain=prm-lab3.firebaseapp.com`, `projectId=prm-lab3`, `appId`, `measurementId=G-17R0TX3PRF` |
+| 4 | `firebase login:list` | Logged in as **`lap262005@gmail.com`** (used for `ADMIN_EMAILS`) |
+| 5 | Google provider probe: `POST identitytoolkit/v1/accounts:createAuthUri` with `providerId=google.com` | **200** with an `authUri`, so Google sign-in is enabled |
+| 6 | `GET identitytoolkit/admin/v2/projects/prm-lab3/config` | Authorized domains were **`localhost`, `prm-lab3.firebaseapp.com`, `prm-lab3.web.app`**; `127.0.0.1` was missing |
+| 7 | `PATCH .../config?updateMask=authorizedDomains` adding `127.0.0.1`, then `createAuthUri` with `continueUri=http://127.0.0.1:4317` | **PATCH 200**; the probe then returned **200** with an `authUri` |
+| 8 | GA4 Admin API probe with the service account | **403 SERVICE_DISABLED** for `analyticsadmin.googleapis.com`; no property id found, so `GA4_PROPERTY_ID` stays unset |
+| 9 | `npm run dev` → `GET /` / `GET /api/status` | **200** / **401 `Sign in to use the dashboard.`** (previously 503 `ADMIN_EMAILS is not set`) |
+| 10 | `GET /src/firebase.js` through Vite | Contains `VITE_FIREBASE_API_KEY` and the web `appId`, so the React build receives the config |
+| 11 | Vercel deployment | **Not run** |
+
+Findings: the local API now reads `.env.local` because `server/local.js` copies Vite's `loadEnv` result into `process.env`; without that the browser had the config but `ADMIN_EMAILS` was invisible to Express. The dashboard is ready to sign in locally with `lap262005@gmail.com`. The `auth/unauthorized-domain` error came from opening `127.0.0.1` while only `localhost` was authorized; `127.0.0.1` is now added. GA4 remains optional and needs the Data API enabled, the service account added as Viewer, and the numeric property id.

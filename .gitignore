@@ -88,6 +88,7 @@ firebase/tests/node_modules/
 
 # Local admin dashboard (tools/admin-dashboard)
 tools/admin-dashboard/node_modules/
+tools/admin-dashboard/dist/
 tools/admin-dashboard/.env
 
 # Firebase Functions emulator secrets (real keys; use Secret Manager when deployed)

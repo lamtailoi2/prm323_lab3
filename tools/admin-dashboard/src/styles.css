@@ -139,7 +139,9 @@ strong {
 
 .topbar-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 20px;
   min-width: 0;
 }
@@ -178,6 +180,15 @@ strong {
 .status-dot.bad {
   background: var(--danger);
   box-shadow: 0 0 0 3px var(--danger-soft);
+}
+
+.operator {
+  max-width: 24ch;
+  overflow: hidden;
+  color: var(--ink-faint);
+  font: 11px/1.4 var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- Shared type ---------- */
@@ -834,6 +845,51 @@ footer {
   font: 11px/1.5 var(--mono);
 }
 
+/* ---------- Login / session ---------- */
+
+.session {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  color: var(--ink-soft);
+  font: 12px/1.5 var(--mono);
+}
+
+.login {
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 24px;
+}
+
+.login-card {
+  display: grid;
+  gap: 16px;
+  width: min(480px, 100%);
+  padding: 26px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.login-card h1 {
+  font-size: 24px;
+}
+
+.login-card .form-actions {
+  margin-block-start: 0;
+}
+
+.login-card .result {
+  margin-block-start: 0;
+}
+
+.login-card code {
+  font: 12px/1.4 var(--mono);
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1080px) {
@@ -864,6 +920,7 @@ footer {
     align-items: flex-start;
     flex-direction: column;
     gap: 6px;
+    justify-content: flex-start;
   }
 
   .project-line {

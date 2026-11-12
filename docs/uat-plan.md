@@ -51,7 +51,7 @@ Anything that fails these criteria sends the build back to the team; the fix is 
 |---|---|
 | Notifications (FCM, Notification Center, notification preferences) | Covered by the FCM evidence and ARTEMIS TC-13 / TC-15, not a student acceptance task |
 | `Profile → Firebase demo` (Remote Config, Crashlytics buttons) | Lab 3 demo tooling, not a student task |
-| Local admin dashboard | Operator tool, tested by `npm test` in `tools/admin-dashboard` |
+| Admin dashboard (operator tool) | Tested by `npm test` and the auth gate in `tools/admin-dashboard` |
 | `Report export` | Not built: the Profile row is disabled and reads `Coming soon.` (G-05). UAT records this as a known gap, it is not a failure |
 
 ## 3. Participants and roles

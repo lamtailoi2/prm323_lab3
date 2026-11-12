@@ -1156,3 +1156,43 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
 - **Output:** `docs/business-rules.md` §2.4 — the diagram no longer implies a strict ladder. `accepted` / `rejected` lose their `[*]` terminal markers (BR-T8 can still move them to another trackable stage), the BR-T8 note says the picker offers all five stages every time, and the prose below the diagram spells out the three cases the arrows do not draw (skip a step, move back to correct a mistake, change a decided application). The `withdrawn` note keeps the 24-hour Undo rule.
 - **Verification:** all five mermaid blocks in `business-rules.md` were rendered with `@mermaid-js/mermaid-cli` 12.2.0; each produced an SVG. The state machine was also rendered to PNG and inspected: layout is readable, both notes fit, and no edge is clipped.
 - **Decision:** Accepted.
+
+---
+
+### P-96: Admin dashboard ported to React and prepared for Vercel
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "có thể chuyển giúp tôi phần dashboard được viết thành react được không để tôi có thể deploy", then choosing Vercel, Google sign-in with an `ADMIN_EMAILS` allowlist, and converting inside `tools/admin-dashboard`.
+- **Output:**
+  - `tools/admin-dashboard/src/`: React 19 UI (`App.jsx`, `Topbar`, `UsersRail`, `ComposePanel`, `CrashPanel`, `AnalyticsPanel`, `DeliveryPanel`, `HistoryPanel`, `CrashDialog`, `LoginScreen`), the existing ops-desk `styles.css`, a Firebase Auth client and an API client that sends the ID token. The old `public/index.html`, `public/app.js` and `public/styles.css` were removed.
+  - `server/app.js`: the Express API moved out of `server.js`, with a new auth gate — `ADMIN_EMAILS` allowlist, `verifyIdToken`, 401 without a token, 403 for a non-allowlisted account, 503 when the allowlist or credential is missing. Credentials can come from `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_SERVICE_ACCOUNT_BASE64`, `INTERNLY_ADMIN_SA`, `GOOGLE_APPLICATION_CREDENTIALS` or the local default file.
+  - `server/local.js` (Vite middleware on 4317), `api/[...path].js` (Vercel function), `vite.config.js`, `index.html`, `.env.example`.
+  - `lib/auth.js` + `lib/credentials.js` and `test/auth.test.js`; `lib/admin.js` and `lib/analytics.js` unchanged.
+  - Docs: dashboard README rewritten with local and Vercel setup, environment variables, base64 key command, authorised domain and troubleshooting; `business-rules.md` BR-N1, actor rows, diagram and traceability updated; `README.md`, `architecture.md`, `uat-plan.md`, `technology-stack.md` synced.
+- **Verification:**
+  - `npm install --include=dev` → devDependencies installed (the shell has `NODE_ENV=production` and npm `omit=dev`, so plain `npm install` skipped Vite).
+  - `npm test` → **16 tests, all passed** (14 existing + 2 auth allowlist cases).
+  - `npm run build` → Vite **built in 1.59 s**, `dist/index.html`, 12.23 kB CSS, 343.93 kB JS.
+  - `npm run dev` → `GET /` **200** with the Vite React page; `GET /api/status` **503** `ADMIN_EMAILS is not set` (the credential existed locally).
+  - Second instance on port 4318 with `ADMIN_EMAILS=test@example.com` → `GET /api/status` **401** `Sign in to use the dashboard.`
+  - **Not deployed**: no Vercel account/project access in this session, so the deployment steps are documented but not executed. Firebase Google sign-in and the authorised domain still have to be configured by the owner.
+- **Decision:** Accepted for the code and local verification. Deployment remains a manual owner step.
+
+---
+
+### P-97: Firebase Web App and local env wiring for the dashboard
+
+- **Request:** (Command Code, 2026-11-11; operator Phạm Nguyễn Tú) "giờ cần phải bổ sung những gì thì mới chạy được, và hướng dẫn chi tiết từng cái giúp tôi".
+- **Output:**
+  - Created the Firebase Web App **Internly Ops** in `prm-lab3` with `firebase apps:create WEB` (app id `1:888219308403:web:0aa12a147b36ae2dc03506`); the project previously had only the Android and iOS apps, so the dashboard had no web `apiKey`/`appId`.
+  - Printed the web config with `firebase apps:sdkconfig WEB` and wrote the real values, plus `ADMIN_EMAILS=lap262005@gmail.com`, to the gitignored `tools/admin-dashboard/.env.local`.
+  - `server/local.js` now calls Vite's `loadEnv` and copies `.env.local` into `process.env` before importing the Express app, so `ADMIN_EMAILS`, `GA4_PROPERTY_ID` and credential overrides reach the API (Vite alone only feeds `import.meta.env` to the browser).
+  - Dashboard README: the existing web app, its app id, the `apps:sdkconfig` command and the project's four `VITE_` values are documented; the Vercel table points at them.
+- **Verification:**
+  - `firebase apps:list --project prm-lab3` → **3 apps** (Android, iOS, Internly Ops web).
+  - `firebase apps:sdkconfig WEB 1:888219308403:web:0aa12a147b36ae2dc03506` → `projectId`, `appId`, `apiKey`, `authDomain prm-lab3.firebaseapp.com`.
+  - `firebase login:list` → `lap262005@gmail.com`; the local service-account key exists at `%USERPROFILE%\.internly-admin\service-account.json` (`firebase-adminsdk-fbsvc@prm-lab3.iam.gserviceaccount.com`).
+  - Google provider check: `POST identitytoolkit accounts:createAuthUri` with `providerId=google.com` → **200** and an `authUri`, so Google sign-in is already enabled.
+  - Authorized domains check: `GET identitytoolkit/admin/v2/projects/prm-lab3/config` → `localhost`, `prm-lab3.firebaseapp.com`, `prm-lab3.web.app` only, which caused `auth/unauthorized-domain` when the dashboard was opened at `http://127.0.0.1:4317`. `PATCH` with `updateMask=authorizedDomains` added `127.0.0.1`; the same `createAuthUri` call with `continueUri=http://127.0.0.1:4317` then returned **200** with an `authUri`.
+  - `npm run dev` → `GET /` **200**; `GET /api/status` **401** `Sign in to use the dashboard.` (the allowlist is now loaded, not 503); `/src/firebase.js` contains the web config (`VITE_*` injected).
+  - **Not run:** Vercel deployment and GA4 realtime. The GA4 Admin API is disabled on `prm-lab3`, so the numeric property id was not discovered; `GA4_PROPERTY_ID` stays unset until the owner enables the Data API and adds the service account as Viewer.
+- **Decision:** Accepted. Local run is ready; the remaining steps are the Vercel import and, optionally, GA4.

@@ -12,7 +12,7 @@ current flow is the **email-based Compose application** (DC-31, architecture
 decision. Update this file in the same PR as the code or test.
 
 Legend: **User** = signed-in student. **Admin** = operator of
-`tools/admin-dashboard` on the local machine. **System** = app, Firebase,
+`tools/admin-dashboard` locally, or its Vercel deployment. **System** = app, Firebase,
 Cloud Functions, external APIs.
 
 The council-facing end-to-end view of these same rules — one actor/system map, the
@@ -32,7 +32,7 @@ flowchart LR
 
   subgraph CLIENT["Client surfaces"]
     APP["Flutter app<br/>MVVM + Riverpod + go_router"]
-    DASH["Admin dashboard<br/>Node server on 127.0.0.1"]
+    DASH["Admin dashboard<br/>React + Express<br/>Google sign-in + ADMIN_EMAILS"]
   end
 
   subgraph FB["Firebase project"]
@@ -96,9 +96,9 @@ flowchart LR
 | Actor / system | Responsibility | Never does |
 |---|---|---|
 | User (student) | Signs in, searches, saves, applies by email, tracks and withdraws applications, manages Profile/CV library (add, set default, remove) | Writes the shared listing pool, changes another user's data, sends FCM |
-| Admin (operator) | Runs the local dashboard: lists users, sends notifications to one/all, reads/deletes history, triggers a test crash | Authenticates end users, writes listings, publishes the server |
+| Admin (operator) | Runs the dashboard: lists users, sends notifications to one/all, reads/deletes history, triggers a test crash | Authenticates end users, writes listings, uses the dashboard without an allowlisted Google account |
 | Flutter app | Auth guard, UI, ViewModels, local validation, Firestore/Storage access, callables, deep links | Calls SerpAPI directly; holds server secrets |
-| Admin dashboard server | Holds the service account, resolves recipients, calls FCM, reads/deletes history | Exposes the key to the browser; binds beyond `127.0.0.1` |
+| Admin dashboard server | Holds the service account, verifies the admin ID token, resolves recipients, calls FCM, reads/deletes history | Exposes the key to the browser; serves an API request without a token from an allowlisted email |
 | Firebase | Auth, Firestore (`users/{uid}/cvs` included), Storage, Remote Config, FCM, Crashlytics | — |
 | Cloud Functions | Scheduled SerpAPI sync; `validateCv`, `matchCv`, `composeCoverLetter`, `selectCv` | Write user data outside the verified caller UID |
 | External | SerpAPI listings, Gemini/Groq model output, email app, employer site | — |
@@ -193,7 +193,7 @@ default itself is chosen (BR-C5, BR-C6).
 flowchart LR
   subgraph ADMIN["Admin"]
     direction TB
-    D0["Open dashboard<br/>127.0.0.1"] --> D1{"Choose action"}
+    D0["Open dashboard + Google sign-in"] --> D1{"Choose action"}
     D1 -- "Send" --> D2["Choose one user or all"]
     D2 --> D3{"Recipient has a token?<br/>BR-N3"}
     D3 -- "No" --> D4["409 + reason"]
@@ -417,7 +417,7 @@ used by tests and code comments.
 
 | ID | Point | Rule | Exception / failure | Links |
 |---|---|---|---|---|
-| BR-N1 | Admin security | The dashboard binds `127.0.0.1` only, has **no authentication** and is never deployed. The service-account key lives outside the repo; the browser never receives it | Missing key → header `No credential`; API returns 503 with the expected path | dashboard README |
+| BR-N1 | Admin security | The dashboard runs locally on `127.0.0.1` or on Vercel. Google sign-in is required; the server verifies the Firebase ID token and only accepts a verified email in `ADMIN_EMAILS`. The service-account key lives in the server environment (or outside the repo locally); the browser never receives it | No token → 401; not allowlisted → 403; missing `ADMIN_EMAILS` or credential → 503 with the variable to set | dashboard README, `server/app.js` |
 | BR-N2 | Users list | Firestore `users` joined with Firebase Auth. Signed-in accounts without a profile are shown with `token = null`; Auth API failure still returns Firestore users plus a warning | No token is shown, never hidden | `GET /api/users` |
 | BR-N3 | Recipient resolution | Exactly one valid `uid`, or `all`. `all` reads at most 1,000 user documents and keeps only non-empty unique tokens; duplicate tokens are sent once. Zero recipients → HTTP 409 with the reason | Missing/invalid uid → HTTP 400 | TC-13, dashboard tests |
 | BR-N4 | Message validation | Title required and ≤ 200 chars; body optional and ≤ 1,000 chars. Route is optional, must be an absolute in-app path under `/home`, `/search`, `/saved`, `/applications` or `/profile`; URLs or other prefixes → HTTP 400 | Invalid route would open the wrong screen, so it is rejected | dashboard tests |
@@ -507,7 +507,7 @@ used by tests and code comments.
 | BR-T6 | view-only CV | TC-07, TC-09 | `ApplicantCard`; snapshot survives library removal (BR-C4) |
 | BR-T7 | live detail | TC-09, TC-10 | `application_detail_viewmodel.dart` |
 | BR-T8 | student-set stage | TC-09, `application_detail_viewmodel_test.dart`, `application_detail_screen_test.dart` | `ApplicationService.updateStatus`, `ApplicationStatus.trackable`, `UpdateStatusSheet` |
-| BR-N1 | local only | Manual | `tools/admin-dashboard/README.md`, `server.js` |
+| BR-N1 | signed in + allowlisted | Manual, `test/auth.test.js`, local 401 check | `tools/admin-dashboard/README.md`, `server/app.js`, `lib/auth.js` |
 | BR-N2 | users list | Dashboard tests | `GET /api/users` |
 | BR-N3 | recipients | TC-13, dashboard tests | `resolveRecipients` |
 | BR-N4 | message | Dashboard tests | `validateRoute`, `requireText` |
@@ -528,7 +528,7 @@ used by tests and code comments.
 | G-25 #6: no employer/admin screen sets `under_review` … `rejected` | Resolved for the app: BR-T8 adds the student-facing `Update status` writer, so the stages no longer need the console (DC-35). The app still never claims an employer event, it only records what the student reports | Resolved (app writer) |
 | BR-T8 writes only `status` + `statusUpdatedAt` | A status change does not touch the CV/applicant snapshot or `appliedAt`, so tracking never rewrites what was sent; `withdrawn` stays on BR-T4/T5 | Applied |
 | DC-31: email-based Apply replaces the Apply Form and the blocking Validate CV gate | BR-P9 is optional/advisory, unlike the older `user-flow.md` wording | Applied (code is current) |
-| Admin dashboard has no authentication (BR-N1) | Acceptable only because it is local and never deployed; do not expose the port | Open by design |
+| Admin dashboard authentication (BR-N1) | Resolved: Google sign-in + `ADMIN_EMAILS` allowlist; deployment on Vercel is supported | Resolved |
 | DC-29: tracker, withdraw and undo follow the student's own status | BR-T5 restores the status that was replaced | Applied |
 | G-24: job-specific CV suggestions | BR-P10 is a quality aid only, not a requirement | Resolved |
 | CV library decision (recorded as G-33 on `feat/cv-library`) | BR-C1..C5 describe the library and the legacy `users/{uid}.cv` mirror; BR-C5/BR-C6 are now wired into Compose auto-select and `Change CV` | Applied |

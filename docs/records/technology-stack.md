@@ -314,15 +314,15 @@ flowchart TB
 
 ### 6.2 Express + Firebase Admin SDK
 
-- **Khái niệm:** web server nội bộ để gửi FCM và xem dữ liệu.
-- **Nguyên lý:** Express phục vụ static + REST API; Admin SDK dùng service account đọc/ghi Firestore, Auth, Messaging; multicast chia lô 500.
-- **Implement:** `tools/admin-dashboard/server.js` (`/api/send`, `/api/test-crash`, `/api/users`, `/api/notifications`, `resolveRecipients`, `deliver`); UI ở `tools/admin-dashboard/public/`; test ở `tools/admin-dashboard/test/`.
+- **Khái niệm:** ứng dụng web vận hành (React + Express) để gửi FCM và xem dữ liệu; chạy local hoặc deploy Vercel.
+- **Nguyên lý:** React gọi REST API; Express xác minh Firebase ID token + `ADMIN_EMAILS`, dùng service account đọc/ghi Firestore, Auth, Messaging; multicast chia lô 500.
+- **Implement:** `tools/admin-dashboard/server/app.js` (`/api/send`, `/api/test-crash`, `/api/users`, `/api/notifications`, `resolveRecipients`, `deliver`); UI React ở `tools/admin-dashboard/src/`; test ở `tools/admin-dashboard/test/`.
 
 ### 6.3 Google Analytics Data API (GA4 realtime) + google-auth-library
 
 - **Khái niệm:** đọc số liệu realtime từ GA4.
 - **Nguyên lý:** tạo JWT client từ service account, gọi `runRealtimeReport`, cache 10 giây.
-- **Implement:** `tools/admin-dashboard/server.js` (`analyticsClient`, `/api/analytics/realtime`); helper ở `tools/admin-dashboard/lib/analytics.js`.
+- **Implement:** `tools/admin-dashboard/server/app.js` (`analyticsClient`, `/api/analytics/realtime`); helper ở `tools/admin-dashboard/lib/analytics.js`.
 
 ---
 
