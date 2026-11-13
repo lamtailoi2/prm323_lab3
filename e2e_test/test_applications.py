@@ -63,28 +63,46 @@ async def test_tc09_application_detail_matches_the_list(artemis):
 
 
 async def test_tc21_student_reports_a_stage(artemis):
+    # `Save status` is disabled while the picked stage equals the stored one,
+    # so the case picks a stage different from the one it reads and puts the
+    # original back at the end; otherwise the second of the three runs would
+    # find `Interview` already set and could not save.
     report = await run_case(
         artemis,
         "TC-21",
         f"{SIGNED_IN} Tap 'Applications' in the bottom navigation. If the "
-        "screen says 'You have not applied yet', report has_application false "
-        "and stop. Otherwise open the first application card, read its status "
-        "badge, then tap the pencil button labelled 'Update status'. In the "
-        "sheet, tap 'Interview' and then 'Save status'. Wait 2 seconds, then "
-        "read the status badge on Application Detail. Finally use the back "
-        "arrow to return to the Applications list and read the first card's "
-        "status badge.",
+        "screen says 'You have not applied yet', or no card has a status badge "
+        "other than 'Withdrawn', 'Accepted' or 'Rejected', report "
+        "has_application false and stop. Otherwise open the first card whose "
+        "status badge is not 'Withdrawn', 'Accepted' or 'Rejected', note its "
+        "title and read the status badge on Application Detail as "
+        "before_status. The target stage is 'Interview', or 'Under review' if "
+        "before_status is already 'Interview'. Tap the pencil button labelled "
+        "'Update status'. In the sheet, tap the target stage and then 'Save "
+        "status'. Wait 2 seconds, then read the status badge on Application "
+        "Detail as detail_status. Use the back arrow to return to the "
+        "Applications list and read the status badge of the card with the "
+        "same title as list_status. Then open that card again, tap 'Update "
+        "status', tap the stage named in before_status, tap 'Save status', "
+        "wait 2 seconds and read the status badge as restored_status.",
         expected_output=(
-            'JSON: {"has_application": boolean, "before_status": string, '
-            '"detail_status": string, "list_status": string}'
+            'JSON: {"has_application": boolean, "title": string, '
+            '"before_status": string, "target_status": string, '
+            '"detail_status": string, "list_status": string, '
+            '"restored_status": string}'
         ),
     )
     assert report["has_application"] is True, "TC-21: no application; run TC-06"
 
+    before = report["before_status"].strip()
+    target = "Under review" if before == "Interview" else "Interview"
+    assert report["target_status"].strip() == target
+
     # The tracker is student-reported (BR-T8, DC-35): the app writes what the
     # student picked and both the detail and the list follow the document.
-    assert report["detail_status"].strip() == "Interview"
-    assert report["list_status"].strip() == "Interview"
+    assert report["detail_status"].strip() == target
+    assert report["list_status"].strip() == target
+    assert report["restored_status"].strip() == before
 
 
 @pytest.mark.error_path
