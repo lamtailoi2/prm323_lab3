@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/errors/app_exception.dart';
+import '../core/utils/offline_snapshots.dart';
 import '../models/internship.dart';
 import 'auth_service.dart';
 
@@ -56,27 +57,45 @@ class FirestoreSavedInternshipService implements SavedInternshipService {
       return Stream.value(const <Internship>[]);
     }
 
-    return collection.snapshots().map((snapshot) {
-      final internships = <Internship>[];
+    // Offline with nothing cached, the empty answer becomes the error state
+    // with Retry instead of `No saved internships yet` (UAT-R1B-01). Metadata
+    // changes are included so the server confirming an empty list, which
+    // changes no document, still replaces that error.
+    return emptyCacheAsError(
+      collection.snapshots(includeMetadataChanges: true),
+      isEmptyFromCache: (snapshot) =>
+          snapshot.docs.isEmpty && snapshot.metadata.isFromCache,
+      convert: _parseSaved,
+      offlineError: () => const AppException(
+        AppErrorKind.network,
+        'We couldn’t load your saved internships. Check your connection and '
+        'try again.',
+      ),
+    );
+  }
 
-      for (final doc in snapshot.docs) {
-        try {
-          final data = doc.data();
-          final raw = data['internship'];
+  static List<Internship> _parseSaved(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    final internships = <Internship>[];
 
-          if (raw is! Map) continue;
+    for (final doc in snapshot.docs) {
+      try {
+        final data = doc.data();
+        final raw = data['internship'];
 
-          internships.add(
-            Internship.fromFirestore(doc.id, Map<String, Object?>.from(raw)),
-          );
-        } on FormatException {
-          // Skip malformed saved documents instead of breaking the list.
-          continue;
-        }
+        if (raw is! Map) continue;
+
+        internships.add(
+          Internship.fromFirestore(doc.id, Map<String, Object?>.from(raw)),
+        );
+      } on FormatException {
+        // Skip malformed saved documents instead of breaking the list.
+        continue;
       }
+    }
 
-      return internships;
-    });
+    return internships;
   }
 
   @override
