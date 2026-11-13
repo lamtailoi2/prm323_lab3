@@ -15,6 +15,7 @@ Rules:
 |---|---|---|---|---|---|---|---|
 | R1-A | Internal | 2026-11-11 12:47 | `42ea1e0` · profile APK | Medium Phone API 37 (`emulator-5554`) | Automated walkthrough (team account) | 13 Pass · 11 Not run (completed in R1-B) | `e2e_test/artifacts/recordings/uat-r1-20261111.mp4` |
 | R1-B | Internal | 2026-11-12 23:56 – 2026-11-13 00:56 | `0.1.0` (versionCode 1), installed 2026-11-12 21:27 | Medium Phone API 37 (`emulator-5554`) | Automated follow-up (team account) | 10 Pass · 1 Fail | `evidence/uat/uat-r1b-*.png` |
+| B7 retest | Internal | 2026-11-13 09:00 – 09:18 | profile APK of `dev` `b97f7a4` (before) and of branch `fix/uat-b7-offline` (after) | `Pixel_API_36` (`emulator-5554`, API 36, macOS host) | Automated retest of UAT-B7 only (test account on that emulator) | Before the fix: Fail (reproduced) · after the fix: **Pass** | `evidence/uat/uat-b7-retest-*.png` |
 | E1 | External | Not run | — | — | — | — | — |
 | E2 | External | Not run | — | — | — | — | — |
 | E3 | External | Not run | — | — | — | — | — |
@@ -95,9 +96,9 @@ as external UAT.
 | Title | `UAT evidence — internal rounds` |
 | Evidence | `Round 1 (internal): automated adb walkthroughs · R1-A video 241 s · R1-B screenshots · 24 of 24 scenarios executed` |
 | Build / device | `R1-A 42ea1e0 · R1-B 0.1.0 (versionCode 1) · Medium Phone API 37 (emulator-5554) · 2026-11-11/12` |
-| Result | `23 Pass · 1 Fail · 0 Blocked · 0 Not run (internal)` |
-| Pass (23) | `A1–A3, B1–B6, C1–C10, D1–D4` |
-| Fail (1) | `B7 — offline Saved/Search show an empty state, no error + Retry (S2)` |
+| Result | `24 Pass after the B7 fix · 0 Blocked · 0 Not run (internal)` (R1-A + R1-B gave 23 Pass · 1 Fail; B7 passed on the 2026-11-13 retest) |
+| Pass (24) | `A1–A3, B1–B7, C1–C10, D1–D4` — B7 on the retest after the fix |
+| Fixed (1) | `B7 — offline Saved/Search showed an empty state; now error + Retry (S2, UAT-R1B-01)` |
 | Not measured | `persona timing targets (scripted runs), questionnaire, consent` |
 | Subtitle | `External sessions (E1–E3) not run; the acceptance checklist cannot be completed.` |
 | Source chip | `docs/records/uat-results.md` |
@@ -107,13 +108,14 @@ as external UAT.
 
 Speaking note: “These are internal rounds driven automatically, not human
 acceptance sessions. All 24 scenarios were executed across R1-A and R1-B: 23
-passed and one failed — B7, where the offline Saved and Search screens show an
-empty state instead of an error with Retry. The three external sessions were not
-run, so no external UAT claim is made and the acceptance checklist cannot be
-completed.”
+passed and one failed — B7, where the offline Saved and Search screens showed an
+empty state instead of an error with Retry. We fixed it and the B7 retest
+passed, so all 24 pass now. The three external sessions were not run, so no
+external UAT claim is made and the acceptance checklist cannot be completed.”
 
-Do not write `24 / 24 Pass`: the correct internal result is `23 Pass · 1 Fail`.
-Also do not write “0 lỗi”; name the B7 failure and its severity.
+Write `24 / 24 Pass` only together with “after the B7 fix”, and only once
+`fix/uat-b7-offline` is merged; before that the result is `23 Pass · 1 Fail`
+with B7 “fixed on a branch”. Name the B7 failure either way.
 
 R1-B is an automated follow-up, not the planned second team member; say so if
 the slide lists participants or sessions. The `evidence/uat/` folder now holds
@@ -170,7 +172,7 @@ searching and reading, not scripted taps.
 
 | Defect | Scenario | Severity | What happened | Expected | Evidence | Status |
 |---|---|---|---|---|---|---|
-| UAT-R1B-01 | UAT-B7 | S2 | Offline with an empty Firestore cache, Saved rendered `No saved internships yet` and Search rendered `No internships found`; neither screen showed an error or `Retry`. Reconnecting auto-restored the data | Explicit error state with `Retry` (BR-D6); an empty list must not look like lost data | `evidence/uat/uat-r1b-b7-saved-offline-20261112.png`, `uat-r1b-b7-search-offline-20261112.png` | Open — needs an offline error state or banner; no fix in this round |
+| UAT-R1B-01 | UAT-B7 | S2 | Offline with an empty Firestore cache, Saved rendered `No saved internships yet` and Search rendered `No internships found`; neither screen showed an error or `Retry`. Reconnecting auto-restored the data | Explicit error state with `Retry` (BR-D6); an empty list must not look like lost data | `evidence/uat/uat-r1b-b7-saved-offline-20261112.png`, `uat-r1b-b7-search-offline-20261112.png` | **Fixed** on branch `fix/uat-b7-offline` (P-101), retested 2026-11-13: Pass (see [B7 retest](#b7-retest-after-the-fix-internal-automated)); closed once the branch is merged into `dev` |
 
 **Reproduction (emulator / debug build; this deletes only the local Firestore cache, not server data):**
 
@@ -198,6 +200,43 @@ Not answered — no human participant in this run.
 |---|---|---|---|
 | Participant | — (automated) | — | 2026-11-13 |
 | Operator | team | — | 2026-11-13 |
+
+---
+
+### B7 retest after the fix (internal, automated)
+
+> **Disclosure.** A regression retest of the one failed scenario, driven by adb
+> on the macOS host's emulator with the test account signed in. Not a human
+> session and not an external (`E1`–`E3`) result. The screenshots show the
+> account's name, so keep them as private evidence.
+
+| Item | Value |
+|---|---|
+| Date and time | 2026-11-13 09:00 – 09:18 (Asia/Ho_Chi_Minh) |
+| Builds | Before: profile APK of `dev` `b97f7a4`. After: profile APK of branch `fix/uat-b7-offline` (P-101), built and installed 09:17 |
+| Device / Android | `Pixel_API_36` (`emulator-5554`, API 36), macOS host |
+| Steps | The reproduction above (force-stop, delete only the local Firestore cache, Wi-Fi and data off, launch), then `Home` → `Saved` → `Search` with a typed query, then Wi-Fi and data on |
+| Driver / operator | adb taps (Claude Code) / team operator |
+
+| Build | Home offline | Saved offline | Search offline | Back online | Result |
+|---|---|---|---|---|---|
+| `dev` `b97f7a4` (before) | `No results found` | `No saved internships yet` | `No internships found` | Search 56 results, Saved 9 items, without Retry | **Fail** (UAT-R1B-01 reproduced) |
+| `fix/uat-b7-offline` (after) | `We could not load internships. Check your connection and try again.` + `Retry` | `We couldn’t load your saved internships. Check your connection and try again.` + `Retry` | same message as Home + `Retry` | Search results and Saved (9 items) came back by themselves, no tap needed | **Pass** |
+
+Evidence: `evidence/uat/uat-b7-retest-before-2-saved-offline-20261113.png`,
+`uat-b7-retest-before-3-search-offline-20261113.png`,
+`uat-b7-retest-after-1-home-offline-20261113.png`,
+`uat-b7-retest-after-2-saved-offline-20261113.png`,
+`uat-b7-retest-after-3-search-offline-20261113.png`,
+`uat-b7-retest-after-4-search-online-20261113.png`,
+`uat-b7-retest-after-5-saved-online-20261113.png`.
+
+A first build of the fix (09:03) showed the error on Home and Search, but Saved
+stayed on its loading skeleton: Riverpod's default automatic retry keeps a
+failed provider in loading. The second build disables that retry for
+`savedInternshipsProvider`; the screenshots above are from the second build.
+The emulator crashed once (exit 139) between the two builds and was restarted;
+no result was taken from the crashed run.
 
 ---
 
@@ -283,6 +322,10 @@ What they would change first:
 across R1-A and R1-B — 23 Pass, 1 Fail (`UAT-R1B-01`, UAT-B7). The external
 sessions E1–E3 did not run, so the checklist below stays unfilled and no
 acceptance decision is made.
+
+**After the B7 fix (2026-11-13):** UAT-B7 was retested on the fix branch and
+passed, so the internal result is 24 of 24 scenarios passing with no open defect
+once `fix/uat-b7-offline` is merged. The external sessions are still not run.
 
 | Criterion (`uat-plan.md` §1) | Target | Actual | Met |
 |---|---|---|---|

@@ -367,7 +367,7 @@ used by tests and code comments.
 | BR-D3 | Dedupe | Duplicate listing keys are removed before Home/Search renders | All duplicates → empty state | `distinctListings` tests |
 | BR-D4 | Search / filters | Keyword, work mode, job type and skills (from the current pool) filter in memory. No result → `No internships found` + `Clear filters`, which restores the unfiltered list | Filter data missing → the filter is not offered | TC-03, TC-04 |
 | BR-D5 | Detail unavailable | Expired/deleted listing → saved copy when one exists, otherwise `This internship is no longer available` + Back | Malformed listing treated as unavailable | TC-05 |
-| BR-D6 | Load failure | Any list/detail failure → explicit error state + `Retry`; loading uses skeletons | Offline applications list may still show the Firestore cache (TC-10); no fake data | TC-04, TC-10 |
+| BR-D6 | Load failure | Any list/detail failure → explicit error state + `Retry`; loading uses skeletons | Offline applications list may still show the Firestore cache (TC-10); offline with nothing cached, Home, Search and Saved show the error + `Retry` instead of an empty state (UAT-R1B-01); no fake data | TC-04, TC-10 |
 
 ### 3.3 Saved internships
 

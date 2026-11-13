@@ -1,0 +1,3 @@
+{"test_id": "TC-21", "status": "completed", "succeeded": true, "trace_id": "5a7c9816-f2c3-476e-b200-f35d6ee9c34f", "seconds": 115.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-21", "status": "completed", "succeeded": true, "trace_id": "e43bff07-011b-40d5-9652-0bd329f9458b", "seconds": 87.4, "error": null, "pytest": "passed"}
+{"test_id": "TC-21", "status": "completed", "succeeded": true, "trace_id": "de3f6664-36a7-439d-b2ec-81530801a4c6", "seconds": 87.4, "error": null, "pytest": "passed"}
