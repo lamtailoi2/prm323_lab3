@@ -189,6 +189,32 @@ void main() {
     expect(find.text('No saved internships yet'), findsOneWidget);
   });
 
+  testWidgets('a load failure shows the error state with Retry, not the '
+      'skeleton or the empty state (UAT-R1B-01)', (tester) async {
+    saved.loadError = const AppException(
+      AppErrorKind.network,
+      'We couldn’t load your saved internships.',
+    );
+    await pumpSaved(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('No saved internships yet'), findsNothing);
+    expect(find.bySemanticsLabel('Loading saved internships'), findsNothing);
+    expect(
+      find.textContaining('Check your connection and try again'),
+      findsOneWidget,
+    );
+
+    saved
+      ..loadError = null
+      ..seed([page.first]);
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(saved.watchCalls, 2);
+    expect(find.text('Software Engineering Intern - Mobile'), findsOneWidget);
+  });
+
   testWidgets('empty state Search internships opens Search (Flow 2e.2)', (
     tester,
   ) async {

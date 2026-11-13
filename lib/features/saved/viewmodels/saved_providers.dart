@@ -9,10 +9,15 @@ import '../../../services/saved_internship_service.dart';
 /// The provider reads [savedInternshipServiceProvider], which watches
 /// `currentUserIdProvider`, so the list is dropped on sign-out (AGENTS.md
 /// rule 11).
+///
+/// No automatic retry: Riverpod's default retry keeps a failed provider in
+/// loading, so offline the Saved screen stayed on its skeleton instead of the
+/// error state with `Retry` (UAT-R1B-01). The Firestore listener reconnects by
+/// itself, and `Retry` on the screen resubscribes.
 final savedInternshipsProvider = StreamProvider<List<Internship>>((ref) {
   final service = ref.watch(savedInternshipServiceProvider);
   return service.watchSaved();
-});
+}, retry: (_, _) => null);
 
 /// Jobs ([jobIdentity]) the signed-in student has saved, for the Save Toggle
 /// on Home, Search Results and Internship Detail.

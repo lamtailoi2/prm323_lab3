@@ -1005,3 +1005,20 @@ Findings: the local API now reads `.env.local` because `server/local.js` copies 
 Notes: the PDF is built from the student's own `users/{uid}/applications` documents, so an account with no applications gets the empty state and no file is uploaded (AGENTS.md rule 7). A report document is written only after the upload returns a real download URL. The built-in Helvetica cannot render Vietnamese, so the service loads the bundled Inter faces when available and falls back to the default font instead of failing.
 
 Two fixes came out of the ARTEMIS runs, both verified by the counted batch: `final_report()` in `e2e_test/conftest.py` now retries the step-history read (run `59da6690` failed with `no structured output` although the agent's JSON was valid), and the metadata document id is now `application-report-YYYY-MM-DD` so exporting twice in one day replaces the row instead of duplicating it. Full record: [`../evidence/artemis/e2e-environment-20261112.md`](../evidence/artemis/e2e-environment-20261112.md).
+
+## Run 48: UAT-B7 offline error state + TC-21 — 2026-11-13
+
+**Environment:** macOS (Apple M1, 8 GB) · Flutter 3.47.6 stable · Dart 3.13.5 · branch `fix/uat-b7-offline` (from `dev` `b97f7a4`), not merged yet. Device runs on `Pixel_API_36` (`emulator-5554`, API 36).
+
+| # | Command / scenario | Result |
+|---|---|---|
+| 1 | `dart format lib test` | Formatted (241 files) |
+| 2 | `flutter analyze` | **No issues found!** |
+| 3 | `flutter test` | **782 tests, all passed** (`All tests passed!`): 773 before + 9 new |
+| 4 | New tests: `test/core/utils/offline_snapshots_test.dart` | 8 passed: non-empty snapshots pass through (cache or server), an empty server snapshot is data, an empty cached snapshot becomes the offline error after the grace period, a server answer inside the grace period cancels it, data after the error replaces it, source errors pass through, an empty cached snapshot right before the source ends still reports the error, cancelling stops a pending error |
+| 5 | New test in `test/features/saved/saved_screen_test.dart` | Passed: a load failure shows the error state with `Retry` (no skeleton, no empty state) and `Retry` loads the list. The same test **fails** without the `retry: (_, _) => null` change (the screen stays on `Loading saved internships`) |
+| 6 | UAT-B7 on the device, before the fix (profile APK of `dev` `b97f7a4`) | **Fail reproduced**: offline with no cache, Home `No results found`, Saved `No saved internships yet`, Search `No internships found` |
+| 7 | UAT-B7 on the device, after the fix (profile APK of this branch, 09:17) | **Pass**: Home, Saved and Search show `Check your connection and try again.` + `Retry`; back online, Search and Saved fill in by themselves. Record: [`uat-results.md`](uat-results.md#b7-retest-after-the-fix-internal-automated) |
+| 8 | ARTEMIS TC-21 (`uv run pytest test_applications.py -k tc21 --count 3 -v`) on the `dev` `b97f7a4` profile APK | **Passed 3/3** — traces `5a7c9816` (115.4 s), `e43bff07` (87.4 s), `de3f6664` (87.4 s); `3 passed in 360.18s`. Record: [`../../evidence/artemis/e2e-environment-20261113.md`](../../evidence/artemis/e2e-environment-20261113.md) |
+
+Notes: offline with an empty cache, Firestore answers a listener with an empty result marked `isFromCache`, which the screens showed as "nothing here". `emptyCacheAsError` (`lib/core/utils/offline_snapshots.dart`) turns that answer into an `AppErrorKind.network` error after a 3 s grace period, and the listeners include metadata changes so the server's answer replaces the error when the connection returns. A first device build still left Saved on its skeleton because Riverpod's default automatic retry keeps a failed provider in loading; `savedInternshipsProvider` now has no automatic retry (the Firestore listener reconnects by itself and `Retry` resubscribes). No rules change, no new dependency.

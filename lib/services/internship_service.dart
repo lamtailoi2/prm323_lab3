@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/errors/app_exception.dart';
+import '../core/utils/offline_snapshots.dart';
 import '../models/internship.dart';
 import 'crashlytics_service.dart';
 
@@ -14,7 +15,9 @@ import 'crashlytics_service.dart';
 /// calls SerpAPI directly, so the API key never ships in the APK.
 abstract interface class InternshipService {
   /// Emits active listings whenever the shared collection changes. Documents
-  /// with `expiresAt <= now` are excluded by the query.
+  /// with `expiresAt <= now` are excluded by the query. Offline with nothing
+  /// cached it emits an [AppErrorKind.network] error instead of an empty
+  /// list, and keeps listening so the listings follow once online.
   Stream<List<Internship>> watchActive();
 
   /// Emits the listing `/internships/{key}` whenever it changes, or `null`
@@ -36,24 +39,30 @@ class FirestoreInternshipService implements InternshipService {
   final CrashlyticsService _crashlytics;
 
   @override
-  Stream<List<Internship>> watchActive() async* {
+  Stream<List<Internship>> watchActive() {
     final query = _firestore
         .collection('internships')
         .where('expiresAt', isGreaterThan: Timestamp.now());
 
-    try {
-      await for (final snapshot in query.snapshots()) {
-        yield _parse(snapshot);
-      }
-    } on FirebaseException catch (error) {
-      throw _toAppException(error);
-    } on Exception catch (error) {
-      throw AppException(
-        AppErrorKind.unknown,
-        'We could not load internships. Try again in a moment.',
-        cause: error,
-      );
-    }
+    // Offline with nothing cached, the empty answer becomes the error state
+    // with Retry instead of `No internships found` (UAT-R1B-01). Metadata
+    // changes are included so the server's answer replaces that error even
+    // when it changes no document.
+    return emptyCacheAsError(
+      query.snapshots(includeMetadataChanges: true),
+      isEmptyFromCache: (snapshot) =>
+          snapshot.docs.isEmpty && snapshot.metadata.isFromCache,
+      convert: _parse,
+      offlineError: () => const AppException(
+        AppErrorKind.network,
+        'We could not load internships. Check your connection and try again.',
+      ),
+    ).transform(
+      StreamTransformer<List<Internship>, List<Internship>>.fromHandlers(
+        handleError: (error, stack, sink) =>
+            sink.addError(_toAppError(error), stack),
+      ),
+    );
   }
 
   @override
@@ -111,6 +120,16 @@ class FirestoreInternshipService implements InternshipService {
     }
     return List<Internship>.unmodifiable(results);
   }
+
+  static AppException _toAppError(Object error) => switch (error) {
+    AppException() => error,
+    FirebaseException() => _toAppException(error),
+    _ => AppException(
+      AppErrorKind.unknown,
+      'We could not load internships. Try again in a moment.',
+      cause: error,
+    ),
+  };
 
   static AppException _toAppException(FirebaseException error) {
     return switch (error.code) {

@@ -571,6 +571,10 @@ class FakeSavedInternshipService implements SavedInternshipService {
   int saveCalls = 0;
   int removeCalls = 0;
 
+  /// When set, [watchSaved] emits this error instead of the first snapshot,
+  /// as the Firestore service does offline with nothing cached.
+  AppException? loadError;
+
   /// Keys currently saved, in insertion order.
   List<String> get savedKeys => _saved.keys.toList(growable: false);
 
@@ -589,6 +593,10 @@ class FakeSavedInternshipService implements SavedInternshipService {
     StreamSubscription<List<Internship>>? changes;
     controller = StreamController<List<Internship>>(
       onListen: () {
+        if (loadError case final failure?) {
+          controller.addError(failure);
+          return;
+        }
         controller.add(_snapshot);
         changes = _updates.stream.listen(controller.add);
       },
