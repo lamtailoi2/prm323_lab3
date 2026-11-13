@@ -1248,3 +1248,25 @@ Tool: OpenCode (`deepseek-v4.1-flash-free`), run in `prm323_lab3/` on Windows 11
   - All 24 screenshot paths referenced by the doc exist and are non-empty.
   - B7 reproduced with an empty Firestore cache after disabling Wi-Fi/data; reconnecting auto-restored 2 saved items and the pool.
 - **Decision:** Accepted as **internal automated evidence**, not external UAT. E1–E3 remain `Not run` (no external participants), so the acceptance checklist stays unfilled. B7 stays open S2; no fix attempted in this round.
+
+### P-100: TC-21 made repeatable and run 3/3
+
+- **Request:** (Claude Code, Opus 5.5, 2026-11-13) "bỏ bug đó đi rồi chạy test artemis tc 21 giúp tôi" — run the ARTEMIS case for the student-reported stage (PR #50).
+- **Output:**
+  - `e2e_test/test_applications.py`: TC-21 now opens the first card that is not `Withdrawn` / `Accepted` / `Rejected`, picks `Interview` (or `Under review` when it already reads `Interview`), checks the detail and the list badge, then sets the stage read first back. Reports `title`, `before_status`, `target_status`, `detail_status`, `list_status`, `restored_status`; asserts all four badges. Reason: `Save status` is disabled while the picked stage equals the stored one, so the written case could pass only once.
+  - Ran it 3 times on a profile build of `dev` `b97f7a4`: traces `5a7c9816`, `e43bff07`, `de3f6664`, all passed (avg 96.7 s).
+  - `docs/test-plan.md` TC-21 row (Done 3/3) and §4 run block; `evidence/artemis/e2e-environment-20261113.md` + `runs-20261113.jsonl`; ARTEMIS session videos copied to the git-ignored `e2e_test/artifacts/recordings/20261113/`.
+- **Verification:** pytest `3 passed in 360.18s`; each session's step history read back from the daemon (`/api/sessions/{id}/steps`): 13 steps, `Submitted` → `Interview` on detail and list → back to `Submitted`.
+- **Decision:** Accepted. `application_update` in Logcat and the 75% tracker text are not asserted and were not checked.
+
+### P-101: UAT-B7 — offline error state on Saved, Search and Home (UAT-R1B-01)
+
+- **Request:** (Claude Code, Opus 5.5, 2026-11-13) "bỏ bug đó đi" → asked whether to fix it in code or only drop it from the slide; the user chose "Sửa trong code".
+- **Output:**
+  - `lib/core/utils/offline_snapshots.dart`: `emptyCacheAsError` maps listener snapshots and turns an empty, cache-only snapshot into an error after a 3 s grace period; a later snapshot cancels or replaces it.
+  - `lib/services/saved_internship_service.dart` (`watchSaved`) and `lib/services/internship_service.dart` (`watchActive`, used by Home, Search and Search results) use it with `includeMetadataChanges: true`; `watchActive` keeps mapping Firebase errors to `AppException` and now keeps listening after an error so the list returns when online.
+  - `lib/features/saved/viewmodels/saved_providers.dart`: `savedInternshipsProvider` has no automatic retry (`retry: (_, _) => null`); Riverpod's default retry kept the Saved screen on its skeleton.
+  - Tests: `test/core/utils/offline_snapshots_test.dart` (8) and one Saved screen test (error + `Retry`, then `Retry` loads); `FakeSavedInternshipService.loadError`.
+  - Docs: `uat-results.md` (B7 retest section, defect status, slide-21 wording), `business-rules.md` BR-D6 note, `test-report.md` Run 48.
+- **Verification:** `flutter analyze` no issues; `flutter test` 782 passed; the new Saved test fails without the retry change. Device retest of UAT-B7 (same reproduction as R1-B): before the fix Fail reproduced on `dev`; after the fix Home, Saved and Search show the error + `Retry` offline and fill in by themselves when back online. Screenshots `evidence/uat/uat-b7-retest-*-20261113.png`.
+- **Decision:** Accepted on branch `fix/uat-b7-offline`; UAT-R1B-01 closes when it is merged. Not reviewed by a second person yet.
